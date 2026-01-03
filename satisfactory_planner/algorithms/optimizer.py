@@ -22,10 +22,10 @@ class OptimizationResult:
 
 def optimize_layout(
     production: ProductionGraph,
-    max_iterations: int = 100,
-    crossing_weight: float = 100.0,
-    length_weight: float = 1.0,
-    stagnation_limit: int = 20,
+    max_iterations: int = 300,
+    crossing_weight: float = 1000.0,
+    length_weight: float = 5.0,
+    stagnation_limit: int = 50,
     progress_callback: Optional[Callable[[int, float], None]] = None,
 ) -> OptimizationResult:
     """
@@ -76,17 +76,24 @@ def optimize_layout(
         if progress_callback:
             progress_callback(i, best_score)
         
-        # Early termination
+        # Early termination if stagnating
         if stagnation_count >= stagnation_limit:
-            break
-        
-        # Perfect score
-        if best_crossings == 0:
             break
     
     # If no network was generated (empty production), create an empty one
     if best_network is None:
         best_network = NetworkGraph()
+    else:
+        # Apply local search to polish the best result
+        best_network = local_search_improvement(
+            best_network,
+            iterations=100,
+            crossing_weight=crossing_weight,
+            length_weight=length_weight,
+        )
+        best_crossings = count_crossings(best_network)
+        best_length = total_edge_length(best_network)
+        best_score = best_crossings * crossing_weight + best_length * length_weight
     
     return OptimizationResult(
         network=best_network,
@@ -99,28 +106,29 @@ def optimize_layout(
 
 def local_search_improvement(
     network: NetworkGraph,
-    iterations: int = 50,
-    crossing_weight: float = 100.0,
-    length_weight: float = 1.0,
+    iterations: int = 100,
+    crossing_weight: float = 1000.0,
+    length_weight: float = 5.0,
 ) -> NetworkGraph:
     """
     Improve a network layout through local search.
     
-    Tries swapping adjacent nodes within layers to reduce crossings.
+    Tries swapping adjacent nodes within layers to reduce crossings,
+    and also tries moving nodes to reduce edge lengths.
     """
     # Get current layer structure
     layers = _get_layers(network)
     
     best_score = _score_network(network, crossing_weight, length_weight)
     
-    for _ in range(iterations):
+    for iteration in range(iterations):
         improved = False
         
+        # Phase 1: Try swapping adjacent pairs
         for layer in layers:
             if len(layer) < 2:
                 continue
             
-            # Try swapping adjacent pairs
             for i in range(len(layer) - 1):
                 # Swap
                 layer[i], layer[i + 1] = layer[i + 1], layer[i]
@@ -134,6 +142,48 @@ def local_search_improvement(
                 else:
                     # Swap back
                     layer[i], layer[i + 1] = layer[i + 1], layer[i]
+        
+        # Phase 2: Try moving nodes to better positions within layer
+        for layer in layers:
+            if len(layer) < 2:
+                continue
+            
+            for i in range(len(layer)):
+                node_id = layer[i]
+                
+                # Calculate ideal position based on neighbors
+                node = network.get_node(node_id)
+                neighbors = network.predecessors(node_id) + network.successors(node_id)
+                if not neighbors:
+                    continue
+                
+                neighbor_ys = [network.get_node(n).y for n in neighbors if network.get_node(n)]
+                if not neighbor_ys:
+                    continue
+                
+                ideal_y = sum(neighbor_ys) / len(neighbor_ys)
+                
+                # Find best position in layer based on y-sort
+                layer_with_ideal = [(node_id, ideal_y) if nid == node_id else (nid, network.get_node(nid).y) 
+                                    for nid in layer]
+                layer_with_ideal.sort(key=lambda x: x[1])
+                new_order = [nid for nid, _ in layer_with_ideal]
+                
+                if new_order != layer:
+                    old_layer = layer.copy()
+                    layer.clear()
+                    layer.extend(new_order)
+                    _apply_layer_positions(network, layers)
+                    
+                    new_score = _score_network(network, crossing_weight, length_weight)
+                    
+                    if new_score < best_score:
+                        best_score = new_score
+                        improved = True
+                    else:
+                        # Revert
+                        layer.clear()
+                        layer.extend(old_layer)
         
         if not improved:
             break

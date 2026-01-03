@@ -10,8 +10,8 @@ from ..models.network import NetworkGraph, NetworkNode, NodeType
 # Layout constants
 NODE_WIDTH = 120
 NODE_HEIGHT = 60
-LAYER_SPACING = 200  # Horizontal spacing between layers
-NODE_SPACING = 100   # Vertical spacing between nodes in a layer
+LAYER_SPACING = 250  # Horizontal spacing between layers
+NODE_SPACING = 150   # Vertical spacing between nodes in a layer
 
 
 def compute_layout(network: NetworkGraph, iterations: int = 50) -> NetworkGraph:
