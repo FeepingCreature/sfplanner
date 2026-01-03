@@ -1,59 +1,104 @@
 # Satisfactory Production Planner
 
-A PyQt6-based GUI tool for planning and optimizing factory layouts in Satisfactory (or similar production games).
+A PyQt6-based visual production planner for the game [Satisfactory](https://www.satisfactorygame.com/). Design and optimize your factory layouts with automatic belt routing and crossing minimization.
+
+![Screenshot](screenshot.png)
+
+## AI Notice
+
+This repo was written by Claude Opus 4.5 with [Forge](https://github.com/FeepingCreature/forge). Thanks, Opus!
 
 ## Features
 
-- **Manual Recipe Definition**: Define custom recipes with input/output items and rates
-- **Production Calculation**: Automatically calculate required buildings from target outputs
-- **Network Generation**: Generate splitter/merger networks to connect buildings
-- **Layout Optimization**: Minimize belt crossings and total belt length using randomized search
+- **Manual Recipe Definition**: Define your own recipes with arbitrary inputs/outputs and rates
+- **Production Calculation**: Automatically determines building counts from target outputs
+- **Physical Network Generation**: Creates splitter/merger networks to connect buildings
+- **Layout Optimization**: Joint topology and layout optimization to minimize belt crossings
+- **Visual Graph Display**: Interactive view with bezier-curved belts, color-coded by tier
 
 ## Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/FeepingCreature/sfplanner.git
+cd sfplanner
+
+# Install with pip
+pip install -e .
+
+# Or install dependencies directly
 pip install -r requirements.txt
 ```
 
 ## Usage
 
 ```bash
-cd satisfactory_planner
-python main.py
+# Run the application
+satisfactory-planner
+
+# Or run directly
+python -m satisfactory_planner.main
 ```
 
-## Architecture
+### Quick Start
 
-### Models
+1. **Add Recipes**: Click "Add Recipe" to define production recipes with inputs, outputs, and rates (items/min)
+2. **Set Targets**: Use the Targets panel to specify what items you want to produce and at what rate
+3. **Calculate**: Click "Calculate Requirements" to compute the production graph
+4. **Optimize**: Click "Optimize Layout" to search for layouts with fewer belt crossings
 
-- **Item**: Simple item types
-- **Recipe**: Transformation from inputs to outputs with rates (items/min)
-- **ProductionGraph**: Abstract graph of what recipes are needed and how they connect
-- **NetworkGraph**: Physical layout including splitters, mergers, and belt connections
+### Recipe Persistence
 
-### Algorithms
-
-- **Requirements Calculation**: Work backwards from targets to determine building counts
-- **Splitter/Merger Generation**: Create physical network with belt logistics
-- **Layout Algorithm**: Layered graph layout (Sugiyama-style) with crossing minimization
-- **Optimization**: Random restart search over topology and layout jointly
-
-### Belt Tiers
-
-| Tier | Capacity (items/min) |
-|------|---------------------|
-| 1    | 60                  |
-| 2    | 120                 |
-| 3    | 180                 |
-| 4    | 240                 |
-| 5    | 300                 |
-| 6    | 360                 |
+Recipes are automatically saved to `~/.local/share/satisfactory-planner/recipes.json` (Linux) or the appropriate XDG data directory.
 
 ## How It Works
 
-1. **Define Recipes**: Add your recipes with their input/output rates
-2. **Set Targets**: Specify what you want to produce and at what rate
-3. **Calculate**: The planner determines how many of each building you need
-4. **Optimize**: The layout optimizer tries many random configurations to find one with minimal crossings
+### Production Calculation
 
-The key insight is that the splitter/merger network topology is not unique - there are many ways to connect the same buildings. The optimizer explores this space along with different layouts to find a good solution.
+Given target outputs, the planner works backwards through recipes to determine:
+- Which buildings are needed
+- How many of each (can be fractional for partial utilization)
+- What raw inputs are required
+
+### Network Generation
+
+The abstract production graph is converted to a physical network:
+- Each building gets individual nodes (no "3x Smelter" - instead 3 separate smelter nodes)
+- Splitters fan out from buildings with multiple consumers (1 in, 3 out)
+- Mergers combine inputs from multiple producers (3 in, 1 out)
+- Each recipe node has exactly one belt per item type
+
+### Layout Optimization
+
+The optimizer uses a three-phase approach:
+
+1. **Phase 1**: Random search for topologies with minimal crossings and node collisions
+2. **Phase 2**: Continue searching but now optimize belt length while maintaining crossing count
+3. **Phase 3**: Local search polish with node swapping
+
+Additional techniques:
+- **Waypoint insertion**: Long edges get intermediate routing points
+- **Layer randomization**: Splitters/mergers can shift into their own columns for better routing
+
+## Development
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+```
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Acknowledgments
+
+- [Satisfactory](https://www.satisfactorygame.com/) by Coffee Stain Studios
+- Built with [PyQt6](https://www.riverbankcomputing.com/software/pyqt/)
