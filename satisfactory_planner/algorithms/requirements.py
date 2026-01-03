@@ -3,12 +3,9 @@
 from typing import Optional
 from collections import defaultdict
 import math
-import logging
 
 from ..models.recipe import Recipe, RecipeRegistry
 from ..models.production import ProductionGraph, ProductionNode, ProductionEdge
-
-logger = logging.getLogger(__name__)
 
 
 def calculate_requirements(
@@ -70,8 +67,6 @@ def calculate_requirements(
     for item, rate in targets.items():
         get_demand(item, rate)
     
-    logger.debug(f"Total demand: {item_demand}")
-    
     # Step 2: Create building nodes for each item with a recipe
     # item -> list of (node_id, output_rate) for buildings producing this item
     item_producers: dict[str, list[tuple[str, float]]] = defaultdict(list)
@@ -95,8 +90,6 @@ def calculate_requirements(
         output_rate = recipe.outputs[item]
         total_buildings = demand / output_rate
         num_buildings = max(1, math.ceil(total_buildings))
-        
-        logger.debug(f"Item '{item}': demand={demand}, output_rate={output_rate}, buildings={total_buildings:.2f}")
         
         for i in range(num_buildings):
             # Last building may be fractional
@@ -130,17 +123,8 @@ def calculate_requirements(
         producers = item_producers.get(item, [])
         consumers = item_consumers.get(item, [])
         
-        if not producers:
-            # Source item - no edges needed
-            logger.debug(f"Item '{item}': source (no producers)")
+        if not producers or not consumers:
             continue
-        
-        if not consumers:
-            # Produced but not consumed? Shouldn't happen in a valid graph
-            logger.warning(f"Item '{item}': has producers but no consumers!")
-            continue
-        
-        logger.debug(f"Item '{item}': {len(producers)} producers -> {len(consumers)} consumers")
         
         # Match producers to consumers by rate
         # Simple greedy allocation
@@ -172,15 +156,5 @@ def calculate_requirements(
                     producer_idx += 1
                     if producer_idx < len(producers):
                         producer_id, producer_avail = producers[producer_idx]
-    
-    # Validation
-    for node_id, node in graph.nodes.items():
-        incoming = graph.edges_to(node_id)
-        
-        if node.recipe.inputs and not incoming:
-            logger.warning(
-                f"Node '{node_id}' ({node.recipe.name}) requires inputs "
-                f"{list(node.recipe.inputs.keys())} but has no incoming edges!"
-            )
     
     return graph
