@@ -20,8 +20,9 @@ def compute_layout(network: NetworkGraph, iterations: int = 50) -> NetworkGraph:
     
     Uses Sugiyama-style layout:
     1. Assign nodes to layers (x-coordinate)
-    2. Order nodes within layers to minimize crossings (y-coordinate)
-    3. Position nodes
+    2. Insert waypoints for edges spanning multiple layers
+    3. Order nodes within layers to minimize crossings (y-coordinate)
+    4. Position nodes
     
     Args:
         network: The network to layout (modified in place)
@@ -36,13 +37,53 @@ def compute_layout(network: NetworkGraph, iterations: int = 50) -> NetworkGraph:
     # Step 1: Assign layers
     layers = _assign_layers(network)
     
-    # Step 2: Order nodes within layers
+    # Step 2: Insert waypoints for long edges
+    _insert_waypoints(network, layers)
+    
+    # Step 3: Order nodes within layers
     layer_order = _minimize_crossings(network, layers, iterations)
     
-    # Step 3: Assign positions
+    # Step 4: Assign positions
     _assign_positions(network, layer_order)
     
     return network
+
+
+def _insert_waypoints(network: NetworkGraph, layers: dict[str, int]) -> None:
+    """
+    Insert waypoint nodes for edges that span more than one layer.
+    
+    This allows the layout algorithm more freedom to route edges around obstacles.
+    """
+    edges_to_process = list(network.edges)
+    
+    for edge in edges_to_process:
+        src_layer = layers.get(edge.source_id, 0)
+        tgt_layer = layers.get(edge.target_id, 0)
+        
+        layer_span = tgt_layer - src_layer
+        
+        if layer_span <= 1:
+            continue  # No waypoints needed
+        
+        # Remove original edge
+        network.edges.remove(edge)
+        
+        # Create chain of waypoints
+        prev_id = edge.source_id
+        for i in range(1, layer_span):
+            waypoint = network.create_node(
+                NodeType.WAYPOINT,
+                label="",
+                item=edge.item,
+            )
+            layers[waypoint.id] = src_layer + i
+            
+            network.connect(prev_id, waypoint.id, edge.item, edge.rate)
+            prev_id = waypoint.id
+        
+        # Final connection to target
+        network.connect(prev_id, edge.target_id, edge.item, edge.rate)
 
 
 def _assign_layers(network: NetworkGraph) -> dict[str, int]:
@@ -240,11 +281,14 @@ def count_node_collisions(network: NetworkGraph) -> int:
     Count edges that pass through recipe nodes.
     
     Recipe nodes are physical buildings - belts shouldn't route through them.
+    Waypoints are excluded (they have no physical presence).
     """
     collisions = 0
     
     # Get all recipe nodes (they take up physical space)
-    recipe_nodes = [n for n in network.nodes.values() if n.node_type == NodeType.RECIPE]
+    # Exclude waypoints - they're just routing helpers
+    recipe_nodes = [n for n in network.nodes.values() 
+                    if n.node_type == NodeType.RECIPE]
     
     for edge in network.edges:
         src = network.get_node(edge.source_id)

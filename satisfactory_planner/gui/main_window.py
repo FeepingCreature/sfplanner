@@ -470,7 +470,7 @@ class MainWindow(QMainWindow):
                 return
         
         # Show progress dialog
-        progress = QProgressDialog("Optimizing layout...", "Cancel", 0, 100, self)
+        progress = QProgressDialog("Optimizing layout...", "Cancel", 0, 5000, self)
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.show()
         
@@ -482,7 +482,8 @@ class MainWindow(QMainWindow):
         # Run optimization
         result = optimize_layout(
             self.production_graph,
-            max_iterations=100,
+            max_iterations=5000,
+            stagnation_limit=300,
             progress_callback=update_progress,
         )
         

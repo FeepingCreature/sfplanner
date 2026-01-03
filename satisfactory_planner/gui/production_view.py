@@ -22,6 +22,7 @@ NODE_COLORS = {
     NodeType.MERGER: QColor(200, 150, 100),
     NodeType.SOURCE: QColor(100, 200, 100),
     NodeType.SINK: QColor(200, 100, 100),
+    NodeType.WAYPOINT: QColor(80, 80, 80),  # Subtle - just routing helpers
 }
 
 EDGE_COLOR = QColor(80, 80, 80)
@@ -89,6 +90,15 @@ class ProductionView(QGraphicsView):
     def _draw_node(self, node: NetworkNode):
         """Draw a node on the scene."""
         color = NODE_COLORS.get(node.node_type, QColor(150, 150, 150))
+        
+        # Waypoints are invisible routing helpers - just draw a tiny dot for debugging
+        if node.node_type == NodeType.WAYPOINT:
+            size = 6
+            self.scene.addEllipse(
+                node.x - size / 2, node.y - size / 2, size, size,
+                QPen(color), QBrush(color)
+            )
+            return
         
         if node.node_type in (NodeType.SPLITTER, NodeType.MERGER):
             # Draw as diamond
@@ -166,12 +176,16 @@ class ProductionView(QGraphicsView):
     
     def _get_output_point(self, node: NetworkNode) -> tuple[float, float]:
         """Get the output connection point for a node."""
+        if node.node_type == NodeType.WAYPOINT:
+            return node.x, node.y  # Center point
         if node.node_type in (NodeType.SPLITTER, NodeType.MERGER):
             return node.x + SPLITTER_SIZE / 2, node.y
         return node.x + NODE_WIDTH / 2, node.y
     
     def _get_input_point(self, node: NetworkNode) -> tuple[float, float]:
         """Get the input connection point for a node."""
+        if node.node_type == NodeType.WAYPOINT:
+            return node.x, node.y  # Center point
         if node.node_type in (NodeType.SPLITTER, NodeType.MERGER):
             return node.x - SPLITTER_SIZE / 2, node.y
         return node.x - NODE_WIDTH / 2, node.y

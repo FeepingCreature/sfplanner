@@ -22,8 +22,8 @@ class OptimizationResult:
 
 def optimize_layout(
     production: ProductionGraph,
-    max_iterations: int = 3000,
-    stagnation_limit: int = 200,
+    max_iterations: int = 5000,
+    stagnation_limit: int = 300,
     progress_callback: Optional[Callable[[int, float], None]] = None,
 ) -> OptimizationResult:
     """
@@ -163,7 +163,7 @@ def optimize_layout(
 
 def local_search_improvement(
     network: NetworkGraph,
-    iterations: int = 200,
+    iterations: int = 500,
     max_crossings: int = 0,
     max_collisions: int = 0,
 ) -> NetworkGraph:

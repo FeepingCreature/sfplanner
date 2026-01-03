@@ -13,6 +13,7 @@ class NodeType(Enum):
     MERGER = auto()      # 3 belts in, 1 belt out
     SOURCE = auto()      # Raw resource input
     SINK = auto()        # Final output
+    WAYPOINT = auto()    # Routing waypoint (no physical presence)
 
 
 # Belt capacities in items/min
