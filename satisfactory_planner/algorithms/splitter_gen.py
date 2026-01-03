@@ -219,67 +219,45 @@ def _create_splitter_tree(
     """
     Create a tree of splitters to provide num_outputs from source_id.
     
-    Returns list of node IDs to connect from (splitter outputs).
+    Returns list of node IDs to connect from (one per output needed).
     """
     if num_outputs <= 1:
         return [source_id]
     
-    # Build tree of splitters
-    # Each splitter has 1 input and up to 3 outputs
-    outputs = []
-    pending = [(source_id, total_rate)]  # (node_id, rate available)
+    # Each splitter takes 1 input and provides 3 outputs.
+    # We need to build a tree where leaves are our outputs.
+    # Strategy: build splitters until we have enough leaf slots.
     
-    while len(outputs) < num_outputs and pending:
+    # Start with source as the only available slot
+    # available_slots tracks (node_id, is_splitter) - if is_splitter, can use up to 3 times
+    leaf_nodes: list[str] = [source_id]  # Nodes that can be outputs
+    
+    while len(leaf_nodes) < num_outputs:
+        # Pick a leaf to expand into a splitter
         if randomize:
-            # Randomly pick from pending to vary topology
-            idx = random.randint(0, len(pending) - 1)
+            idx = random.randint(0, len(leaf_nodes) - 1)
         else:
             idx = 0
         
-        parent_id, parent_rate = pending.pop(idx)
+        parent_id = leaf_nodes.pop(idx)
         
-        # How many more outputs do we need?
-        remaining_needed = num_outputs - len(outputs)
+        # Create a splitter fed by this parent
+        splitter = network.create_node(
+            NodeType.SPLITTER,
+            label=f"Splitter ({item})",
+            item=item,
+        )
+        network.connect(parent_id, splitter.id, item, total_rate)
         
-        if remaining_needed == 1:
-            # Just use this node directly
-            outputs.append(parent_id)
-        elif remaining_needed == 2:
-            # Create one splitter with 2 outputs used
-            splitter = network.create_node(
-                NodeType.SPLITTER,
-                label=f"Splitter ({item})",
-                item=item,
-            )
-            network.connect(parent_id, splitter.id, item, parent_rate)
-            outputs.append(splitter.id)
-            outputs.append(splitter.id)
-        elif remaining_needed == 3:
-            # Create one splitter with 3 outputs used
-            splitter = network.create_node(
-                NodeType.SPLITTER,
-                label=f"Splitter ({item})",
-                item=item,
-            )
-            network.connect(parent_id, splitter.id, item, parent_rate)
-            outputs.append(splitter.id)
-            outputs.append(splitter.id)
-            outputs.append(splitter.id)
-        else:
-            # Need more splitters - create one and add its outputs to pending
-            splitter = network.create_node(
-                NodeType.SPLITTER,
-                label=f"Splitter ({item})",
-                item=item,
-            )
-            network.connect(parent_id, splitter.id, item, parent_rate)
-            
-            # Add 3 potential outputs from this splitter
-            rate_per = parent_rate / 3
-            for _ in range(3):
-                pending.append((splitter.id, rate_per))
+        # This splitter provides 3 new leaf slots
+        leaf_nodes.append(splitter.id)
+        leaf_nodes.append(splitter.id)
+        leaf_nodes.append(splitter.id)
     
-    return outputs
+    # Return exactly num_outputs leaves
+    if randomize:
+        random.shuffle(leaf_nodes)
+    return leaf_nodes[:num_outputs]
 
 
 def _create_merger_tree(
@@ -293,56 +271,37 @@ def _create_merger_tree(
     """
     Create a tree of mergers to accept num_inputs into target_id.
     
-    Returns list of node IDs to connect to (merger inputs).
+    Returns list of node IDs to connect to (one per input needed).
     """
     if num_inputs <= 1:
         return [target_id]
     
-    # Build tree of mergers (similar to splitters but reversed)
-    inputs = []
-    pending = [(target_id, total_rate)]
+    # Similar to splitter tree but reversed.
+    # Each merger takes 3 inputs and provides 1 output.
     
-    while len(inputs) < num_inputs and pending:
+    leaf_nodes: list[str] = [target_id]
+    
+    while len(leaf_nodes) < num_inputs:
         if randomize:
-            idx = random.randint(0, len(pending) - 1)
+            idx = random.randint(0, len(leaf_nodes) - 1)
         else:
             idx = 0
         
-        child_id, child_rate = pending.pop(idx)
+        child_id = leaf_nodes.pop(idx)
         
-        remaining_needed = num_inputs - len(inputs)
+        # Create a merger that feeds into this child
+        merger = network.create_node(
+            NodeType.MERGER,
+            label=f"Merger ({item})",
+            item=item,
+        )
+        network.connect(merger.id, child_id, item, total_rate)
         
-        if remaining_needed == 1:
-            inputs.append(child_id)
-        elif remaining_needed == 2:
-            merger = network.create_node(
-                NodeType.MERGER,
-                label=f"Merger ({item})",
-                item=item,
-            )
-            network.connect(merger.id, child_id, item, child_rate)
-            inputs.append(merger.id)
-            inputs.append(merger.id)
-        elif remaining_needed == 3:
-            merger = network.create_node(
-                NodeType.MERGER,
-                label=f"Merger ({item})",
-                item=item,
-            )
-            network.connect(merger.id, child_id, item, child_rate)
-            inputs.append(merger.id)
-            inputs.append(merger.id)
-            inputs.append(merger.id)
-        else:
-            merger = network.create_node(
-                NodeType.MERGER,
-                label=f"Merger ({item})",
-                item=item,
-            )
-            network.connect(merger.id, child_id, item, child_rate)
-            
-            rate_per = child_rate / 3
-            for _ in range(3):
-                pending.append((merger.id, rate_per))
+        # This merger provides 3 new input slots
+        leaf_nodes.append(merger.id)
+        leaf_nodes.append(merger.id)
+        leaf_nodes.append(merger.id)
     
-    return inputs
+    if randomize:
+        random.shuffle(leaf_nodes)
+    return leaf_nodes[:num_inputs]
