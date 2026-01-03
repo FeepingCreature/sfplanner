@@ -698,6 +698,42 @@
       "streaming": true,
       "actual_cost": 0.30362125,
       "generation_id": "gen-1767461851-02jQTuGhWqsJ0FR2SWab"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767461872885.json",
+      "response_file": "/tmp/forge_debug/response_1767461872885.json",
+      "timestamp": 1767461872.8854487,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000238,
+      "generation_id": "gen-1767461872-0tc2NNpk6LlUwqRunJsL"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462012101.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462012101.json",
+      "timestamp": 1767462012.1028478,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.2813925,
+      "generation_id": "gen-1767462012-4x1Cc6EuT0HNmaQngpcr"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462018383.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462018383.json",
+      "timestamp": 1767462018.3846262,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.3195375,
+      "generation_id": "gen-1767462018-bUGn1OM9d1tSlwndkA9g"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462038034.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462038034.json",
+      "timestamp": 1767462038.03502,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.055186,
+      "generation_id": "gen-1767462038-Y2B8E9S8aj1oD1FhZLfR"
     }
   ],
   "messages": [
@@ -2517,6 +2553,93 @@
     {
       "role": "assistant",
       "content": "Done! I've implemented the layer shifting optimization:\n\n## How It Works\n\n`_randomize_layer_assignments()` in the optimizer:\n\n1. **Identifies shiftable nodes** - splitters, mergers, and waypoints (not recipe buildings - those need to stay aligned)\n\n2. **Randomly selects 30-70%** of them to shift\n\n3. **Shifts them by \u00b10.5 layers** - effectively inserting them into a new column between existing columns\n\n4. **Renormalizes** - converts the fractional layers back to integers, preserving order\n\n## Example\n\nBefore: Layers `[0, 1, 2]` with a splitter at layer 1\nAfter shifting right: Layers `[0, 1, 1.5, 2]` \u2192 renormalized to `[0, 1, 2, 3]`\n\nThe splitter now has its own column! If it had 3 output edges crossing, moving it right means only its single input edge needs to cross, potentially reducing 3 crossings to 1.\n\n## Cleanup\n\nAlso removed the unused `randomize_spacing` parameter from `compute_layout()` since the layer shifting approach is more principled for this problem."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: c5e5e93b",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Yeah I think this is good... one more thing, we're using cosine interpolation for the spacers (forcing horizontal in/out) but for those can we just use plain splines?"
+    },
+    {
+      "role": "assistant",
+      "content": "Let me look at the production view to see how edges are drawn and change the waypoint connections to use simple splines instead of the horizontal-forced bezier curves.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"satisfactory_planner/gui/production_view.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_bdrk_011NVhYtuWecKQr6AXf7RTTq",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_011NVhYtuWecKQr6AXf7RTTq",
+      "content": "{\"action\": \"update_context\", \"add\": [\"satisfactory_planner/gui/production_view.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I can see the issue. The current `_draw_edge` uses a cubic bezier with horizontal control points (forcing horizontal in/out). For waypoints, we should just use straight line segments or simple quadratic curves. Let me update the edge drawing to detect waypoint connections and use simpler paths:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/production_view.py\", \"search\": \"    def _draw_edge(self, edge: NetworkEdge):\\n        \\\"\\\"\\\"Draw an edge on the scene.\\\"\\\"\\\"\\n        src = self.network.get_node(edge.source_id)\\n        tgt = self.network.get_node(edge.target_id)\\n        \\n        if not src or not tgt:\\n            return\\n        \\n        # Get connection points\\n        src_x, src_y = self._get_output_point(src)\\n        tgt_x, tgt_y = self._get_input_point(tgt)\\n        \\n        # Draw curved path\\n        path = QPainterPath()\\n        path.moveTo(src_x, src_y)\\n        \\n        # Control points for bezier curve\\n        mid_x = (src_x + tgt_x) / 2\\n        path.cubicTo(\\n            mid_x, src_y,\\n            mid_x, tgt_y,\\n            tgt_x, tgt_y\\n        )\\n        \\n        # Color based on belt tier\\n        color = self._belt_color(edge.rate)\\n        \\n        item = self.scene.addPath(path, QPen(color, 2))\\n        \\n        # Add arrowhead\\n        self._draw_arrowhead(tgt_x, tgt_y, src_x, src_y, color)\", \"replace\": \"    def _draw_edge(self, edge: NetworkEdge):\\n        \\\"\\\"\\\"Draw an edge on the scene.\\\"\\\"\\\"\\n        src = self.network.get_node(edge.source_id)\\n        tgt = self.network.get_node(edge.target_id)\\n        \\n        if not src or not tgt:\\n            return\\n        \\n        # Get connection points\\n        src_x, src_y = self._get_output_point(src)\\n        tgt_x, tgt_y = self._get_input_point(tgt)\\n        \\n        # Draw path - use simple lines for waypoint connections, curves for others\\n        path = QPainterPath()\\n        path.moveTo(src_x, src_y)\\n        \\n        src_is_waypoint = src.node_type == NodeType.WAYPOINT\\n        tgt_is_waypoint = tgt.node_type == NodeType.WAYPOINT\\n        \\n        if src_is_waypoint or tgt_is_waypoint:\\n            # Simple straight line for waypoint connections\\n            path.lineTo(tgt_x, tgt_y)\\n        else:\\n            # Bezier curve with horizontal control points for building connections\\n            mid_x = (src_x + tgt_x) / 2\\n            path.cubicTo(\\n                mid_x, src_y,\\n                mid_x, tgt_y,\\n                tgt_x, tgt_y\\n            )\\n        \\n        # Color based on belt tier\\n        color = self._belt_color(edge.rate)\\n        \\n        item = self.scene.addPath(path, QPen(color, 2))\\n        \\n        # Add arrowhead (skip for waypoint targets - too cluttered)\\n        if not tgt_is_waypoint:\\n            self._draw_arrowhead(tgt_x, tgt_y, src_x, src_y, color)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01HPNxrtmh1WdCY9UamKjH1S",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01HPNxrtmh1WdCY9UamKjH1S",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/production_view.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"satisfactory_planner/gui/production_view.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_018Nv3QYQke6CejHYAcB6nVn",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Done! Updated edge drawing for waypoints:\\n\\n**Before**: All edges used cubic bezier curves with horizontal control points (S-curves)\\n\\n**After**: \\n- **Waypoint connections**: Simple straight lines (`lineTo`)\\n- **Building-to-building connections**: Still use the nice bezier curves\\n\\nAlso:\\n- Arrowheads are now skipped for edges going into waypoints (reduces visual clutter)\\n- Waypoints just act as invisible bend points in the belt path\\n\\nThe belts will now route more naturally through waypoints as straight line segments that can bend at any angle, rather than forcing the horizontal-in/horizontal-out S-curve pattern.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01YbTj474VzVPkgGHnfBDiBE",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_018Nv3QYQke6CejHYAcB6nVn",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"satisfactory_planner/gui/production_view.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01YbTj474VzVPkgGHnfBDiBE",
+      "content": "{\"done\": true, \"message\": \"Done! Updated edge drawing for waypoints:\\n\\n**Before**: All edges used cubic bezier curves with horizontal control points (S-curves)\\n\\n**After**: \\n- **Waypoint connections**: Simple straight lines (`lineTo`)\\n- **Building-to-building connections**: Still use the nice bezier curves\\n\\nAlso:\\n- Arrowheads are now skipped for edges going into waypoints (reduces visual clutter)\\n- Waypoints just act as invisible bend points in the belt path\\n\\nThe belts will now route more naturally through waypoints as straight line segments that can bend at any angle, rather than forcing the horizontal-in/horizontal-out S-curve pattern.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Done! Updated edge drawing for waypoints:\n\n**Before**: All edges used cubic bezier curves with horizontal control points (S-curves)\n\n**After**: \n- **Waypoint connections**: Simple straight lines (`lineTo`)\n- **Building-to-building connections**: Still use the nice bezier curves\n\nAlso:\n- Arrowheads are now skipped for edges going into waypoints (reduces visual clutter)\n- Waypoints just act as invisible bend points in the belt path\n\nThe belts will now route more naturally through waypoints as straight line segments that can bend at any angle, rather than forcing the horizontal-in/horizontal-out S-curve pattern."
     }
   ]
 }
