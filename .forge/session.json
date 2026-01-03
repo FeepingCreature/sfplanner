@@ -1004,6 +1004,42 @@
       "streaming": true,
       "actual_cost": 0.09958425,
       "generation_id": "gen-1767463004-RPTjyQ1holt97gPbMMjQ"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767463015780.json",
+      "response_file": "/tmp/forge_debug/response_1767463015780.json",
+      "timestamp": 1767463015.780551,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000234,
+      "generation_id": "gen-1767463015-Rl7QXxI5UVA0sjYjAU5f"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767463125952.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767463125952.json",
+      "timestamp": 1767463125.95399,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06517175,
+      "generation_id": "gen-1767463126-Xvznug5pT2ww6UJKMZCY"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767463132928.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767463132928.json",
+      "timestamp": 1767463132.929244,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.12337725,
+      "generation_id": "gen-1767463133-k871kYSoROWd8ezFgu2V"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767463165833.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767463165833.json",
+      "timestamp": 1767463165.8350296,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0990485,
+      "generation_id": "gen-1767463166-1ok3UAkirWNoGO6RE3eF"
     }
   ],
   "messages": [
@@ -3636,6 +3672,107 @@
     {
       "role": "assistant",
       "content": "Fixed both issues:\n\n## 1. Merger Tangent Directions\n- **Top port**: Now `(0.3, 0.95)` - belt travels down into merger (down-right direction)\n- **Bottom port**: Now `(0.3, -0.95)` - belt travels up into merger (up-right direction)\n- **Middle port**: Stays `(1.0, 0.0)` - horizontal\n\n## 2. Smarter Port Assignment for Splitters/Mergers\nNow checks if targets/sources *straddle* the splitter/merger (some above, some below):\n\n- **If straddling** (has_above AND has_below): Use top and bottom ports, skip middle\n  - Targets above \u2192 top port\n  - Targets below \u2192 bottom port\n  \n- **If all on same side**: Use sequential ports (0, 1, 2) sorted by Y position\n\nThis means if you have two outputs going one up and one down, they'll use the top and bottom ports for natural vertical fanning rather than forcing top+middle."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: c9b5c0c7",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "hm. the straddling logic can't work if we have three targets, then we just always have to use three in order and live with the routing. Also we can add a bit of grace for what's considered \"above\" and \"below\" rather than \"center-aligned\"."
+    },
+    {
+      "role": "assistant",
+      "content": "Good points! Let me fix the logic:\n1. If 3 targets \u2192 always use all 3 ports in Y-sorted order\n2. If 2 targets \u2192 check straddling with some grace margin\n3. Add grace threshold for \"above\"/\"below\" detection",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"satisfactory_planner/gui/production_view.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_0162nvbfQahagxyjQpbZbxA9",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_0162nvbfQahagxyjQpbZbxA9",
+      "content": "{\"action\": \"update_context\", \"add\": [\"satisfactory_planner/gui/production_view.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I can see the code. Let me fix the logic:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/production_view.py\", \"search\": \"    def _get_splitter_output_port(self, splitter: NetworkNode, target: NetworkNode) -> int:\\n        \\\"\\\"\\\"Get which port (0=top, 1=middle, 2=bottom) for this target.\\\"\\\"\\\"\\n        # Get all outgoing edges with their y positions relative to splitter\\n        edges = self.network.edges_from(splitter.id)\\n        targets_info = []\\n        for e in edges:\\n            t = self.network.get_node(e.target_id)\\n            if t:\\n                dy = t.y - splitter.y  # Positive = below, negative = above\\n                targets_info.append((e.target_id, t.y, dy))\\n        \\n        if len(targets_info) <= 1:\\n            return 1  # Single output uses middle\\n        \\n        # Check if targets straddle the splitter (some above, some below)\\n        has_above = any(dy < -5 for _, _, dy in targets_info)\\n        has_below = any(dy > 5 for _, _, dy in targets_info)\\n        \\n        if has_above and has_below:\\n            # Use top and bottom ports, skip middle\\n            # Sort by y position\\n            targets_info.sort(key=lambda x: x[1])\\n            for i, (tid, _, dy) in enumerate(targets_info):\\n                if tid == target.id:\\n                    if dy < 0:  # Above splitter\\n                        return 0  # Top port\\n                    else:  # Below splitter\\n                        return 2  # Bottom port\\n        else:\\n            # All targets roughly same side - use sequential ports\\n            targets_info.sort(key=lambda x: x[1])  # Sort by y (top to bottom)\\n            for i, (tid, _, _) in enumerate(targets_info):\\n                if tid == target.id:\\n                    return min(i, 2)\\n        \\n        return 1  # Default to middle\", \"replace\": \"    def _get_splitter_output_port(self, splitter: NetworkNode, target: NetworkNode) -> int:\\n        \\\"\\\"\\\"Get which port (0=top, 1=middle, 2=bottom) for this target.\\\"\\\"\\\"\\n        GRACE = 20  # Pixels of grace for \\\"center-aligned\\\"\\n        \\n        # Get all outgoing edges with their y positions relative to splitter\\n        edges = self.network.edges_from(splitter.id)\\n        targets_info = []\\n        for e in edges:\\n            t = self.network.get_node(e.target_id)\\n            if t:\\n                dy = t.y - splitter.y  # Positive = below, negative = above\\n                targets_info.append((e.target_id, t.y, dy))\\n        \\n        if len(targets_info) <= 1:\\n            return 1  # Single output uses middle\\n        \\n        # Sort by y position (top to bottom)\\n        targets_info.sort(key=lambda x: x[1])\\n        \\n        # If 3 targets, always use all 3 ports in order\\n        if len(targets_info) >= 3:\\n            for i, (tid, _, _) in enumerate(targets_info):\\n                if tid == target.id:\\n                    return min(i, 2)\\n        \\n        # 2 targets: check if they straddle the splitter\\n        has_above = any(dy < -GRACE for _, _, dy in targets_info)\\n        has_below = any(dy > GRACE for _, _, dy in targets_info)\\n        \\n        if has_above and has_below:\\n            # Use top and bottom ports, skip middle\\n            for tid, _, dy in targets_info:\\n                if tid == target.id:\\n                    return 0 if dy < 0 else 2\\n        else:\\n            # Both on same side - use top+middle or middle+bottom\\n            for i, (tid, _, dy) in enumerate(targets_info):\\n                if tid == target.id:\\n                    if has_above:  # Both above or center\\n                        return i  # 0=top, 1=middle\\n                    else:  # Both below or center\\n                        return i + 1  # 1=middle, 2=bottom\\n        \\n        return 1  # Default to middle\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_011BvskV5J3FqGwhbKmqwbkZ",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/production_view.py\", \"search\": \"    def _get_merger_input_port(self, merger: NetworkNode, source: NetworkNode) -> int:\\n        \\\"\\\"\\\"Get which port (0=top, 1=middle, 2=bottom) for this source.\\\"\\\"\\\"\\n        # Get all incoming edges with their y positions relative to merger\\n        edges = self.network.edges_to(merger.id)\\n        sources_info = []\\n        for e in edges:\\n            s = self.network.get_node(e.source_id)\\n            if s:\\n                dy = s.y - merger.y  # Positive = below, negative = above\\n                sources_info.append((e.source_id, s.y, dy))\\n        \\n        if len(sources_info) <= 1:\\n            return 1  # Single input uses middle\\n        \\n        # Check if sources straddle the merger (some above, some below)\\n        has_above = any(dy < -5 for _, _, dy in sources_info)\\n        has_below = any(dy > 5 for _, _, dy in sources_info)\\n        \\n        if has_above and has_below:\\n            # Use top and bottom ports, skip middle\\n            sources_info.sort(key=lambda x: x[1])\\n            for i, (sid, _, dy) in enumerate(sources_info):\\n                if sid == source.id:\\n                    if dy < 0:  # Above merger\\n                        return 0  # Top port\\n                    else:  # Below merger\\n                        return 2  # Bottom port\\n        else:\\n            # All sources roughly same side - use sequential ports\\n            sources_info.sort(key=lambda x: x[1])  # Sort by y (top to bottom)\\n            for i, (sid, _, _) in enumerate(sources_info):\\n                if sid == source.id:\\n                    return min(i, 2)\\n        \\n        return 1  # Default to middle\", \"replace\": \"    def _get_merger_input_port(self, merger: NetworkNode, source: NetworkNode) -> int:\\n        \\\"\\\"\\\"Get which port (0=top, 1=middle, 2=bottom) for this source.\\\"\\\"\\\"\\n        GRACE = 20  # Pixels of grace for \\\"center-aligned\\\"\\n        \\n        # Get all incoming edges with their y positions relative to merger\\n        edges = self.network.edges_to(merger.id)\\n        sources_info = []\\n        for e in edges:\\n            s = self.network.get_node(e.source_id)\\n            if s:\\n                dy = s.y - merger.y  # Positive = below, negative = above\\n                sources_info.append((e.source_id, s.y, dy))\\n        \\n        if len(sources_info) <= 1:\\n            return 1  # Single input uses middle\\n        \\n        # Sort by y position (top to bottom)\\n        sources_info.sort(key=lambda x: x[1])\\n        \\n        # If 3 sources, always use all 3 ports in order\\n        if len(sources_info) >= 3:\\n            for i, (sid, _, _) in enumerate(sources_info):\\n                if sid == source.id:\\n                    return min(i, 2)\\n        \\n        # 2 sources: check if they straddle the merger\\n        has_above = any(dy < -GRACE for _, _, dy in sources_info)\\n        has_below = any(dy > GRACE for _, _, dy in sources_info)\\n        \\n        if has_above and has_below:\\n            # Use top and bottom ports, skip middle\\n            for sid, _, dy in sources_info:\\n                if sid == source.id:\\n                    return 0 if dy < 0 else 2\\n        else:\\n            # Both on same side - use top+middle or middle+bottom\\n            for i, (sid, _, dy) in enumerate(sources_info):\\n                if sid == source.id:\\n                    if has_above:  # Both above or center\\n                        return i  # 0=top, 1=middle\\n                    else:  # Both below or center\\n                        return i + 1  # 1=middle, 2=bottom\\n        \\n        return 1  # Default to middle\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_019BBT8fSMr2MFJSVBi7XLZt",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_011BvskV5J3FqGwhbKmqwbkZ",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/production_view.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_019BBT8fSMr2MFJSVBi7XLZt",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/production_view.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good, the changes are in. Let me clean up:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"satisfactory_planner/gui/production_view.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_018TFwJuu7xAvqu8QHHoodBD",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fixed both issues:\\n\\n## 1. Three Targets \u2192 Use All 3 Ports in Order\\nIf there are 3 or more targets/sources, we now always use all 3 ports (top, middle, bottom) sorted by Y position. No straddling logic applies - we just have to live with the routing.\\n\\n## 2. Grace Threshold for Straddling Detection\\nAdded `GRACE = 20` pixels for detecting \\\"above\\\" vs \\\"below\\\":\\n- `dy < -GRACE` \u2192 clearly above\\n- `dy > GRACE` \u2192 clearly below\\n- `-GRACE <= dy <= GRACE` \u2192 center-aligned\\n\\n## Port Assignment Logic (for 2 connections):\\n- **If straddling** (one above, one below with grace): Use top + bottom ports\\n- **If both above/center**: Use top + middle ports (0, 1)\\n- **If both below/center**: Use middle + bottom ports (1, 2)\\n\\nThis should give more natural routing for the common case where two belts fan out/in on opposite sides of a splitter/merger.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_016Az3uQY6bZpdBVuyGHdDbK",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_018TFwJuu7xAvqu8QHHoodBD",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"satisfactory_planner/gui/production_view.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_016Az3uQY6bZpdBVuyGHdDbK",
+      "content": "{\"done\": true, \"message\": \"Fixed both issues:\\n\\n## 1. Three Targets \\u2192 Use All 3 Ports in Order\\nIf there are 3 or more targets/sources, we now always use all 3 ports (top, middle, bottom) sorted by Y position. No straddling logic applies - we just have to live with the routing.\\n\\n## 2. Grace Threshold for Straddling Detection\\nAdded `GRACE = 20` pixels for detecting \\\"above\\\" vs \\\"below\\\":\\n- `dy < -GRACE` \\u2192 clearly above\\n- `dy > GRACE` \\u2192 clearly below\\n- `-GRACE <= dy <= GRACE` \\u2192 center-aligned\\n\\n## Port Assignment Logic (for 2 connections):\\n- **If straddling** (one above, one below with grace): Use top + bottom ports\\n- **If both above/center**: Use top + middle ports (0, 1)\\n- **If both below/center**: Use middle + bottom ports (1, 2)\\n\\nThis should give more natural routing for the common case where two belts fan out/in on opposite sides of a splitter/merger.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Fixed both issues:\n\n## 1. Three Targets \u2192 Use All 3 Ports in Order\nIf there are 3 or more targets/sources, we now always use all 3 ports (top, middle, bottom) sorted by Y position. No straddling logic applies - we just have to live with the routing.\n\n## 2. Grace Threshold for Straddling Detection\nAdded `GRACE = 20` pixels for detecting \"above\" vs \"below\":\n- `dy < -GRACE` \u2192 clearly above\n- `dy > GRACE` \u2192 clearly below\n- `-GRACE <= dy <= GRACE` \u2192 center-aligned\n\n## Port Assignment Logic (for 2 connections):\n- **If straddling** (one above, one below with grace): Use top + bottom ports\n- **If both above/center**: Use top + middle ports (0, 1)\n- **If both below/center**: Use middle + bottom ports (1, 2)\n\nThis should give more natural routing for the common case where two belts fan out/in on opposite sides of a splitter/merger."
     }
   ]
 }

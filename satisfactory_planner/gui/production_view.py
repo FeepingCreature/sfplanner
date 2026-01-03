@@ -212,6 +212,8 @@ class ProductionView(QGraphicsView):
     
     def _get_splitter_output_port(self, splitter: NetworkNode, target: NetworkNode) -> int:
         """Get which port (0=top, 1=middle, 2=bottom) for this target."""
+        GRACE = 20  # Pixels of grace for "center-aligned"
+        
         # Get all outgoing edges with their y positions relative to splitter
         edges = self.network.edges_from(splitter.id)
         targets_info = []
@@ -224,31 +226,39 @@ class ProductionView(QGraphicsView):
         if len(targets_info) <= 1:
             return 1  # Single output uses middle
         
-        # Check if targets straddle the splitter (some above, some below)
-        has_above = any(dy < -5 for _, _, dy in targets_info)
-        has_below = any(dy > 5 for _, _, dy in targets_info)
+        # Sort by y position (top to bottom)
+        targets_info.sort(key=lambda x: x[1])
         
-        if has_above and has_below:
-            # Use top and bottom ports, skip middle
-            # Sort by y position
-            targets_info.sort(key=lambda x: x[1])
-            for i, (tid, _, dy) in enumerate(targets_info):
-                if tid == target.id:
-                    if dy < 0:  # Above splitter
-                        return 0  # Top port
-                    else:  # Below splitter
-                        return 2  # Bottom port
-        else:
-            # All targets roughly same side - use sequential ports
-            targets_info.sort(key=lambda x: x[1])  # Sort by y (top to bottom)
+        # If 3 targets, always use all 3 ports in order
+        if len(targets_info) >= 3:
             for i, (tid, _, _) in enumerate(targets_info):
                 if tid == target.id:
                     return min(i, 2)
+        
+        # 2 targets: check if they straddle the splitter
+        has_above = any(dy < -GRACE for _, _, dy in targets_info)
+        has_below = any(dy > GRACE for _, _, dy in targets_info)
+        
+        if has_above and has_below:
+            # Use top and bottom ports, skip middle
+            for tid, _, dy in targets_info:
+                if tid == target.id:
+                    return 0 if dy < 0 else 2
+        else:
+            # Both on same side - use top+middle or middle+bottom
+            for i, (tid, _, dy) in enumerate(targets_info):
+                if tid == target.id:
+                    if has_above:  # Both above or center
+                        return i  # 0=top, 1=middle
+                    else:  # Both below or center
+                        return i + 1  # 1=middle, 2=bottom
         
         return 1  # Default to middle
     
     def _get_merger_input_port(self, merger: NetworkNode, source: NetworkNode) -> int:
         """Get which port (0=top, 1=middle, 2=bottom) for this source."""
+        GRACE = 20  # Pixels of grace for "center-aligned"
+        
         # Get all incoming edges with their y positions relative to merger
         edges = self.network.edges_to(merger.id)
         sources_info = []
@@ -261,25 +271,32 @@ class ProductionView(QGraphicsView):
         if len(sources_info) <= 1:
             return 1  # Single input uses middle
         
-        # Check if sources straddle the merger (some above, some below)
-        has_above = any(dy < -5 for _, _, dy in sources_info)
-        has_below = any(dy > 5 for _, _, dy in sources_info)
+        # Sort by y position (top to bottom)
+        sources_info.sort(key=lambda x: x[1])
         
-        if has_above and has_below:
-            # Use top and bottom ports, skip middle
-            sources_info.sort(key=lambda x: x[1])
-            for i, (sid, _, dy) in enumerate(sources_info):
-                if sid == source.id:
-                    if dy < 0:  # Above merger
-                        return 0  # Top port
-                    else:  # Below merger
-                        return 2  # Bottom port
-        else:
-            # All sources roughly same side - use sequential ports
-            sources_info.sort(key=lambda x: x[1])  # Sort by y (top to bottom)
+        # If 3 sources, always use all 3 ports in order
+        if len(sources_info) >= 3:
             for i, (sid, _, _) in enumerate(sources_info):
                 if sid == source.id:
                     return min(i, 2)
+        
+        # 2 sources: check if they straddle the merger
+        has_above = any(dy < -GRACE for _, _, dy in sources_info)
+        has_below = any(dy > GRACE for _, _, dy in sources_info)
+        
+        if has_above and has_below:
+            # Use top and bottom ports, skip middle
+            for sid, _, dy in sources_info:
+                if sid == source.id:
+                    return 0 if dy < 0 else 2
+        else:
+            # Both on same side - use top+middle or middle+bottom
+            for i, (sid, _, dy) in enumerate(sources_info):
+                if sid == source.id:
+                    if has_above:  # Both above or center
+                        return i  # 0=top, 1=middle
+                    else:  # Both below or center
+                        return i + 1  # 1=middle, 2=bottom
         
         return 1  # Default to middle
     
