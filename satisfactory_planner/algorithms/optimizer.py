@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from ..models.production import ProductionGraph
 from ..models.network import NetworkGraph
 from .splitter_gen import generate_network
-from .layout import compute_layout, count_crossings, total_edge_length, count_node_collisions
+from .layout import compute_layout, count_crossings, total_edge_length, count_node_collisions, _insert_waypoints, _assign_layers
 
 
 @dataclass
@@ -54,8 +54,12 @@ def optimize_layout(
         # Generate a random network topology
         network = generate_network(production, randomize=True)
         
-        # Layout the network
-        compute_layout(network)
+        # Insert waypoints for long edges (done here so topology varies)
+        layers = _assign_layers(network)
+        _insert_waypoints(network, layers)
+        
+        # Layout the network with random spacing
+        compute_layout(network, randomize_spacing=True)
         
         # Score by crossings + collisions only
         crossings = count_crossings(network)
@@ -94,8 +98,12 @@ def optimize_layout(
         # Generate a random network topology
         network = generate_network(production, randomize=True)
         
-        # Layout the network
-        compute_layout(network)
+        # Insert waypoints for long edges
+        layers = _assign_layers(network)
+        _insert_waypoints(network, layers)
+        
+        # Layout the network with random spacing
+        compute_layout(network, randomize_spacing=True)
         
         # Check crossings/collisions constraint
         crossings = count_crossings(network)

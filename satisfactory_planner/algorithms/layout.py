@@ -14,19 +14,23 @@ LAYER_SPACING = 250  # Horizontal spacing between layers
 NODE_SPACING = 150   # Vertical spacing between nodes in a layer
 
 
-def compute_layout(network: NetworkGraph, iterations: int = 50) -> NetworkGraph:
+def compute_layout(
+    network: NetworkGraph, 
+    iterations: int = 50,
+    randomize_spacing: bool = False,
+) -> NetworkGraph:
     """
     Compute node positions for the network using a layered layout.
     
     Uses Sugiyama-style layout:
     1. Assign nodes to layers (x-coordinate)
-    2. Insert waypoints for edges spanning multiple layers
-    3. Order nodes within layers to minimize crossings (y-coordinate)
-    4. Position nodes
+    2. Order nodes within layers to minimize crossings (y-coordinate)
+    3. Position nodes (with optional random spacing variation)
     
     Args:
         network: The network to layout (modified in place)
         iterations: Number of crossing minimization iterations
+        randomize_spacing: If True, add random variation to spacing
     
     Returns:
         The same network with positions set
@@ -37,14 +41,11 @@ def compute_layout(network: NetworkGraph, iterations: int = 50) -> NetworkGraph:
     # Step 1: Assign layers
     layers = _assign_layers(network)
     
-    # Step 2: Insert waypoints for long edges
-    _insert_waypoints(network, layers)
-    
-    # Step 3: Order nodes within layers
+    # Step 2: Order nodes within layers
     layer_order = _minimize_crossings(network, layers, iterations)
     
-    # Step 4: Assign positions
-    _assign_positions(network, layer_order)
+    # Step 3: Assign positions
+    _assign_positions(network, layer_order, randomize_spacing)
     
     return network
 
@@ -205,10 +206,21 @@ def _order_layer_by_barycenter(
     layer.sort(key=lambda nid: barycenters[nid])
 
 
-def _assign_positions(network: NetworkGraph, layer_order: list[list[str]]) -> None:
+def _assign_positions(
+    network: NetworkGraph, 
+    layer_order: list[list[str]],
+    randomize_spacing: bool = False,
+) -> None:
     """Assign x, y coordinates to nodes based on layer assignment and order."""
+    import random
+    
     for layer_idx, layer in enumerate(layer_order):
-        x = layer_idx * LAYER_SPACING
+        # Add random horizontal variation if requested
+        if randomize_spacing:
+            x_jitter = random.uniform(-LAYER_SPACING * 0.15, LAYER_SPACING * 0.15)
+            x = layer_idx * LAYER_SPACING + x_jitter
+        else:
+            x = layer_idx * LAYER_SPACING
         
         # Center the layer vertically
         total_height = len(layer) * NODE_SPACING
@@ -218,7 +230,12 @@ def _assign_positions(network: NetworkGraph, layer_order: list[list[str]]) -> No
             node = network.get_node(node_id)
             if node:
                 node.x = x
-                node.y = start_y + node_idx * NODE_SPACING
+                # Add random vertical variation if requested
+                if randomize_spacing:
+                    y_jitter = random.uniform(-NODE_SPACING * 0.2, NODE_SPACING * 0.2)
+                    node.y = start_y + node_idx * NODE_SPACING + y_jitter
+                else:
+                    node.y = start_y + node_idx * NODE_SPACING
 
 
 def count_crossings(network: NetworkGraph) -> int:
