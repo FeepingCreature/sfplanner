@@ -40,6 +40,11 @@ def get_recipes_path() -> Path:
     return get_data_dir() / "recipes.json"
 
 
+def get_disabled_recipes_path() -> Path:
+    """Get path to the disabled recipes JSON file."""
+    return get_data_dir() / "disabled_recipes.json"
+
+
 class TargetEditorDialog(QDialog):
     """Dialog for adding/editing a production target."""
     
@@ -192,6 +197,7 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._setup_menu()
         self._load_recipes_from_xdg()
+        self._load_disabled_recipes_from_xdg()
     
     def _setup_ui(self):
         central = QWidget()
@@ -210,6 +216,7 @@ class MainWindow(QMainWindow):
         
         self.recipe_list = QListWidget()
         self.recipe_list.itemDoubleClicked.connect(self._edit_recipe)
+        self.recipe_list.itemChanged.connect(self._on_recipe_check_changed)
         recipes_layout.addWidget(self.recipe_list)
         
         recipe_btns = QHBoxLayout()
@@ -328,6 +335,33 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "Warning", f"Failed to save recipes: {e}")
     
+    def _load_disabled_recipes_from_xdg(self):
+        """Load disabled recipes list from XDG data directory."""
+        disabled_path = get_disabled_recipes_path()
+        if disabled_path.exists():
+            try:
+                with open(disabled_path, 'r') as f:
+                    disabled_list = json.load(f)
+                for name in disabled_list:
+                    self.recipe_registry.set_disabled(name, True)
+                # Refresh list to show updated checkboxes
+                self._refresh_recipe_list()
+            except Exception as e:
+                QMessageBox.warning(
+                    self, "Warning",
+                    f"Failed to load disabled recipes: {e}"
+                )
+    
+    def _save_disabled_recipes_to_xdg(self):
+        """Save disabled recipes list to XDG data directory."""
+        disabled_path = get_disabled_recipes_path()
+        try:
+            disabled_list = list(self.recipe_registry.disabled_recipe_names())
+            with open(disabled_path, 'w') as f:
+                json.dump(disabled_list, f, indent=2)
+        except Exception as e:
+            QMessageBox.warning(self, "Warning", f"Failed to save disabled recipes: {e}")
+    
     def _load_default_recipes(self):
         """Load some example recipes."""
         # Iron processing chain
@@ -372,11 +406,20 @@ class MainWindow(QMainWindow):
         self.target_widget.set_targets({"Reinforced Iron Plate": 5})
     
     def _refresh_recipe_list(self):
+        # Block signals to avoid triggering itemChanged during refresh
+        self.recipe_list.blockSignals(True)
         self.recipe_list.clear()
         for recipe in self.recipe_registry.all_recipes():
             item = QListWidgetItem(recipe.name)
             item.setData(Qt.ItemDataRole.UserRole, recipe.name)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            # Checked = enabled, unchecked = disabled
+            if self.recipe_registry.is_disabled(recipe.name):
+                item.setCheckState(Qt.CheckState.Unchecked)
+            else:
+                item.setCheckState(Qt.CheckState.Checked)
             self.recipe_list.addItem(item)
+        self.recipe_list.blockSignals(False)
         
         # Update available items for target selection
         self._update_available_items()
@@ -428,6 +471,14 @@ class MainWindow(QMainWindow):
                 self.recipe_registry.unregister(recipe_name)
                 self._refresh_recipe_list()
     
+    def _on_recipe_check_changed(self, item: QListWidgetItem):
+        """Handle recipe checkbox state changes."""
+        recipe_name = item.data(Qt.ItemDataRole.UserRole)
+        if recipe_name:
+            # Checked = enabled (not disabled), Unchecked = disabled
+            disabled = item.checkState() != Qt.CheckState.Checked
+            self.recipe_registry.set_disabled(recipe_name, disabled)
+    
     def _calculate(self):
         """Calculate production requirements."""
         targets = self.target_widget.get_targets()
@@ -436,10 +487,11 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Error", "Please add at least one production target.")
             return
         
-        # Calculate requirements
+        # Calculate requirements (excluding disabled recipes)
         self.production_graph = calculate_requirements(
             self.recipe_registry,
             targets,
+            disabled_recipes=self.recipe_registry.disabled_recipe_names(),
         )
         
         # Generate initial network (without optimization)
@@ -528,6 +580,7 @@ class MainWindow(QMainWindow):
         )
     
     def closeEvent(self, event):
-        """Save recipes when closing the application."""
+        """Save recipes and disabled state when closing the application."""
         self._save_recipes_to_xdg()
+        self._save_disabled_recipes_to_xdg()
         super().closeEvent(event)
