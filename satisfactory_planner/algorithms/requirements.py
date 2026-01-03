@@ -12,6 +12,7 @@ def calculate_requirements(
     registry: RecipeRegistry,
     targets: dict[str, float],  # item_name -> items/min desired
     sources: Optional[set[str]] = None,  # items that are raw inputs (don't need recipes)
+    disabled_recipes: Optional[set[str]] = None,  # recipe names to skip
 ) -> ProductionGraph:
     """
     Calculate the production graph needed to achieve target outputs.
@@ -25,12 +26,15 @@ def calculate_requirements(
         registry: Recipe registry to look up recipes
         targets: Desired output rates (item_name -> items/min)
         sources: Set of item names that are raw inputs (optional)
+        disabled_recipes: Set of recipe names to exclude from consideration
     
     Returns:
         ProductionGraph with nodes and edges representing the factory
     """
     if sources is None:
         sources = set()
+    if disabled_recipes is None:
+        disabled_recipes = set()
     
     graph = ProductionGraph()
     
@@ -50,6 +54,8 @@ def calculate_requirements(
         # Find recipe (use cached if available)
         if item not in item_recipe:
             recipes = registry.recipes_producing(item)
+            # Filter out disabled recipes
+            recipes = [r for r in recipes if r.name not in disabled_recipes]
             if not recipes:
                 # No recipe - treat as source
                 return

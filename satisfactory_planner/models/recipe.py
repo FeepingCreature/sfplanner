@@ -58,6 +58,26 @@ class RecipeRegistry:
     
     def __init__(self):
         self._recipes: dict[str, Recipe] = {}
+        self._disabled: set[str] = set()  # Names of disabled recipes
+    
+    def is_disabled(self, name: str) -> bool:
+        """Check if a recipe is disabled."""
+        return name in self._disabled
+    
+    def set_disabled(self, name: str, disabled: bool) -> None:
+        """Enable or disable a recipe."""
+        if disabled:
+            self._disabled.add(name)
+        else:
+            self._disabled.discard(name)
+    
+    def enabled_recipes(self) -> list[Recipe]:
+        """Return all enabled (non-disabled) recipes."""
+        return [r for r in self._recipes.values() if r.name not in self._disabled]
+    
+    def disabled_recipe_names(self) -> set[str]:
+        """Return names of all disabled recipes."""
+        return self._disabled.copy()
     
     def register(self, recipe: Recipe) -> None:
         """Register a recipe."""
@@ -92,6 +112,8 @@ class RecipeRegistry:
         for recipe_data in data:
             recipe = Recipe.from_dict(recipe_data)
             self._recipes[recipe.name] = recipe
+        # Clean up disabled set to only include recipes that still exist
+        self._disabled = self._disabled & set(self._recipes.keys())
     
     def save_to_file(self, filepath: str) -> None:
         """Save recipes to a JSON file."""
