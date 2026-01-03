@@ -181,6 +181,10 @@ class ProductionView(QGraphicsView):
         # Add arrowhead (skip for waypoint targets - too cluttered)
         if not tgt_is_waypoint:
             self._draw_arrowhead(tgt_x, tgt_y, src_x, src_y, color)
+        
+        # Add label with item name and throughput (skip for waypoint connections)
+        if not src_is_waypoint and not tgt_is_waypoint:
+            self._draw_edge_label(edge, src_x, src_y, tgt_x, tgt_y)
     
     def _get_output_point(self, node: NetworkNode) -> tuple[float, float]:
         """Get the output connection point for a node."""
@@ -209,6 +213,37 @@ class ProductionView(QGraphicsView):
         b = 80
         
         return QColor(r, g, b)
+    
+    def _draw_edge_label(self, edge: NetworkEdge, src_x: float, src_y: float, tgt_x: float, tgt_y: float):
+        """Draw a label on an edge showing item and throughput."""
+        # Position at midpoint
+        mid_x = (src_x + tgt_x) / 2
+        mid_y = (src_y + tgt_y) / 2
+        
+        # Format label: "Item (rate/min)"
+        label_text = f"{edge.item}\n{edge.rate:.1f}/min"
+        
+        text = self.scene.addText(label_text)
+        text.setDefaultTextColor(QColor(220, 220, 220))
+        text.setFont(QFont("Arial", 7))
+        
+        # Center text on midpoint, offset slightly above the line
+        text_rect = text.boundingRect()
+        text.setPos(
+            mid_x - text_rect.width() / 2,
+            mid_y - text_rect.height() - 2
+        )
+        
+        # Add subtle background for readability
+        bg_rect = self.scene.addRect(
+            mid_x - text_rect.width() / 2 - 2,
+            mid_y - text_rect.height() - 4,
+            text_rect.width() + 4,
+            text_rect.height() + 2,
+            QPen(Qt.PenStyle.NoPen),
+            QBrush(QColor(40, 40, 40, 180))
+        )
+        bg_rect.setZValue(-1)  # Behind text
     
     def _draw_arrowhead(self, x: float, y: float, from_x: float, from_y: float, color: QColor):
         """Draw an arrowhead at the target point."""

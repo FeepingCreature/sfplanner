@@ -734,6 +734,42 @@
       "streaming": true,
       "actual_cost": 0.055186,
       "generation_id": "gen-1767462038-Y2B8E9S8aj1oD1FhZLfR"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767462046657.json",
+      "response_file": "/tmp/forge_debug/response_1767462046657.json",
+      "timestamp": 1767462046.6571362,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.00021,
+      "generation_id": "gen-1767462046-285fC59VHQEHscptItFz"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462073395.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462073395.json",
+      "timestamp": 1767462073.3967543,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.03879975,
+      "generation_id": "gen-1767462073-qq8uOtQXSAd1LKSiujVs"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462077326.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462077326.json",
+      "timestamp": 1767462077.327608,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": null,
+      "generation_id": "gen-1767462077-DR7Qxc3CCHhDwg6EXABP"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462096955.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462096955.json",
+      "timestamp": 1767462096.9560478,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0586605,
+      "generation_id": "gen-1767462097-SCV7LCDyLhlrXZUlIdZZ"
     }
   ],
   "messages": [
@@ -2640,6 +2676,107 @@
     {
       "role": "assistant",
       "content": "Done! Updated edge drawing for waypoints:\n\n**Before**: All edges used cubic bezier curves with horizontal control points (S-curves)\n\n**After**: \n- **Waypoint connections**: Simple straight lines (`lineTo`)\n- **Building-to-building connections**: Still use the nice bezier curves\n\nAlso:\n- Arrowheads are now skipped for edges going into waypoints (reduces visual clutter)\n- Waypoints just act as invisible bend points in the belt path\n\nThe belts will now route more naturally through waypoints as straight line segments that can bend at any angle, rather than forcing the horizontal-in/horizontal-out S-curve pattern."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 97de126a",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Thanks! Can you add annotations to the arrows indicating item and throughput?"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"satisfactory_planner/gui/production_view.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01Ji93eCohSAse4wyoRr2vnh",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Ji93eCohSAse4wyoRr2vnh",
+      "content": "{\"action\": \"update_context\", \"add\": [\"satisfactory_planner/gui/production_view.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I can see the code now. I'll add text annotations to edges showing the item name and throughput rate. I'll place them at the midpoint of the edge:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/production_view.py\", \"search\": \"        # Color based on belt tier\\n        color = self._belt_color(edge.rate)\\n        \\n        item = self.scene.addPath(path, QPen(color, 2))\\n        \\n        # Add arrowhead (skip for waypoint targets - too cluttered)\\n        if not tgt_is_waypoint:\\n            self._draw_arrowhead(tgt_x, tgt_y, src_x, src_y, color)\", \"replace\": \"        # Color based on belt tier\\n        color = self._belt_color(edge.rate)\\n        \\n        item = self.scene.addPath(path, QPen(color, 2))\\n        \\n        # Add arrowhead (skip for waypoint targets - too cluttered)\\n        if not tgt_is_waypoint:\\n            self._draw_arrowhead(tgt_x, tgt_y, src_x, src_y, color)\\n        \\n        # Add label with item name and throughput (skip for waypoint connections)\\n        if not src_is_waypoint and not tgt_is_waypoint:\\n            self._draw_edge_label(edge, src_x, src_y, tgt_x, tgt_y)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01P5s1QUbBn4d8wcrTEjL52G",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/production_view.py\", \"search\": \"    def _draw_arrowhead(self, x: float, y: float, from_x: float, from_y: float, color: QColor):\\n        \\\"\\\"\\\"Draw an arrowhead at the target point.\\\"\\\"\\\"\", \"replace\": \"    def _draw_edge_label(self, edge: NetworkEdge, src_x: float, src_y: float, tgt_x: float, tgt_y: float):\\n        \\\"\\\"\\\"Draw a label on an edge showing item and throughput.\\\"\\\"\\\"\\n        # Position at midpoint\\n        mid_x = (src_x + tgt_x) / 2\\n        mid_y = (src_y + tgt_y) / 2\\n        \\n        # Format label: \\\"Item (rate/min)\\\"\\n        label_text = f\\\"{edge.item}\\\\n{edge.rate:.1f}/min\\\"\\n        \\n        text = self.scene.addText(label_text)\\n        text.setDefaultTextColor(QColor(220, 220, 220))\\n        text.setFont(QFont(\\\"Arial\\\", 7))\\n        \\n        # Center text on midpoint, offset slightly above the line\\n        text_rect = text.boundingRect()\\n        text.setPos(\\n            mid_x - text_rect.width() / 2,\\n            mid_y - text_rect.height() - 2\\n        )\\n        \\n        # Add subtle background for readability\\n        bg_rect = self.scene.addRect(\\n            mid_x - text_rect.width() / 2 - 2,\\n            mid_y - text_rect.height() - 4,\\n            text_rect.width() + 4,\\n            text_rect.height() + 2,\\n            QPen(Qt.PenStyle.NoPen),\\n            QBrush(QColor(40, 40, 40, 180))\\n        )\\n        bg_rect.setZValue(-1)  # Behind text\\n    \\n    def _draw_arrowhead(self, x: float, y: float, from_x: float, from_y: float, color: QColor):\\n        \\\"\\\"\\\"Draw an arrowhead at the target point.\\\"\\\"\\\"\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_015dyjUjMnGM5eBxh4PJ7RY3",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01P5s1QUbBn4d8wcrTEjL52G",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/production_view.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_015dyjUjMnGM5eBxh4PJ7RY3",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/production_view.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"satisfactory_planner/gui/production_view.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01GrregUd9Rgk3bYj63N3saG",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Done! Added edge annotations showing item and throughput:\\n\\n**Label format:**\\n```\\nItem Name\\nX.X/min\\n```\\n\\n**Features:**\\n- Labels appear at the midpoint of each edge\\n- Positioned slightly above the line\\n- Small font (7pt) to avoid clutter\\n- Semi-transparent dark background for readability\\n- Only shown on building-to-building connections (skipped for waypoint connections to reduce noise)\\n\\nThe annotations should help you understand the flow rates at a glance!\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01TLcwYu9pGGGTck1cXheMkY",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01GrregUd9Rgk3bYj63N3saG",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"satisfactory_planner/gui/production_view.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01TLcwYu9pGGGTck1cXheMkY",
+      "content": "{\"done\": true, \"message\": \"Done! Added edge annotations showing item and throughput:\\n\\n**Label format:**\\n```\\nItem Name\\nX.X/min\\n```\\n\\n**Features:**\\n- Labels appear at the midpoint of each edge\\n- Positioned slightly above the line\\n- Small font (7pt) to avoid clutter\\n- Semi-transparent dark background for readability\\n- Only shown on building-to-building connections (skipped for waypoint connections to reduce noise)\\n\\nThe annotations should help you understand the flow rates at a glance!\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Done! Added edge annotations showing item and throughput:\n\n**Label format:**\n```\nItem Name\nX.X/min\n```\n\n**Features:**\n- Labels appear at the midpoint of each edge\n- Positioned slightly above the line\n- Small font (7pt) to avoid clutter\n- Semi-transparent dark background for readability\n- Only shown on building-to-building connections (skipped for waypoint connections to reduce noise)\n\nThe annotations should help you understand the flow rates at a glance!"
     }
   ]
 }
