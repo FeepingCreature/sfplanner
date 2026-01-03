@@ -233,3 +233,63 @@ def total_edge_length(network: NetworkGraph) -> float:
             total += math.sqrt(dx * dx + dy * dy)
     
     return total
+
+
+def count_node_collisions(network: NetworkGraph) -> int:
+    """
+    Count edges that pass through recipe nodes.
+    
+    Recipe nodes are physical buildings - belts shouldn't route through them.
+    """
+    collisions = 0
+    
+    # Get all recipe nodes (they take up physical space)
+    recipe_nodes = [n for n in network.nodes.values() if n.node_type == NodeType.RECIPE]
+    
+    for edge in network.edges:
+        src = network.get_node(edge.source_id)
+        tgt = network.get_node(edge.target_id)
+        
+        if not src or not tgt:
+            continue
+        
+        # Check if edge passes through any recipe node
+        for node in recipe_nodes:
+            # Skip if this node is source or target of the edge
+            if node.id == edge.source_id or node.id == edge.target_id:
+                continue
+            
+            if _edge_intersects_node(src, tgt, node):
+                collisions += 1
+    
+    return collisions
+
+
+def _edge_intersects_node(src: NetworkNode, tgt: NetworkNode, node: NetworkNode) -> bool:
+    """Check if an edge from src to tgt passes through node's bounding box."""
+    # Node bounding box (with some padding)
+    padding = 10
+    node_left = node.x - NODE_WIDTH / 2 - padding
+    node_right = node.x + NODE_WIDTH / 2 + padding
+    node_top = node.y - NODE_HEIGHT / 2 - padding
+    node_bottom = node.y + NODE_HEIGHT / 2 + padding
+    
+    # Check if node is horizontally between src and tgt
+    min_x = min(src.x, tgt.x)
+    max_x = max(src.x, tgt.x)
+    
+    if node.x < min_x or node.x > max_x:
+        return False
+    
+    # Interpolate y position of edge at node.x
+    if abs(tgt.x - src.x) < 1e-9:
+        # Vertical edge - check if node is between
+        min_y = min(src.y, tgt.y)
+        max_y = max(src.y, tgt.y)
+        return node_top < max_y and node_bottom > min_y
+    
+    t = (node.x - src.x) / (tgt.x - src.x)
+    edge_y = src.y + t * (tgt.y - src.y)
+    
+    # Check if edge y is within node's vertical bounds
+    return node_top <= edge_y <= node_bottom

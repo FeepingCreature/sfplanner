@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from ..models.production import ProductionGraph
 from ..models.network import NetworkGraph
 from .splitter_gen import generate_network
-from .layout import compute_layout, count_crossings, total_edge_length
+from .layout import compute_layout, count_crossings, total_edge_length, count_node_collisions
 
 
 @dataclass
@@ -22,104 +22,162 @@ class OptimizationResult:
 
 def optimize_layout(
     production: ProductionGraph,
-    max_iterations: int = 300,
-    crossing_weight: float = 1000.0,
-    length_weight: float = 5.0,
-    stagnation_limit: int = 50,
+    max_iterations: int = 3000,
+    stagnation_limit: int = 200,
     progress_callback: Optional[Callable[[int, float], None]] = None,
 ) -> OptimizationResult:
     """
     Optimize network topology and layout jointly.
     
-    Generates multiple random network topologies, layouts each,
-    and returns the best one.
+    Two-phase approach:
+    1. Phase 1: Minimize crossings + node collisions (find best topology)
+    2. Phase 2: Minimize edge length while maintaining crossing count
     
     Args:
         production: The production graph to realize
         max_iterations: Maximum number of random networks to try
-        crossing_weight: Weight for crossing count in score
-        length_weight: Weight for edge length in score
         stagnation_limit: Stop if no improvement for this many iterations
         progress_callback: Called with (iteration, best_score) for progress updates
     
     Returns:
         OptimizationResult with the best network found
     """
+    # ===== PHASE 1: Minimize crossings and collisions =====
     best_network: Optional[NetworkGraph] = None
-    best_score = float('inf')
-    best_crossings = 0
-    best_length = 0.0
+    best_crossings = float('inf')
+    best_collisions = float('inf')
     
     stagnation_count = 0
+    phase1_iterations = max_iterations // 2
     
-    for i in range(max_iterations):
+    for i in range(phase1_iterations):
         # Generate a random network topology
         network = generate_network(production, randomize=True)
         
         # Layout the network
         compute_layout(network)
         
-        # Score it
+        # Score by crossings + collisions only
         crossings = count_crossings(network)
-        edge_length = total_edge_length(network)
-        score = crossings * crossing_weight + edge_length * length_weight
+        collisions = count_node_collisions(network)
+        total_bad = crossings + collisions
         
-        if score < best_score:
+        if total_bad < best_crossings + best_collisions:
             best_network = network
-            best_score = score
             best_crossings = crossings
-            best_length = edge_length
+            best_collisions = collisions
             stagnation_count = 0
         else:
             stagnation_count += 1
         
         if progress_callback:
-            progress_callback(i, best_score)
+            progress_callback(i, best_crossings + best_collisions)
         
-        # Early termination if stagnating
+        # Early termination
+        if stagnation_count >= stagnation_limit:
+            break
+        
+        # Perfect - no crossings or collisions
+        if best_crossings == 0 and best_collisions == 0:
+            break
+    
+    phase1_end = i + 1
+    target_crossings = best_crossings
+    target_collisions = best_collisions
+    
+    # ===== PHASE 2: Minimize length while maintaining crossing count =====
+    best_length = total_edge_length(best_network) if best_network else float('inf')
+    stagnation_count = 0
+    phase2_iterations = max_iterations - phase1_end
+    
+    for i in range(phase2_iterations):
+        # Generate a random network topology
+        network = generate_network(production, randomize=True)
+        
+        # Layout the network
+        compute_layout(network)
+        
+        # Check crossings/collisions constraint
+        crossings = count_crossings(network)
+        collisions = count_node_collisions(network)
+        
+        # Only consider if doesn't exceed our best crossing count
+        if crossings + collisions > target_crossings + target_collisions:
+            stagnation_count += 1
+            if progress_callback:
+                progress_callback(phase1_end + i, best_length)
+            if stagnation_count >= stagnation_limit:
+                break
+            continue
+        
+        # If better crossings, always take it
+        if crossings + collisions < target_crossings + target_collisions:
+            target_crossings = crossings
+            target_collisions = collisions
+            best_network = network
+            best_crossings = crossings
+            best_collisions = collisions
+            best_length = total_edge_length(network)
+            stagnation_count = 0
+        else:
+            # Same crossings - check length
+            edge_length = total_edge_length(network)
+            
+            if edge_length < best_length:
+                best_network = network
+                best_length = edge_length
+                stagnation_count = 0
+            else:
+                stagnation_count += 1
+        
+        if progress_callback:
+            progress_callback(phase1_end + i, best_length)
+        
         if stagnation_count >= stagnation_limit:
             break
     
-    # If no network was generated (empty production), create an empty one
+    total_iterations = phase1_end + i + 1
+    
+    # ===== PHASE 3: Local search polish =====
     if best_network is None:
         best_network = NetworkGraph()
     else:
-        # Apply local search to polish the best result
         best_network = local_search_improvement(
             best_network,
-            iterations=100,
-            crossing_weight=crossing_weight,
-            length_weight=length_weight,
+            iterations=200,
+            max_crossings=target_crossings,
+            max_collisions=target_collisions,
         )
         best_crossings = count_crossings(best_network)
+        best_collisions = count_node_collisions(best_network)
         best_length = total_edge_length(best_network)
-        best_score = best_crossings * crossing_weight + best_length * length_weight
     
     return OptimizationResult(
         network=best_network,
-        crossings=best_crossings,
+        crossings=best_crossings + best_collisions,  # Report combined
         edge_length=best_length,
-        score=best_score,
-        iterations=i + 1,
+        score=float(best_crossings + best_collisions),
+        iterations=total_iterations,
     )
 
 
 def local_search_improvement(
     network: NetworkGraph,
-    iterations: int = 100,
-    crossing_weight: float = 1000.0,
-    length_weight: float = 5.0,
+    iterations: int = 200,
+    max_crossings: int = 0,
+    max_collisions: int = 0,
 ) -> NetworkGraph:
     """
     Improve a network layout through local search.
     
-    Tries swapping adjacent nodes within layers to reduce crossings,
-    and also tries moving nodes to reduce edge lengths.
+    Tries swapping adjacent nodes within layers to reduce edge length
+    while not exceeding the max crossings/collisions constraint.
     """
-    # Get current layer structure
     layers = _get_layers(network)
     
-    best_score = _score_network(network, crossing_weight, length_weight)
+    current_crossings = count_crossings(network)
+    current_collisions = count_node_collisions(network)
+    current_length = total_edge_length(network)
     
     for iteration in range(iterations):
         improved = False
@@ -134,16 +192,28 @@ def local_search_improvement(
                 layer[i], layer[i + 1] = layer[i + 1], layer[i]
                 _apply_layer_positions(network, layers)
                 
-                new_score = _score_network(network, crossing_weight, length_weight)
+                new_crossings = count_crossings(network)
+                new_collisions = count_node_collisions(network)
+                new_length = total_edge_length(network)
                 
-                if new_score < best_score:
-                    best_score = new_score
+                # Accept if: better crossings, OR same crossings + better length
+                accept = False
+                if new_crossings + new_collisions < current_crossings + current_collisions:
+                    accept = True
+                elif new_crossings + new_collisions == current_crossings + current_collisions:
+                    if new_length < current_length - 1e-6:
+                        accept = True
+                
+                if accept:
+                    current_crossings = new_crossings
+                    current_collisions = new_collisions
+                    current_length = new_length
                     improved = True
                 else:
                     # Swap back
                     layer[i], layer[i + 1] = layer[i + 1], layer[i]
         
-        # Phase 2: Try moving nodes to better positions within layer
+        # Phase 2: Try moving nodes toward their neighbors
         for layer in layers:
             if len(layer) < 2:
                 continue
@@ -151,7 +221,6 @@ def local_search_improvement(
             for i in range(len(layer)):
                 node_id = layer[i]
                 
-                # Calculate ideal position based on neighbors
                 node = network.get_node(node_id)
                 neighbors = network.predecessors(node_id) + network.successors(node_id)
                 if not neighbors:
@@ -163,7 +232,7 @@ def local_search_improvement(
                 
                 ideal_y = sum(neighbor_ys) / len(neighbor_ys)
                 
-                # Find best position in layer based on y-sort
+                # Sort layer by distance from ideal position for this node
                 layer_with_ideal = [(node_id, ideal_y) if nid == node_id else (nid, network.get_node(nid).y) 
                                     for nid in layer]
                 layer_with_ideal.sort(key=lambda x: x[1])
@@ -175,13 +244,23 @@ def local_search_improvement(
                     layer.extend(new_order)
                     _apply_layer_positions(network, layers)
                     
-                    new_score = _score_network(network, crossing_weight, length_weight)
+                    new_crossings = count_crossings(network)
+                    new_collisions = count_node_collisions(network)
+                    new_length = total_edge_length(network)
                     
-                    if new_score < best_score:
-                        best_score = new_score
+                    accept = False
+                    if new_crossings + new_collisions < current_crossings + current_collisions:
+                        accept = True
+                    elif new_crossings + new_collisions == current_crossings + current_collisions:
+                        if new_length < current_length - 1e-6:
+                            accept = True
+                    
+                    if accept:
+                        current_crossings = new_crossings
+                        current_collisions = new_collisions
+                        current_length = new_length
                         improved = True
                     else:
-                        # Revert
                         layer.clear()
                         layer.extend(old_layer)
         
@@ -226,12 +305,4 @@ def _apply_layer_positions(network: NetworkGraph, layers: list[list[str]]) -> No
                 node.y = start_y + node_idx * NODE_SPACING
 
 
-def _score_network(
-    network: NetworkGraph,
-    crossing_weight: float,
-    length_weight: float,
-) -> float:
-    """Calculate score for a network."""
-    crossings = count_crossings(network)
-    edge_length = total_edge_length(network)
-    return crossings * crossing_weight + edge_length * length_weight
+
