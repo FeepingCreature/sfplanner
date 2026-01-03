@@ -3,9 +3,12 @@
 from typing import Optional
 from collections import defaultdict
 import math
+import logging
 
 from ..models.recipe import Recipe, RecipeRegistry
 from ..models.production import ProductionGraph, ProductionNode, ProductionEdge
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_requirements(
@@ -114,11 +117,20 @@ def calculate_requirements(
                 demand_breakdown[input_item].append((node.id, input_needed))
     
     # Phase 2: Create edges connecting producers to consumers
+    logger.debug(f"Phase 2: Creating edges. Demand breakdown: {list(demand_breakdown.keys())}")
+    logger.debug(f"Producers: {list(producers.keys())}")
+    
     for item, consumers in demand_breakdown.items():
         item_producers = producers.get(item, [])
         if not item_producers:
             # Comes from source, no internal edges needed
+            logger.debug(f"Item '{item}' has no producers - treating as source")
             continue
+        
+        logger.debug(f"Item '{item}': {len(item_producers)} producers -> {len(consumers)} consumers")
+        
+        # Sort producers by node id for consistent allocation
+        item_producers = sorted(item_producers, key=lambda x: x[0])
         
         # Allocate production to consumers
         producer_idx = 0
@@ -148,5 +160,28 @@ def calculate_requirements(
                     producer_idx += 1
                     if producer_idx < len(item_producers):
                         producer_remaining = item_producers[producer_idx][1]
+    
+    # Validation: check for disconnected nodes
+    for node_id, node in graph.nodes.items():
+        incoming = graph.edges_to(node_id)
+        outgoing = graph.edges_from(node_id)
+        
+        # Check if node has inputs but no incoming edges
+        if node.recipe.inputs and not incoming:
+            logger.warning(
+                f"Node '{node_id}' ({node.recipe.name}) requires inputs "
+                f"{list(node.recipe.inputs.keys())} but has no incoming edges!"
+            )
+        
+        # Check if node has outputs but no outgoing edges (and isn't feeding a sink)
+        if node.recipe.outputs and not outgoing:
+            # Check if any of its outputs go to sinks
+            node_outputs = set(node.recipe.outputs.keys())
+            sink_items = set(graph.sinks.keys())
+            if not node_outputs & sink_items:
+                logger.warning(
+                    f"Node '{node_id}' ({node.recipe.name}) produces "
+                    f"{list(node.recipe.outputs.keys())} but has no outgoing edges!"
+                )
     
     return graph
