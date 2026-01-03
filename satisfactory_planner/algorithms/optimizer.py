@@ -58,8 +58,11 @@ def optimize_layout(
         layers = _assign_layers(network)
         _insert_waypoints(network, layers)
         
-        # Layout the network with random spacing
-        compute_layout(network, randomize_spacing=True)
+        # Randomly shift some splitters/mergers into their own intermediate layers
+        _randomize_layer_assignments(network, layers)
+        
+        # Layout the network
+        compute_layout(network)
         
         # Score by crossings + collisions only
         crossings = count_crossings(network)
@@ -102,8 +105,11 @@ def optimize_layout(
         layers = _assign_layers(network)
         _insert_waypoints(network, layers)
         
-        # Layout the network with random spacing
-        compute_layout(network, randomize_spacing=True)
+        # Randomly shift some splitters/mergers into their own intermediate layers
+        _randomize_layer_assignments(network, layers)
+        
+        # Layout the network
+        compute_layout(network)
         
         # Check crossings/collisions constraint
         crossings = count_crossings(network)
@@ -277,6 +283,47 @@ def local_search_improvement(
     
     _apply_layer_positions(network, layers)
     return network
+
+
+def _randomize_layer_assignments(network: NetworkGraph, layers: dict[str, int]) -> None:
+    """
+    Randomly shift splitters/mergers into intermediate layers.
+    
+    This creates "empty columns" that give more routing freedom.
+    A splitter shifted right takes 1 crossing on its input instead of 3 on outputs.
+    """
+    from ..models.network import NodeType
+    
+    # Find splitters and mergers that could be shifted
+    shiftable = [
+        node_id for node_id, node in network.nodes.items()
+        if node.node_type in (NodeType.SPLITTER, NodeType.MERGER, NodeType.WAYPOINT)
+    ]
+    
+    if not shiftable:
+        return
+    
+    # Randomly select some to shift (30-70% of them)
+    num_to_shift = random.randint(len(shiftable) // 3, max(1, len(shiftable) * 2 // 3))
+    to_shift = random.sample(shiftable, min(num_to_shift, len(shiftable)))
+    
+    # For each shifted node, insert it between its current layer and the next
+    # We do this by adding 0.5 to its layer, then renormalizing
+    for node_id in to_shift:
+        current_layer = layers[node_id]
+        # Shift by 0.5 (will be between layers)
+        # Randomly shift left or right
+        if random.random() < 0.5:
+            layers[node_id] = current_layer + 0.5
+        else:
+            layers[node_id] = current_layer - 0.5
+    
+    # Renormalize layers to integers while preserving order
+    unique_layers = sorted(set(layers.values()))
+    layer_map = {old: new for new, old in enumerate(unique_layers)}
+    
+    for node_id in layers:
+        layers[node_id] = layer_map[layers[node_id]]
 
 
 def _get_layers(network: NetworkGraph) -> list[list[str]]:
