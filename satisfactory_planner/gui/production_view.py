@@ -101,19 +101,12 @@ class ProductionView(QGraphicsView):
             return
         
         if node.node_type in (NodeType.SPLITTER, NodeType.MERGER):
-            # Draw as diamond
+            # Draw as square (like in-game)
             size = SPLITTER_SIZE
             x, y = node.x - size / 2, node.y - size / 2
             
-            path = QPainterPath()
-            path.moveTo(x + size / 2, y)
-            path.lineTo(x + size, y + size / 2)
-            path.lineTo(x + size / 2, y + size)
-            path.lineTo(x, y + size / 2)
-            path.closeSubpath()
-            
-            item = self.scene.addPath(
-                path,
+            item = self.scene.addRect(
+                x, y, size, size,
                 QPen(color.darker(120), 2),
                 QBrush(color)
             )
@@ -150,9 +143,9 @@ class ProductionView(QGraphicsView):
         if not src or not tgt:
             return
         
-        # Get connection points
-        src_x, src_y = self._get_output_point(src)
-        tgt_x, tgt_y = self._get_input_point(tgt)
+        # Get connection points (pass target/source for splitter/merger port selection)
+        src_x, src_y = self._get_output_point(src, tgt)
+        tgt_x, tgt_y = self._get_input_point(tgt, src)
         
         # Draw curved path
         path = QPainterPath()
@@ -192,21 +185,84 @@ class ProductionView(QGraphicsView):
         if not src_is_waypoint and not tgt_is_waypoint:
             self._draw_edge_label(edge, src_x, src_y, tgt_x, tgt_y)
     
-    def _get_output_point(self, node: NetworkNode) -> tuple[float, float]:
+    def _get_output_point(self, node: NetworkNode, target: NetworkNode = None) -> tuple[float, float]:
         """Get the output connection point for a node."""
         if node.node_type == NodeType.WAYPOINT:
             return node.x, node.y  # Center point
+        if node.node_type == NodeType.SPLITTER and target:
+            # Splitter has 3 outputs: top, middle, right-side bottom
+            # Sort outgoing edges by target y position
+            port = self._get_splitter_output_port(node, target)
+            return self._get_splitter_port_position(node, port, is_output=True)
         if node.node_type in (NodeType.SPLITTER, NodeType.MERGER):
             return node.x + SPLITTER_SIZE / 2, node.y
         return node.x + NODE_WIDTH / 2, node.y
     
-    def _get_input_point(self, node: NetworkNode) -> tuple[float, float]:
+    def _get_input_point(self, node: NetworkNode, source: NetworkNode = None) -> tuple[float, float]:
         """Get the input connection point for a node."""
         if node.node_type == NodeType.WAYPOINT:
             return node.x, node.y  # Center point
+        if node.node_type == NodeType.MERGER and source:
+            # Merger has 3 inputs: top, middle, left-side bottom
+            port = self._get_merger_input_port(node, source)
+            return self._get_merger_port_position(node, port, is_input=True)
         if node.node_type in (NodeType.SPLITTER, NodeType.MERGER):
             return node.x - SPLITTER_SIZE / 2, node.y
         return node.x - NODE_WIDTH / 2, node.y
+    
+    def _get_splitter_output_port(self, splitter: NetworkNode, target: NetworkNode) -> int:
+        """Get which port (0=top, 1=middle, 2=bottom) for this target."""
+        # Get all outgoing edges and sort by target y position
+        edges = self.network.edges_from(splitter.id)
+        targets_with_y = []
+        for e in edges:
+            t = self.network.get_node(e.target_id)
+            if t:
+                targets_with_y.append((e.target_id, t.y))
+        targets_with_y.sort(key=lambda x: x[1])  # Sort by y (top to bottom)
+        
+        # Find which port this target gets
+        for i, (tid, _) in enumerate(targets_with_y):
+            if tid == target.id:
+                return min(i, 2)  # Clamp to 0, 1, 2
+        return 1  # Default to middle
+    
+    def _get_merger_input_port(self, merger: NetworkNode, source: NetworkNode) -> int:
+        """Get which port (0=top, 1=middle, 2=bottom) for this source."""
+        # Get all incoming edges and sort by source y position
+        edges = self.network.edges_to(merger.id)
+        sources_with_y = []
+        for e in edges:
+            s = self.network.get_node(e.source_id)
+            if s:
+                sources_with_y.append((e.source_id, s.y))
+        sources_with_y.sort(key=lambda x: x[1])  # Sort by y (top to bottom)
+        
+        # Find which port this source gets
+        for i, (sid, _) in enumerate(sources_with_y):
+            if sid == source.id:
+                return min(i, 2)  # Clamp to 0, 1, 2
+        return 1  # Default to middle
+    
+    def _get_splitter_port_position(self, node: NetworkNode, port: int, is_output: bool) -> tuple[float, float]:
+        """Get position of a splitter port. Outputs: top-right, right, bottom-right."""
+        half = SPLITTER_SIZE / 2
+        if port == 0:  # Top
+            return node.x + half * 0.5, node.y - half
+        elif port == 1:  # Middle (right side)
+            return node.x + half, node.y
+        else:  # Bottom
+            return node.x + half * 0.5, node.y + half
+    
+    def _get_merger_port_position(self, node: NetworkNode, port: int, is_input: bool) -> tuple[float, float]:
+        """Get position of a merger port. Inputs: top-left, left, bottom-left."""
+        half = SPLITTER_SIZE / 2
+        if port == 0:  # Top
+            return node.x - half * 0.5, node.y - half
+        elif port == 1:  # Middle (left side)
+            return node.x - half, node.y
+        else:  # Bottom
+            return node.x - half * 0.5, node.y + half
     
     def _get_outgoing_tangent(self, node: NetworkNode, next_node: NetworkNode) -> tuple[float, float]:
         """Get the outgoing tangent direction for a node (normalized)."""
@@ -216,19 +272,28 @@ class ProductionView(QGraphicsView):
             if preds:
                 pred = self.network.get_node(preds[0])
                 if pred:
-                    # Direction from predecessor to next_node (through this waypoint)
                     dx = next_node.x - pred.x
                     dy = next_node.y - pred.y
                     length = math.sqrt(dx * dx + dy * dy)
                     if length > 0:
                         return (dx / length, dy / length)
         
-        # For buildings: blend horizontal with direction to next node (30% vertical influence)
+        if node.node_type == NodeType.SPLITTER:
+            # Splitter outputs: top goes up, middle goes right, bottom goes down
+            port = self._get_splitter_output_port(node, next_node)
+            if port == 0:  # Top
+                return (0.3, -0.95)  # Mostly up, slight right
+            elif port == 2:  # Bottom
+                return (0.3, 0.95)  # Mostly down, slight right
+            else:  # Middle
+                return (1.0, 0.0)  # Horizontal right
+        
+        # For other buildings: blend horizontal with direction (30% influence)
         dx = next_node.x - node.x
         dy = next_node.y - node.y
         length = math.sqrt(dx * dx + dy * dy)
         if length > 0:
-            blend = 0.3  # How much to blend toward actual direction
+            blend = 0.3
             tx = 1.0 * (1 - blend) + (dx / length) * blend
             ty = 0.0 * (1 - blend) + (dy / length) * blend
             tlen = math.sqrt(tx * tx + ty * ty)
@@ -243,19 +308,28 @@ class ProductionView(QGraphicsView):
             if succs:
                 succ = self.network.get_node(succs[0])
                 if succ:
-                    # Direction from prev_node to successor (through this waypoint)
                     dx = succ.x - prev_node.x
                     dy = succ.y - prev_node.y
                     length = math.sqrt(dx * dx + dy * dy)
                     if length > 0:
                         return (dx / length, dy / length)
         
-        # For buildings: blend horizontal with direction from prev node (30% vertical influence)
+        if node.node_type == NodeType.MERGER:
+            # Merger inputs: top comes from up, middle from left, bottom from down
+            port = self._get_merger_input_port(node, prev_node)
+            if port == 0:  # Top
+                return (0.3, -0.95)  # Mostly up, slight right
+            elif port == 2:  # Bottom
+                return (0.3, 0.95)  # Mostly down, slight right
+            else:  # Middle
+                return (1.0, 0.0)  # Horizontal right
+        
+        # For other buildings: blend horizontal with direction (30% influence)
         dx = node.x - prev_node.x
         dy = node.y - prev_node.y
         length = math.sqrt(dx * dx + dy * dy)
         if length > 0:
-            blend = 0.3  # How much to blend toward actual direction
+            blend = 0.3
             tx = 1.0 * (1 - blend) + (dx / length) * blend
             ty = 0.0 * (1 - blend) + (dy / length) * blend
             tlen = math.sqrt(tx * tx + ty * ty)
