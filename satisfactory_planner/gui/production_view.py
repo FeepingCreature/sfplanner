@@ -161,13 +161,23 @@ class ProductionView(QGraphicsView):
         src_is_waypoint = src.node_type == NodeType.WAYPOINT
         tgt_is_waypoint = tgt.node_type == NodeType.WAYPOINT
         
-        # All connections use cubic bezier - smooth S-curves
-        mid_x = (src_x + tgt_x) / 2
-        path.cubicTo(
-            mid_x, src_y,
-            mid_x, tgt_y,
-            tgt_x, tgt_y
-        )
+        # Calculate control points based on tangent directions
+        # For waypoints, use direction through the waypoint (predecessor -> successor)
+        # For buildings, use horizontal tangent
+        
+        src_tangent = self._get_outgoing_tangent(src, tgt)
+        tgt_tangent = self._get_incoming_tangent(tgt, src)
+        
+        # Control points: offset along tangent direction
+        dist = math.sqrt((tgt_x - src_x) ** 2 + (tgt_y - src_y) ** 2)
+        ctrl_dist = dist * 0.4  # Control point distance
+        
+        ctrl1_x = src_x + src_tangent[0] * ctrl_dist
+        ctrl1_y = src_y + src_tangent[1] * ctrl_dist
+        ctrl2_x = tgt_x - tgt_tangent[0] * ctrl_dist
+        ctrl2_y = tgt_y - tgt_tangent[1] * ctrl_dist
+        
+        path.cubicTo(ctrl1_x, ctrl1_y, ctrl2_x, ctrl2_y, tgt_x, tgt_y)
         
         # Color based on belt tier
         color = self._belt_color(edge.rate)
@@ -197,6 +207,40 @@ class ProductionView(QGraphicsView):
         if node.node_type in (NodeType.SPLITTER, NodeType.MERGER):
             return node.x - SPLITTER_SIZE / 2, node.y
         return node.x - NODE_WIDTH / 2, node.y
+    
+    def _get_outgoing_tangent(self, node: NetworkNode, next_node: NetworkNode) -> tuple[float, float]:
+        """Get the outgoing tangent direction for a node (normalized)."""
+        if node.node_type == NodeType.WAYPOINT:
+            # For waypoints, use direction from predecessor through to next node
+            preds = self.network.predecessors(node.id)
+            if preds:
+                pred = self.network.get_node(preds[0])
+                if pred:
+                    # Direction from predecessor to next_node (through this waypoint)
+                    dx = next_node.x - pred.x
+                    dy = next_node.y - pred.y
+                    length = math.sqrt(dx * dx + dy * dy)
+                    if length > 0:
+                        return (dx / length, dy / length)
+        # Default: horizontal (rightward)
+        return (1.0, 0.0)
+    
+    def _get_incoming_tangent(self, node: NetworkNode, prev_node: NetworkNode) -> tuple[float, float]:
+        """Get the incoming tangent direction for a node (normalized)."""
+        if node.node_type == NodeType.WAYPOINT:
+            # For waypoints, use direction from prev_node through to successor
+            succs = self.network.successors(node.id)
+            if succs:
+                succ = self.network.get_node(succs[0])
+                if succ:
+                    # Direction from prev_node to successor (through this waypoint)
+                    dx = succ.x - prev_node.x
+                    dy = succ.y - prev_node.y
+                    length = math.sqrt(dx * dx + dy * dy)
+                    if length > 0:
+                        return (dx / length, dy / length)
+        # Default: horizontal (rightward)
+        return (1.0, 0.0)
     
     def _belt_color(self, rate: float) -> QColor:
         """Get color for a belt based on its rate."""
