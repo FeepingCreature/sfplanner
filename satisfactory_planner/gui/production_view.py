@@ -222,7 +222,17 @@ class ProductionView(QGraphicsView):
                     length = math.sqrt(dx * dx + dy * dy)
                     if length > 0:
                         return (dx / length, dy / length)
-        # Default: horizontal (rightward)
+        
+        # For buildings: blend horizontal with direction to next node (30% vertical influence)
+        dx = next_node.x - node.x
+        dy = next_node.y - node.y
+        length = math.sqrt(dx * dx + dy * dy)
+        if length > 0:
+            blend = 0.3  # How much to blend toward actual direction
+            tx = 1.0 * (1 - blend) + (dx / length) * blend
+            ty = 0.0 * (1 - blend) + (dy / length) * blend
+            tlen = math.sqrt(tx * tx + ty * ty)
+            return (tx / tlen, ty / tlen)
         return (1.0, 0.0)
     
     def _get_incoming_tangent(self, node: NetworkNode, prev_node: NetworkNode) -> tuple[float, float]:
@@ -239,7 +249,17 @@ class ProductionView(QGraphicsView):
                     length = math.sqrt(dx * dx + dy * dy)
                     if length > 0:
                         return (dx / length, dy / length)
-        # Default: horizontal (rightward)
+        
+        # For buildings: blend horizontal with direction from prev node (30% vertical influence)
+        dx = node.x - prev_node.x
+        dy = node.y - prev_node.y
+        length = math.sqrt(dx * dx + dy * dy)
+        if length > 0:
+            blend = 0.3  # How much to blend toward actual direction
+            tx = 1.0 * (1 - blend) + (dx / length) * blend
+            ty = 0.0 * (1 - blend) + (dy / length) * blend
+            tlen = math.sqrt(tx * tx + ty * ty)
+            return (tx / tlen, ty / tlen)
         return (1.0, 0.0)
     
     def _belt_color(self, rate: float) -> QColor:

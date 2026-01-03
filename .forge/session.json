@@ -869,6 +869,42 @@
       "streaming": true,
       "actual_cost": 0.0741055,
       "generation_id": "gen-1767462436-4kulnB8aBK9JhdAtSBve"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767462447608.json",
+      "response_file": "/tmp/forge_debug/response_1767462447608.json",
+      "timestamp": 1767462447.6081684,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000213,
+      "generation_id": "gen-1767462447-AjWwwGKhLBqNwXZRdIRO"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462516239.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462516239.json",
+      "timestamp": 1767462516.2404401,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05070925,
+      "generation_id": "gen-1767462516-m9BhAMLDxQughN61fWl0"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462522020.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462522020.json",
+      "timestamp": 1767462522.021971,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0856585,
+      "generation_id": "gen-1767462522-cOW83EvHKhexdhocnUdu"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462544929.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462544929.json",
+      "timestamp": 1767462544.9308538,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.07133675,
+      "generation_id": "gen-1767462545-CQCofo3LuToSDvmEPhpb"
     }
   ],
   "messages": [
@@ -3138,6 +3174,93 @@
     {
       "role": "assistant",
       "content": "Fixed! The splines now use the direction through waypoints for control points:\n\n**How it works:**\n\n1. `_get_outgoing_tangent(node, next_node)`:\n   - For waypoints: Looks up the predecessor and uses the direction from predecessor \u2192 next_node\n   - For buildings: Returns horizontal (1.0, 0.0)\n\n2. `_get_incoming_tangent(node, prev_node)`:\n   - For waypoints: Looks up the successor and uses the direction from prev_node \u2192 successor\n   - For buildings: Returns horizontal (1.0, 0.0)\n\n3. Control points are placed along these tangent directions at 40% of the edge distance\n\n**Result:**\n- Buildings still have horizontal tangents (nice S-curves for direct connections)\n- Waypoints use the through-direction, so the belt flows smoothly through them without the horizontal undulation\n\nThe belt should now curve naturally through waypoints, following the overall flow direction rather than forcing horizontal entry/exit at each waypoint."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 4cc5ea66",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Perfect! Can you make the controls on buildings a bit less strongly horizontal?"
+    },
+    {
+      "role": "assistant",
+      "content": "Sure! I'll adjust the control points for buildings to have a slight diagonal rather than pure horizontal:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"satisfactory_planner/gui/production_view.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01UfGAZH3waEv8vgj32aQfNA",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01UfGAZH3waEv8vgj32aQfNA",
+      "content": "{\"action\": \"update_context\", \"add\": [\"satisfactory_planner/gui/production_view.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the tangent functions. Let me modify them to blend toward the actual direction to the next node, rather than being purely horizontal:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/production_view.py\", \"search\": \"    def _get_outgoing_tangent(self, node: NetworkNode, next_node: NetworkNode) -> tuple[float, float]:\\n        \\\"\\\"\\\"Get the outgoing tangent direction for a node (normalized).\\\"\\\"\\\"\\n        if node.node_type == NodeType.WAYPOINT:\\n            # For waypoints, use direction from predecessor through to next node\\n            preds = self.network.predecessors(node.id)\\n            if preds:\\n                pred = self.network.get_node(preds[0])\\n                if pred:\\n                    # Direction from predecessor to next_node (through this waypoint)\\n                    dx = next_node.x - pred.x\\n                    dy = next_node.y - pred.y\\n                    length = math.sqrt(dx * dx + dy * dy)\\n                    if length > 0:\\n                        return (dx / length, dy / length)\\n        # Default: horizontal (rightward)\\n        return (1.0, 0.0)\\n    \\n    def _get_incoming_tangent(self, node: NetworkNode, prev_node: NetworkNode) -> tuple[float, float]:\\n        \\\"\\\"\\\"Get the incoming tangent direction for a node (normalized).\\\"\\\"\\\"\\n        if node.node_type == NodeType.WAYPOINT:\\n            # For waypoints, use direction from prev_node through to successor\\n            succs = self.network.successors(node.id)\\n            if succs:\\n                succ = self.network.get_node(succs[0])\\n                if succ:\\n                    # Direction from prev_node to successor (through this waypoint)\\n                    dx = succ.x - prev_node.x\\n                    dy = succ.y - prev_node.y\\n                    length = math.sqrt(dx * dx + dy * dy)\\n                    if length > 0:\\n                        return (dx / length, dy / length)\\n        # Default: horizontal (rightward)\\n        return (1.0, 0.0)\", \"replace\": \"    def _get_outgoing_tangent(self, node: NetworkNode, next_node: NetworkNode) -> tuple[float, float]:\\n        \\\"\\\"\\\"Get the outgoing tangent direction for a node (normalized).\\\"\\\"\\\"\\n        if node.node_type == NodeType.WAYPOINT:\\n            # For waypoints, use direction from predecessor through to next node\\n            preds = self.network.predecessors(node.id)\\n            if preds:\\n                pred = self.network.get_node(preds[0])\\n                if pred:\\n                    # Direction from predecessor to next_node (through this waypoint)\\n                    dx = next_node.x - pred.x\\n                    dy = next_node.y - pred.y\\n                    length = math.sqrt(dx * dx + dy * dy)\\n                    if length > 0:\\n                        return (dx / length, dy / length)\\n        \\n        # For buildings: blend horizontal with direction to next node (30% vertical influence)\\n        dx = next_node.x - node.x\\n        dy = next_node.y - node.y\\n        length = math.sqrt(dx * dx + dy * dy)\\n        if length > 0:\\n            blend = 0.3  # How much to blend toward actual direction\\n            tx = 1.0 * (1 - blend) + (dx / length) * blend\\n            ty = 0.0 * (1 - blend) + (dy / length) * blend\\n            tlen = math.sqrt(tx * tx + ty * ty)\\n            return (tx / tlen, ty / tlen)\\n        return (1.0, 0.0)\\n    \\n    def _get_incoming_tangent(self, node: NetworkNode, prev_node: NetworkNode) -> tuple[float, float]:\\n        \\\"\\\"\\\"Get the incoming tangent direction for a node (normalized).\\\"\\\"\\\"\\n        if node.node_type == NodeType.WAYPOINT:\\n            # For waypoints, use direction from prev_node through to successor\\n            succs = self.network.successors(node.id)\\n            if succs:\\n                succ = self.network.get_node(succs[0])\\n                if succ:\\n                    # Direction from prev_node to successor (through this waypoint)\\n                    dx = succ.x - prev_node.x\\n                    dy = succ.y - prev_node.y\\n                    length = math.sqrt(dx * dx + dy * dy)\\n                    if length > 0:\\n                        return (dx / length, dy / length)\\n        \\n        # For buildings: blend horizontal with direction from prev node (30% vertical influence)\\n        dx = node.x - prev_node.x\\n        dy = node.y - prev_node.y\\n        length = math.sqrt(dx * dx + dy * dy)\\n        if length > 0:\\n            blend = 0.3  # How much to blend toward actual direction\\n            tx = 1.0 * (1 - blend) + (dx / length) * blend\\n            ty = 0.0 * (1 - blend) + (dy / length) * blend\\n            tlen = math.sqrt(tx * tx + ty * ty)\\n            return (tx / tlen, ty / tlen)\\n        return (1.0, 0.0)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_018fkYwcieb6aknVS8h4q6Ty",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_018fkYwcieb6aknVS8h4q6Ty",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/production_view.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"satisfactory_planner/gui/production_view.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01VmqAjbh6krm6nu6oSrqb1N",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Done! Building control points now blend 30% toward the actual direction to the next/previous node instead of being purely horizontal.\\n\\n**Before**: Control points at (1.0, 0.0) - purely horizontal\\n**After**: Blends 70% horizontal + 30% actual direction\\n\\nSo for a connection going diagonally up-right, the tangent will be slightly angled upward instead of flat horizontal. This should give smoother, more natural curves while still maintaining that generally-horizontal flow for building connections.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01AtNRCYmHqso7rSNVnyjvNw",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01VmqAjbh6krm6nu6oSrqb1N",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"satisfactory_planner/gui/production_view.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01AtNRCYmHqso7rSNVnyjvNw",
+      "content": "{\"done\": true, \"message\": \"Done! Building control points now blend 30% toward the actual direction to the next/previous node instead of being purely horizontal.\\n\\n**Before**: Control points at (1.0, 0.0) - purely horizontal\\n**After**: Blends 70% horizontal + 30% actual direction\\n\\nSo for a connection going diagonally up-right, the tangent will be slightly angled upward instead of flat horizontal. This should give smoother, more natural curves while still maintaining that generally-horizontal flow for building connections.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Done! Building control points now blend 30% toward the actual direction to the next/previous node instead of being purely horizontal.\n\n**Before**: Control points at (1.0, 0.0) - purely horizontal\n**After**: Blends 70% horizontal + 30% actual direction\n\nSo for a connection going diagonally up-right, the tangent will be slightly angled upward instead of flat horizontal. This should give smoother, more natural curves while still maintaining that generally-horizontal flow for building connections."
     }
   ]
 }
