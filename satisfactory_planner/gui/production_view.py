@@ -212,36 +212,75 @@ class ProductionView(QGraphicsView):
     
     def _get_splitter_output_port(self, splitter: NetworkNode, target: NetworkNode) -> int:
         """Get which port (0=top, 1=middle, 2=bottom) for this target."""
-        # Get all outgoing edges and sort by target y position
+        # Get all outgoing edges with their y positions relative to splitter
         edges = self.network.edges_from(splitter.id)
-        targets_with_y = []
+        targets_info = []
         for e in edges:
             t = self.network.get_node(e.target_id)
             if t:
-                targets_with_y.append((e.target_id, t.y))
-        targets_with_y.sort(key=lambda x: x[1])  # Sort by y (top to bottom)
+                dy = t.y - splitter.y  # Positive = below, negative = above
+                targets_info.append((e.target_id, t.y, dy))
         
-        # Find which port this target gets
-        for i, (tid, _) in enumerate(targets_with_y):
-            if tid == target.id:
-                return min(i, 2)  # Clamp to 0, 1, 2
+        if len(targets_info) <= 1:
+            return 1  # Single output uses middle
+        
+        # Check if targets straddle the splitter (some above, some below)
+        has_above = any(dy < -5 for _, _, dy in targets_info)
+        has_below = any(dy > 5 for _, _, dy in targets_info)
+        
+        if has_above and has_below:
+            # Use top and bottom ports, skip middle
+            # Sort by y position
+            targets_info.sort(key=lambda x: x[1])
+            for i, (tid, _, dy) in enumerate(targets_info):
+                if tid == target.id:
+                    if dy < 0:  # Above splitter
+                        return 0  # Top port
+                    else:  # Below splitter
+                        return 2  # Bottom port
+        else:
+            # All targets roughly same side - use sequential ports
+            targets_info.sort(key=lambda x: x[1])  # Sort by y (top to bottom)
+            for i, (tid, _, _) in enumerate(targets_info):
+                if tid == target.id:
+                    return min(i, 2)
+        
         return 1  # Default to middle
     
     def _get_merger_input_port(self, merger: NetworkNode, source: NetworkNode) -> int:
         """Get which port (0=top, 1=middle, 2=bottom) for this source."""
-        # Get all incoming edges and sort by source y position
+        # Get all incoming edges with their y positions relative to merger
         edges = self.network.edges_to(merger.id)
-        sources_with_y = []
+        sources_info = []
         for e in edges:
             s = self.network.get_node(e.source_id)
             if s:
-                sources_with_y.append((e.source_id, s.y))
-        sources_with_y.sort(key=lambda x: x[1])  # Sort by y (top to bottom)
+                dy = s.y - merger.y  # Positive = below, negative = above
+                sources_info.append((e.source_id, s.y, dy))
         
-        # Find which port this source gets
-        for i, (sid, _) in enumerate(sources_with_y):
-            if sid == source.id:
-                return min(i, 2)  # Clamp to 0, 1, 2
+        if len(sources_info) <= 1:
+            return 1  # Single input uses middle
+        
+        # Check if sources straddle the merger (some above, some below)
+        has_above = any(dy < -5 for _, _, dy in sources_info)
+        has_below = any(dy > 5 for _, _, dy in sources_info)
+        
+        if has_above and has_below:
+            # Use top and bottom ports, skip middle
+            sources_info.sort(key=lambda x: x[1])
+            for i, (sid, _, dy) in enumerate(sources_info):
+                if sid == source.id:
+                    if dy < 0:  # Above merger
+                        return 0  # Top port
+                    else:  # Below merger
+                        return 2  # Bottom port
+        else:
+            # All sources roughly same side - use sequential ports
+            sources_info.sort(key=lambda x: x[1])  # Sort by y (top to bottom)
+            for i, (sid, _, _) in enumerate(sources_info):
+                if sid == source.id:
+                    return min(i, 2)
+        
         return 1  # Default to middle
     
     def _get_splitter_port_position(self, node: NetworkNode, port: int, is_output: bool) -> tuple[float, float]:
@@ -316,13 +355,15 @@ class ProductionView(QGraphicsView):
         
         if node.node_type == NodeType.MERGER:
             # Merger inputs: top comes from up, middle from left, bottom from down
+            # Tangent points in direction of belt travel (into the merger)
+            # ctrl2 = tgt - tangent * dist, so tangent should point toward merger
             port = self._get_merger_input_port(node, prev_node)
-            if port == 0:  # Top
-                return (0.3, -0.95)  # Mostly up, slight right
-            elif port == 2:  # Bottom
-                return (0.3, 0.95)  # Mostly down, slight right
+            if port == 0:  # Top - belt enters from above, traveling down
+                return (0.3, 0.95)  # Down and slightly right
+            elif port == 2:  # Bottom - belt enters from below, traveling up
+                return (0.3, -0.95)  # Up and slightly right
             else:  # Middle
-                return (1.0, 0.0)  # Horizontal right
+                return (1.0, 0.0)  # Horizontal from left
         
         # For other buildings: blend horizontal with direction (30% influence)
         dx = node.x - prev_node.x

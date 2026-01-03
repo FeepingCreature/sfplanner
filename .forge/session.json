@@ -959,6 +959,51 @@
       "streaming": true,
       "actual_cost": 0.10262625,
       "generation_id": "gen-1767462727-4rYeiIorSyLcXO1sP5Nv"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767462739322.json",
+      "response_file": "/tmp/forge_debug/response_1767462739322.json",
+      "timestamp": 1767462739.3228805,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000267,
+      "generation_id": "gen-1767462739-kohW2EpX6kfLBGu59jw9"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462945371.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462945371.json",
+      "timestamp": 1767462945.3730435,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.07121875,
+      "generation_id": "gen-1767462945-m2sVZIzUfjmMRbuEpXtW"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462951475.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462951475.json",
+      "timestamp": 1767462951.4765222,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.11318175,
+      "generation_id": "gen-1767462951-8BSO9Sn0tQNAlBtnPZ8T"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767462985181.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767462985181.json",
+      "timestamp": 1767462985.1830297,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.104248,
+      "generation_id": "gen-1767462985-a64t3qnbTVrJF45w4tOz"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767463004221.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767463004221.json",
+      "timestamp": 1767463004.222637,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.09958425,
+      "generation_id": "gen-1767463004-RPTjyQ1holt97gPbMMjQ"
     }
   ],
   "messages": [
@@ -3456,6 +3501,141 @@
     {
       "role": "assistant",
       "content": "Done! Splitters and mergers now render like the in-game buildings:\n\n## Visual Changes\n- **Square shape** instead of diamond\n- **3 distinct ports** based on edge Y-position sorting:\n  - **Top port**: Mostly vertical, slight horizontal (0.3, \u00b10.95)\n  - **Middle port**: Horizontal (1.0, 0.0)\n  - **Bottom port**: Mostly vertical, slight horizontal (0.3, \u00b10.95)\n\n## How Port Assignment Works\n1. For splitters: Sort all outgoing edges by target node Y position\n2. For mergers: Sort all incoming edges by source node Y position\n3. Assign ports 0 (top), 1 (middle), 2 (bottom) based on sorted order\n\n## Port Positions\n- **Splitter outputs**: Top-right corner, right side, bottom-right corner\n- **Merger inputs**: Top-left corner, left side, bottom-left corner\n\nThis matches the in-game layout where belts fan out/in vertically from splitters/mergers!"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 9cf68442",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "This looks good! I think the merger top and bottom ports have the wrong control direction? Also, I think splitters right now always pick in order top then mid, we should also consider whether the next point is mid-ish or more bottom-ish. If there's differently-signed vertical separation between the splitter and both of its targets, we should prefer top and bottom."
+    },
+    {
+      "role": "assistant",
+      "content": "Good catches! Let me fix:\n1. Merger tangent directions for top/bottom (should be incoming, not outgoing)\n2. Smarter port assignment - prefer top+bottom when targets straddle the splitter vertically",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"satisfactory_planner/gui/production_view.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_018M2wV8NR7y7NdDc5mfdLRS",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_018M2wV8NR7y7NdDc5mfdLRS",
+      "content": "{\"action\": \"update_context\", \"add\": [\"satisfactory_planner/gui/production_view.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I can see the code. Let me fix both issues:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/production_view.py\", \"search\": \"    def _get_splitter_output_port(self, splitter: NetworkNode, target: NetworkNode) -> int:\\n        \\\"\\\"\\\"Get which port (0=top, 1=middle, 2=bottom) for this target.\\\"\\\"\\\"\\n        # Get all outgoing edges and sort by target y position\\n        edges = self.network.edges_from(splitter.id)\\n        targets_with_y = []\\n        for e in edges:\\n            t = self.network.get_node(e.target_id)\\n            if t:\\n                targets_with_y.append((e.target_id, t.y))\\n        targets_with_y.sort(key=lambda x: x[1])  # Sort by y (top to bottom)\\n        \\n        # Find which port this target gets\\n        for i, (tid, _) in enumerate(targets_with_y):\\n            if tid == target.id:\\n                return min(i, 2)  # Clamp to 0, 1, 2\\n        return 1  # Default to middle\", \"replace\": \"    def _get_splitter_output_port(self, splitter: NetworkNode, target: NetworkNode) -> int:\\n        \\\"\\\"\\\"Get which port (0=top, 1=middle, 2=bottom) for this target.\\\"\\\"\\\"\\n        # Get all outgoing edges with their y positions relative to splitter\\n        edges = self.network.edges_from(splitter.id)\\n        targets_info = []\\n        for e in edges:\\n            t = self.network.get_node(e.target_id)\\n            if t:\\n                dy = t.y - splitter.y  # Positive = below, negative = above\\n                targets_info.append((e.target_id, t.y, dy))\\n        \\n        if len(targets_info) <= 1:\\n            return 1  # Single output uses middle\\n        \\n        # Check if targets straddle the splitter (some above, some below)\\n        has_above = any(dy < -5 for _, _, dy in targets_info)\\n        has_below = any(dy > 5 for _, _, dy in targets_info)\\n        \\n        if has_above and has_below:\\n            # Use top and bottom ports, skip middle\\n            # Sort by y position\\n            targets_info.sort(key=lambda x: x[1])\\n            for i, (tid, _, dy) in enumerate(targets_info):\\n                if tid == target.id:\\n                    if dy < 0:  # Above splitter\\n                        return 0  # Top port\\n                    else:  # Below splitter\\n                        return 2  # Bottom port\\n        else:\\n            # All targets roughly same side - use sequential ports\\n            targets_info.sort(key=lambda x: x[1])  # Sort by y (top to bottom)\\n            for i, (tid, _, _) in enumerate(targets_info):\\n                if tid == target.id:\\n                    return min(i, 2)\\n        \\n        return 1  # Default to middle\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01P8RKRcZZkbsZQgRd3ty4ZK",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/production_view.py\", \"search\": \"    def _get_merger_input_port(self, merger: NetworkNode, source: NetworkNode) -> int:\\n        \\\"\\\"\\\"Get which port (0=top, 1=middle, 2=bottom) for this source.\\\"\\\"\\\"\\n        # Get all incoming edges and sort by source y position\\n        edges = self.network.edges_to(merger.id)\\n        sources_with_y = []\\n        for e in edges:\\n            s = self.network.get_node(e.source_id)\\n            if s:\\n                sources_with_y.append((e.source_id, s.y))\\n        sources_with_y.sort(key=lambda x: x[1])  # Sort by y (top to bottom)\\n        \\n        # Find which port this source gets\\n        for i, (sid, _) in enumerate(sources_with_y):\\n            if sid == source.id:\\n                return min(i, 2)  # Clamp to 0, 1, 2\\n        return 1  # Default to middle\", \"replace\": \"    def _get_merger_input_port(self, merger: NetworkNode, source: NetworkNode) -> int:\\n        \\\"\\\"\\\"Get which port (0=top, 1=middle, 2=bottom) for this source.\\\"\\\"\\\"\\n        # Get all incoming edges with their y positions relative to merger\\n        edges = self.network.edges_to(merger.id)\\n        sources_info = []\\n        for e in edges:\\n            s = self.network.get_node(e.source_id)\\n            if s:\\n                dy = s.y - merger.y  # Positive = below, negative = above\\n                sources_info.append((e.source_id, s.y, dy))\\n        \\n        if len(sources_info) <= 1:\\n            return 1  # Single input uses middle\\n        \\n        # Check if sources straddle the merger (some above, some below)\\n        has_above = any(dy < -5 for _, _, dy in sources_info)\\n        has_below = any(dy > 5 for _, _, dy in sources_info)\\n        \\n        if has_above and has_below:\\n            # Use top and bottom ports, skip middle\\n            sources_info.sort(key=lambda x: x[1])\\n            for i, (sid, _, dy) in enumerate(sources_info):\\n                if sid == source.id:\\n                    if dy < 0:  # Above merger\\n                        return 0  # Top port\\n                    else:  # Below merger\\n                        return 2  # Bottom port\\n        else:\\n            # All sources roughly same side - use sequential ports\\n            sources_info.sort(key=lambda x: x[1])  # Sort by y (top to bottom)\\n            for i, (sid, _, _) in enumerate(sources_info):\\n                if sid == source.id:\\n                    return min(i, 2)\\n        \\n        return 1  # Default to middle\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01GG3coBDDbfyRrxFBUakBGb",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/production_view.py\", \"search\": \"        if node.node_type == NodeType.MERGER:\\n            # Merger inputs: top comes from up, middle from left, bottom from down\\n            port = self._get_merger_input_port(node, prev_node)\\n            if port == 0:  # Top\\n                return (0.3, -0.95)  # Mostly up, slight right\\n            elif port == 2:  # Bottom\\n                return (0.3, 0.95)  # Mostly down, slight right\\n            else:  # Middle\\n                return (1.0, 0.0)  # Horizontal right\", \"replace\": \"        if node.node_type == NodeType.MERGER:\\n            # Merger inputs: top comes from up, middle from left, bottom from down\\n            # Note: incoming tangent points in the direction the belt arrives FROM\\n            port = self._get_merger_input_port(node, prev_node)\\n            if port == 0:  # Top - belt comes down into merger\\n                return (-0.3, 0.95)  # Coming from above (down and slightly left)\\n            elif port == 2:  # Bottom - belt comes up into merger\\n                return (-0.3, -0.95)  # Coming from below (up and slightly left)\\n            else:  # Middle\\n                return (1.0, 0.0)  # Horizontal from left\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01CgC8qV3UF4amUnt3fzr3Rm",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01P8RKRcZZkbsZQgRd3ty4ZK",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/production_view.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01GG3coBDDbfyRrxFBUakBGb",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/production_view.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01CgC8qV3UF4amUnt3fzr3Rm",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/production_view.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good, I can see the changes are in. Let me verify the merger tangent fix looks correct - for incoming tangents, we want the direction the belt is traveling (toward the merger), so:\n- Top port: belt comes from above, so tangent should be pointing down-right into the merger\n- Bottom port: belt comes from below, so tangent should be pointing up-right into the merger\n\nLooking at my fix, I have `(-0.3, 0.95)` for top and `(-0.3, -0.95)` for bottom. But wait - the incoming tangent is used as `tgt - tangent * ctrl_dist`, so we need the tangent to point in the direction of travel. Let me reconsider...\n\nActually, looking at the edge drawing code:\n```python\nctrl2_x = tgt_x - tgt_tangent[0] * ctrl_dist\nctrl2_y = tgt_y - tgt_tangent[1] * ctrl_dist\n```\n\nThe control point is at `target - tangent * distance`, so the tangent should point in the direction of arrival. For top port (belt arriving from above), the tangent should be (positive-x, positive-y) - pointing down-right. My current values look wrong. Let me fix:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/production_view.py\", \"search\": \"        if node.node_type == NodeType.MERGER:\\n            # Merger inputs: top comes from up, middle from left, bottom from down\\n            # Note: incoming tangent points in the direction the belt arrives FROM\\n            port = self._get_merger_input_port(node, prev_node)\\n            if port == 0:  # Top - belt comes down into merger\\n                return (-0.3, 0.95)  # Coming from above (down and slightly left)\\n            elif port == 2:  # Bottom - belt comes up into merger\\n                return (-0.3, -0.95)  # Coming from below (up and slightly left)\\n            else:  # Middle\\n                return (1.0, 0.0)  # Horizontal from left\", \"replace\": \"        if node.node_type == NodeType.MERGER:\\n            # Merger inputs: top comes from up, middle from left, bottom from down\\n            # Tangent points in direction of belt travel (into the merger)\\n            # ctrl2 = tgt - tangent * dist, so tangent should point toward merger\\n            port = self._get_merger_input_port(node, prev_node)\\n            if port == 0:  # Top - belt enters from above, traveling down\\n                return (0.3, 0.95)  # Down and slightly right\\n            elif port == 2:  # Bottom - belt enters from below, traveling up\\n                return (0.3, -0.95)  # Up and slightly right\\n            else:  # Middle\\n                return (1.0, 0.0)  # Horizontal from left\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_0188mj8vVZAYCNs6r2mGNQsy",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_0188mj8vVZAYCNs6r2mGNQsy",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/production_view.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good, the changes look correct now. Let me clean up context:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"satisfactory_planner/gui/production_view.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01Fj53Jp7fwBdypo5ysGdcJn",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fixed both issues:\\n\\n## 1. Merger Tangent Directions\\n- **Top port**: Now `(0.3, 0.95)` - belt travels down into merger (down-right direction)\\n- **Bottom port**: Now `(0.3, -0.95)` - belt travels up into merger (up-right direction)\\n- **Middle port**: Stays `(1.0, 0.0)` - horizontal\\n\\n## 2. Smarter Port Assignment for Splitters/Mergers\\nNow checks if targets/sources *straddle* the splitter/merger (some above, some below):\\n\\n- **If straddling** (has_above AND has_below): Use top and bottom ports, skip middle\\n  - Targets above \u2192 top port\\n  - Targets below \u2192 bottom port\\n  \\n- **If all on same side**: Use sequential ports (0, 1, 2) sorted by Y position\\n\\nThis means if you have two outputs going one up and one down, they'll use the top and bottom ports for natural vertical fanning rather than forcing top+middle.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01T5pTqyo8wZBkp4WML8xUer",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Fj53Jp7fwBdypo5ysGdcJn",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"satisfactory_planner/gui/production_view.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01T5pTqyo8wZBkp4WML8xUer",
+      "content": "{\"done\": true, \"message\": \"Fixed both issues:\\n\\n## 1. Merger Tangent Directions\\n- **Top port**: Now `(0.3, 0.95)` - belt travels down into merger (down-right direction)\\n- **Bottom port**: Now `(0.3, -0.95)` - belt travels up into merger (up-right direction)\\n- **Middle port**: Stays `(1.0, 0.0)` - horizontal\\n\\n## 2. Smarter Port Assignment for Splitters/Mergers\\nNow checks if targets/sources *straddle* the splitter/merger (some above, some below):\\n\\n- **If straddling** (has_above AND has_below): Use top and bottom ports, skip middle\\n  - Targets above \\u2192 top port\\n  - Targets below \\u2192 bottom port\\n  \\n- **If all on same side**: Use sequential ports (0, 1, 2) sorted by Y position\\n\\nThis means if you have two outputs going one up and one down, they'll use the top and bottom ports for natural vertical fanning rather than forcing top+middle.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Fixed both issues:\n\n## 1. Merger Tangent Directions\n- **Top port**: Now `(0.3, 0.95)` - belt travels down into merger (down-right direction)\n- **Bottom port**: Now `(0.3, -0.95)` - belt travels up into merger (up-right direction)\n- **Middle port**: Stays `(1.0, 0.0)` - horizontal\n\n## 2. Smarter Port Assignment for Splitters/Mergers\nNow checks if targets/sources *straddle* the splitter/merger (some above, some below):\n\n- **If straddling** (has_above AND has_below): Use top and bottom ports, skip middle\n  - Targets above \u2192 top port\n  - Targets below \u2192 bottom port\n  \n- **If all on same side**: Use sequential ports (0, 1, 2) sorted by Y position\n\nThis means if you have two outputs going one up and one down, they'll use the top and bottom ports for natural vertical fanning rather than forcing top+middle."
     }
   ]
 }
