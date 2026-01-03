@@ -52,22 +52,61 @@ def calculate_requirements(
         demand_breakdown[item].append((None, rate))  # None = goes to sink
         graph.add_sink(item, rate)
     
-    # Track which items we've processed
-    processed_items: set[str] = set()
-    
     # item -> list of (node_id, rate) for nodes that produce this item
     producers: dict[str, list[tuple[str, float]]] = defaultdict(list)
     
-    # Process items until all demand is resolved
-    while True:
-        # Find an item with unprocessed demand
-        unprocessed = [item for item in total_demand if item not in processed_items and total_demand[item] > 1e-9]
-        if not unprocessed:
-            break
+    # Phase 1a: First pass - aggregate ALL demand recursively without creating nodes
+    # This ensures we know the full demand for each item before creating buildings
+    items_to_process = list(targets.keys())
+    full_demand: dict[str, float] = defaultdict(float)
+    
+    # Initialize with target demands
+    for item, rate in targets.items():
+        full_demand[item] = rate
+    
+    # Process in waves to handle dependencies correctly
+    processed_for_inputs: set[str] = set()
+    
+    while items_to_process:
+        item = items_to_process.pop(0)
+        if item in processed_for_inputs:
+            continue
+        processed_for_inputs.add(item)
         
-        item = unprocessed[0]
-        processed_items.add(item)
-        rate_needed = total_demand[item]
+        # If this is a source, skip
+        if item in sources:
+            continue
+        
+        # Find recipe
+        recipes = registry.recipes_producing(item)
+        if not recipes:
+            continue
+        
+        recipe = recipes[0]
+        output_rate = recipe.outputs[item]
+        count_needed = full_demand[item] / output_rate
+        
+        # Add input demands
+        for input_item, input_rate in recipe.inputs.items():
+            input_needed = input_rate * count_needed
+            full_demand[input_item] += input_needed
+            if input_item not in processed_for_inputs:
+                items_to_process.append(input_item)
+    
+    logger.debug(f"Phase 1a: Full demand calculated: {dict(full_demand)}")
+    
+    # Phase 1b: Now create buildings based on FULL demand
+    # Reset demand_breakdown to only track actual building connections
+    demand_breakdown.clear()
+    
+    # Re-add sinks
+    for item, rate in targets.items():
+        demand_breakdown[item].append((None, rate))
+    
+    for item in processed_for_inputs:
+        rate_needed = full_demand[item]
+        if rate_needed <= 1e-9:
+            continue
         
         # If this is a source item, add it as a source
         if item in sources:
@@ -110,10 +149,9 @@ def calculate_requirements(
                 actual_output = out_rate * building_count
                 producers[out_item].append((node.id, actual_output))
             
-            # Add required inputs to total demand
+            # Track what this building needs (for edge creation)
             for input_item, input_rate in recipe.inputs.items():
                 input_needed = input_rate * building_count
-                total_demand[input_item] += input_needed
                 demand_breakdown[input_item].append((node.id, input_needed))
     
     # Phase 2: Create edges connecting producers to consumers
