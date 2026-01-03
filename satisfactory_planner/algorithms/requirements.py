@@ -19,12 +19,10 @@ def calculate_requirements(
     """
     Calculate the production graph needed to achieve target outputs.
     
-    Two-phase approach:
-    1. Aggregate total demand for each item, create properly-sized buildings
-    2. Create edges connecting producers to consumers
-    
-    Each building is represented as a separate node (count=1 for full buildings,
-    fractional for the last partial building if needed).
+    Algorithm:
+    1. Work backwards from targets to calculate total demand for each item
+    2. Create building nodes to meet that demand
+    3. Connect buildings with edges based on item flow
     
     Args:
         registry: Recipe registry to look up recipes
@@ -39,103 +37,76 @@ def calculate_requirements(
     
     graph = ProductionGraph()
     
-    # Phase 1: Calculate total demand for each item and determine buildings needed
-    # item -> total rate needed
-    total_demand: dict[str, float] = defaultdict(float)
+    # Step 1: Calculate total demand for each item (recursive backtracking)
+    item_demand: dict[str, float] = {}
+    item_recipe: dict[str, Recipe] = {}  # Cache which recipe we use for each item
     
-    # item -> [(consumer_node_id or None for sink, rate)]
-    demand_breakdown: dict[str, list[tuple[Optional[str], float]]] = defaultdict(list)
-    
-    # Start with targets
-    for item, rate in targets.items():
-        total_demand[item] += rate
-        demand_breakdown[item].append((None, rate))  # None = goes to sink
-        graph.add_sink(item, rate)
-    
-    # item -> list of (node_id, rate) for nodes that produce this item
-    producers: dict[str, list[tuple[str, float]]] = defaultdict(list)
-    
-    # Phase 1a: First pass - aggregate ALL demand recursively without creating nodes
-    # This ensures we know the full demand for each item before creating buildings
-    items_to_process = list(targets.keys())
-    full_demand: dict[str, float] = defaultdict(float)
-    
-    # Initialize with target demands
-    for item, rate in targets.items():
-        full_demand[item] = rate
-    
-    # Process in waves to handle dependencies correctly
-    processed_for_inputs: set[str] = set()
-    
-    while items_to_process:
-        item = items_to_process.pop(0)
-        if item in processed_for_inputs:
-            continue
-        processed_for_inputs.add(item)
+    def get_demand(item: str, rate: float) -> None:
+        """Recursively calculate demand for an item and its inputs."""
+        # Accumulate demand
+        item_demand[item] = item_demand.get(item, 0.0) + rate
         
-        # If this is a source, skip
+        # If it's a source, stop here
         if item in sources:
-            continue
+            return
         
-        # Find recipe
-        recipes = registry.recipes_producing(item)
-        if not recipes:
-            continue
+        # Find recipe (use cached if available)
+        if item not in item_recipe:
+            recipes = registry.recipes_producing(item)
+            if not recipes:
+                # No recipe - treat as source
+                return
+            item_recipe[item] = recipes[0]
         
-        recipe = recipes[0]
+        recipe = item_recipe[item]
         output_rate = recipe.outputs[item]
-        count_needed = full_demand[item] / output_rate
+        buildings_needed = rate / output_rate
         
-        # Add input demands
+        # Recurse for inputs
         for input_item, input_rate in recipe.inputs.items():
-            input_needed = input_rate * count_needed
-            full_demand[input_item] += input_needed
-            if input_item not in processed_for_inputs:
-                items_to_process.append(input_item)
+            get_demand(input_item, input_rate * buildings_needed)
     
-    logger.debug(f"Phase 1a: Full demand calculated: {dict(full_demand)}")
-    
-    # Phase 1b: Now create buildings based on FULL demand
-    # Reset demand_breakdown to only track actual building connections
-    demand_breakdown.clear()
-    
-    # Re-add sinks
+    # Calculate demand starting from targets
     for item, rate in targets.items():
-        demand_breakdown[item].append((None, rate))
+        get_demand(item, rate)
     
-    for item in processed_for_inputs:
-        rate_needed = full_demand[item]
-        if rate_needed <= 1e-9:
+    logger.debug(f"Total demand: {item_demand}")
+    
+    # Step 2: Create building nodes for each item with a recipe
+    # item -> list of (node_id, output_rate) for buildings producing this item
+    item_producers: dict[str, list[tuple[str, float]]] = defaultdict(list)
+    
+    # item -> list of (node_id, input_rate) for buildings consuming this item  
+    item_consumers: dict[str, list[tuple[str, float]]] = defaultdict(list)
+    
+    for item, demand in item_demand.items():
+        # Add as sink if it's a target
+        if item in targets:
+            graph.add_sink(item, targets[item])
+            # The sink consumes this item
+            item_consumers[item].append((None, targets[item]))  # None = sink
+        
+        # If no recipe, it's a source
+        if item not in item_recipe:
+            graph.add_source(item, demand)
             continue
         
-        # If this is a source item, add it as a source
-        if item in sources:
-            graph.add_source(item, rate_needed)
-            continue
-        
-        # Find a recipe that produces this item
-        recipes = registry.recipes_producing(item)
-        if not recipes:
-            # No recipe found - treat as a source
-            graph.add_source(item, rate_needed)
-            continue
-        
-        # Use the first recipe
-        recipe = recipes[0]
-        
-        # How many buildings do we need total for this item?
+        recipe = item_recipe[item]
         output_rate = recipe.outputs[item]
-        total_count = rate_needed / output_rate
+        total_buildings = demand / output_rate
+        num_buildings = max(1, math.ceil(total_buildings))
         
-        # Create individual building nodes (count=1 each, last may be fractional)
-        num_buildings = int(math.ceil(total_count))
+        logger.debug(f"Item '{item}': demand={demand}, output_rate={output_rate}, buildings={total_buildings:.2f}")
         
-        for building_idx in range(num_buildings):
-            # Last building might be partial (fractional)
-            if building_idx == num_buildings - 1:
-                building_count = total_count - building_idx
+        for i in range(num_buildings):
+            # Last building may be fractional
+            if i == num_buildings - 1:
+                building_count = total_buildings - i
             else:
                 building_count = 1.0
+            
+            if building_count <= 1e-9:
+                continue
             
             node = ProductionNode(
                 id=f"{recipe.name}_{len(graph.nodes)}",
@@ -144,82 +115,72 @@ def calculate_requirements(
             )
             graph.add_node(node)
             
-            # Track what this building produces
+            # Track production
             for out_item, out_rate in recipe.outputs.items():
-                actual_output = out_rate * building_count
-                producers[out_item].append((node.id, actual_output))
+                actual_rate = out_rate * building_count
+                item_producers[out_item].append((node.id, actual_rate))
             
-            # Track what this building needs (for edge creation)
-            for input_item, input_rate in recipe.inputs.items():
-                input_needed = input_rate * building_count
-                demand_breakdown[input_item].append((node.id, input_needed))
+            # Track consumption
+            for in_item, in_rate in recipe.inputs.items():
+                actual_rate = in_rate * building_count
+                item_consumers[in_item].append((node.id, actual_rate))
     
-    # Phase 2: Create edges connecting producers to consumers
-    logger.debug(f"Phase 2: Creating edges. Demand breakdown: {list(demand_breakdown.keys())}")
-    logger.debug(f"Producers: {list(producers.keys())}")
-    
-    for item, consumers in demand_breakdown.items():
-        item_producers = producers.get(item, [])
-        if not item_producers:
-            # Comes from source, no internal edges needed
-            logger.debug(f"Item '{item}' has no producers - treating as source")
+    # Step 3: Create edges connecting producers to consumers
+    for item in item_demand:
+        producers = item_producers.get(item, [])
+        consumers = item_consumers.get(item, [])
+        
+        if not producers:
+            # Source item - no edges needed
+            logger.debug(f"Item '{item}': source (no producers)")
             continue
         
-        logger.debug(f"Item '{item}': {len(item_producers)} producers -> {len(consumers)} consumers")
+        if not consumers:
+            # Produced but not consumed? Shouldn't happen in a valid graph
+            logger.warning(f"Item '{item}': has producers but no consumers!")
+            continue
         
-        # Sort producers by node id for consistent allocation
-        item_producers = sorted(item_producers, key=lambda x: x[0])
+        logger.debug(f"Item '{item}': {len(producers)} producers -> {len(consumers)} consumers")
         
-        # Allocate production to consumers
+        # Match producers to consumers by rate
+        # Simple greedy allocation
         producer_idx = 0
-        producer_remaining = item_producers[producer_idx][1] if item_producers else 0
+        producer_id, producer_avail = producers[producer_idx]
         
-        for consumer_id, rate_needed in consumers:
-            remaining = rate_needed
+        for consumer_id, consumer_need in consumers:
+            remaining = consumer_need
             
-            while remaining > 1e-9 and producer_idx < len(item_producers):
-                producer_id, _ = item_producers[producer_idx]
+            while remaining > 1e-9 and producer_idx < len(producers):
+                producer_id, _ = producers[producer_idx]
                 
-                take = min(remaining, producer_remaining)
+                # How much can this producer give?
+                give = min(remaining, producer_avail)
                 
-                if consumer_id is not None and take > 1e-9:
-                    # Create edge from producer to consumer
+                if give > 1e-9 and consumer_id is not None:
                     graph.add_edge(ProductionEdge(
                         source_id=producer_id,
                         target_id=consumer_id,
                         item=item,
-                        rate=take,
+                        rate=give,
                     ))
                 
-                remaining -= take
-                producer_remaining -= take
+                remaining -= give
+                producer_avail -= give
                 
-                if producer_remaining <= 1e-9:
+                # Move to next producer if this one is exhausted
+                if producer_avail <= 1e-9:
                     producer_idx += 1
-                    if producer_idx < len(item_producers):
-                        producer_remaining = item_producers[producer_idx][1]
+                    if producer_idx < len(producers):
+                        producer_id, producer_avail = producers[producer_idx]
     
-    # Validation: check for disconnected nodes
+    # Validation
     for node_id, node in graph.nodes.items():
         incoming = graph.edges_to(node_id)
-        outgoing = graph.edges_from(node_id)
         
-        # Check if node has inputs but no incoming edges
         if node.recipe.inputs and not incoming:
             logger.warning(
                 f"Node '{node_id}' ({node.recipe.name}) requires inputs "
                 f"{list(node.recipe.inputs.keys())} but has no incoming edges!"
             )
-        
-        # Check if node has outputs but no outgoing edges (and isn't feeding a sink)
-        if node.recipe.outputs and not outgoing:
-            # Check if any of its outputs go to sinks
-            node_outputs = set(node.recipe.outputs.keys())
-            sink_items = set(graph.sinks.keys())
-            if not node_outputs & sink_items:
-                logger.warning(
-                    f"Node '{node_id}' ({node.recipe.name}) produces "
-                    f"{list(node.recipe.outputs.keys())} but has no outgoing edges!"
-                )
     
     return graph
