@@ -1,23 +1,9 @@
 {
   "active_files": [
-    "satisfactory_planner/main.py",
     "satisfactory_planner/models/recipe.py",
-    "satisfactory_planner/algorithms/optimizer.py",
     "satisfactory_planner/gui/main_window.py",
-    "satisfactory_planner/gui/__init__.py",
-    "satisfactory_planner/__init__.py",
-    "README.md",
-    "satisfactory_planner/algorithms/splitter_gen.py",
-    "satisfactory_planner/data/.gitkeep",
-    "pyproject.toml",
-    "satisfactory_planner/gui/production_view.py",
-    "satisfactory_planner/algorithms/layout.py",
-    "requirements.txt",
-    "satisfactory_planner/algorithms/__init__.py",
     "satisfactory_planner/models/__init__.py",
-    "satisfactory_planner/models/network.py",
-    "satisfactory_planner/models/item.py",
-    "satisfactory_planner/gui/recipe_editor.py"
+    "satisfactory_planner/models/item.py"
   ],
   "request_log_entries": [
     {
@@ -316,6 +302,42 @@
       "streaming": true,
       "actual_cost": 0.28963375,
       "generation_id": "gen-1767457782-ThrLXizSjS1u5EyhvWWf"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767457796519.json",
+      "response_file": "/tmp/forge_debug/response_1767457796519.json",
+      "timestamp": 1767457796.5199733,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000235,
+      "generation_id": "gen-1767457796-pJ9ZgVzxjD0zsfTbuqcj"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767458055916.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767458055916.json",
+      "timestamp": 1767458055.9178314,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.27748875,
+      "generation_id": "gen-1767458056-eTIzWZJ5u8iFVa0E9XFr"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767458064021.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767458064021.json",
+      "timestamp": 1767458064.022565,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.24697125,
+      "generation_id": "gen-1767458064-tmICQv1DTZ92bUPa6Z0v"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767458106724.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767458106724.json",
+      "timestamp": 1767458106.7246192,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1255375,
+      "generation_id": "gen-1767458106-J2IYc0HfrgDCUPaW2H2R"
     }
   ],
   "messages": [
@@ -881,6 +903,149 @@
     {
       "role": "assistant",
       "content": "Done! I've updated the requirements calculation with two key improvements:\n\n## 1. Reuses Existing Production\nNow when multiple recipes need the same intermediate item (like A\u2192B\u2192C and A\u2192B\u2192D both needing B), the algorithm:\n- Tracks `available_production` - what each node has available\n- Before creating new buildings, checks if existing production can supply the need\n- Creates edges from existing producers to new consumers\n- Only builds more when existing capacity is exhausted\n\n## 2. Individual Building Nodes\nWhen a recipe needs count > 1:\n- Creates separate `ProductionNode` for each building\n- Full buildings have `count=1.0`\n- Last building may be fractional (e.g., `count=0.5` for 50% utilization)\n- Each building is a distinct graph node that can be independently connected with belts\n\n## Example\nFor \"Reinforced Iron Plate\" (needs Iron Plate + Screw):\n- Previously: Might create \"Iron Ingot x2\" as single node\n- Now: Creates \"Iron Ingot_0\" (count=1.0) and \"Iron Ingot_1\" (count=1.0) as separate nodes\n- If both Iron Plate and Iron Rod need Iron Ingots, they'll share from the same ingot smelters\n\nThis sets up properly for the splitter/merger generation where each building\u2192building connection represents a belt."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: ca444668",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Thanks! The Targets menu needs some work.. I can't select target items properly and also I can't remove them. Also, recipes should be persisted to xdg local json."
+    },
+    {
+      "role": "assistant",
+      "content": "I'll fix the Targets widget to have proper item selection and removal, and add XDG-compliant recipe persistence.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"satisfactory_planner/gui/main_window.py\"], \"remove\": [\"satisfactory_planner/models/network.py\",\"satisfactory_planner/algorithms/__init__.py\",\"satisfactory_planner/algorithms/splitter_gen.py\",\"satisfactory_planner/algorithms/layout.py\",\"satisfactory_planner/algorithms/optimizer.py\",\"satisfactory_planner/gui/__init__.py\",\"satisfactory_planner/gui/recipe_editor.py\",\"satisfactory_planner/gui/production_view.py\",\"satisfactory_planner/data/.gitkeep\",\"requirements.txt\",\"README.md\",\"pyproject.toml\",\"satisfactory_planner/main.py\",\"satisfactory_planner/__init__.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01N7LpCXhoQxGhdvFFHeAZVg",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01N7LpCXhoQxGhdvFFHeAZVg",
+      "content": "{\"action\": \"update_context\", \"add\": [\"satisfactory_planner/gui/main_window.py\"], \"message\": \"Added 1 files, removed 14 files from context\", \"remove\": [\"satisfactory_planner/models/network.py\", \"satisfactory_planner/algorithms/__init__.py\", \"satisfactory_planner/algorithms/splitter_gen.py\", \"satisfactory_planner/algorithms/layout.py\", \"satisfactory_planner/algorithms/optimizer.py\", \"satisfactory_planner/gui/__init__.py\", \"satisfactory_planner/gui/recipe_editor.py\", \"satisfactory_planner/gui/production_view.py\", \"satisfactory_planner/data/.gitkeep\", \"requirements.txt\", \"README.md\", \"pyproject.toml\", \"satisfactory_planner/main.py\", \"satisfactory_planner/__init__.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I can see the code. Let me fix the `TargetWidget` to have proper item selection with a dropdown and removal capability, plus add XDG-compliant recipe persistence.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/main_window.py\", \"search\": \"\\\"\\\"\\\"Main application window.\\\"\\\"\\\"\\n\\nimport os\\nimport json\\nfrom typing import Optional\\nfrom PyQt6.QtWidgets import (\\n    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,\\n    QListWidget, QListWidgetItem, QPushButton, QLabel,\\n    QSplitter, QGroupBox, QMessageBox, QFileDialog,\\n    QDoubleSpinBox, QFormLayout, QComboBox, QProgressDialog,\\n    QApplication,\\n)\\nfrom PyQt6.QtCore import Qt, QTimer\\n\\nfrom ..models.recipe import Recipe, RecipeRegistry\\nfrom ..models.production import ProductionGraph\\nfrom ..models.network import NetworkGraph\\nfrom ..algorithms.requirements import calculate_requirements\\nfrom ..algorithms.optimizer import optimize_layout\\nfrom .recipe_editor import RecipeEditorDialog\\nfrom .production_view import ProductionView\\n\\n\\nclass TargetWidget(QWidget):\\n    \\\"\\\"\\\"Widget for editing production targets.\\\"\\\"\\\"\\n    \\n    def __init__(self, parent=None):\\n        super().__init__(parent)\\n        \\n        layout = QVBoxLayout(self)\\n        layout.setContentsMargins(0, 0, 0, 0)\\n        \\n        # Header with add button\\n        header = QHBoxLayout()\\n        header.addWidget(QLabel(\\\"Production Targets\\\"))\\n        header.addStretch()\\n        \\n        add_btn = QPushButton(\\\"+\\\")\\n        add_btn.setFixedWidth(30)\\n        add_btn.clicked.connect(self._add_target)\\n        header.addWidget(add_btn)\\n        \\n        layout.addLayout(header)\\n        \\n        # Target list\\n        self.target_list = QListWidget()\\n        layout.addWidget(self.target_list)\\n        \\n        # Storage for target data\\n        self.targets: dict[str, float] = {}\\n    \\n    def _add_target(self):\\n        \\\"\\\"\\\"Add a new target (placeholder - should have item selector).\\\"\\\"\\\"\\n        # Simple implementation - just add a placeholder\\n        item_name = f\\\"Item_{len(self.targets) + 1}\\\"\\n        self.targets[item_name] = 60.0\\n        self._refresh_list()\\n    \\n    def _refresh_list(self):\\n        self.target_list.clear()\\n        for item, rate in self.targets.items():\\n            widget_item = QListWidgetItem(f\\\"{item}: {rate}/min\\\")\\n            self.target_list.addItem(widget_item)\\n    \\n    def set_available_items(self, items: list[str]):\\n        \\\"\\\"\\\"Set the available items for selection.\\\"\\\"\\\"\\n        # TODO: Use this for item selection dropdown\\n        pass\\n    \\n    def get_targets(self) -> dict[str, float]:\\n        return self.targets.copy()\\n    \\n    def set_targets(self, targets: dict[str, float]):\\n        self.targets = targets.copy()\\n        self._refresh_list()\", \"replace\": \"\\\"\\\"\\\"Main application window.\\\"\\\"\\\"\\n\\nimport os\\nimport json\\nfrom pathlib import Path\\nfrom typing import Optional\\nfrom PyQt6.QtWidgets import (\\n    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,\\n    QListWidget, QListWidgetItem, QPushButton, QLabel,\\n    QSplitter, QGroupBox, QMessageBox, QFileDialog,\\n    QDoubleSpinBox, QFormLayout, QComboBox, QProgressDialog,\\n    QApplication, QDialog, QDialogButtonBox,\\n)\\nfrom PyQt6.QtCore import Qt, QTimer\\n\\nfrom ..models.recipe import Recipe, RecipeRegistry\\nfrom ..models.production import ProductionGraph\\nfrom ..models.network import NetworkGraph\\nfrom ..algorithms.requirements import calculate_requirements\\nfrom ..algorithms.optimizer import optimize_layout\\nfrom .recipe_editor import RecipeEditorDialog\\nfrom .production_view import ProductionView\\n\\n\\ndef get_data_dir() -> Path:\\n    \\\"\\\"\\\"Get XDG-compliant data directory for the application.\\\"\\\"\\\"\\n    xdg_data = os.environ.get(\\\"XDG_DATA_HOME\\\")\\n    if xdg_data:\\n        base = Path(xdg_data)\\n    else:\\n        base = Path.home() / \\\".local\\\" / \\\"share\\\"\\n    \\n    app_dir = base / \\\"satisfactory-planner\\\"\\n    app_dir.mkdir(parents=True, exist_ok=True)\\n    return app_dir\\n\\n\\ndef get_recipes_path() -> Path:\\n    \\\"\\\"\\\"Get path to the recipes JSON file.\\\"\\\"\\\"\\n    return get_data_dir() / \\\"recipes.json\\\"\\n\\n\\nclass TargetEditorDialog(QDialog):\\n    \\\"\\\"\\\"Dialog for adding/editing a production target.\\\"\\\"\\\"\\n    \\n    def __init__(self, available_items: list[str], item: str = \\\"\\\", rate: float = 60.0, parent=None):\\n        super().__init__(parent)\\n        self.setWindowTitle(\\\"Edit Target\\\")\\n        self.setMinimumWidth(300)\\n        \\n        layout = QVBoxLayout(self)\\n        \\n        form = QFormLayout()\\n        \\n        # Item selector\\n        self.item_combo = QComboBox()\\n        self.item_combo.setEditable(True)  # Allow custom items\\n        self.item_combo.addItems(available_items)\\n        if item:\\n            self.item_combo.setCurrentText(item)\\n        form.addRow(\\\"Item:\\\", self.item_combo)\\n        \\n        # Rate spinner\\n        self.rate_spin = QDoubleSpinBox()\\n        self.rate_spin.setRange(0.01, 100000)\\n        self.rate_spin.setDecimals(2)\\n        self.rate_spin.setSuffix(\\\" /min\\\")\\n        self.rate_spin.setValue(rate)\\n        form.addRow(\\\"Rate:\\\", self.rate_spin)\\n        \\n        layout.addLayout(form)\\n        \\n        # Buttons\\n        buttons = QDialogButtonBox(\\n            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel\\n        )\\n        buttons.accepted.connect(self.accept)\\n        buttons.rejected.connect(self.reject)\\n        layout.addWidget(buttons)\\n    \\n    def get_target(self) -> tuple[str, float]:\\n        \\\"\\\"\\\"Return the (item_name, rate) tuple.\\\"\\\"\\\"\\n        return self.item_combo.currentText().strip(), self.rate_spin.value()\\n\\n\\nclass TargetWidget(QWidget):\\n    \\\"\\\"\\\"Widget for editing production targets.\\\"\\\"\\\"\\n    \\n    def __init__(self, parent=None):\\n        super().__init__(parent)\\n        \\n        layout = QVBoxLayout(self)\\n        layout.setContentsMargins(0, 0, 0, 0)\\n        \\n        # Target list\\n        self.target_list = QListWidget()\\n        self.target_list.itemDoubleClicked.connect(self._edit_target)\\n        layout.addWidget(self.target_list)\\n        \\n        # Buttons\\n        btn_layout = QHBoxLayout()\\n        \\n        add_btn = QPushButton(\\\"Add\\\")\\n        add_btn.clicked.connect(self._add_target)\\n        btn_layout.addWidget(add_btn)\\n        \\n        edit_btn = QPushButton(\\\"Edit\\\")\\n        edit_btn.clicked.connect(self._edit_selected_target)\\n        btn_layout.addWidget(edit_btn)\\n        \\n        remove_btn = QPushButton(\\\"Remove\\\")\\n        remove_btn.clicked.connect(self._remove_target)\\n        btn_layout.addWidget(remove_btn)\\n        \\n        layout.addLayout(btn_layout)\\n        \\n        # Storage for target data\\n        self.targets: dict[str, float] = {}\\n        self.available_items: list[str] = []\\n    \\n    def _add_target(self):\\n        \\\"\\\"\\\"Add a new target.\\\"\\\"\\\"\\n        dialog = TargetEditorDialog(self.available_items, parent=self)\\n        if dialog.exec():\\n            item, rate = dialog.get_target()\\n            if item:\\n                self.targets[item] = rate\\n                self._refresh_list()\\n    \\n    def _edit_target(self, list_item: QListWidgetItem):\\n        \\\"\\\"\\\"Edit an existing target.\\\"\\\"\\\"\\n        item_name = list_item.data(Qt.ItemDataRole.UserRole)\\n        if item_name and item_name in self.targets:\\n            rate = self.targets[item_name]\\n            dialog = TargetEditorDialog(self.available_items, item_name, rate, parent=self)\\n            if dialog.exec():\\n                new_item, new_rate = dialog.get_target()\\n                if new_item:\\n                    # Remove old, add new\\n                    del self.targets[item_name]\\n                    self.targets[new_item] = new_rate\\n                    self._refresh_list()\\n    \\n    def _edit_selected_target(self):\\n        \\\"\\\"\\\"Edit the currently selected target.\\\"\\\"\\\"\\n        item = self.target_list.currentItem()\\n        if item:\\n            self._edit_target(item)\\n    \\n    def _remove_target(self):\\n        \\\"\\\"\\\"Remove the selected target.\\\"\\\"\\\"\\n        item = self.target_list.currentItem()\\n        if item:\\n            item_name = item.data(Qt.ItemDataRole.UserRole)\\n            if item_name and item_name in self.targets:\\n                del self.targets[item_name]\\n                self._refresh_list()\\n    \\n    def _refresh_list(self):\\n        self.target_list.clear()\\n        for item, rate in self.targets.items():\\n            widget_item = QListWidgetItem(f\\\"{item}: {rate}/min\\\")\\n            widget_item.setData(Qt.ItemDataRole.UserRole, item)\\n            self.target_list.addItem(widget_item)\\n    \\n    def set_available_items(self, items: list[str]):\\n        \\\"\\\"\\\"Set the available items for selection.\\\"\\\"\\\"\\n        self.available_items = sorted(set(items))\\n    \\n    def get_targets(self) -> dict[str, float]:\\n        return self.targets.copy()\\n    \\n    def set_targets(self, targets: dict[str, float]):\\n        self.targets = targets.copy()\\n        self._refresh_list()\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01TyAtdy4iejABx3pMvjV21B",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01TyAtdy4iejABx3pMvjV21B",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/main_window.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I need to update `MainWindow` to load/save recipes to XDG on startup/shutdown, and update the available items in the target widget when recipes change.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/main_window.py\", \"search\": \"    def __init__(self):\\n        super().__init__()\\n        \\n        self.setWindowTitle(\\\"Satisfactory Production Planner\\\")\\n        self.setMinimumSize(1200, 800)\\n        \\n        # Data\\n        self.recipe_registry = RecipeRegistry()\\n        self.production_graph: Optional[ProductionGraph] = None\\n        self.network_graph: Optional[NetworkGraph] = None\\n        \\n        self._setup_ui()\\n        self._setup_menu()\\n        self._load_default_recipes()\", \"replace\": \"    def __init__(self):\\n        super().__init__()\\n        \\n        self.setWindowTitle(\\\"Satisfactory Production Planner\\\")\\n        self.setMinimumSize(1200, 800)\\n        \\n        # Data\\n        self.recipe_registry = RecipeRegistry()\\n        self.production_graph: Optional[ProductionGraph] = None\\n        self.network_graph: Optional[NetworkGraph] = None\\n        \\n        self._setup_ui()\\n        self._setup_menu()\\n        self._load_recipes_from_xdg()\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01UP8o5jFrthzxRdVQAmqyGk",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/main_window.py\", \"search\": \"    def _load_default_recipes(self):\\n        \\\"\\\"\\\"Load some example recipes.\\\"\\\"\\\"\\n        # Iron processing chain\\n        self.recipe_registry.register(Recipe(\\n            name=\\\"Iron Ingot\\\",\\n            inputs={\\\"Iron Ore\\\": 30},\\n            outputs={\\\"Iron Ingot\\\": 30},\\n            description=\\\"Smelt iron ore into ingots\\\",\\n        ))\\n        \\n        self.recipe_registry.register(Recipe(\\n            name=\\\"Iron Plate\\\",\\n            inputs={\\\"Iron Ingot\\\": 30},\\n            outputs={\\\"Iron Plate\\\": 20},\\n            description=\\\"Press ingots into plates\\\",\\n        ))\\n        \\n        self.recipe_registry.register(Recipe(\\n            name=\\\"Iron Rod\\\",\\n            inputs={\\\"Iron Ingot\\\": 15},\\n            outputs={\\\"Iron Rod\\\": 15},\\n            description=\\\"Cast ingots into rods\\\",\\n        ))\\n        \\n        self.recipe_registry.register(Recipe(\\n            name=\\\"Screw\\\",\\n            inputs={\\\"Iron Rod\\\": 10},\\n            outputs={\\\"Screw\\\": 40},\\n            description=\\\"Cut rods into screws\\\",\\n        ))\\n        \\n        self.recipe_registry.register(Recipe(\\n            name=\\\"Reinforced Iron Plate\\\",\\n            inputs={\\\"Iron Plate\\\": 30, \\\"Screw\\\": 60},\\n            outputs={\\\"Reinforced Iron Plate\\\": 5},\\n            description=\\\"Assemble reinforced plates\\\",\\n        ))\\n        \\n        self._refresh_recipe_list()\\n        \\n        # Set default target\\n        self.target_widget.set_targets({\\\"Reinforced Iron Plate\\\": 5})\", \"replace\": \"    def _load_recipes_from_xdg(self):\\n        \\\"\\\"\\\"Load recipes from XDG data directory, or create defaults.\\\"\\\"\\\"\\n        recipes_path = get_recipes_path()\\n        \\n        if recipes_path.exists():\\n            try:\\n                self.recipe_registry.load_from_file(str(recipes_path))\\n                self._refresh_recipe_list()\\n                return\\n            except Exception as e:\\n                QMessageBox.warning(\\n                    self, \\\"Warning\\\",\\n                    f\\\"Failed to load saved recipes: {e}\\\\nLoading defaults.\\\"\\n                )\\n        \\n        # Load default recipes if no saved recipes exist\\n        self._load_default_recipes()\\n    \\n    def _save_recipes_to_xdg(self):\\n        \\\"\\\"\\\"Save recipes to XDG data directory.\\\"\\\"\\\"\\n        recipes_path = get_recipes_path()\\n        try:\\n            self.recipe_registry.save_to_file(str(recipes_path))\\n        except Exception as e:\\n            QMessageBox.warning(self, \\\"Warning\\\", f\\\"Failed to save recipes: {e}\\\")\\n    \\n    def _load_default_recipes(self):\\n        \\\"\\\"\\\"Load some example recipes.\\\"\\\"\\\"\\n        # Iron processing chain\\n        self.recipe_registry.register(Recipe(\\n            name=\\\"Iron Ingot\\\",\\n            inputs={\\\"Iron Ore\\\": 30},\\n            outputs={\\\"Iron Ingot\\\": 30},\\n            description=\\\"Smelt iron ore into ingots\\\",\\n        ))\\n        \\n        self.recipe_registry.register(Recipe(\\n            name=\\\"Iron Plate\\\",\\n            inputs={\\\"Iron Ingot\\\": 30},\\n            outputs={\\\"Iron Plate\\\": 20},\\n            description=\\\"Press ingots into plates\\\",\\n        ))\\n        \\n        self.recipe_registry.register(Recipe(\\n            name=\\\"Iron Rod\\\",\\n            inputs={\\\"Iron Ingot\\\": 15},\\n            outputs={\\\"Iron Rod\\\": 15},\\n            description=\\\"Cast ingots into rods\\\",\\n        ))\\n        \\n        self.recipe_registry.register(Recipe(\\n            name=\\\"Screw\\\",\\n            inputs={\\\"Iron Rod\\\": 10},\\n            outputs={\\\"Screw\\\": 40},\\n            description=\\\"Cut rods into screws\\\",\\n        ))\\n        \\n        self.recipe_registry.register(Recipe(\\n            name=\\\"Reinforced Iron Plate\\\",\\n            inputs={\\\"Iron Plate\\\": 30, \\\"Screw\\\": 60},\\n            outputs={\\\"Reinforced Iron Plate\\\": 5},\\n            description=\\\"Assemble reinforced plates\\\",\\n        ))\\n        \\n        self._refresh_recipe_list()\\n        \\n        # Set default target\\n        self.target_widget.set_targets({\\\"Reinforced Iron Plate\\\": 5})\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01CB7CBhWe7Wd9qA7BKQsC1Q",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/main_window.py\", \"search\": \"    def _refresh_recipe_list(self):\\n        self.recipe_list.clear()\\n        for recipe in self.recipe_registry.all_recipes():\\n            item = QListWidgetItem(recipe.name)\\n            item.setData(Qt.ItemDataRole.UserRole, recipe.name)\\n            self.recipe_list.addItem(item)\", \"replace\": \"    def _refresh_recipe_list(self):\\n        self.recipe_list.clear()\\n        for recipe in self.recipe_registry.all_recipes():\\n            item = QListWidgetItem(recipe.name)\\n            item.setData(Qt.ItemDataRole.UserRole, recipe.name)\\n            self.recipe_list.addItem(item)\\n        \\n        # Update available items for target selection\\n        self._update_available_items()\\n    \\n    def _update_available_items(self):\\n        \\\"\\\"\\\"Update the list of available items for target selection.\\\"\\\"\\\"\\n        items = set()\\n        for recipe in self.recipe_registry.all_recipes():\\n            items.update(recipe.inputs.keys())\\n            items.update(recipe.outputs.keys())\\n        self.target_widget.set_available_items(list(items))\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01TrD8EQpvzDDJ2ZtbXYEW6L",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"satisfactory_planner/gui/main_window.py\", \"search\": \"    def _show_about(self):\\n        QMessageBox.about(\\n            self, \\\"About\\\",\\n            \\\"Satisfactory Production Planner\\\\n\\\\n\\\"\\n            \\\"A tool for planning and optimizing factory layouts.\\\\n\\\\n\\\"\\n            \\\"Define recipes, set production targets, and generate\\\\n\\\"\\n            \\\"optimized layouts with minimal belt crossings.\\\"\\n        )\", \"replace\": \"    def _show_about(self):\\n        QMessageBox.about(\\n            self, \\\"About\\\",\\n            \\\"Satisfactory Production Planner\\\\n\\\\n\\\"\\n            \\\"A tool for planning and optimizing factory layouts.\\\\n\\\\n\\\"\\n            \\\"Define recipes, set production targets, and generate\\\\n\\\"\\n            \\\"optimized layouts with minimal belt crossings.\\\"\\n        )\\n    \\n    def closeEvent(self, event):\\n        \\\"\\\"\\\"Save recipes when closing the application.\\\"\\\"\\\"\\n        self._save_recipes_to_xdg()\\n        super().closeEvent(event)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01RfGiUtobhMYdKSnGjPyCXa",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"satisfactory_planner/gui/main_window.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01Uu8p1CUMFMr39oRcAmGTsy",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Done! I've made these improvements:\\n\\n## Target Widget Fixes\\n- **Proper item selection**: Added `TargetEditorDialog` with a dropdown combo box that lists all known items (from recipe inputs/outputs)\\n- **Editable combo**: You can also type custom item names if needed\\n- **Add/Edit/Remove buttons**: Full CRUD operations on targets\\n- **Double-click to edit**: Click a target to modify it\\n- **Rate spinner**: Proper numeric input with `/min` suffix\\n\\n## XDG Recipe Persistence\\n- **Auto-save on exit**: Recipes saved to `~/.local/share/satisfactory-planner/recipes.json` (or `$XDG_DATA_HOME/satisfactory-planner/recipes.json`)\\n- **Auto-load on startup**: Loads saved recipes if they exist, otherwise loads defaults\\n- **Graceful fallback**: If saved recipes fail to load, falls back to defaults with a warning\\n\\n## Available Items Sync\\n- The target widget's dropdown now automatically updates whenever recipes change\\n- All input and output items from all recipes are available for selection\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_016ve9HRejtf3PraxJPbZ52q",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01UP8o5jFrthzxRdVQAmqyGk",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/main_window.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01CB7CBhWe7Wd9qA7BKQsC1Q",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/main_window.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01TrD8EQpvzDDJ2ZtbXYEW6L",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/main_window.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01RfGiUtobhMYdKSnGjPyCXa",
+      "content": "{\"message\": \"Replaced in satisfactory_planner/gui/main_window.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Uu8p1CUMFMr39oRcAmGTsy",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"satisfactory_planner/gui/main_window.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_016ve9HRejtf3PraxJPbZ52q",
+      "content": "{\"done\": true, \"message\": \"Done! I've made these improvements:\\n\\n## Target Widget Fixes\\n- **Proper item selection**: Added `TargetEditorDialog` with a dropdown combo box that lists all known items (from recipe inputs/outputs)\\n- **Editable combo**: You can also type custom item names if needed\\n- **Add/Edit/Remove buttons**: Full CRUD operations on targets\\n- **Double-click to edit**: Click a target to modify it\\n- **Rate spinner**: Proper numeric input with `/min` suffix\\n\\n## XDG Recipe Persistence\\n- **Auto-save on exit**: Recipes saved to `~/.local/share/satisfactory-planner/recipes.json` (or `$XDG_DATA_HOME/satisfactory-planner/recipes.json`)\\n- **Auto-load on startup**: Loads saved recipes if they exist, otherwise loads defaults\\n- **Graceful fallback**: If saved recipes fail to load, falls back to defaults with a warning\\n\\n## Available Items Sync\\n- The target widget's dropdown now automatically updates whenever recipes change\\n- All input and output items from all recipes are available for selection\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Done! I've made these improvements:\n\n## Target Widget Fixes\n- **Proper item selection**: Added `TargetEditorDialog` with a dropdown combo box that lists all known items (from recipe inputs/outputs)\n- **Editable combo**: You can also type custom item names if needed\n- **Add/Edit/Remove buttons**: Full CRUD operations on targets\n- **Double-click to edit**: Click a target to modify it\n- **Rate spinner**: Proper numeric input with `/min` suffix\n\n## XDG Recipe Persistence\n- **Auto-save on exit**: Recipes saved to `~/.local/share/satisfactory-planner/recipes.json` (or `$XDG_DATA_HOME/satisfactory-planner/recipes.json`)\n- **Auto-load on startup**: Loads saved recipes if they exist, otherwise loads defaults\n- **Graceful fallback**: If saved recipes fail to load, falls back to defaults with a warning\n\n## Available Items Sync\n- The target widget's dropdown now automatically updates whenever recipes change\n- All input and output items from all recipes are available for selection"
     }
   ]
 }
