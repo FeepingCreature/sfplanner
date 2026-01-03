@@ -154,24 +154,20 @@ class ProductionView(QGraphicsView):
         src_x, src_y = self._get_output_point(src)
         tgt_x, tgt_y = self._get_input_point(tgt)
         
-        # Draw path - use simple lines for waypoint connections, curves for others
+        # Draw curved path
         path = QPainterPath()
         path.moveTo(src_x, src_y)
         
         src_is_waypoint = src.node_type == NodeType.WAYPOINT
         tgt_is_waypoint = tgt.node_type == NodeType.WAYPOINT
         
-        if src_is_waypoint or tgt_is_waypoint:
-            # Simple straight line for waypoint connections
-            path.lineTo(tgt_x, tgt_y)
-        else:
-            # Bezier curve with horizontal control points for building connections
-            mid_x = (src_x + tgt_x) / 2
-            path.cubicTo(
-                mid_x, src_y,
-                mid_x, tgt_y,
-                tgt_x, tgt_y
-            )
+        # All connections use cubic bezier - smooth S-curves
+        mid_x = (src_x + tgt_x) / 2
+        path.cubicTo(
+            mid_x, src_y,
+            mid_x, tgt_y,
+            tgt_x, tgt_y
+        )
         
         # Color based on belt tier
         color = self._belt_color(edge.rate)
