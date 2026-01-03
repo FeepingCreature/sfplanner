@@ -16,10 +16,12 @@ def calculate_requirements(
     """
     Calculate the production graph needed to achieve target outputs.
     
-    Works backwards from desired outputs to required inputs.
+    Two-phase approach:
+    1. Aggregate total demand for each item, create properly-sized buildings
+    2. Create edges connecting producers to consumers
+    
     Each building is represented as a separate node (count=1 for full buildings,
     fractional for the last partial building if needed).
-    Reuses existing production when multiple consumers need the same item.
     
     Args:
         registry: Recipe registry to look up recipes
@@ -34,53 +36,54 @@ def calculate_requirements(
     
     graph = ProductionGraph()
     
-    # Track available production capacity for each item
-    # item_name -> [(node_id, available_rate)]
-    available_production: dict[str, list[tuple[str, float]]] = defaultdict(list)
+    # Phase 1: Calculate total demand for each item and determine buildings needed
+    # item -> total rate needed
+    total_demand: dict[str, float] = defaultdict(float)
     
-    # Track what we still need to produce, with the consumer that needs it
-    # List of (item_name, rate_needed, consumer_node_id or None for sinks)
-    needed: list[tuple[str, float, Optional[str]]] = [
-        (item, rate, None) for item, rate in targets.items()
-    ]
+    # item -> [(consumer_node_id or None for sink, rate)]
+    demand_breakdown: dict[str, list[tuple[Optional[str], float]]] = defaultdict(list)
     
-    # Add sinks for targets
+    # Start with targets
     for item, rate in targets.items():
+        total_demand[item] += rate
+        demand_breakdown[item].append((None, rate))  # None = goes to sink
         graph.add_sink(item, rate)
     
-    # Process items, adding recipes as needed
-    while needed:
-        item, rate, consumer_id = needed.pop(0)
+    # Track which items we've processed
+    processed_items: set[str] = set()
+    
+    # item -> list of (node_id, rate) for nodes that produce this item
+    producers: dict[str, list[tuple[str, float]]] = defaultdict(list)
+    
+    # Process items until all demand is resolved
+    while True:
+        # Find an item with unprocessed demand
+        unprocessed = [item for item in total_demand if item not in processed_items and total_demand[item] > 1e-9]
+        if not unprocessed:
+            break
         
-        if rate <= 1e-9:  # Effectively zero
-            continue
+        item = unprocessed[0]
+        processed_items.add(item)
+        rate_needed = total_demand[item]
         
-        # First, try to use existing production
-        remaining = _allocate_from_available(
-            graph, available_production, item, rate, consumer_id
-        )
-        
-        if remaining <= 1e-9:
-            continue
-            
         # If this is a source item, add it as a source
         if item in sources:
-            graph.add_source(item, remaining)
+            graph.add_source(item, rate_needed)
             continue
         
         # Find a recipe that produces this item
         recipes = registry.recipes_producing(item)
         if not recipes:
             # No recipe found - treat as a source
-            graph.add_source(item, remaining)
+            graph.add_source(item, rate_needed)
             continue
         
-        # Use the first recipe (could be smarter about selection)
+        # Use the first recipe
         recipe = recipes[0]
         
-        # How many buildings do we need?
+        # How many buildings do we need total for this item?
         output_rate = recipe.outputs[item]
-        total_count = remaining / output_rate
+        total_count = rate_needed / output_rate
         
         # Create individual building nodes (count=1 each, last may be fractional)
         num_buildings = int(math.ceil(total_count))
@@ -99,77 +102,51 @@ def calculate_requirements(
             )
             graph.add_node(node)
             
-            # Calculate how much of each output this building produces
+            # Track what this building produces
             for out_item, out_rate in recipe.outputs.items():
                 actual_output = out_rate * building_count
-                
-                if out_item == item and remaining > 1e-9:
-                    # This is what we needed - allocate to consumer
-                    consumed = min(remaining, actual_output)
-                    
-                    if consumer_id is not None:
-                        # Create edge to the consumer
-                        graph.add_edge(ProductionEdge(
-                            source_id=node.id,
-                            target_id=consumer_id,
-                            item=item,
-                            rate=consumed,
-                        ))
-                    # else: goes to sink, no edge needed
-                    
-                    remaining -= consumed
-                    excess = actual_output - consumed
-                    if excess > 1e-9:
-                        available_production[out_item].append((node.id, excess))
-                else:
-                    # By-product or excess - all available for other consumers
-                    available_production[out_item].append((node.id, actual_output))
+                producers[out_item].append((node.id, actual_output))
             
-            # Add required inputs to needed (this node is the consumer)
+            # Add required inputs to total demand
             for input_item, input_rate in recipe.inputs.items():
                 input_needed = input_rate * building_count
-                needed.append((input_item, input_needed, node.id))
+                total_demand[input_item] += input_needed
+                demand_breakdown[input_item].append((node.id, input_needed))
     
-    return graph
-
-
-def _allocate_from_available(
-    graph: ProductionGraph,
-    available_production: dict[str, list[tuple[str, float]]],
-    item: str,
-    needed: float,
-    consumer_id: Optional[str],
-) -> float:
-    """
-    Allocate from available production to a consumer, creating edges.
-    
-    Returns the remaining amount still needed after consuming available.
-    """
-    remaining = needed
-    new_available = []
-    
-    for node_id, available in available_production.get(item, []):
-        if remaining <= 1e-9:
-            new_available.append((node_id, available))
+    # Phase 2: Create edges connecting producers to consumers
+    for item, consumers in demand_breakdown.items():
+        item_producers = producers.get(item, [])
+        if not item_producers:
+            # Comes from source, no internal edges needed
             continue
         
-        take = min(remaining, available)
-        leftover = available - take
+        # Allocate production to consumers
+        producer_idx = 0
+        producer_remaining = item_producers[producer_idx][1] if item_producers else 0
         
-        if consumer_id is not None:
-            # Create edge from producer to consumer
-            graph.add_edge(ProductionEdge(
-                source_id=node_id,
-                target_id=consumer_id,
-                item=item,
-                rate=take,
-            ))
-        # else: goes to sink, no internal edge needed
-        
-        if leftover > 1e-9:
-            new_available.append((node_id, leftover))
-        
-        remaining -= take
+        for consumer_id, rate_needed in consumers:
+            remaining = rate_needed
+            
+            while remaining > 1e-9 and producer_idx < len(item_producers):
+                producer_id, _ = item_producers[producer_idx]
+                
+                take = min(remaining, producer_remaining)
+                
+                if consumer_id is not None and take > 1e-9:
+                    # Create edge from producer to consumer
+                    graph.add_edge(ProductionEdge(
+                        source_id=producer_id,
+                        target_id=consumer_id,
+                        item=item,
+                        rate=take,
+                    ))
+                
+                remaining -= take
+                producer_remaining -= take
+                
+                if producer_remaining <= 1e-9:
+                    producer_idx += 1
+                    if producer_idx < len(item_producers):
+                        producer_remaining = item_producers[producer_idx][1]
     
-    available_production[item] = new_available
-    return remaining
+    return graph

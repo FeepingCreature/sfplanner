@@ -17,6 +17,8 @@ def generate_network(
     Generate a physical network from a production graph.
     
     This adds splitters and mergers as needed to connect recipe nodes.
+    Recipe nodes are constrained to have exactly ONE belt per item in/out.
+    Any fan-in/fan-out uses splitters and mergers.
     
     Args:
         production: The abstract production graph
@@ -33,12 +35,12 @@ def generate_network(
     for prod_node in production.nodes.values():
         net_node = network.create_node(
             NodeType.RECIPE,
-            label=f"{prod_node.recipe.name} x{prod_node.count:.1f}",
+            label=f"{prod_node.recipe.name} x{prod_node.count:.2f}",
             production_node_id=prod_node.id,
         )
         prod_to_net[prod_node.id] = net_node.id
     
-    # Create source nodes
+    # Create source nodes - one per item (they can have multiple outputs via splitters)
     source_nodes: dict[str, str] = {}  # item -> network node id
     for item, rate in production.sources.items():
         net_node = network.create_node(
@@ -49,7 +51,7 @@ def generate_network(
         )
         source_nodes[item] = net_node.id
     
-    # Create sink nodes
+    # Create sink nodes - one per item
     sink_nodes: dict[str, str] = {}  # item -> network node id
     for item, rate in production.sinks.items():
         net_node = network.create_node(
@@ -60,59 +62,123 @@ def generate_network(
         )
         sink_nodes[item] = net_node.id
     
-    # Group edges by source and target for splitter/merger generation
-    # source_id -> [(target_id, item, rate)]
-    outgoing: dict[str, list[tuple[str, str, float]]] = defaultdict(list)
-    # target_id -> [(source_id, item, rate)]
-    incoming: dict[str, list[tuple[str, str, float]]] = defaultdict(list)
+    # Track connections per recipe node per item
+    # (node_id, item, 'in'/'out') -> splitter/merger node id or None
+    recipe_ports: dict[tuple[str, str, str], Optional[str]] = {}
     
+    # Group production edges by item for processing
+    edges_by_item: dict[str, list[ProductionEdge]] = defaultdict(list)
     for edge in production.edges:
-        outgoing[edge.source_id].append((edge.target_id, edge.item, edge.rate))
-        incoming[edge.target_id].append((edge.source_id, edge.item, edge.rate))
+        edges_by_item[edge.item].append(edge)
     
-    # Process each connection, adding splitters/mergers as needed
-    for edge in production.edges:
-        source_net_id = prod_to_net[edge.source_id]
-        target_net_id = prod_to_net[edge.target_id]
+    # Process edges grouped by item
+    for item, edges in edges_by_item.items():
+        # Group by source (for splitters) and target (for mergers)
+        by_source: dict[str, list[ProductionEdge]] = defaultdict(list)
+        by_target: dict[str, list[ProductionEdge]] = defaultdict(list)
         
-        # Check if we need splitters (source has multiple outputs of this item)
-        source_outputs = [e for e in outgoing[edge.source_id] if e[1] == edge.item]
+        for edge in edges:
+            by_source[edge.source_id].append(edge)
+            by_target[edge.target_id].append(edge)
         
-        # Check if we need mergers (target has multiple inputs of this item)
-        target_inputs = [e for e in incoming[edge.target_id] if e[1] == edge.item]
+        # Create splitter trees for sources with multiple outputs
+        source_output_nodes: dict[str, list[str]] = {}  # prod_id -> list of output node ids
         
-        if len(source_outputs) > 1:
-            # Need splitters - find or create splitter chain for this source/item
-            splitter_out = _get_or_create_splitter_output(
-                network, source_net_id, edge.item, edge.rate, randomize
-            )
-            source_net_id = splitter_out
+        for source_id, source_edges in by_source.items():
+            net_source_id = prod_to_net[source_id]
+            total_rate = sum(e.rate for e in source_edges)
+            
+            if len(source_edges) == 1:
+                # Single output - direct connection (but still need to go through port tracking)
+                source_output_nodes[source_id] = [net_source_id]
+            else:
+                # Multiple outputs - need splitter tree
+                outputs = _create_splitter_tree(
+                    network, net_source_id, item, total_rate, 
+                    len(source_edges), randomize
+                )
+                source_output_nodes[source_id] = outputs
         
-        if len(target_inputs) > 1:
-            # Need mergers - find or create merger chain for this target/item
-            merger_in = _get_or_create_merger_input(
-                network, target_net_id, edge.item, edge.rate, randomize
-            )
-            target_net_id = merger_in
+        # Create merger trees for targets with multiple inputs
+        target_input_nodes: dict[str, list[str]] = {}  # prod_id -> list of input node ids
         
-        # Connect (possibly through splitters/mergers)
-        network.connect(source_net_id, target_net_id, edge.item, edge.rate)
+        for target_id, target_edges in by_target.items():
+            net_target_id = prod_to_net[target_id]
+            total_rate = sum(e.rate for e in target_edges)
+            
+            if len(target_edges) == 1:
+                # Single input - direct connection
+                target_input_nodes[target_id] = [net_target_id]
+            else:
+                # Multiple inputs - need merger tree
+                inputs = _create_merger_tree(
+                    network, net_target_id, item, total_rate,
+                    len(target_edges), randomize
+                )
+                target_input_nodes[target_id] = inputs
+        
+        # Now connect source outputs to target inputs
+        for source_id, source_edges in by_source.items():
+            outputs = source_output_nodes[source_id]
+            output_idx = 0
+            
+            for edge in source_edges:
+                target_id = edge.target_id
+                inputs = target_input_nodes[target_id]
+                
+                # Get the next available output and input
+                from_node = outputs[min(output_idx, len(outputs) - 1)]
+                
+                # Find unused input for this target
+                to_node = None
+                for inp in inputs:
+                    # Check if already connected
+                    existing = [e for e in network.edges_to(inp) if e.item == item]
+                    if not existing or network.get_node(inp).node_type in (NodeType.MERGER,):
+                        if network.get_node(inp).node_type == NodeType.MERGER:
+                            if network.in_degree(inp) < 3:
+                                to_node = inp
+                                break
+                        else:
+                            to_node = inp
+                            break
+                
+                if to_node is None:
+                    to_node = inputs[0]  # Fallback
+                
+                network.connect(from_node, to_node, item, edge.rate)
+                output_idx += 1
     
-    # Connect sources to their consumers
-    for item, source_id in source_nodes.items():
-        # Find recipe nodes that need this item
+    # Connect sources to consumers
+    for item, source_net_id in source_nodes.items():
+        # Find all recipe nodes that need this item as input
+        consumers = []
         for prod_node in production.nodes.values():
             if item in prod_node.recipe.inputs:
-                needed = prod_node.effective_inputs[item]
-                target_id = prod_to_net[prod_node.id]
-                network.connect(source_id, target_id, item, needed)
+                consumers.append((prod_to_net[prod_node.id], prod_node.effective_inputs[item]))
+        
+        if not consumers:
+            continue
+        
+        if len(consumers) == 1:
+            # Direct connection
+            target_id, rate = consumers[0]
+            network.connect(source_net_id, target_id, item, rate)
+        else:
+            # Need splitter tree
+            total_rate = sum(r for _, r in consumers)
+            outputs = _create_splitter_tree(
+                network, source_net_id, item, total_rate, len(consumers), randomize
+            )
+            for (target_id, rate), out_node in zip(consumers, outputs):
+                network.connect(out_node, target_id, item, rate)
     
     # Connect producers to sinks
-    for item, sink_id in sink_nodes.items():
-        # Find recipe nodes that produce this item for final output
+    for item, sink_net_id in sink_nodes.items():
+        # Find all recipe nodes that produce this item for output
+        producers = []
         for prod_node in production.nodes.values():
             if item in prod_node.recipe.outputs:
-                # Check if any output goes to sink
                 produced = prod_node.effective_outputs[item]
                 # Subtract what goes to other nodes
                 used = sum(
@@ -120,102 +186,163 @@ def generate_network(
                     if e.source_id == prod_node.id and e.item == item
                 )
                 to_sink = produced - used
-                if to_sink > 0:
-                    source_id = prod_to_net[prod_node.id]
-                    network.connect(source_id, sink_id, item, to_sink)
+                if to_sink > 1e-9:
+                    producers.append((prod_to_net[prod_node.id], to_sink))
+        
+        if not producers:
+            continue
+        
+        if len(producers) == 1:
+            # Direct connection
+            source_id, rate = producers[0]
+            network.connect(source_id, sink_net_id, item, rate)
+        else:
+            # Need merger tree
+            total_rate = sum(r for _, r in producers)
+            inputs = _create_merger_tree(
+                network, sink_net_id, item, total_rate, len(producers), randomize
+            )
+            for (source_id, rate), in_node in zip(producers, inputs):
+                network.connect(source_id, in_node, item, rate)
     
     return network
 
 
-def _get_or_create_splitter_output(
+def _create_splitter_tree(
     network: NetworkGraph,
     source_id: str,
     item: str,
-    rate: float,
+    total_rate: float,
+    num_outputs: int,
     randomize: bool,
-) -> str:
+) -> list[str]:
     """
-    Get an available splitter output for a source, creating splitters as needed.
+    Create a tree of splitters to provide num_outputs from source_id.
     
-    Returns the node ID to connect from.
+    Returns list of node IDs to connect from (splitter outputs).
     """
-    # Check existing splitters connected to source
-    existing_splitters = [
-        network.get_node(e.target_id) 
-        for e in network.edges_from(source_id)
-        if network.get_node(e.target_id).node_type == NodeType.SPLITTER
-    ]
+    if num_outputs <= 1:
+        return [source_id]
     
-    for splitter in existing_splitters:
-        # Each splitter can have up to 3 outputs
-        if network.out_degree(splitter.id) < 3:
-            return splitter.id
+    # Build tree of splitters
+    # Each splitter has 1 input and up to 3 outputs
+    outputs = []
+    pending = [(source_id, total_rate)]  # (node_id, rate available)
     
-    # Need to create a new splitter
-    # If source already has 1 direct output, we should insert a splitter
-    direct_outputs = network.out_degree(source_id)
+    while len(outputs) < num_outputs and pending:
+        if randomize:
+            # Randomly pick from pending to vary topology
+            idx = random.randint(0, len(pending) - 1)
+        else:
+            idx = 0
+        
+        parent_id, parent_rate = pending.pop(idx)
+        
+        # How many more outputs do we need?
+        remaining_needed = num_outputs - len(outputs)
+        
+        if remaining_needed == 1:
+            # Just use this node directly
+            outputs.append(parent_id)
+        elif remaining_needed == 2:
+            # Create one splitter with 2 outputs used
+            splitter = network.create_node(
+                NodeType.SPLITTER,
+                label=f"Splitter ({item})",
+                item=item,
+            )
+            network.connect(parent_id, splitter.id, item, parent_rate)
+            outputs.append(splitter.id)
+            outputs.append(splitter.id)
+        elif remaining_needed == 3:
+            # Create one splitter with 3 outputs used
+            splitter = network.create_node(
+                NodeType.SPLITTER,
+                label=f"Splitter ({item})",
+                item=item,
+            )
+            network.connect(parent_id, splitter.id, item, parent_rate)
+            outputs.append(splitter.id)
+            outputs.append(splitter.id)
+            outputs.append(splitter.id)
+        else:
+            # Need more splitters - create one and add its outputs to pending
+            splitter = network.create_node(
+                NodeType.SPLITTER,
+                label=f"Splitter ({item})",
+                item=item,
+            )
+            network.connect(parent_id, splitter.id, item, parent_rate)
+            
+            # Add 3 potential outputs from this splitter
+            rate_per = parent_rate / 3
+            for _ in range(3):
+                pending.append((splitter.id, rate_per))
     
-    if direct_outputs == 0:
-        # First output - connect directly, splitter will be added later if needed
-        return source_id
-    
-    # Create a splitter and connect it
-    splitter = network.create_node(
-        NodeType.SPLITTER,
-        label=f"Splitter ({item})",
-        item=item,
-    )
-    
-    # If randomize, sometimes chain splitters differently
-    if randomize and random.random() < 0.3 and existing_splitters:
-        # Connect to an existing splitter instead of source
-        parent = random.choice(existing_splitters)
-        network.connect(parent.id, splitter.id, item, rate)
-    else:
-        network.connect(source_id, splitter.id, item, rate)
-    
-    return splitter.id
+    return outputs
 
 
-def _get_or_create_merger_input(
+def _create_merger_tree(
     network: NetworkGraph,
     target_id: str,
     item: str,
-    rate: float,
+    total_rate: float,
+    num_inputs: int,
     randomize: bool,
-) -> str:
+) -> list[str]:
     """
-    Get an available merger input for a target, creating mergers as needed.
+    Create a tree of mergers to accept num_inputs into target_id.
     
-    Returns the node ID to connect to.
+    Returns list of node IDs to connect to (merger inputs).
     """
-    # Check existing mergers connected to target
-    existing_mergers = [
-        network.get_node(e.source_id)
-        for e in network.edges_to(target_id)
-        if network.get_node(e.source_id).node_type == NodeType.MERGER
-    ]
+    if num_inputs <= 1:
+        return [target_id]
     
-    for merger in existing_mergers:
-        # Each merger can have up to 3 inputs
-        if network.in_degree(merger.id) < 3:
-            return merger.id
+    # Build tree of mergers (similar to splitters but reversed)
+    inputs = []
+    pending = [(target_id, total_rate)]
     
-    # Need to create a new merger
-    direct_inputs = network.in_degree(target_id)
+    while len(inputs) < num_inputs and pending:
+        if randomize:
+            idx = random.randint(0, len(pending) - 1)
+        else:
+            idx = 0
+        
+        child_id, child_rate = pending.pop(idx)
+        
+        remaining_needed = num_inputs - len(inputs)
+        
+        if remaining_needed == 1:
+            inputs.append(child_id)
+        elif remaining_needed == 2:
+            merger = network.create_node(
+                NodeType.MERGER,
+                label=f"Merger ({item})",
+                item=item,
+            )
+            network.connect(merger.id, child_id, item, child_rate)
+            inputs.append(merger.id)
+            inputs.append(merger.id)
+        elif remaining_needed == 3:
+            merger = network.create_node(
+                NodeType.MERGER,
+                label=f"Merger ({item})",
+                item=item,
+            )
+            network.connect(merger.id, child_id, item, child_rate)
+            inputs.append(merger.id)
+            inputs.append(merger.id)
+            inputs.append(merger.id)
+        else:
+            merger = network.create_node(
+                NodeType.MERGER,
+                label=f"Merger ({item})",
+                item=item,
+            )
+            network.connect(merger.id, child_id, item, child_rate)
+            
+            rate_per = child_rate / 3
+            for _ in range(3):
+                pending.append((merger.id, rate_per))
     
-    if direct_inputs == 0:
-        # First input - connect directly
-        return target_id
-    
-    # Create a merger and connect it
-    merger = network.create_node(
-        NodeType.MERGER,
-        label=f"Merger ({item})",
-        item=item,
-    )
-    
-    # Connect merger to target
-    network.connect(merger.id, target_id, item, rate)
-    
-    return merger.id
+    return inputs
