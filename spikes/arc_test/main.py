@@ -62,11 +62,15 @@ class ArcTestView(QGraphicsView):
         self.end_arrow.setPen(QPen(QColor(0, 150, 0), 2))
         self.scene.addItem(self.end_arrow)
         
-        # Debug text
+        # Debug text with dark background
         self.debug_text = QGraphicsTextItem()
         self.debug_text.setPos(-380, -380)
-        self.debug_text.setDefaultTextColor(Qt.white)
+        self.debug_text.setDefaultTextColor(QColor(200, 255, 200))
+        self.debug_text.setZValue(1000)  # On top
         self.scene.addItem(self.debug_text)
+        
+        # Set dark scene background so we can see everything
+        self.scene.setBackgroundBrush(QBrush(QColor(40, 40, 40)))
         
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
