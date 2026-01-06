@@ -447,6 +447,10 @@ class FactoryCanvas(QGraphicsView):
         
         # Compute curved path
         belt_path = compute_belt_path(start, self._drag_start_dir, end, end_dir)
+        if belt_path:
+            print(f"[DEBUG] start_dir={math.degrees(self._drag_start_dir):.0f}° end_dir={math.degrees(end_dir):.0f}°")
+            print(f"[DEBUG] start_cw={belt_path.start_clockwise} end_cw={belt_path.end_clockwise}")
+            print(f"[DEBUG] start_arc: {math.degrees(belt_path.start_angle_begin):.0f}° -> {math.degrees(belt_path.start_angle_end):.0f}°")
         
         from PySide6.QtGui import QPainterPath
         path = QPainterPath()
@@ -478,13 +482,24 @@ class FactoryCanvas(QGraphicsView):
         """Add an arc to the path using line segments."""
         import math
         
-        # Calculate sweep - always take the SHORT way around
-        # Normalize angle difference to [-pi, pi]
+        # Calculate the sweep respecting the clockwise direction
+        # In screen coords (Y down), CW means angle increases, CCW means angle decreases
         diff = angle_end - angle_begin
-        while diff > math.pi:
+        
+        # Normalize to [-2pi, 2pi]
+        while diff > 2 * math.pi:
             diff -= 2 * math.pi
-        while diff < -math.pi:
+        while diff < -2 * math.pi:
             diff += 2 * math.pi
+        
+        if clockwise:
+            # CW in screen coords = angle increases
+            if diff < 0:
+                diff += 2 * math.pi
+        else:
+            # CCW in screen coords = angle decreases
+            if diff > 0:
+                diff -= 2 * math.pi
         
         # Skip tiny arcs
         if abs(diff) < 0.01:
@@ -492,6 +507,10 @@ class FactoryCanvas(QGraphicsView):
             y = center.y + radius * math.sin(angle_end)
             path.lineTo(x, y)
             return
+        
+        # Clamp to max 180 degrees to avoid weird loops
+        if abs(diff) > math.pi:
+            diff = math.copysign(math.pi, diff)
         
         # Draw the arc by interpolating from begin to end
         angle_span = abs(diff)

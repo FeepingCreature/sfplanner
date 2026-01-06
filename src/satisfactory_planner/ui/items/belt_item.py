@@ -123,13 +123,26 @@ class BeltItem(QGraphicsPathItem):
         """Add an arc to the path using line segments."""
         import math
         
-        # Calculate sweep - always take the SHORT way around
-        # Normalize angle difference to [-pi, pi]
+        # Calculate the sweep respecting the clockwise direction
+        # In screen coords (Y down), CW means angle increases, CCW means angle decreases
         diff = angle_end - angle_begin
-        while diff > math.pi:
+        
+        # Normalize to [-2pi, 2pi]
+        while diff > 2 * math.pi:
             diff -= 2 * math.pi
-        while diff < -math.pi:
+        while diff < -2 * math.pi:
             diff += 2 * math.pi
+        
+        if clockwise:
+            # CW in screen coords = angle increases
+            # If diff is negative, we need to go the long way (add 2pi)
+            if diff < 0:
+                diff += 2 * math.pi
+        else:
+            # CCW in screen coords = angle decreases
+            # If diff is positive, we need to go the long way (subtract 2pi)
+            if diff > 0:
+                diff -= 2 * math.pi
         
         # Skip tiny arcs
         if abs(diff) < 0.01:
@@ -137,6 +150,10 @@ class BeltItem(QGraphicsPathItem):
             y = center.y + radius * math.sin(angle_end)
             path.lineTo(x, y)
             return
+        
+        # Clamp to max 180 degrees to avoid weird loops
+        if abs(diff) > math.pi:
+            diff = math.copysign(math.pi, diff)
         
         # Draw the arc by interpolating from begin to end
         angle_span = abs(diff)
