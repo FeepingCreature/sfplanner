@@ -137,33 +137,37 @@ def _compute_single_path(
         # Outer tangent (same turn direction)
         if d < 0.001:
             return None  # Centers too close
-        # Tangent is parallel to line between centers, offset by radius
-        tangent_angle = theta + start_sign * math.pi / 2
+        # For outer tangent, the tangent line is parallel to the line between centers
+        # The tangent points are perpendicular to this line, on opposite sides for CW vs CCW
+        # For CW (start_sign=1): tangent is to the RIGHT of the direction from c1 to c2
+        # For CCW (start_sign=-1): tangent is to the LEFT
+        perp_angle = theta - start_sign * math.pi / 2
         t1 = Point(
-            c1.x + radius * math.cos(tangent_angle),
-            c1.y + radius * math.sin(tangent_angle),
+            c1.x + radius * math.cos(perp_angle),
+            c1.y + radius * math.sin(perp_angle),
         )
         t2 = Point(
-            c2.x + radius * math.cos(tangent_angle),
-            c2.y + radius * math.sin(tangent_angle),
+            c2.x + radius * math.cos(perp_angle),
+            c2.y + radius * math.sin(perp_angle),
         )
     else:
-        # Inner tangent (opposite turn directions)
+        # Inner tangent (opposite turn directions) - crosses between circles
         if d < 2 * radius:
             return None  # Circles overlap, no inner tangent
         # Angle adjustment for inner tangent
-        alpha = math.asin(2 * radius / d) if d > 2 * radius else 0
-        if start_sign == -1:  # start CCW, end CW
+        alpha = math.asin(2 * radius / d)
+        if start_sign == 1:  # start CW, end CCW
             tangent_angle = theta + alpha
-        else:  # start CW, end CCW
+        else:  # start CCW, end CW
             tangent_angle = theta - alpha
+        # Tangent points are perpendicular to the tangent line direction
         t1 = Point(
-            c1.x + radius * math.cos(tangent_angle + start_sign * math.pi / 2),
-            c1.y + radius * math.sin(tangent_angle + start_sign * math.pi / 2),
+            c1.x + radius * math.cos(tangent_angle - start_sign * math.pi / 2),
+            c1.y + radius * math.sin(tangent_angle - start_sign * math.pi / 2),
         )
         t2 = Point(
-            c2.x + radius * math.cos(tangent_angle + math.pi + end_sign * math.pi / 2),
-            c2.y + radius * math.sin(tangent_angle + math.pi + end_sign * math.pi / 2),
+            c2.x + radius * math.cos(tangent_angle + math.pi - end_sign * math.pi / 2),
+            c2.y + radius * math.sin(tangent_angle + math.pi - end_sign * math.pi / 2),
         )
 
     # Compute arc angles
