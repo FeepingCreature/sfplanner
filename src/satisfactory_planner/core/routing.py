@@ -196,17 +196,25 @@ def _compute_single_path(
 
 
 def _arc_sweep(angle_begin: float, angle_end: float, clockwise: bool) -> float:
-    """Calculate the actual arc sweep, accounting for direction."""
+    """Calculate the actual arc sweep, accounting for direction.
+    
+    Returns the sweep in the specified direction (always positive, 0 to 2*pi).
+    """
+    # Normalize both angles to [0, 2*pi)
+    a1 = angle_begin % (2 * math.pi)
+    a2 = angle_end % (2 * math.pi)
+    
     if clockwise:
-        # CW: angle decreases
-        sweep = angle_begin - angle_end
-        if sweep < 0:
+        # CW: we go from a1 decreasing to a2
+        sweep = a1 - a2
+        if sweep < 0:  # Strict inequality - 0 means no turn needed
             sweep += 2 * math.pi
     else:
-        # CCW: angle increases
-        sweep = angle_end - angle_begin
-        if sweep < 0:
+        # CCW: we go from a1 increasing to a2
+        sweep = a2 - a1
+        if sweep < 0:  # Strict inequality - 0 means no turn needed
             sweep += 2 * math.pi
+    
     return sweep
 
 

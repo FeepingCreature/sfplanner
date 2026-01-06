@@ -478,6 +478,14 @@ class FactoryCanvas(QGraphicsView):
         """Add an arc to the path using line segments."""
         import math
         
+        # Skip nearly-zero arcs
+        angle_diff = abs(angle_end - angle_begin)
+        if angle_diff < 0.01 or abs(angle_diff - 2 * math.pi) < 0.01:
+            x = center.x + radius * math.cos(angle_end)
+            y = center.y + radius * math.sin(angle_end)
+            path.lineTo(x, y)
+            return
+        
         # Qt uses screen coordinates (Y down), so visual CW means angles INCREASE
         if clockwise:
             if angle_end < angle_begin:
@@ -486,7 +494,15 @@ class FactoryCanvas(QGraphicsView):
             if angle_end > angle_begin:
                 angle_end -= 2 * math.pi
 
+        # Avoid full loops
         angle_span = abs(angle_end - angle_begin)
+        if angle_span > math.pi * 1.5:
+            if clockwise:
+                angle_end -= 2 * math.pi
+            else:
+                angle_end += 2 * math.pi
+            angle_span = abs(angle_end - angle_begin)
+
         num_segments = max(4, int(angle_span * radius / 5))
         
         for i in range(1, num_segments + 1):
