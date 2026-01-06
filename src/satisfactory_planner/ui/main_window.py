@@ -220,7 +220,7 @@ class MainWindow(QMainWindow):
         edit_menu.addSeparator()
 
         self.delete_action = QAction("Delete", self)
-        self.delete_action.setShortcut(QKeySequence.Delete)
+        self.delete_action.setShortcut(Qt.Key_Delete)
         self.delete_action.triggered.connect(self._delete_selection)
         edit_menu.addAction(self.delete_action)
 

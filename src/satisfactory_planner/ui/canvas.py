@@ -418,18 +418,20 @@ class FactoryCanvas(QGraphicsView):
         )
         self.command_stack.execute(cmd)
 
-        # Update connected belts
-        for belt_id, belt_item in self._belt_items.items():
-            belt = self.document.belts.get(belt_id)
-            if belt and (
-                belt.source_building_id == building_id or belt.dest_building_id == building_id
-            ):
+        # Redraw all connected belts using absolute positions from model
+        self._update_belts_for_building(building_id)
+
+        self.document_changed.emit()
+
+    def _update_belts_for_building(self, building_id: str) -> None:
+        """Redraw all belts connected to a building using current model positions."""
+        for belt in self.document.get_belts_for_building(building_id):
+            belt_item = self._belt_items.get(belt.id)
+            if belt_item:
                 source = self.document.buildings.get(belt.source_building_id)
                 dest = self.document.buildings.get(belt.dest_building_id)
                 if source and dest:
                     belt_item.update_path(source, dest)
-
-        self.document_changed.emit()
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
         """Draw the grid background."""
