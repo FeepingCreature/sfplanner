@@ -118,22 +118,30 @@ class ArcTestView(QGraphicsView):
         arrow_dy = 30 * math.sin(self.end_dir)
         self.end_arrow.setLine(0, 0, arrow_dx, arrow_dy)
         
-        # Determine which way to turn at each end based on relative position
+        # Determine which way to turn at START based on where end is
         # Vector from start to end
         to_end = QPointF(end.x() - self.start.x(), end.y() - self.start.y())
         
         # Cross product with start direction tells us which side end is on
         start_dx = math.cos(self.start_dir)
         start_dy = math.sin(self.start_dir)
-        cross = start_dx * to_end.y() - start_dy * to_end.x()
+        start_cross = start_dx * to_end.y() - start_dy * to_end.x()
         
         # If cross > 0, end is to the left, turn left (CCW)
         # If cross < 0, end is to the right, turn right (CW)
-        start_sign = 1 if cross >= 0 else -1  # +1 = left/CCW, -1 = right/CW
+        start_sign = 1 if start_cross >= 0 else -1  # +1 = left/CCW, -1 = right/CW
         
-        # For the end circle, we want to approach smoothly
-        # Use opposite sign so we have outer tangent
-        end_sign = start_sign
+        # Determine which way to turn at END based on where start is
+        # Vector from end to start
+        to_start = QPointF(self.start.x() - end.x(), self.start.y() - end.y())
+        
+        # Cross product with end direction (flipped) tells us which side start is on
+        end_dx = math.cos(end_dir)
+        end_dy = math.sin(end_dir)
+        end_cross = end_dx * to_start.y() - end_dy * to_start.x()
+        
+        # Same logic for end
+        end_sign = 1 if end_cross >= 0 else -1
         
         # Compute circle centers
         # Perpendicular to direction, offset by radius
@@ -153,8 +161,7 @@ class ArcTestView(QGraphicsView):
         self.circle1.setPos(c1)
         self.circle2.setPos(c2)
         
-        # Find outer tangent line between the two circles
-        # For outer tangent (same-side), tangent points are at same angle from both centers
+        # Find tangent line between the two circles
         d = math.sqrt((c2.x() - c1.x())**2 + (c2.y() - c1.y())**2)
         
         if d < 0.001:
@@ -165,19 +172,47 @@ class ArcTestView(QGraphicsView):
         # Angle from c1 to c2
         theta = math.atan2(c2.y() - c1.y(), c2.x() - c1.x())
         
-        # For outer tangent with equal radii, tangent is perpendicular to center line
-        # Tangent points are at theta +/- 90 degrees from centers
-        # Choose the side based on turn direction
-        tangent_angle = theta - start_sign * math.pi / 2
-        
-        t1 = QPointF(
-            c1.x() + self.radius * math.cos(tangent_angle),
-            c1.y() + self.radius * math.sin(tangent_angle)
-        )
-        t2 = QPointF(
-            c2.x() + self.radius * math.cos(tangent_angle),
-            c2.y() + self.radius * math.sin(tangent_angle)
-        )
+        if start_sign == end_sign:
+            # OUTER tangent: same turn direction at both ends
+            # Tangent points are at same angle from both centers, perpendicular to center line
+            tangent_angle = theta - start_sign * math.pi / 2
+            
+            t1 = QPointF(
+                c1.x() + self.radius * math.cos(tangent_angle),
+                c1.y() + self.radius * math.sin(tangent_angle)
+            )
+            t2 = QPointF(
+                c2.x() + self.radius * math.cos(tangent_angle),
+                c2.y() + self.radius * math.sin(tangent_angle)
+            )
+        else:
+            # INNER tangent: opposite turn directions
+            # The tangent crosses between the circles
+            # For equal radii, the crossing point is at the midpoint
+            if d < 2 * self.radius:
+                # Circles overlap too much, fall back to straight line
+                path.lineTo(end)
+                return path
+            
+            # Angle offset for inner tangent
+            alpha = math.asin(2 * self.radius / d) if d > 2 * self.radius else 0
+            
+            # Tangent angle depends on which way we're turning
+            if start_sign > 0:  # start CCW, end CW
+                tangent_angle = theta + alpha
+            else:  # start CW, end CCW
+                tangent_angle = theta - alpha
+            
+            # t1 is on c1, perpendicular in start_sign direction
+            t1 = QPointF(
+                c1.x() + self.radius * math.cos(tangent_angle - start_sign * math.pi / 2),
+                c1.y() + self.radius * math.sin(tangent_angle - start_sign * math.pi / 2)
+            )
+            # t2 is on c2, perpendicular in end_sign direction (opposite side)
+            t2 = QPointF(
+                c2.x() + self.radius * math.cos(tangent_angle + math.pi - end_sign * math.pi / 2),
+                c2.y() + self.radius * math.sin(tangent_angle + math.pi - end_sign * math.pi / 2)
+            )
         
         # Update tangent markers
         self.t1_marker.setPos(t1)
@@ -194,13 +229,14 @@ class ArcTestView(QGraphicsView):
         
         # Update debug text
         def deg(r): return f"{math.degrees(r):.0f}°"
+        tangent_type = "OUTER" if start_sign == end_sign else "INNER"
         self.debug_text.setPlainText(
             f"start_dir: {deg(self.start_dir)}  end_dir: {deg(self.end_dir)} (routing: {deg(end_dir)})\n"
-            f"start_sign: {'+CCW' if start_sign > 0 else '-CW'}  end_sign: {'+CCW' if end_sign > 0 else '-CW'}\n"
-            f"c1: ({c1.x():.0f}, {c1.y():.0f})  c2: ({c2.x():.0f}, {c2.y():.0f})\n"
+            f"start_sign: {'+CCW' if start_sign > 0 else '-CW'}  end_sign: {'+CCW' if end_sign > 0 else '-CW'}  [{tangent_type}]\n"
+            f"c1: ({c1.x():.0f}, {c1.y():.0f})  c2: ({c2.x():.0f}, {c2.y():.0f})  d: {d:.0f}\n"
             f"theta (c1→c2): {deg(theta)}  tangent_angle: {deg(tangent_angle)}\n"
             f"t1: ({t1.x():.0f}, {t1.y():.0f})  t2: ({t2.x():.0f}, {t2.y():.0f})\n"
-            f"cross: {cross:.1f}"
+            f"start_cross: {start_cross:.1f}  end_cross: {end_cross:.1f}"
         )
         
         return path

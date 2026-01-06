@@ -993,6 +993,60 @@
       "streaming": true,
       "actual_cost": 0.30396,
       "generation_id": "gen-1767730517-rDjoYUv4n7SuTteEPFZt"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767730524534.json",
+      "response_file": "/tmp/forge_debug/response_1767730524534.json",
+      "timestamp": 1767730524.5345166,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000139,
+      "generation_id": "gen-1767730524-pP6GbADcrGPvpNfu8mTp"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767730731919.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767730731919.json",
+      "timestamp": 1767730731.9208424,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05568725,
+      "generation_id": "gen-1767730732-TgsrXOghsbjb0hmdlIUu"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767730755970.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767730755970.json",
+      "timestamp": 1767730755.9714568,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.33747125,
+      "generation_id": "gen-1767730756-ofqQnl3QbgnyixWVd32H"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767730775592.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767730775592.json",
+      "timestamp": 1767730775.5929623,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.35057625,
+      "generation_id": "gen-1767730776-3vNIZUIgWckpjL57tDWg"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767730809955.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767730809955.json",
+      "timestamp": 1767730809.956188,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.35082,
+      "generation_id": "gen-1767730810-dDwO4RwzwtbvDDp4OvRF"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767730827147.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767730827147.json",
+      "timestamp": 1767730827.148089,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.34272375,
+      "generation_id": "gen-1767730828-XvPjmA1eSGU3AgISng8W"
     }
   ],
   "messages": [
@@ -3390,6 +3444,138 @@
     {
       "role": "assistant",
       "content": "Added dark background (gray 40,40,40) and light green text color. The debug text should now be visible in the top-left corner. Try it out!"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: a9c03de6",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "okay here's an example of it working:\nstart 0 end 450\nstart sign -CW end -CW\nc1 (-100, -40) c2 (50, -200)\ntheta (c1-c2) -45, tangent angle 45\nt1 (-71, -13) t2 (96, -193)\ncross -220\n(slightly rounded)\nhere's an example of it totally not working:\nstart 0 end 180\nstart +CCW end +CCW\nc1 (-100, 40) c2 (210, 49)\ntheta 2 tangent -88\nt1 (-99,0) t2 (211,9)\ncross 9."
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue. In the broken case:\n- start_dir=0, end_dir=180\u00b0 (pointing left)\n- The end point is to the RIGHT of start (cross=9, positive but small)\n- So it picks CCW for both\n- But the end circle is computed using `end_dir + \u03c0 = 360\u00b0` which puts c2 above the end point\n\nThe problem is that `end_sign` is being set to match `start_sign` (for outer tangent), but the end circle should be computed based on the **end direction**, not the start direction's turn.\n\nLet me think about this more carefully:",
+      "tool_calls": [
+        {
+          "id": "toolu_bdrk_01JBM3h4ixH2dBnf9G2SfYnV",
+          "type": "function",
+          "function": {
+            "name": "think",
+            "arguments": "{\"_compacted\": true}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01JBM3h4ixH2dBnf9G2SfYnV",
+      "content": "{\"conclusion\": \"The bug is that `end_sign` is copied from `start_sign`, but it should be computed independently based on where START is relative to END's direction. Need to compute a separate cross product from end's perspective.\", \"message\": \"Thought through 637 tokens, concluded.\", \"success\": true, \"think\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `think`\n```json\n{\n  \"conclusion\": \"The bug is that `end_sign` is copied from `start_sign`, but it should be computed independently based on where START is relative to END's direction. Need to compute a separate cross product from end's perspective.\",\n  \"scratchpad\": \"The issue is that we're picking turn directions based on the cross product (which side the end is relative to start direction), but this doesn't account for the end direction at all.\\n\\nFor a proper circle-line-circle:\\n1. At start: we need to turn toward the end. If end is to our left, turn left (CCW). If right, turn right (CW).\\n2. At end: we need to arrive from the correct direction. The turn direction depends on where the START is relative to the END direction.\\n\\nSo the end_sign should be computed from end's perspective:\\n- Vector from end to start\\n- Cross with end_dir\\n- That tells us which side start is from end's POV\\n\\nLet me also reconsider: the end_dir is the direction the belt is TRAVELING at the end. So we're arriving at end going in direction end_dir. The turn circle needs to be on the correct side to allow us to curve into that direction.\\n\\nIf we're arriving at end going direction end_dir, and we need to turn to get there:\\n- The turning circle is perpendicular to end_dir\\n- Which side? Depends on where we're coming from (where c1/the tangent line is)\\n\\nActually, let me think about this differently. For OUTER tangents (same turn direction at both ends), the formula works when both circles turn the same way. But we need to pick the RIGHT same way.\\n\\nFor INNER tangents (opposite turn directions), we'd use different signs.\\n\\nThe current code always uses outer tangent (end_sign = start_sign). But maybe sometimes we need inner tangent?\\n\\nActually no - the real issue is simpler. The end circle position is wrong because we're using:\\n  end_perp = end_dir + end_sign * \\u03c0/2\\n\\nBut end_dir has already been flipped by \\u03c0. And end_sign is based on start's perspective, not end's.\\n\\nLet me think about what we actually want:\\n- At end, the belt arrives going in direction self.end_dir (the arrow direction)\\n- The turn circle should be positioned so the belt can curve into that arrival direction\\n- If the belt is coming from above, it needs to curve down into the end direction\\n- If coming from below, curve up\\n\\nSo end_sign should be: which side is start from end's perspective?\\n- Vector from end to start\\n- Cross with self.end_dir (not end_dir which is flipped)\\n\\nLet me try:\\nto_start = start - end\\nend_dx = cos(self.end_dir)\\nend_dy = sin(self.end_dir)\\nend_cross = end_dx * to_start.y - end_dy * to_start.x\\nend_sign = 1 if end_cross >= 0 else -1\\n\\nAnd then for the end circle:\\nend_perp = self.end_dir + end_sign * \\u03c0/2\\nc2 = end + radius * (cos(end_perp), sin(end_perp))\\n\\nThis would position c2 on the correct side of end based on where start is.\\n\\nBut wait - this might give us an inner tangent situation (different signs). That's actually fine, we just need to handle inner tangents differently.\\n\\nFor now, let's just fix the end_sign calculation and see what happens.\"\n}\n```\n**Result:**\n```json\n{\n  \"conclusion\": \"The bug is that `end_sign` is copied from `start_sign`, but it should be computed independently based on where START is relative to END's direction. Need to compute a separate cross product from end's perspective.\",\n  \"message\": \"Thought through 637 tokens, concluded.\",\n  \"success\": true,\n  \"think\": true\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "The bug is that `end_sign` is copied from `start_sign`, but it should be computed independently based on where START is relative to END's direction. Let me fix this:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"spikes/arc_test/main.py\", \"search\": \"        # Determine which way to turn at each end based on relative position\\n        # Vector from start to end\\n        to_end = QPointF(end.x() - self.start.x(), end.y() - self.start.y())\\n        \\n        # Cross product with start direction tells us which side end is on\\n        start_dx = math.cos(self.start_dir)\\n        start_dy = math.sin(self.start_dir)\\n        cross = start_dx * to_end.y() - start_dy * to_end.x()\\n        \\n        # If cross > 0, end is to the left, turn left (CCW)\\n        # If cross < 0, end is to the right, turn right (CW)\\n        start_sign = 1 if cross >= 0 else -1  # +1 = left/CCW, -1 = right/CW\\n        \\n        # For the end circle, we want to approach smoothly\\n        # Use opposite sign so we have outer tangent\\n        end_sign = start_sign\", \"replace\": \"        # Determine which way to turn at START based on where end is\\n        # Vector from start to end\\n        to_end = QPointF(end.x() - self.start.x(), end.y() - self.start.y())\\n        \\n        # Cross product with start direction tells us which side end is on\\n        start_dx = math.cos(self.start_dir)\\n        start_dy = math.sin(self.start_dir)\\n        start_cross = start_dx * to_end.y() - start_dy * to_end.x()\\n        \\n        # If cross > 0, end is to the left, turn left (CCW)\\n        # If cross < 0, end is to the right, turn right (CW)\\n        start_sign = 1 if start_cross >= 0 else -1  # +1 = left/CCW, -1 = right/CW\\n        \\n        # Determine which way to turn at END based on where start is\\n        # Vector from end to start\\n        to_start = QPointF(self.start.x() - end.x(), self.start.y() - end.y())\\n        \\n        # Cross product with end direction (flipped) tells us which side start is on\\n        end_dx = math.cos(end_dir)\\n        end_dy = math.sin(end_dir)\\n        end_cross = end_dx * to_start.y() - end_dy * to_start.x()\\n        \\n        # Same logic for end\\n        end_sign = 1 if end_cross >= 0 else -1\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01Ctp7y9BDSM69pQSZd76C3Y",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"spikes/arc_test/main.py\", \"search\": \"            f\\\"t1: ({t1.x():.0f}, {t1.y():.0f})  t2: ({t2.x():.0f}, {t2.y():.0f})\\\\n\\\"\\n            f\\\"cross: {cross:.1f}\\\"\", \"replace\": \"            f\\\"t1: ({t1.x():.0f}, {t1.y():.0f})  t2: ({t2.x():.0f}, {t2.y():.0f})\\\\n\\\"\\n            f\\\"start_cross: {start_cross:.1f}  end_cross: {end_cross:.1f}\\\"\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01AtAv89x1427FaifKCv3FNK",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Ctp7y9BDSM69pQSZd76C3Y",
+      "content": "{\"message\": \"Replaced in spikes/arc_test/main.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01AtAv89x1427FaifKCv3FNK",
+      "content": "{\"message\": \"Replaced in spikes/arc_test/main.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now `start_sign` and `end_sign` are computed independently. But there's still an issue - when the signs are different (one CCW, one CW), we need an *inner* tangent, not an outer tangent. The current tangent calculation assumes outer tangent (same sign). Let me fix that:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"spikes/arc_test/main.py\", \"search\": \"        # Find outer tangent line between the two circles\\n        # For outer tangent (same-side), tangent points are at same angle from both centers\\n        d = math.sqrt((c2.x() - c1.x())**2 + (c2.y() - c1.y())**2)\\n        \\n        if d < 0.001:\\n            # Centers coincide, just draw line\\n            path.lineTo(end)\\n            return path\\n        \\n        # Angle from c1 to c2\\n        theta = math.atan2(c2.y() - c1.y(), c2.x() - c1.x())\\n        \\n        # For outer tangent with equal radii, tangent is perpendicular to center line\\n        # Tangent points are at theta +/- 90 degrees from centers\\n        # Choose the side based on turn direction\\n        tangent_angle = theta - start_sign * math.pi / 2\\n        \\n        t1 = QPointF(\\n            c1.x() + self.radius * math.cos(tangent_angle),\\n            c1.y() + self.radius * math.sin(tangent_angle)\\n        )\\n        t2 = QPointF(\\n            c2.x() + self.radius * math.cos(tangent_angle),\\n            c2.y() + self.radius * math.sin(tangent_angle)\\n        )\", \"replace\": \"        # Find tangent line between the two circles\\n        d = math.sqrt((c2.x() - c1.x())**2 + (c2.y() - c1.y())**2)\\n        \\n        if d < 0.001:\\n            # Centers coincide, just draw line\\n            path.lineTo(end)\\n            return path\\n        \\n        # Angle from c1 to c2\\n        theta = math.atan2(c2.y() - c1.y(), c2.x() - c1.x())\\n        \\n        if start_sign == end_sign:\\n            # OUTER tangent: same turn direction at both ends\\n            # Tangent points are at same angle from both centers, perpendicular to center line\\n            tangent_angle = theta - start_sign * math.pi / 2\\n            \\n            t1 = QPointF(\\n                c1.x() + self.radius * math.cos(tangent_angle),\\n                c1.y() + self.radius * math.sin(tangent_angle)\\n            )\\n            t2 = QPointF(\\n                c2.x() + self.radius * math.cos(tangent_angle),\\n                c2.y() + self.radius * math.sin(tangent_angle)\\n            )\\n        else:\\n            # INNER tangent: opposite turn directions\\n            # The tangent crosses between the circles\\n            # For equal radii, the crossing point is at the midpoint\\n            if d < 2 * self.radius:\\n                # Circles overlap too much, fall back to straight line\\n                path.lineTo(end)\\n                return path\\n            \\n            # Angle offset for inner tangent\\n            alpha = math.asin(2 * self.radius / d) if d > 2 * self.radius else 0\\n            \\n            # Tangent angle depends on which way we're turning\\n            if start_sign > 0:  # start CCW, end CW\\n                tangent_angle = theta + alpha\\n            else:  # start CW, end CCW\\n                tangent_angle = theta - alpha\\n            \\n            # t1 is on c1, perpendicular in start_sign direction\\n            t1 = QPointF(\\n                c1.x() + self.radius * math.cos(tangent_angle - start_sign * math.pi / 2),\\n                c1.y() + self.radius * math.sin(tangent_angle - start_sign * math.pi / 2)\\n            )\\n            # t2 is on c2, perpendicular in end_sign direction (opposite side)\\n            t2 = QPointF(\\n                c2.x() + self.radius * math.cos(tangent_angle + math.pi - end_sign * math.pi / 2),\\n                c2.y() + self.radius * math.sin(tangent_angle + math.pi - end_sign * math.pi / 2)\\n            )\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_0168dk9miKrp75xG5TC3QBZe",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_0168dk9miKrp75xG5TC3QBZe",
+      "content": "{\"message\": \"Replaced in spikes/arc_test/main.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I've added support for both outer tangents (when both circles turn the same way) and inner tangents (when they turn opposite ways). Let me also add display of the tangent type to the debug info:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"spikes/arc_test/main.py\", \"search\": \"        # Update debug text\\n        def deg(r): return f\\\"{math.degrees(r):.0f}\u00b0\\\"\\n        self.debug_text.setPlainText(\\n            f\\\"start_dir: {deg(self.start_dir)}  end_dir: {deg(self.end_dir)} (routing: {deg(end_dir)})\\\\n\\\"\\n            f\\\"start_sign: {'+CCW' if start_sign > 0 else '-CW'}  end_sign: {'+CCW' if end_sign > 0 else '-CW'}\\\\n\\\"\\n            f\\\"c1: ({c1.x():.0f}, {c1.y():.0f})  c2: ({c2.x():.0f}, {c2.y():.0f})\\\\n\\\"\\n            f\\\"theta (c1\u2192c2): {deg(theta)}  tangent_angle: {deg(tangent_angle)}\\\\n\\\"\\n            f\\\"t1: ({t1.x():.0f}, {t1.y():.0f})  t2: ({t2.x():.0f}, {t2.y():.0f})\\\\n\\\"\\n            f\\\"start_cross: {start_cross:.1f}  end_cross: {end_cross:.1f}\\\"\\n        )\", \"replace\": \"        # Update debug text\\n        def deg(r): return f\\\"{math.degrees(r):.0f}\u00b0\\\"\\n        tangent_type = \\\"OUTER\\\" if start_sign == end_sign else \\\"INNER\\\"\\n        self.debug_text.setPlainText(\\n            f\\\"start_dir: {deg(self.start_dir)}  end_dir: {deg(self.end_dir)} (routing: {deg(end_dir)})\\\\n\\\"\\n            f\\\"start_sign: {'+CCW' if start_sign > 0 else '-CW'}  end_sign: {'+CCW' if end_sign > 0 else '-CW'}  [{tangent_type}]\\\\n\\\"\\n            f\\\"c1: ({c1.x():.0f}, {c1.y():.0f})  c2: ({c2.x():.0f}, {c2.y():.0f})  d: {d:.0f}\\\\n\\\"\\n            f\\\"theta (c1\u2192c2): {deg(theta)}  tangent_angle: {deg(tangent_angle)}\\\\n\\\"\\n            f\\\"t1: ({t1.x():.0f}, {t1.y():.0f})  t2: ({t2.x():.0f}, {t2.y():.0f})\\\\n\\\"\\n            f\\\"start_cross: {start_cross:.1f}  end_cross: {end_cross:.1f}\\\"\\n        )\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01TASvTQSeSHKqTY3UgQW2R4",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01TASvTQSeSHKqTY3UgQW2R4",
+      "content": "{\"message\": \"Replaced in spikes/arc_test/main.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good, I have the full file in context now. Try it out - I've added:\n\n1. **Independent sign calculation** for start and end based on cross products\n2. **Inner tangent support** when signs differ\n3. **Debug shows** tangent type (INNER/OUTER), distance d, and both cross products",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Updated the routing to:\\n\\n1. **Compute `start_sign` and `end_sign` independently** - each based on where the other point is relative to its direction\\n2. **Handle both OUTER and INNER tangents** - outer when both turn same way, inner when opposite\\n3. **Debug shows** `[OUTER]` or `[INNER]`, both cross products, and distance between centers\\n\\nTry the broken case again (start=0\u00b0, end=180\u00b0) - it should now use an inner tangent since the signs will differ.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01L2wQHYSVjjZLDeGXtHbHPj",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01L2wQHYSVjjZLDeGXtHbHPj",
+      "content": "{\"done\": true, \"message\": \"Updated the routing to:\\n\\n1. **Compute `start_sign` and `end_sign` independently** - each based on where the other point is relative to its direction\\n2. **Handle both OUTER and INNER tangents** - outer when both turn same way, inner when opposite\\n3. **Debug shows** `[OUTER]` or `[INNER]`, both cross products, and distance between centers\\n\\nTry the broken case again (start=0\\u00b0, end=180\\u00b0) - it should now use an inner tangent since the signs will differ.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Updated the routing to:\n\n1. **Compute `start_sign` and `end_sign` independently** - each based on where the other point is relative to its direction\n2. **Handle both OUTER and INNER tangents** - outer when both turn same way, inner when opposite\n3. **Debug shows** `[OUTER]` or `[INNER]`, both cross products, and distance between centers\n\nTry the broken case again (start=0\u00b0, end=180\u00b0) - it should now use an inner tangent since the signs will differ."
     }
   ]
 }
