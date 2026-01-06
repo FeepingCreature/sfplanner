@@ -168,6 +168,33 @@
       "streaming": true,
       "actual_cost": 0.026184,
       "generation_id": "gen-1767726417-6NKRJLr42Lz57Pm3bzmk"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767726424583.json",
+      "response_file": "/tmp/forge_debug/response_1767726424583.json",
+      "timestamp": 1767726424.5831854,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000199,
+      "generation_id": "gen-1767726424-ofXrKrJFxcrhcvWSANSM"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767726818763.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767726818763.json",
+      "timestamp": 1767726818.7644413,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1859075,
+      "generation_id": "gen-1767726819-m2QHmVDpwSTtFyhxbVDR"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767726831123.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767726831123.json",
+      "timestamp": 1767726831.12405,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1758575,
+      "generation_id": "gen-1767726831-sgJWSVkh4brhnwYe6Cae"
     }
   ],
   "messages": [
@@ -416,6 +443,73 @@
     {
       "role": "assistant",
       "content": "Done! Belt connections now use drag-based interaction:\n\n- **Press and drag** from an output port (green arrow)\n- **Preview line** follows your cursor while dragging (dashed green)\n- **Release on input port** (yellow arrow) to connect\n- **Release elsewhere** to cancel\n\nThe old two-click method is gone. The drag feels much more natural for this kind of wiring task."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 6576fae3",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Looks good! But the input port detection doesn't seem to work, add print debug?"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"        # Cancel belt drag if released not on an input port\\n        if event.button() == Qt.LeftButton and self._is_connecting:\\n            # Check if we're over an input port - if not, cancel\\n            # (The port's mouseReleaseEvent handles successful completion)\\n            scene_pos = self.mapToScene(event.pos())\\n            item = self._scene.itemAt(scene_pos, self.transform())\\n            from satisfactory_planner.ui.items.port_item import PortItem\\n            if not isinstance(item, PortItem) or item.is_output:\\n                self.cancel_belt_connection()\", \"replace\": \"        # Cancel belt drag if released not on an input port\\n        if event.button() == Qt.LeftButton and self._is_connecting:\\n            # Check if we're over an input port - if not, cancel\\n            # (The port's mouseReleaseEvent handles successful completion)\\n            scene_pos = self.mapToScene(event.pos())\\n            item = self._scene.itemAt(scene_pos, self.transform())\\n            from satisfactory_planner.ui.items.port_item import PortItem\\n            print(f\\\"[DEBUG] mouseRelease: scene_pos={scene_pos}, item={item}, type={type(item)}\\\")\\n            if isinstance(item, PortItem):\\n                print(f\\\"[DEBUG]   PortItem: is_output={item.is_output}, building={item.building_id}, port={item.port_index}\\\")\\n            if not isinstance(item, PortItem) or item.is_output:\\n                print(f\\\"[DEBUG]   -> cancelling belt connection\\\")\\n                self.cancel_belt_connection()\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_017pX188ikQDsgPiairAB7C6",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/port_item.py\", \"search\": \"    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n        \\\"\\\"\\\"Handle release to complete belt connection on input port.\\\"\\\"\\\"\\n        if event.button() == Qt.LeftButton and not self.is_output:\\n            # Complete connection to this input\\n            if self.canvas.is_dragging_belt():\\n                self.canvas.complete_belt_connection(self.building_id, self.port_index)\\n                event.accept()\\n                return\\n        super().mouseReleaseEvent(event)\", \"replace\": \"    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n        \\\"\\\"\\\"Handle release to complete belt connection on input port.\\\"\\\"\\\"\\n        print(f\\\"[DEBUG] PortItem.mouseReleaseEvent: is_output={self.is_output}, button={event.button()}, dragging={self.canvas.is_dragging_belt()}\\\")\\n        if event.button() == Qt.LeftButton and not self.is_output:\\n            # Complete connection to this input\\n            if self.canvas.is_dragging_belt():\\n                print(f\\\"[DEBUG]   -> completing belt to {self.building_id}:{self.port_index}\\\")\\n                self.canvas.complete_belt_connection(self.building_id, self.port_index)\\n                event.accept()\\n                return\\n        super().mouseReleaseEvent(event)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_01VxCbq4DTtWkybLG5oRm2cH",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_017pX188ikQDsgPiairAB7C6",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01VxCbq4DTtWkybLG5oRm2cH",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/port_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Added debug prints in two places:\\n\\n1. **PortItem.mouseReleaseEvent** - logs when the port receives a release event, showing `is_output`, button, and whether we're dragging\\n2. **FactoryCanvas.mouseReleaseEvent** - logs what item is under the cursor at release time, and whether it's a PortItem\\n\\nRun the app and try dragging from an output to an input - the console will show what's happening. My guess is that the mouse release event is being caught by the canvas before it reaches the port item, or the port isn't under the cursor position due to coordinate transforms.\"}",
+            "name": "done"
+          },
+          "id": "toolu_bdrk_01YCNgZoXUJ2okPD3fvzkG6L",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01YCNgZoXUJ2okPD3fvzkG6L",
+      "content": "{\"done\": true, \"message\": \"Added debug prints in two places:\\n\\n1. **PortItem.mouseReleaseEvent** - logs when the port receives a release event, showing `is_output`, button, and whether we're dragging\\n2. **FactoryCanvas.mouseReleaseEvent** - logs what item is under the cursor at release time, and whether it's a PortItem\\n\\nRun the app and try dragging from an output to an input - the console will show what's happening. My guess is that the mouse release event is being caught by the canvas before it reaches the port item, or the port isn't under the cursor position due to coordinate transforms.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Added debug prints in two places:\n\n1. **PortItem.mouseReleaseEvent** - logs when the port receives a release event, showing `is_output`, button, and whether we're dragging\n2. **FactoryCanvas.mouseReleaseEvent** - logs what item is under the cursor at release time, and whether it's a PortItem\n\nRun the app and try dragging from an output to an input - the console will show what's happening. My guess is that the mouse release event is being caught by the canvas before it reaches the port item, or the port isn't under the cursor position due to coordinate transforms."
     }
   ]
 }

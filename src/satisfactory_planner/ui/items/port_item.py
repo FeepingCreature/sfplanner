@@ -121,9 +121,11 @@ class PortItem(QGraphicsItem):
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle release to complete belt connection on input port."""
+        print(f"[DEBUG] PortItem.mouseReleaseEvent: is_output={self.is_output}, button={event.button()}, dragging={self.canvas.is_dragging_belt()}")
         if event.button() == Qt.LeftButton and not self.is_output:
             # Complete connection to this input
             if self.canvas.is_dragging_belt():
+                print(f"[DEBUG]   -> completing belt to {self.building_id}:{self.port_index}")
                 self.canvas.complete_belt_connection(self.building_id, self.port_index)
                 event.accept()
                 return

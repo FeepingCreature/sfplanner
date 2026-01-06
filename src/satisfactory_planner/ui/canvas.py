@@ -280,7 +280,11 @@ class FactoryCanvas(QGraphicsView):
             scene_pos = self.mapToScene(event.pos())
             item = self._scene.itemAt(scene_pos, self.transform())
             from satisfactory_planner.ui.items.port_item import PortItem
+            print(f"[DEBUG] mouseRelease: scene_pos={scene_pos}, item={item}, type={type(item)}")
+            if isinstance(item, PortItem):
+                print(f"[DEBUG]   PortItem: is_output={item.is_output}, building={item.building_id}, port={item.port_index}")
             if not isinstance(item, PortItem) or item.is_output:
+                print(f"[DEBUG]   -> cancelling belt connection")
                 self.cancel_belt_connection()
 
         super().mouseReleaseEvent(event)
