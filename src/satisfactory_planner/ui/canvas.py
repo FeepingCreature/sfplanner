@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QGraphicsView,
     QGraphicsScene,
     QGraphicsItem,
-    QGraphicsLineItem,
+    QGraphicsPathItem,
 )
 
 from satisfactory_planner.core import (
@@ -27,6 +27,7 @@ from satisfactory_planner.core import (
 from satisfactory_planner.core.models import generate_id
 from satisfactory_planner.ui.items.building_item import BuildingItem
 from satisfactory_planner.ui.items.belt_item import BeltItem
+from satisfactory_planner.core.routing import compute_belt_path, Point
 
 if TYPE_CHECKING:
     pass
@@ -77,8 +78,9 @@ class FactoryCanvas(QGraphicsView):
         self._belt_items: dict[str, BeltItem] = {}
 
         # Belt drag preview
-        self._drag_line: QGraphicsLineItem | None = None
+        self._drag_preview: QGraphicsPathItem | None = None
         self._drag_start_pos: QPointF | None = None
+        self._drag_start_dir: float = 0  # Direction belt leaves start port
         self._hover_target_port: object | None = None  # PortItem being hovered during drag
 
         # Enable drag-drop
@@ -249,11 +251,10 @@ class FactoryCanvas(QGraphicsView):
             )
             return
 
-        # Update belt drag preview line and check for target port
-        if self._drag_line and self._drag_start_pos:
+        # Update belt drag preview and check for target port
+        if self._drag_preview and self._drag_start_pos:
             scene_pos = self.mapToScene(event.pos())
-            from PySide6.QtCore import QLineF
-            self._drag_line.setLine(QLineF(self._drag_start_pos, scene_pos))
+            self._update_drag_preview(scene_pos)
             
             # Check if hovering over a valid input port
             from satisfactory_planner.ui.items.port_item import PortItem
@@ -409,18 +410,91 @@ class FactoryCanvas(QGraphicsView):
         self._connect_start_port = port_index
         self._drag_start_pos = start_pos
         self.setCursor(Qt.CrossCursor)
+        
+        # Get start direction from the source building
+        building = self.document.buildings.get(building_id)
+        if building:
+            self._drag_start_dir = building.output_port_direction(port_index)
+        else:
+            self._drag_start_dir = 0
 
-        # Create preview line (not pickable so it doesn't block mouse events)
-        self._drag_line = QGraphicsLineItem()
-        self._drag_line.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.DashLine))
-        self._drag_line.setZValue(1000)  # On top
-        self._drag_line.setFlag(QGraphicsItem.ItemIsSelectable, False)
-        self._drag_line.setAcceptedMouseButtons(Qt.NoButton)  # Ignore all mouse events
-        self._scene.addItem(self._drag_line)
+        # Create preview path (not pickable so it doesn't block mouse events)
+        self._drag_preview = QGraphicsPathItem()
+        self._drag_preview.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.DashLine))
+        self._drag_preview.setZValue(1000)  # On top
+        self._drag_preview.setFlag(QGraphicsItem.ItemIsSelectable, False)
+        self._drag_preview.setAcceptedMouseButtons(Qt.NoButton)  # Ignore all mouse events
+        self._scene.addItem(self._drag_preview)
 
     def is_dragging_belt(self) -> bool:
         """Return True if currently dragging a belt connection."""
-        return self._is_connecting and self._drag_line is not None
+        return self._is_connecting and self._drag_preview is not None
+    
+    def _update_drag_preview(self, end_pos: QPointF) -> None:
+        """Update the drag preview path to the given end position."""
+        import math
+        
+        if not self._drag_preview or not self._drag_start_pos:
+            return
+        
+        start = Point(self._drag_start_pos.x(), self._drag_start_pos.y())
+        end = Point(end_pos.x(), end_pos.y())
+        
+        # Default end direction: pointing toward start (belt arriving)
+        dx = end_pos.x() - self._drag_start_pos.x()
+        dy = end_pos.y() - self._drag_start_pos.y()
+        end_dir = math.atan2(dy, dx)  # Direction of travel toward end point
+        
+        # Compute curved path
+        belt_path = compute_belt_path(start, self._drag_start_dir, end, end_dir)
+        
+        from PySide6.QtGui import QPainterPath
+        path = QPainterPath()
+        
+        if belt_path and belt_path.start_radius > 0:
+            path.moveTo(start.x, start.y)
+            self._add_arc_to_path(
+                path, belt_path.start_center, belt_path.start_radius,
+                belt_path.start_angle_begin, belt_path.start_angle_end,
+                belt_path.start_clockwise
+            )
+            path.lineTo(belt_path.line_end.x, belt_path.line_end.y)
+            self._add_arc_to_path(
+                path, belt_path.end_center, belt_path.end_radius,
+                belt_path.end_angle_begin, belt_path.end_angle_end,
+                belt_path.end_clockwise
+            )
+        else:
+            # Fallback to straight line
+            path.moveTo(start.x, start.y)
+            path.lineTo(end.x, end.y)
+        
+        self._drag_preview.setPath(path)
+    
+    def _add_arc_to_path(
+        self, path: "QPainterPath", center: Point, radius: float,
+        angle_begin: float, angle_end: float, clockwise: bool
+    ) -> None:
+        """Add an arc to the path using line segments."""
+        import math
+        
+        # Qt uses screen coordinates (Y down), so visual CW means angles INCREASE
+        if clockwise:
+            if angle_end < angle_begin:
+                angle_end += 2 * math.pi
+        else:
+            if angle_end > angle_begin:
+                angle_end -= 2 * math.pi
+
+        angle_span = abs(angle_end - angle_begin)
+        num_segments = max(4, int(angle_span * radius / 5))
+        
+        for i in range(1, num_segments + 1):
+            t = i / num_segments
+            angle = angle_begin + t * (angle_end - angle_begin)
+            x = center.x + radius * math.cos(angle)
+            y = center.y + radius * math.sin(angle)
+            path.lineTo(x, y)
 
     def start_belt_connection(self, building_id: str, port_index: int) -> None:
         """Start a belt connection from an output port (legacy, kept for compatibility)."""
@@ -449,9 +523,9 @@ class FactoryCanvas(QGraphicsView):
         self._is_connecting = False
         self._connect_start_building = None
         self._drag_start_pos = None
-        if self._drag_line:
-            self._scene.removeItem(self._drag_line)
-            self._drag_line = None
+        if self._drag_preview:
+            self._scene.removeItem(self._drag_preview)
+            self._drag_preview = None
         if self._hover_target_port:
             self._hover_target_port.set_drag_target(False)
             self._hover_target_port = None
@@ -462,9 +536,12 @@ class FactoryCanvas(QGraphicsView):
         self._is_connecting = False
         self._connect_start_building = None
         self._drag_start_pos = None
-        if self._drag_line:
-            self._scene.removeItem(self._drag_line)
-            self._drag_line = None
+        if self._drag_preview:
+            self._scene.removeItem(self._drag_preview)
+            self._drag_preview = None
+        if self._hover_target_port:
+            self._hover_target_port.set_drag_target(False)
+            self._hover_target_port = None
         self.setCursor(Qt.ArrowCursor)
 
     def keyPressEvent(self, event: object) -> None:

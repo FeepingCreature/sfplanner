@@ -549,6 +549,42 @@
       "streaming": true,
       "actual_cost": 0.042879,
       "generation_id": "gen-1767728398-qWjH0em0hFuSGCjlgq7T"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767728407799.json",
+      "response_file": "/tmp/forge_debug/response_1767728407799.json",
+      "timestamp": 1767728407.7995028,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000209,
+      "generation_id": "gen-1767728408-rQ4vq2fCqAXrXPHWawu1"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728417434.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728417434.json",
+      "timestamp": 1767728417.435892,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1143585,
+      "generation_id": "gen-1767728418-CsMlk4FSDNu1lThLY2fV"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728474760.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728474760.json",
+      "timestamp": 1767728474.7612147,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.377715,
+      "generation_id": "gen-1767728476-U6FY8xnMhUMJCSNJpJuK"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728482269.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728482269.json",
+      "timestamp": 1767728482.2704525,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.04601575,
+      "generation_id": "gen-1767728482-WbuK15f90XydRQAJyapl"
     }
   ],
   "messages": [
@@ -1794,6 +1830,182 @@
     {
       "role": "assistant",
       "content": "Fixed the tangent point calculation for outer tangents. The perpendicular angle was being computed in the wrong direction, causing the arc to end 180\u00b0 off from where it should.\n\nThe fix: `perp_angle = theta - start_sign * math.pi / 2` instead of `+ start_sign`.\n\nTry connecting buildings again - the arcs should now smoothly transition into the straight line segment!"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 240b8ba6",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "It would also help testing if the drag arrow preview already used the arc line code."
+    },
+    {
+      "role": "assistant",
+      "content": "Good idea! Let me make the drag preview use the curved routing instead of a straight line. I'll need to track the source building info to get the direction, then compute and draw the curved preview.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"from satisfactory_planner.ui.items.building_item import BuildingItem\\nfrom satisfactory_planner.ui.items.belt_item import BeltItem\", \"replace\": \"from satisfactory_planner.ui.items.building_item import BuildingItem\\nfrom satisfactory_planner.ui.items.belt_item import BeltItem\\nfrom satisfactory_planner.core.routing import compute_belt_path, Point\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01YWcLM6cmghxFJvV9xaxtTX",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"        # Belt drag preview\\n        self._drag_line: QGraphicsLineItem | None = None\\n        self._drag_start_pos: QPointF | None = None\\n        self._hover_target_port: object | None = None  # PortItem being hovered during drag\", \"replace\": \"        # Belt drag preview\\n        self._drag_preview: QGraphicsPathItem | None = None\\n        self._drag_start_pos: QPointF | None = None\\n        self._drag_start_dir: float = 0  # Direction belt leaves start port\\n        self._hover_target_port: object | None = None  # PortItem being hovered during drag\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_015WFmVKzvGUWtHqTNkHmn5a",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"from PySide6.QtWidgets import (\\n    QGraphicsView,\\n    QGraphicsScene,\\n    QGraphicsItem,\\n    QGraphicsLineItem,\\n)\", \"replace\": \"from PySide6.QtWidgets import (\\n    QGraphicsView,\\n    QGraphicsScene,\\n    QGraphicsItem,\\n    QGraphicsPathItem,\\n)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01MCnHVEfyVQBf2wXnmTpVMD",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"        # Update belt drag preview line and check for target port\\n        if self._drag_line and self._drag_start_pos:\\n            scene_pos = self.mapToScene(event.pos())\\n            from PySide6.QtCore import QLineF\\n            self._drag_line.setLine(QLineF(self._drag_start_pos, scene_pos))\", \"replace\": \"        # Update belt drag preview and check for target port\\n        if self._drag_preview and self._drag_start_pos:\\n            scene_pos = self.mapToScene(event.pos())\\n            self._update_drag_preview(scene_pos)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01Xa5h5mmRCLLNZkj3xgGRuA",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"    def start_belt_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:\\n        \\\"\\\"\\\"Start dragging a belt connection from an output port.\\\"\\\"\\\"\\n        # Check if output port is already connected\\n        if self.document.is_port_connected(building_id, port_index, True):\\n            return  # Don't allow starting a new connection from an already-connected output\\n        \\n        self._is_connecting = True\\n        self._connect_start_building = building_id\\n        self._connect_start_port = port_index\\n        self._drag_start_pos = start_pos\\n        self.setCursor(Qt.CrossCursor)\\n\\n        # Create preview line (not pickable so it doesn't block mouse events)\\n        self._drag_line = QGraphicsLineItem()\\n        self._drag_line.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.DashLine))\\n        self._drag_line.setZValue(1000)  # On top\\n        self._drag_line.setFlag(QGraphicsItem.ItemIsSelectable, False)\\n        self._drag_line.setAcceptedMouseButtons(Qt.NoButton)  # Ignore all mouse events\\n        self._scene.addItem(self._drag_line)\", \"replace\": \"    def start_belt_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:\\n        \\\"\\\"\\\"Start dragging a belt connection from an output port.\\\"\\\"\\\"\\n        # Check if output port is already connected\\n        if self.document.is_port_connected(building_id, port_index, True):\\n            return  # Don't allow starting a new connection from an already-connected output\\n        \\n        self._is_connecting = True\\n        self._connect_start_building = building_id\\n        self._connect_start_port = port_index\\n        self._drag_start_pos = start_pos\\n        self.setCursor(Qt.CrossCursor)\\n        \\n        # Get start direction from the source building\\n        building = self.document.buildings.get(building_id)\\n        if building:\\n            self._drag_start_dir = building.output_port_direction(port_index)\\n        else:\\n            self._drag_start_dir = 0\\n\\n        # Create preview path (not pickable so it doesn't block mouse events)\\n        self._drag_preview = QGraphicsPathItem()\\n        self._drag_preview.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.DashLine))\\n        self._drag_preview.setZValue(1000)  # On top\\n        self._drag_preview.setFlag(QGraphicsItem.ItemIsSelectable, False)\\n        self._drag_preview.setAcceptedMouseButtons(Qt.NoButton)  # Ignore all mouse events\\n        self._scene.addItem(self._drag_preview)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01Jq98yTPP9bK2MDL1p92TyP",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"    def is_dragging_belt(self) -> bool:\\n        \\\"\\\"\\\"Return True if currently dragging a belt connection.\\\"\\\"\\\"\\n        return self._is_connecting and self._drag_line is not None\", \"replace\": \"    def is_dragging_belt(self) -> bool:\\n        \\\"\\\"\\\"Return True if currently dragging a belt connection.\\\"\\\"\\\"\\n        return self._is_connecting and self._drag_preview is not None\\n    \\n    def _update_drag_preview(self, end_pos: QPointF) -> None:\\n        \\\"\\\"\\\"Update the drag preview path to the given end position.\\\"\\\"\\\"\\n        import math\\n        \\n        if not self._drag_preview or not self._drag_start_pos:\\n            return\\n        \\n        start = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\\n        end = Point(end_pos.x(), end_pos.y())\\n        \\n        # Default end direction: pointing toward start (belt arriving)\\n        dx = end_pos.x() - self._drag_start_pos.x()\\n        dy = end_pos.y() - self._drag_start_pos.y()\\n        end_dir = math.atan2(dy, dx)  # Direction of travel toward end point\\n        \\n        # Compute curved path\\n        belt_path = compute_belt_path(start, self._drag_start_dir, end, end_dir)\\n        \\n        from PySide6.QtGui import QPainterPath\\n        path = QPainterPath()\\n        \\n        if belt_path and belt_path.start_radius > 0:\\n            path.moveTo(start.x, start.y)\\n            self._add_arc_to_path(\\n                path, belt_path.start_center, belt_path.start_radius,\\n                belt_path.start_angle_begin, belt_path.start_angle_end,\\n                belt_path.start_clockwise\\n            )\\n            path.lineTo(belt_path.line_end.x, belt_path.line_end.y)\\n            self._add_arc_to_path(\\n                path, belt_path.end_center, belt_path.end_radius,\\n                belt_path.end_angle_begin, belt_path.end_angle_end,\\n                belt_path.end_clockwise\\n            )\\n        else:\\n            # Fallback to straight line\\n            path.moveTo(start.x, start.y)\\n            path.lineTo(end.x, end.y)\\n        \\n        self._drag_preview.setPath(path)\\n    \\n    def _add_arc_to_path(\\n        self, path: \\\"QPainterPath\\\", center: Point, radius: float,\\n        angle_begin: float, angle_end: float, clockwise: bool\\n    ) -> None:\\n        \\\"\\\"\\\"Add an arc to the path using line segments.\\\"\\\"\\\"\\n        import math\\n        \\n        # Qt uses screen coordinates (Y down), so visual CW means angles INCREASE\\n        if clockwise:\\n            if angle_end < angle_begin:\\n                angle_end += 2 * math.pi\\n        else:\\n            if angle_end > angle_begin:\\n                angle_end -= 2 * math.pi\\n\\n        angle_span = abs(angle_end - angle_begin)\\n        num_segments = max(4, int(angle_span * radius / 5))\\n        \\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = angle_begin + t * (angle_end - angle_begin)\\n            x = center.x + radius * math.cos(angle)\\n            y = center.y + radius * math.sin(angle)\\n            path.lineTo(x, y)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01E9MEGVwpCARdyeTew5KSzN",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"        # Clean up drag state\\n        self._is_connecting = False\\n        self._connect_start_building = None\\n        self._drag_start_pos = None\\n        if self._drag_line:\\n            self._scene.removeItem(self._drag_line)\\n            self._drag_line = None\\n        if self._hover_target_port:\\n            self._hover_target_port.set_drag_target(False)\\n            self._hover_target_port = None\\n        self.setCursor(Qt.ArrowCursor)\", \"replace\": \"        # Clean up drag state\\n        self._is_connecting = False\\n        self._connect_start_building = None\\n        self._drag_start_pos = None\\n        if self._drag_preview:\\n            self._scene.removeItem(self._drag_preview)\\n            self._drag_preview = None\\n        if self._hover_target_port:\\n            self._hover_target_port.set_drag_target(False)\\n            self._hover_target_port = None\\n        self.setCursor(Qt.ArrowCursor)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01HGUmzVrFsAGcTwRv12StLf",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"    def cancel_belt_connection(self) -> None:\\n        \\\"\\\"\\\"Cancel the current belt connection.\\\"\\\"\\\"\\n        self._is_connecting = False\\n        self._connect_start_building = None\\n        self._drag_start_pos = None\\n        if self._drag_line:\\n            self._scene.removeItem(self._drag_line)\\n            self._drag_line = None\\n        self.setCursor(Qt.ArrowCursor)\", \"replace\": \"    def cancel_belt_connection(self) -> None:\\n        \\\"\\\"\\\"Cancel the current belt connection.\\\"\\\"\\\"\\n        self._is_connecting = False\\n        self._connect_start_building = None\\n        self._drag_start_pos = None\\n        if self._drag_preview:\\n            self._scene.removeItem(self._drag_preview)\\n            self._drag_preview = None\\n        if self._hover_target_port:\\n            self._hover_target_port.set_drag_target(False)\\n            self._hover_target_port = None\\n        self.setCursor(Qt.ArrowCursor)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01U3V12E7opfzjfDe2XYxQNz",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01YWcLM6cmghxFJvV9xaxtTX",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_015WFmVKzvGUWtHqTNkHmn5a",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01MCnHVEfyVQBf2wXnmTpVMD",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Xa5h5mmRCLLNZkj3xgGRuA",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Jq98yTPP9bK2MDL1p92TyP",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01E9MEGVwpCARdyeTew5KSzN",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01HGUmzVrFsAGcTwRv12StLf",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01U3V12E7opfzjfDe2XYxQNz",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me run the tests to make sure the canvas changes work:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_01XdkEzHAnwAPnWt7vxgPumx",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01XdkEzHAnwAPnWt7vxgPumx",
+      "content": "{\"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_sd0pl_wc\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.11s ==============================\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `run_tests`\n```json\n{}\n```\n**Result:**\n```json\n{\n  \"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_sd0pl_wc\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.11s ==============================\\n\",\n  \"passed\": true,\n  \"success\": true,\n  \"summary\": \"\\u2713 Tests passed (make test)\",\n  \"test_command\": \"make test\"\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Tests pass! The drag preview now uses the curved routing algorithm.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Done! The drag preview now uses the same circle-line-circle curved routing as the final belts:\\n\\n- **Start dragging** from an output port\\n- **Preview shows curved path** that respects the port's exit direction\\n- **End direction** follows the cursor direction (angle from start to cursor)\\n- **Same arc rendering** as final belts\\n\\nThis makes it much easier to see and debug the routing algorithm in real-time as you drag. Try it out and let me know if the curves still look wrong - we can iterate on the algorithm with immediate visual feedback now!\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01KrYjDmJ4Fsox1juPjDsxBN",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01KrYjDmJ4Fsox1juPjDsxBN",
+      "content": "{\"done\": true, \"message\": \"Done! The drag preview now uses the same circle-line-circle curved routing as the final belts:\\n\\n- **Start dragging** from an output port\\n- **Preview shows curved path** that respects the port's exit direction\\n- **End direction** follows the cursor direction (angle from start to cursor)\\n- **Same arc rendering** as final belts\\n\\nThis makes it much easier to see and debug the routing algorithm in real-time as you drag. Try it out and let me know if the curves still look wrong - we can iterate on the algorithm with immediate visual feedback now!\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Done! The drag preview now uses the same circle-line-circle curved routing as the final belts:\n\n- **Start dragging** from an output port\n- **Preview shows curved path** that respects the port's exit direction\n- **End direction** follows the cursor direction (angle from start to cursor)\n- **Same arc rendering** as final belts\n\nThis makes it much easier to see and debug the routing algorithm in real-time as you drag. Try it out and let me know if the curves still look wrong - we can iterate on the algorithm with immediate visual feedback now!"
     }
   ]
 }
