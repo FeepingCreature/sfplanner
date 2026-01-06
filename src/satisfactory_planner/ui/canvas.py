@@ -398,11 +398,23 @@ class FactoryCanvas(QGraphicsView):
 
     def on_building_moved(self, building_id: str, dx: float, dy: float) -> None:
         """Handle a building being moved."""
+        # First update the model position to match visual
+        building = self.document.buildings.get(building_id)
+        if building:
+            item = self._building_items.get(building_id)
+            if item:
+                # Sync model to visual position (in case of grid snap adjustments)
+                building.x = item.pos().x()
+                building.y = item.pos().y()
+        
+        # Create command for undo (but don't double-apply - model already updated)
+        # We need to track the delta for undo purposes
         cmd = MoveBuildingsCommand(
             document=self.document,
             building_ids=[building_id],
             dx=dx,
             dy=dy,
+            already_applied=True,  # Flag that model is already at new position
         )
         self.command_stack.execute(cmd)
 

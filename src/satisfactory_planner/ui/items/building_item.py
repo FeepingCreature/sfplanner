@@ -209,11 +209,8 @@ class BuildingItem(QGraphicsRectItem):
             dy = new_pos.y() - self._drag_start_pos.y()
 
             if dx != 0 or dy != 0:
-                # Update the building model
-                self.building.x = new_pos.x()
-                self.building.y = new_pos.y()
-
-                # Notify canvas
+                # DON'T update building.x/y here - the command will do it
+                # Just notify canvas to create the command
                 self.canvas.on_building_moved(self.building.id, dx, dy)
 
             self._drag_start_pos = None

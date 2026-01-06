@@ -126,8 +126,13 @@ class MoveBuildingsCommand(Command):
     building_ids: list[str]
     dx: float
     dy: float
+    already_applied: bool = False  # If True, execute() won't apply the delta again
 
     def execute(self) -> None:
+        if self.already_applied:
+            # Model already updated by UI - just mark as not already applied for redo
+            self.already_applied = False
+            return
         for bid in self.building_ids:
             if bid in self.document.buildings:
                 self.document.buildings[bid].x += self.dx
@@ -148,6 +153,7 @@ class MoveBuildingsCommand(Command):
                     building_ids=self.building_ids,
                     dx=self.dx + other.dx,
                     dy=self.dy + other.dy,
+                    already_applied=False,  # Merged command hasn't been applied
                 )
         return None
 
