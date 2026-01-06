@@ -1,4 +1,4 @@
-.PHONY: test lint format typecheck check all
+.PHONY: test lint format typecheck check all fix
 
 all: check
 
@@ -9,6 +9,10 @@ lint:
 	ruff check src/ tests/
 
 format:
+	ruff format src/ tests/
+
+fix:
+	ruff check --fix src/ tests/
 	ruff format src/ tests/
 
 typecheck:
