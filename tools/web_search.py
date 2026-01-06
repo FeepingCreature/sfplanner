@@ -45,8 +45,10 @@ def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
         from duckduckgo_search import DDGS
         
         results = []
-        with DDGS() as ddgs:
-            search_results = list(ddgs.text(query, max_results=max_results))
+        ddgs = DDGS()
+        # API changed: text() returns list directly, use 'max_results' param
+        search_results = ddgs.text(query, max_results=max_results)
+        if search_results:
             for r in search_results:
                 results.append({
                     "title": r.get("title", ""),

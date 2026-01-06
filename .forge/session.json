@@ -422,6 +422,51 @@
       "streaming": true,
       "actual_cost": 0.025038,
       "generation_id": "gen-1767715945-Lujk7vAlMhmXh6Wr95bO"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767715950800.json",
+      "response_file": "/tmp/forge_debug/response_1767715950800.json",
+      "timestamp": 1767715950.800855,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000152,
+      "generation_id": "gen-1767715950-Yoc9ukTO399wW0ISZXoU"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767715979917.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767715979917.json",
+      "timestamp": 1767715979.9184496,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0241435,
+      "generation_id": "gen-1767715980-bvpRAVXYXZcqvFJF9Xto"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767715983924.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767715983924.json",
+      "timestamp": 1767715983.92507,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.02531675,
+      "generation_id": "gen-1767715984-7Z8Pm30ZMiT3k7OQar3m"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767715989576.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767715989576.json",
+      "timestamp": 1767715989.577025,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.03494,
+      "generation_id": "gen-1767715989-HEFzLxz5fFw7bDVKS9zY"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767715999975.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767715999975.json",
+      "timestamp": 1767715999.976258,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.23411875,
+      "generation_id": "gen-1767716000-7cMDp4fSLnaxvaY09oIZ"
     }
   ],
   "messages": [
@@ -1341,6 +1386,120 @@
     {
       "role": "assistant",
       "content": "Ah, I see - the tool needs re-approval after I modified it. You'll need to approve the updated `web_search` tool. \n\nThe file has been modified since the last approval (I changed how it iterates results), so it needs to be re-approved.\n\nOnce you approve it, I can test. Or if you have a Google API key you'd prefer to use, I can rewrite it to use that instead - might be more reliable than scraping DuckDuckGo."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 6960ff31",
+      "_ui_only": true
+    },
+    {
+      "role": "system",
+      "content": "\u26a0\ufe0f **Modified Tool Requires Approval: `web_search`**\n\nReview this tool carefully. Once approved, it will run autonomously.\n\n```python\n\"\"\"Search the web using DuckDuckGo (no API key required).\n\nRequires: pip install duckduckgo-search\n\"\"\"\n\nfrom typing import TYPE_CHECKING, Any\n\nif TYPE_CHECKING:\n    from forge.vfs.work_in_progress import WorkInProgressVFS\n\n\ndef get_schema() -> dict[str, Any]:\n    return {\n        \"type\": \"function\",\n        \"function\": {\n            \"name\": \"web_search\",\n            \"description\": \"Search the web using DuckDuckGo. Returns a list of results with titles, URLs, and snippets. Use this to find documentation, package names, examples, etc. Compact results after use to save context.\",\n            \"parameters\": {\n                \"type\": \"object\",\n                \"properties\": {\n                    \"query\": {\n                        \"type\": \"string\",\n                        \"description\": \"The search query\",\n                    },\n                    \"max_results\": {\n                        \"type\": \"integer\",\n                        \"default\": 5,\n                        \"description\": \"Maximum number of results to return (default: 5)\",\n                    },\n                },\n                \"required\": [\"query\"],\n            },\n        },\n    }\n\n\ndef execute(vfs: \"WorkInProgressVFS\", args: dict[str, Any]) -> dict[str, Any]:\n    query = args.get(\"query\", \"\")\n    max_results = int(args.get(\"max_results\", 5))\n    \n    if not query:\n        return {\"success\": False, \"error\": \"Query is required\"}\n    \n    try:\n        from duckduckgo_search import DDGS\n        \n        results = []\n        with DDGS() as ddgs:\n            search_results = list(ddgs.text(query, max_results=max_results))\n            for r in search_results:\n                results.append({\n                    \"title\": r.get(\"title\", \"\"),\n                    \"url\": r.get(\"href\", \"\"),\n                    \"snippet\": r.get(\"body\", \"\"),\n                })\n        \n        # Estimate tokens (rough: 1 token \u2248 4 chars)\n        result_text = str(results)\n        token_estimate = len(result_text) // 4\n        \n        return {\n            \"success\": True,\n            \"query\": query,\n            \"results\": results,\n            \"count\": len(results),\n            \"_token_estimate\": token_estimate,\n        }\n        \n    except ImportError:\n        return {\n            \"success\": False, \n            \"error\": \"duckduckgo-search not installed. Run: pip install duckduckgo-search\"\n        }\n    except Exception as e:\n        return {\"success\": False, \"error\": str(e)}\n\n```\n\n<div class=\"approval-buttons\"><button onclick=\"approveTool('web_search', this)\">\u2705 Approve</button><button onclick=\"rejectTool('web_search', this)\">\u274c Reject</button></div>"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Approved tool: `web_search`"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Tool approvals committed: e602f20c"
+    },
+    {
+      "role": "user",
+      "content": "I actually forgot to install it ;_; it's installed now, see if it loads"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"query\": \"PySide6-QtAds PyPI\", \"max_results\": \"3\"}",
+            "name": "web_search"
+          },
+          "id": "toolu_vrtx_014Wh5WNdJpQCB7Tmngi346d",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_014Wh5WNdJpQCB7Tmngi346d",
+      "content": "{\"error\": \"slice indices must be integers or None or have an __index__ method\", \"success\": false}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `web_search`\n```json\n{\n  \"max_results\": \"3\",\n  \"query\": \"PySide6-QtAds PyPI\"\n}\n```\n**Result:**\n```json\n{\n  \"error\": \"slice indices must be integers or None or have an __index__ method\",\n  \"success\": false\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Still failing with the same slice error. The issue is likely in the `duckduckgo_search` library API. Let me check what version you have and look at the actual error more carefully. Let me try `web_fetch` instead - that uses stdlib only:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"url\": \"https://pypi.org/project/PySide6-QtAds/\"}",
+            "name": "web_fetch"
+          },
+          "id": "toolu_vrtx_01Mzkhb4mKC21jb4VnshWTTW",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Mzkhb4mKC21jb4VnshWTTW",
+      "content": "{\"_token_estimate\": 88, \"content\": \"[html2text not installed - raw text extraction]\\n\\nClient Challenge JavaScript is disabled in your browser. Please enable JavaScript to proceed. A required part of this site couldn\\u2019t load. This may be due to a browser extension, network issues, or browser settings. Please check your connection, disable any ad blockers, or try using a different browser.\", \"success\": true, \"url\": \"https://pypi.org/project/PySide6-QtAds/\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `web_fetch`\n```json\n{\n  \"url\": \"https://pypi.org/project/PySide6-QtAds/\"\n}\n```\n**Result:**\n```json\n{\n  \"_token_estimate\": 88,\n  \"content\": \"[html2text not installed - raw text extraction]\\n\\nClient Challenge JavaScript is disabled in your browser. Please enable JavaScript to proceed. A required part of this site couldn\\u2019t load. This may be due to a browser extension, network issues, or browser settings. Please check your connection, disable any ad blockers, or try using a different browser.\",\n  \"success\": true,\n  \"url\": \"https://pypi.org/project/PySide6-QtAds/\"\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "PyPI is blocking the request with a JS challenge. Let me fix the web_search tool properly - the issue is likely that `ddgs.text()` returns a generator and the `max_results` parameter might be named differently:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"tools/web_search.py\", \"search\": \"    try:\\n        from duckduckgo_search import DDGS\\n        \\n        results = []\\n        with DDGS() as ddgs:\\n            search_results = list(ddgs.text(query, max_results=max_results))\\n            for r in search_results:\\n                results.append({\\n                    \\\"title\\\": r.get(\\\"title\\\", \\\"\\\"),\\n                    \\\"url\\\": r.get(\\\"href\\\", \\\"\\\"),\\n                    \\\"snippet\\\": r.get(\\\"body\\\", \\\"\\\"),\\n                })\", \"replace\": \"    try:\\n        from duckduckgo_search import DDGS\\n        \\n        results = []\\n        ddgs = DDGS()\\n        # API changed: text() returns list directly, use 'max_results' param\\n        search_results = ddgs.text(query, max_results=max_results)\\n        if search_results:\\n            for r in search_results:\\n                results.append({\\n                    \\\"title\\\": r.get(\\\"title\\\", \\\"\\\"),\\n                    \\\"url\\\": r.get(\\\"href\\\", \\\"\\\"),\\n                    \\\"snippet\\\": r.get(\\\"body\\\", \\\"\\\"),\\n                })\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_012s2sQ7RzfPQTRmLka4eZpU",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"query\": \"Python PySide6 QtAds docking\", \"max_results\": \"3\"}",
+            "name": "web_search"
+          },
+          "id": "toolu_vrtx_016SMiTGzFMkzwABXBMjZPt4",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_012s2sQ7RzfPQTRmLka4eZpU",
+      "content": "{\"message\": \"Replaced in tools/web_search.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_016SMiTGzFMkzwABXBMjZPt4",
+      "content": "{\"error\": \"Tool web_search is not approved. Cannot execute.\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `web_search`\n```json\n{\n  \"max_results\": \"3\",\n  \"query\": \"Python PySide6 QtAds docking\"\n}\n```\n**Result:**\n```json\n{\n  \"error\": \"Tool web_search is not approved. Cannot execute.\"\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Needs re-approval again since I modified it. Can you approve the updated `web_search` tool?\n\n(Each modification changes the hash, requiring re-approval - that's the security model working as intended, just a bit tedious during development.)"
     }
   ]
 }
