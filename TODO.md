@@ -1,7 +1,7 @@
 # TODO
 
 ## Known Incomplete Items
-- [ ] Belt routing: circle-line-circle math needs real implementation (currently straight lines)
+- [x] Belt routing: Dubins path (circle-line-circle) implementation
 - [ ] Measure actual in-game belt turning radius
 - [ ] Icons from Satisfactory wiki need to be added to data/icons/
 - [ ] Recipe database needs full Satisfactory recipes (currently has samples)

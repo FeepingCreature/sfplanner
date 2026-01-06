@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt, QPointF
@@ -14,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import Belt, Building, BELT_CAPACITIES
-from satisfactory_planner.core.routing import compute_belt_path, Point
+from satisfactory_planner.core.routing import compute_belt_path, get_arc_points, Point
 
 if TYPE_CHECKING:
     pass
@@ -66,8 +67,6 @@ class BeltItem(QGraphicsPathItem):
 
     def update_path(self, source: Building, dest: Building) -> None:
         """Update the belt path between source and dest buildings."""
-        import math
-        
         # Get port positions and directions
         start_pos = source.output_port_pos(self.belt.source_port_index)
         end_pos = dest.input_port_pos(self.belt.dest_port_index)
@@ -77,94 +76,46 @@ class BeltItem(QGraphicsPathItem):
         start = Point(start_pos[0], start_pos[1])
         end = Point(end_pos[0], end_pos[1])
 
-        # Compute circle-line-circle path
+        # Compute Dubins path
         belt_path = compute_belt_path(start, start_dir, end, end_dir)
 
         path = QPainterPath()
+        path.moveTo(start.x, start.y)
         
-        if belt_path and belt_path.start_radius > 0:
+        if belt_path:
+            # Determine arc directions from path type
+            ccw1 = belt_path.path_type[0] == 'L'
+            ccw2 = belt_path.path_type[1] == 'L'
+            
             # Draw start arc
-            path.moveTo(start.x, start.y)
-            self._add_arc(
-                path,
+            arc1_points = get_arc_points(
                 belt_path.start_center,
-                belt_path.start_radius,
                 belt_path.start_angle_begin,
                 belt_path.start_angle_end,
-                belt_path.start_clockwise,
+                ccw1,
+                belt_path.start_radius
             )
+            for p in arc1_points[1:]:
+                path.lineTo(p.x, p.y)
+            
             # Draw line segment
             path.lineTo(belt_path.line_end.x, belt_path.line_end.y)
+            
             # Draw end arc
-            self._add_arc(
-                path,
+            arc2_points = get_arc_points(
                 belt_path.end_center,
-                belt_path.end_radius,
                 belt_path.end_angle_begin,
                 belt_path.end_angle_end,
-                belt_path.end_clockwise,
+                ccw2,
+                belt_path.end_radius
             )
+            for p in arc2_points[1:]:
+                path.lineTo(p.x, p.y)
         else:
             # Fallback to straight line
-            path.moveTo(start.x, start.y)
             path.lineTo(end.x, end.y)
 
         self.setPath(path)
-
-    def _add_arc(
-        self,
-        path: QPainterPath,
-        center: Point,
-        radius: float,
-        angle_begin: float,
-        angle_end: float,
-        clockwise: bool,
-    ) -> None:
-        """Add an arc to the path using line segments."""
-        import math
-        
-        # Calculate the sweep respecting the clockwise direction
-        # In screen coords (Y down), CW means angle increases, CCW means angle decreases
-        diff = angle_end - angle_begin
-        
-        # Normalize to [-2pi, 2pi]
-        while diff > 2 * math.pi:
-            diff -= 2 * math.pi
-        while diff < -2 * math.pi:
-            diff += 2 * math.pi
-        
-        if clockwise:
-            # CW in screen coords = angle increases
-            # If diff is negative, we need to go the long way (add 2pi)
-            if diff < 0:
-                diff += 2 * math.pi
-        else:
-            # CCW in screen coords = angle decreases
-            # If diff is positive, we need to go the long way (subtract 2pi)
-            if diff > 0:
-                diff -= 2 * math.pi
-        
-        # Skip tiny arcs
-        if abs(diff) < 0.01:
-            x = center.x + radius * math.cos(angle_end)
-            y = center.y + radius * math.sin(angle_end)
-            path.lineTo(x, y)
-            return
-        
-        # Clamp to max 180 degrees to avoid weird loops
-        if abs(diff) > math.pi:
-            diff = math.copysign(math.pi, diff)
-        
-        # Draw the arc by interpolating from begin to end
-        angle_span = abs(diff)
-        num_segments = max(4, int(angle_span * radius / 5))
-        
-        for i in range(1, num_segments + 1):
-            t = i / num_segments
-            angle = angle_begin + t * diff
-            x = center.x + radius * math.cos(angle)
-            y = center.y + radius * math.sin(angle)
-            path.lineTo(x, y)
 
     def paint(
         self,

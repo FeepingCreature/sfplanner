@@ -27,7 +27,7 @@ from satisfactory_planner.core import (
 from satisfactory_planner.core.models import generate_id
 from satisfactory_planner.ui.items.building_item import BuildingItem
 from satisfactory_planner.ui.items.belt_item import BeltItem
-from satisfactory_planner.core.routing import compute_belt_path, Point
+from satisfactory_planner.core.routing import compute_belt_path, get_arc_points, Point
 
 if TYPE_CHECKING:
     pass
@@ -433,6 +433,7 @@ class FactoryCanvas(QGraphicsView):
     def _update_drag_preview(self, end_pos: QPointF) -> None:
         """Update the drag preview path to the given end position."""
         import math
+        from PySide6.QtGui import QPainterPath
         
         if not self._drag_preview or not self._drag_start_pos:
             return
@@ -440,88 +441,51 @@ class FactoryCanvas(QGraphicsView):
         start = Point(self._drag_start_pos.x(), self._drag_start_pos.y())
         end = Point(end_pos.x(), end_pos.y())
         
-        # Default end direction: pointing toward start (belt arriving)
+        # Default end direction: direction of travel toward end point
         dx = end_pos.x() - self._drag_start_pos.x()
         dy = end_pos.y() - self._drag_start_pos.y()
-        end_dir = math.atan2(dy, dx)  # Direction of travel toward end point
+        end_dir = math.atan2(dy, dx)
         
-        # Compute curved path
+        # Compute Dubins path
         belt_path = compute_belt_path(start, self._drag_start_dir, end, end_dir)
-        if belt_path:
-            print(f"[DEBUG] start_dir={math.degrees(self._drag_start_dir):.0f}° end_dir={math.degrees(end_dir):.0f}°")
-            print(f"[DEBUG] start_cw={belt_path.start_clockwise} end_cw={belt_path.end_clockwise}")
-            print(f"[DEBUG] start_arc: {math.degrees(belt_path.start_angle_begin):.0f}° -> {math.degrees(belt_path.start_angle_end):.0f}°")
         
-        from PySide6.QtGui import QPainterPath
         path = QPainterPath()
+        path.moveTo(start.x, start.y)
         
-        if belt_path and belt_path.start_radius > 0:
-            path.moveTo(start.x, start.y)
-            self._add_arc_to_path(
-                path, belt_path.start_center, belt_path.start_radius,
-                belt_path.start_angle_begin, belt_path.start_angle_end,
-                belt_path.start_clockwise
+        if belt_path:
+            # Determine arc directions from path type
+            ccw1 = belt_path.path_type[0] == 'L'
+            ccw2 = belt_path.path_type[1] == 'L'
+            
+            # Draw start arc
+            arc1_points = get_arc_points(
+                belt_path.start_center,
+                belt_path.start_angle_begin,
+                belt_path.start_angle_end,
+                ccw1,
+                belt_path.start_radius
             )
+            for p in arc1_points[1:]:
+                path.lineTo(p.x, p.y)
+            
+            # Draw line segment
             path.lineTo(belt_path.line_end.x, belt_path.line_end.y)
-            self._add_arc_to_path(
-                path, belt_path.end_center, belt_path.end_radius,
-                belt_path.end_angle_begin, belt_path.end_angle_end,
-                belt_path.end_clockwise
+            
+            # Draw end arc
+            arc2_points = get_arc_points(
+                belt_path.end_center,
+                belt_path.end_angle_begin,
+                belt_path.end_angle_end,
+                ccw2,
+                belt_path.end_radius
             )
+            for p in arc2_points[1:]:
+                path.lineTo(p.x, p.y)
         else:
             # Fallback to straight line
-            path.moveTo(start.x, start.y)
             path.lineTo(end.x, end.y)
         
         self._drag_preview.setPath(path)
-    
-    def _add_arc_to_path(
-        self, path: "QPainterPath", center: Point, radius: float,
-        angle_begin: float, angle_end: float, clockwise: bool
-    ) -> None:
-        """Add an arc to the path using line segments."""
-        import math
-        
-        # Calculate the sweep respecting the clockwise direction
-        # In screen coords (Y down), CW means angle increases, CCW means angle decreases
-        diff = angle_end - angle_begin
-        
-        # Normalize to [-2pi, 2pi]
-        while diff > 2 * math.pi:
-            diff -= 2 * math.pi
-        while diff < -2 * math.pi:
-            diff += 2 * math.pi
-        
-        if clockwise:
-            # CW in screen coords = angle increases
-            if diff < 0:
-                diff += 2 * math.pi
-        else:
-            # CCW in screen coords = angle decreases
-            if diff > 0:
-                diff -= 2 * math.pi
-        
-        # Skip tiny arcs
-        if abs(diff) < 0.01:
-            x = center.x + radius * math.cos(angle_end)
-            y = center.y + radius * math.sin(angle_end)
-            path.lineTo(x, y)
-            return
-        
-        # Clamp to max 180 degrees to avoid weird loops
-        if abs(diff) > math.pi:
-            diff = math.copysign(math.pi, diff)
-        
-        # Draw the arc by interpolating from begin to end
-        angle_span = abs(diff)
-        num_segments = max(4, int(angle_span * radius / 5))
-        
-        for i in range(1, num_segments + 1):
-            t = i / num_segments
-            angle = angle_begin + t * diff
-            x = center.x + radius * math.cos(angle)
-            y = center.y + radius * math.sin(angle)
-            path.lineTo(x, y)
 
     def start_belt_connection(self, building_id: str, port_index: int) -> None:
         """Start a belt connection from an output port (legacy, kept for compatibility)."""

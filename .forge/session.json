@@ -1,6 +1,5 @@
 {
   "active_files": [
-    "spikes/arc_test/main.py",
     "TODO.md",
     "CLAUDE.md",
     "SPEC.md"
@@ -1130,6 +1129,69 @@
       "streaming": true,
       "actual_cost": 0.41756375,
       "generation_id": "gen-1767734979-Vv4hyNW11TiFwebbs6Eg"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767734990651.json",
+      "response_file": "/tmp/forge_debug/response_1767734990651.json",
+      "timestamp": 1767734990.6512945,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000218,
+      "generation_id": "gen-1767734990-cxBTxeE4R5rg5ZNRfhQZ"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767735389897.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767735389897.json",
+      "timestamp": 1767735389.8989575,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.41671125,
+      "generation_id": "gen-1767735390-T6IRqglhtVWRTdoBuHeu"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767735397738.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767735397738.json",
+      "timestamp": 1767735397.7396843,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.5541925,
+      "generation_id": "gen-1767735397-uMpiGheookjdkLG9oW4D"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767735444176.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767735444176.json",
+      "timestamp": 1767735444.177377,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.19213925,
+      "generation_id": "gen-1767735444-GtXDMZzguPlttA7GzbJM"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767735493817.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767735493817.json",
+      "timestamp": 1767735493.8182452,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.20672675,
+      "generation_id": "gen-1767735494-iYJNKxlobJ9R4RV31GB8"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767735561813.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767735561813.json",
+      "timestamp": 1767735561.814318,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.16747675,
+      "generation_id": "gen-1767735562-56o5bfT6eHo7SieTDMY7"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767735567389.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767735567389.json",
+      "timestamp": 1767735567.390886,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06481,
+      "generation_id": "gen-1767735567-xTssei4mJSrzTSekjxNN"
     }
   ],
   "messages": [
@@ -3863,6 +3925,186 @@
     {
       "role": "assistant",
       "content": "Ported the working Dubins path algorithm from Grok's matplotlib version to our PySide6 spike.\n\nKey differences from my broken attempts:\n1. **Circle center calculation**: Uses `[-us_y, us_x]` for left turn, `[us_y, -us_x]` for right turn\n2. **External tangent**: Rotates unit vector 90\u00b0 CW for LL, 90\u00b0 CCW for RR\n3. **Internal tangent**: Uses complex number division `Vc / complex(2R, L_str)` to find tangent direction\n4. **Arc sweep**: Simple modular arithmetic `(phi_end - phi_start + 2\u03c0) % 2\u03c0` for CCW\n\nRun `cd spikes/arc_test && python main.py` to test!"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: c62e0af6",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "yeaaah I think it works! let's put it back in the path drawing code?"
+    },
+    {
+      "role": "assistant",
+      "content": "Yes! Let me integrate the working Dubins path algorithm into the main routing code and update the belt/canvas to use it:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/core/routing.py\",\"src/satisfactory_planner/ui/items/belt_item.py\",\"src/satisfactory_planner/ui/canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_bdrk_01SsZd8YE86BanbVaq4ZAkaV",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01SsZd8YE86BanbVaq4ZAkaV",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/core/routing.py\", \"src/satisfactory_planner/ui/items/belt_item.py\", \"src/satisfactory_planner/ui/canvas.py\"], \"message\": \"Added 3 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now let me rewrite the routing module with the working Dubins algorithm:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/core/routing.py\", \"content\": \"\\\"\\\"\\\"Belt routing using Dubins paths (circle-line-circle algorithm).\\\"\\\"\\\"\\n\\nfrom __future__ import annotations\\n\\nimport math\\nfrom dataclasses import dataclass\\n\\n\\n@dataclass\\nclass Point:\\n    \\\"\\\"\\\"A 2D point.\\\"\\\"\\\"\\n\\n    x: float\\n    y: float\\n\\n    def distance_to(self, other: Point) -> float:\\n        return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)\\n\\n\\n@dataclass\\nclass BeltPath:\\n    \\\"\\\"\\\"A computed belt path with arcs and lines.\\\"\\\"\\\"\\n\\n    path_type: str  # 'LL', 'RR', 'LR', 'RL'\\n    \\n    # Start arc\\n    start_center: Point\\n    start_radius: float\\n    start_angle_begin: float  # radians\\n    start_angle_end: float\\n\\n    # Middle line segment\\n    line_start: Point\\n    line_end: Point\\n\\n    # End arc\\n    end_center: Point\\n    end_radius: float\\n    end_angle_begin: float\\n    end_angle_end: float\\n    \\n    # Total path length\\n    total_length: float\\n\\n\\n# Minimum turning radius for belts (in scene units)\\nMIN_TURN_RADIUS = 25.0\\n\\n\\ndef _get_angle(center: Point, p: Point) -> float:\\n    \\\"\\\"\\\"Get angle from center to point p.\\\"\\\"\\\"\\n    return math.atan2(p.y - center.y, p.x - center.x)\\n\\n\\ndef compute_belt_path(\\n    start: Point,\\n    start_direction: float,  # radians, direction belt leaves start\\n    end: Point,\\n    end_direction: float,  # radians, direction belt enters end\\n    radius: float = MIN_TURN_RADIUS,\\n) -> BeltPath | None:\\n    \\\"\\\"\\\"\\n    Compute optimal Dubins path (circle-line-circle).\\n    \\n    Tries all 4 path types (LL, RR, LR, RL) and picks the shortest.\\n    \\\"\\\"\\\"\\n    # If points are very close, return None (caller should handle)\\n    if start.distance_to(end) < radius * 0.1:\\n        return None\\n\\n    us_x, us_y = math.cos(start_direction), math.sin(start_direction)\\n    ue_x, ue_y = math.cos(end_direction), math.sin(end_direction)\\n    \\n    # Circle centers for left (CCW) and right (CW) turns\\n    # Left turn: center is 90\u00b0 CCW from direction (rotate by +90\u00b0)\\n    C1L = Point(start.x + radius * (-us_y), start.y + radius * us_x)\\n    # Right turn: center is 90\u00b0 CW from direction (rotate by -90\u00b0)\\n    C1R = Point(start.x + radius * us_y, start.y + radius * (-us_x))\\n    # Same for end\\n    C2L = Point(end.x + radius * (-ue_y), end.y + radius * ue_x)\\n    C2R = Point(end.x + radius * ue_y, end.y + radius * (-ue_x))\\n    \\n    def compute_candidate(\\n        C1: Point, C2: Point, type1: str, type2: str, external: bool\\n    ) -> BeltPath | None:\\n        \\\"\\\"\\\"Compute a candidate path between two circles.\\\"\\\"\\\"\\n        V_x = C2.x - C1.x\\n        V_y = C2.y - C1.y\\n        d = math.sqrt(V_x * V_x + V_y * V_y)\\n        \\n        if d < 1e-8:\\n            return None\\n            \\n        unit_v_x = V_x / d\\n        unit_v_y = V_y / d\\n        \\n        if external:\\n            # External tangent (LL or RR)\\n            if type1 == 'L' and type2 == 'L':\\n                # Rotate unit_v 90\u00b0 CW\\n                n_x, n_y = unit_v_y, -unit_v_x\\n                P = Point(C1.x + radius * n_x, C1.y + radius * n_y)\\n                Q = Point(C2.x + radius * n_x, C2.y + radius * n_y)\\n                L_str = d\\n            elif type1 == 'R' and type2 == 'R':\\n                # Rotate unit_v 90\u00b0 CCW\\n                n_x, n_y = -unit_v_y, unit_v_x\\n                P = Point(C1.x + radius * n_x, C1.y + radius * n_y)\\n                Q = Point(C2.x + radius * n_x, C2.y + radius * n_y)\\n                L_str = d\\n            else:\\n                return None\\n        else:\\n            # Internal tangent (LR or RL)\\n            if d < 2 * radius:\\n                return None  # Circles overlap\\n            \\n            L_str = math.sqrt(max(0, d * d - 4 * radius * radius))\\n            \\n            # Use complex number math for the tangent direction\\n            Vc = complex(V_x, V_y)\\n            if type1 == 'L' and type2 == 'R':\\n                denom = complex(2 * radius, L_str)\\n            elif type1 == 'R' and type2 == 'L':\\n                denom = complex(2 * radius, -L_str)\\n            else:\\n                return None\\n            \\n            mc = Vc / denom\\n            m_norm = abs(mc)\\n            if m_norm < 1e-8:\\n                return None\\n            mc /= m_norm\\n            m_x, m_y = mc.real, mc.imag\\n            \\n            P = Point(C1.x + radius * m_x, C1.y + radius * m_y)\\n            Q = Point(C2.x - radius * m_x, C2.y - radius * m_y)\\n        \\n        # Compute arc lengths\\n        phi_s = _get_angle(C1, start)\\n        phi_p = _get_angle(C1, P)\\n        \\n        if type1 == 'L':\\n            delta1 = (phi_p - phi_s + 2 * math.pi) % (2 * math.pi)\\n        else:\\n            delta1 = (phi_s - phi_p + 2 * math.pi) % (2 * math.pi)\\n        arc1_len = radius * delta1\\n        \\n        phi_q = _get_angle(C2, Q)\\n        phi_e = _get_angle(C2, end)\\n        \\n        if type2 == 'L':\\n            delta2 = (phi_e - phi_q + 2 * math.pi) % (2 * math.pi)\\n        else:\\n            delta2 = (phi_q - phi_e + 2 * math.pi) % (2 * math.pi)\\n        arc2_len = radius * delta2\\n        \\n        # Skip degenerate paths\\n        if arc1_len < 1e-6 or arc2_len < 1e-6:\\n            return None\\n        \\n        total_len = arc1_len + L_str + arc2_len\\n        \\n        return BeltPath(\\n            path_type=type1 + type2,\\n            start_center=C1,\\n            start_radius=radius,\\n            start_angle_begin=phi_s,\\n            start_angle_end=phi_p,\\n            line_start=P,\\n            line_end=Q,\\n            end_center=C2,\\n            end_radius=radius,\\n            end_angle_begin=phi_q,\\n            end_angle_end=phi_e,\\n            total_length=total_len,\\n        )\\n    \\n    # Try all 4 combinations\\n    candidates = [\\n        compute_candidate(C1L, C2L, 'L', 'L', True),   # External LL\\n        compute_candidate(C1R, C2R, 'R', 'R', True),   # External RR\\n        compute_candidate(C1L, C2R, 'L', 'R', False),  # Internal LR\\n        compute_candidate(C1R, C2L, 'R', 'L', False),  # Internal RL\\n    ]\\n    \\n    valid = [c for c in candidates if c is not None]\\n    if not valid:\\n        return None\\n    \\n    return min(valid, key=lambda c: c.total_length)\\n\\n\\ndef get_arc_points(\\n    center: Point, \\n    phi_start: float, \\n    phi_end: float, \\n    ccw: bool, \\n    radius: float, \\n    num_points: int = 20\\n) -> list[Point]:\\n    \\\"\\\"\\\"Get points along an arc.\\\"\\\"\\\"\\n    points = []\\n    if ccw:\\n        delta = (phi_end - phi_start + 2 * math.pi) % (2 * math.pi)\\n        for i in range(num_points + 1):\\n            t = i / num_points * delta\\n            phi = phi_start + t\\n            points.append(Point(center.x + radius * math.cos(phi), \\n                               center.y + radius * math.sin(phi)))\\n    else:\\n        delta = (phi_start - phi_end + 2 * math.pi) % (2 * math.pi)\\n        for i in range(num_points + 1):\\n            t = i / num_points * delta\\n            phi = phi_start - t\\n            points.append(Point(center.x + radius * math.cos(phi), \\n                               center.y + radius * math.sin(phi)))\\n    return points\\n\\n\\ndef path_to_points(path: BeltPath, segments_per_arc: int = 20) -> list[Point]:\\n    \\\"\\\"\\\"Convert a BeltPath to a list of points for drawing.\\\"\\\"\\\"\\n    points: list[Point] = []\\n    \\n    # Determine if arcs are CCW based on path type\\n    ccw1 = path.path_type[0] == 'L'\\n    ccw2 = path.path_type[1] == 'L'\\n    \\n    # Start arc\\n    arc1 = get_arc_points(\\n        path.start_center, path.start_angle_begin, path.start_angle_end,\\n        ccw1, path.start_radius, segments_per_arc\\n    )\\n    points.extend(arc1)\\n    \\n    # Line segment (end point)\\n    points.append(path.line_end)\\n    \\n    # End arc\\n    arc2 = get_arc_points(\\n        path.end_center, path.end_angle_begin, path.end_angle_end,\\n        ccw2, path.end_radius, segments_per_arc\\n    )\\n    points.extend(arc2)\\n    \\n    return points\\n\"}",
+            "name": "write_file"
+          },
+          "id": "toolu_vrtx_01SgTUXJszfrR58pMJF6Cqk1",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01SgTUXJszfrR58pMJF6Cqk1",
+      "content": "{\"message\": \"Wrote 7617 bytes to src/satisfactory_planner/core/routing.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I need to update the belt_item.py and canvas.py to use the new routing API. The key changes are:\n1. Remove the old `_add_arc` that used `clockwise` parameter\n2. Use `path_type` to determine CCW/CW (L=CCW, R=CW)\n3. Use the same arc drawing logic from the spike",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/belt_item.py\", \"content\": \"\\\"\\\"\\\"Graphics item for belts connecting buildings.\\\"\\\"\\\"\\n\\nfrom __future__ import annotations\\n\\nimport math\\nfrom typing import TYPE_CHECKING\\n\\nfrom PySide6.QtCore import Qt, QPointF\\nfrom PySide6.QtGui import QPainter, QPen, QBrush, QColor, QPainterPath\\nfrom PySide6.QtWidgets import (\\n    QGraphicsPathItem,\\n    QGraphicsItem,\\n    QStyleOptionGraphicsItem,\\n    QWidget,\\n)\\n\\nfrom satisfactory_planner.core import Belt, Building, BELT_CAPACITIES\\nfrom satisfactory_planner.core.routing import compute_belt_path, get_arc_points, Point\\n\\nif TYPE_CHECKING:\\n    pass\\n\\n\\n# Belt colors by tier (darker = lower tier)\\nBELT_COLORS = {\\n    1: QColor(100, 100, 100),\\n    2: QColor(120, 120, 120),\\n    3: QColor(140, 140, 140),\\n    4: QColor(160, 160, 160),\\n    5: QColor(180, 180, 180),\\n    6: QColor(200, 180, 100),  # Gold for max tier\\n}\\n\\n# Belt widths by tier\\nBELT_WIDTHS = {\\n    1: 2,\\n    2: 3,\\n    3: 4,\\n    4: 5,\\n    5: 6,\\n    6: 7,\\n}\\n\\n\\nclass BeltItem(QGraphicsPathItem):\\n    \\\"\\\"\\\"A belt connecting two buildings.\\\"\\\"\\\"\\n\\n    def __init__(self, belt: Belt, source: Building, dest: Building) -> None:\\n        super().__init__()\\n\\n        self.belt = belt\\n\\n        self._setup_flags()\\n        self._setup_appearance()\\n        self.update_path(source, dest)\\n\\n    def _setup_flags(self) -> None:\\n        \\\"\\\"\\\"Configure item flags.\\\"\\\"\\\"\\n        self.setFlag(QGraphicsItem.ItemIsSelectable, True)\\n        self.setZValue(-1)  # Draw behind buildings\\n\\n    def _setup_appearance(self) -> None:\\n        \\\"\\\"\\\"Configure appearance based on tier.\\\"\\\"\\\"\\n        color = BELT_COLORS.get(self.belt.tier, BELT_COLORS[1])\\n        width = BELT_WIDTHS.get(self.belt.tier, BELT_WIDTHS[1])\\n        self.setPen(QPen(color, width, Qt.SolidLine, Qt.RoundCap))\\n\\n    def update_path(self, source: Building, dest: Building) -> None:\\n        \\\"\\\"\\\"Update the belt path between source and dest buildings.\\\"\\\"\\\"\\n        # Get port positions and directions\\n        start_pos = source.output_port_pos(self.belt.source_port_index)\\n        end_pos = dest.input_port_pos(self.belt.dest_port_index)\\n        start_dir = source.output_port_direction(self.belt.source_port_index)\\n        end_dir = dest.input_port_direction(self.belt.dest_port_index)\\n\\n        start = Point(start_pos[0], start_pos[1])\\n        end = Point(end_pos[0], end_pos[1])\\n\\n        # Compute Dubins path\\n        belt_path = compute_belt_path(start, start_dir, end, end_dir)\\n\\n        path = QPainterPath()\\n        path.moveTo(start.x, start.y)\\n        \\n        if belt_path:\\n            # Determine arc directions from path type\\n            ccw1 = belt_path.path_type[0] == 'L'\\n            ccw2 = belt_path.path_type[1] == 'L'\\n            \\n            # Draw start arc\\n            arc1_points = get_arc_points(\\n                belt_path.start_center,\\n                belt_path.start_angle_begin,\\n                belt_path.start_angle_end,\\n                ccw1,\\n                belt_path.start_radius\\n            )\\n            for p in arc1_points[1:]:\\n                path.lineTo(p.x, p.y)\\n            \\n            # Draw line segment\\n            path.lineTo(belt_path.line_end.x, belt_path.line_end.y)\\n            \\n            # Draw end arc\\n            arc2_points = get_arc_points(\\n                belt_path.end_center,\\n                belt_path.end_angle_begin,\\n                belt_path.end_angle_end,\\n                ccw2,\\n                belt_path.end_radius\\n            )\\n            for p in arc2_points[1:]:\\n                path.lineTo(p.x, p.y)\\n        else:\\n            # Fallback to straight line\\n            path.lineTo(end.x, end.y)\\n\\n        self.setPath(path)\\n\\n    def paint(\\n        self,\\n        painter: QPainter,\\n        option: QStyleOptionGraphicsItem,\\n        widget: QWidget | None = None,\\n    ) -> None:\\n        \\\"\\\"\\\"Paint the belt with flow direction indicators.\\\"\\\"\\\"\\n        # Draw the main belt line\\n        super().paint(painter, option, widget)\\n\\n        # Draw selection highlight\\n        if self.isSelected():\\n            highlight_pen = QPen(QColor(255, 255, 0), self.pen().widthF() + 2)\\n            painter.setPen(highlight_pen)\\n            painter.drawPath(self.path())\\n\\n        # Draw flow direction arrows\\n        self._draw_flow_arrows(painter)\\n\\n    def _draw_flow_arrows(self, painter: QPainter) -> None:\\n        \\\"\\\"\\\"Draw small arrows along the belt to show flow direction.\\\"\\\"\\\"\\n        path = self.path()\\n        length = path.length()\\n\\n        if length < 50:\\n            return  # Too short for arrows\\n\\n        # Draw arrows at regular intervals\\n        arrow_spacing = 50\\n        num_arrows = int(length / arrow_spacing)\\n\\n        painter.setPen(QPen(QColor(100, 100, 100, 150), 1))\\n        painter.setBrush(QBrush(QColor(100, 100, 100, 150)))\\n\\n        for i in range(1, num_arrows):\\n            t = (i * arrow_spacing) / length\\n            point = path.pointAtPercent(t)\\n            angle = path.angleAtPercent(t)\\n\\n            painter.save()\\n            painter.translate(point)\\n            painter.rotate(-angle)\\n\\n            # Draw a small triangle arrow\\n            arrow_size = 4\\n            painter.drawPolygon(\\n                [\\n                    QPointF(arrow_size, 0),\\n                    QPointF(-arrow_size, -arrow_size),\\n                    QPointF(-arrow_size, arrow_size),\\n                ]\\n            )\\n            painter.restore()\\n\"}",
+            "name": "write_file"
+          },
+          "id": "toolu_vrtx_01VVE185FhRqpWYBhErytmV4",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01VVE185FhRqpWYBhErytmV4",
+      "content": "{\"message\": \"Wrote 5276 bytes to src/satisfactory_planner/ui/items/belt_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I need to update the canvas.py to use the new routing API and remove the old broken arc drawing code. The key is to use `get_arc_points` from routing.py:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"from satisfactory_planner.core.routing import compute_belt_path, Point\", \"replace\": \"from satisfactory_planner.core.routing import compute_belt_path, get_arc_points, Point\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_013L4XTLyK5n9g8jRx6rZPP9",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"    def _update_drag_preview(self, end_pos: QPointF) -> None:\\n        \\\"\\\"\\\"Update the drag preview path to the given end position.\\\"\\\"\\\"\\n        import math\\n        \\n        if not self._drag_preview or not self._drag_start_pos:\\n            return\\n        \\n        start = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\\n        end = Point(end_pos.x(), end_pos.y())\\n        \\n        # Default end direction: pointing toward start (belt arriving)\\n        dx = end_pos.x() - self._drag_start_pos.x()\\n        dy = end_pos.y() - self._drag_start_pos.y()\\n        end_dir = math.atan2(dy, dx)  # Direction of travel toward end point\\n        \\n        # Compute curved path\\n        belt_path = compute_belt_path(start, self._drag_start_dir, end, end_dir)\\n        if belt_path:\\n            print(f\\\"[DEBUG] start_dir={math.degrees(self._drag_start_dir):.0f}\u00b0 end_dir={math.degrees(end_dir):.0f}\u00b0\\\")\\n            print(f\\\"[DEBUG] start_cw={belt_path.start_clockwise} end_cw={belt_path.end_clockwise}\\\")\\n            print(f\\\"[DEBUG] start_arc: {math.degrees(belt_path.start_angle_begin):.0f}\u00b0 -> {math.degrees(belt_path.start_angle_end):.0f}\u00b0\\\")\\n        \\n        from PySide6.QtGui import QPainterPath\\n        path = QPainterPath()\\n        \\n        if belt_path and belt_path.start_radius > 0:\\n            path.moveTo(start.x, start.y)\\n            self._add_arc_to_path(\\n                path, belt_path.start_center, belt_path.start_radius,\\n                belt_path.start_angle_begin, belt_path.start_angle_end,\\n                belt_path.start_clockwise\\n            )\\n            path.lineTo(belt_path.line_end.x, belt_path.line_end.y)\\n            self._add_arc_to_path(\\n                path, belt_path.end_center, belt_path.end_radius,\\n                belt_path.end_angle_begin, belt_path.end_angle_end,\\n                belt_path.end_clockwise\\n            )\\n        else:\\n            # Fallback to straight line\\n            path.moveTo(start.x, start.y)\\n            path.lineTo(end.x, end.y)\\n        \\n        self._drag_preview.setPath(path)\\n    \\n    def _add_arc_to_path(\\n        self, path: \\\"QPainterPath\\\", center: Point, radius: float,\\n        angle_begin: float, angle_end: float, clockwise: bool\\n    ) -> None:\\n        \\\"\\\"\\\"Add an arc to the path using line segments.\\\"\\\"\\\"\\n        import math\\n        \\n        # Calculate the sweep respecting the clockwise direction\\n        # In screen coords (Y down), CW means angle increases, CCW means angle decreases\\n        diff = angle_end - angle_begin\\n        \\n        # Normalize to [-2pi, 2pi]\\n        while diff > 2 * math.pi:\\n            diff -= 2 * math.pi\\n        while diff < -2 * math.pi:\\n            diff += 2 * math.pi\\n        \\n        if clockwise:\\n            # CW in screen coords = angle increases\\n            if diff < 0:\\n                diff += 2 * math.pi\\n        else:\\n            # CCW in screen coords = angle decreases\\n            if diff > 0:\\n                diff -= 2 * math.pi\\n        \\n        # Skip tiny arcs\\n        if abs(diff) < 0.01:\\n            x = center.x + radius * math.cos(angle_end)\\n            y = center.y + radius * math.sin(angle_end)\\n            path.lineTo(x, y)\\n            return\\n        \\n        # Clamp to max 180 degrees to avoid weird loops\\n        if abs(diff) > math.pi:\\n            diff = math.copysign(math.pi, diff)\\n        \\n        # Draw the arc by interpolating from begin to end\\n        angle_span = abs(diff)\\n        num_segments = max(4, int(angle_span * radius / 5))\\n        \\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = angle_begin + t * diff\\n            x = center.x + radius * math.cos(angle)\\n            y = center.y + radius * math.sin(angle)\\n            path.lineTo(x, y)\", \"replace\": \"    def _update_drag_preview(self, end_pos: QPointF) -> None:\\n        \\\"\\\"\\\"Update the drag preview path to the given end position.\\\"\\\"\\\"\\n        import math\\n        from PySide6.QtGui import QPainterPath\\n        \\n        if not self._drag_preview or not self._drag_start_pos:\\n            return\\n        \\n        start = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\\n        end = Point(end_pos.x(), end_pos.y())\\n        \\n        # Default end direction: direction of travel toward end point\\n        dx = end_pos.x() - self._drag_start_pos.x()\\n        dy = end_pos.y() - self._drag_start_pos.y()\\n        end_dir = math.atan2(dy, dx)\\n        \\n        # Compute Dubins path\\n        belt_path = compute_belt_path(start, self._drag_start_dir, end, end_dir)\\n        \\n        path = QPainterPath()\\n        path.moveTo(start.x, start.y)\\n        \\n        if belt_path:\\n            # Determine arc directions from path type\\n            ccw1 = belt_path.path_type[0] == 'L'\\n            ccw2 = belt_path.path_type[1] == 'L'\\n            \\n            # Draw start arc\\n            arc1_points = get_arc_points(\\n                belt_path.start_center,\\n                belt_path.start_angle_begin,\\n                belt_path.start_angle_end,\\n                ccw1,\\n                belt_path.start_radius\\n            )\\n            for p in arc1_points[1:]:\\n                path.lineTo(p.x, p.y)\\n            \\n            # Draw line segment\\n            path.lineTo(belt_path.line_end.x, belt_path.line_end.y)\\n            \\n            # Draw end arc\\n            arc2_points = get_arc_points(\\n                belt_path.end_center,\\n                belt_path.end_angle_begin,\\n                belt_path.end_angle_end,\\n                ccw2,\\n                belt_path.end_radius\\n            )\\n            for p in arc2_points[1:]:\\n                path.lineTo(p.x, p.y)\\n        else:\\n            # Fallback to straight line\\n            path.lineTo(end.x, end.y)\\n        \\n        self._drag_preview.setPath(path)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01DUMhn7gw2FnHdbmJAAAevB",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_013L4XTLyK5n9g8jRx6rZPP9",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01DUMhn7gw2FnHdbmJAAAevB",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now let me run the tests to make sure everything works:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_01JqaAsgsDatB9vtotxENEco",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01JqaAsgsDatB9vtotxENEco",
+      "content": "{\"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_eqov1gjj\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.07s ==============================\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `run_tests`\n```json\n{}\n```\n**Result:**\n```json\n{\n  \"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_eqov1gjj\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.07s ==============================\\n\",\n  \"passed\": true,\n  \"success\": true,\n  \"summary\": \"\\u2713 Tests passed (make test)\",\n  \"test_command\": \"make test\"\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "All 29 tests pass! Let me update the TODO and clean up context:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"TODO.md\", \"search\": \"- [ ] Belt routing: circle-line-circle math needs real implementation (currently straight lines)\", \"replace\": \"- [x] Belt routing: Dubins path (circle-line-circle) implementation\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_016mkzoTs9jS59kEcRsDKVaD",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"src/satisfactory_planner/core/routing.py\",\"src/satisfactory_planner/ui/items/belt_item.py\",\"src/satisfactory_planner/ui/canvas.py\",\"spikes/arc_test/main.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01H7xfBEvSsz52maXctWqxBa",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Integrated the working Dubins path algorithm into the main codebase! \ud83c\udf89\\n\\n**Changes:**\\n- `src/satisfactory_planner/core/routing.py` - Complete rewrite with proper Dubins path algorithm\\n- `src/satisfactory_planner/ui/items/belt_item.py` - Uses new `get_arc_points()` for curved belts\\n- `src/satisfactory_planner/ui/canvas.py` - Drag preview uses same Dubins routing\\n\\n**The algorithm:**\\n1. Computes 4 candidate paths (LL, RR, LR, RL - Left/Right turns at each end)\\n2. LL/RR use external tangents, LR/RL use internal tangents\\n3. Uses complex number math for internal tangent calculation\\n4. Picks the shortest valid path\\n\\nAll 29 tests pass. Try connecting some buildings - the belts should now curve smoothly!\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01T4sj3cUpFRbjhPcLswayZ7",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_016mkzoTs9jS59kEcRsDKVaD",
+      "content": "{\"message\": \"Replaced in TODO.md\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01H7xfBEvSsz52maXctWqxBa",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 4 files from context\", \"remove\": [\"src/satisfactory_planner/core/routing.py\", \"src/satisfactory_planner/ui/items/belt_item.py\", \"src/satisfactory_planner/ui/canvas.py\", \"spikes/arc_test/main.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01T4sj3cUpFRbjhPcLswayZ7",
+      "content": "{\"done\": true, \"message\": \"Integrated the working Dubins path algorithm into the main codebase! \\ud83c\\udf89\\n\\n**Changes:**\\n- `src/satisfactory_planner/core/routing.py` - Complete rewrite with proper Dubins path algorithm\\n- `src/satisfactory_planner/ui/items/belt_item.py` - Uses new `get_arc_points()` for curved belts\\n- `src/satisfactory_planner/ui/canvas.py` - Drag preview uses same Dubins routing\\n\\n**The algorithm:**\\n1. Computes 4 candidate paths (LL, RR, LR, RL - Left/Right turns at each end)\\n2. LL/RR use external tangents, LR/RL use internal tangents\\n3. Uses complex number math for internal tangent calculation\\n4. Picks the shortest valid path\\n\\nAll 29 tests pass. Try connecting some buildings - the belts should now curve smoothly!\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Integrated the working Dubins path algorithm into the main codebase! \ud83c\udf89\n\n**Changes:**\n- `src/satisfactory_planner/core/routing.py` - Complete rewrite with proper Dubins path algorithm\n- `src/satisfactory_planner/ui/items/belt_item.py` - Uses new `get_arc_points()` for curved belts\n- `src/satisfactory_planner/ui/canvas.py` - Drag preview uses same Dubins routing\n\n**The algorithm:**\n1. Computes 4 candidate paths (LL, RR, LR, RL - Left/Right turns at each end)\n2. LL/RR use external tangents, LR/RL use internal tangents\n3. Uses complex number math for internal tangent calculation\n4. Picks the shortest valid path\n\nAll 29 tests pass. Try connecting some buildings - the belts should now curve smoothly!"
     }
   ]
 }

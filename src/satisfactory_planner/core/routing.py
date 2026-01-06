@@ -1,4 +1,4 @@
-"""Belt routing using circle-line-circle algorithm."""
+"""Belt routing using Dubins paths (circle-line-circle algorithm)."""
 
 from __future__ import annotations
 
@@ -21,12 +21,13 @@ class Point:
 class BeltPath:
     """A computed belt path with arcs and lines."""
 
+    path_type: str  # 'LL', 'RR', 'LR', 'RL'
+    
     # Start arc
     start_center: Point
     start_radius: float
     start_angle_begin: float  # radians
     start_angle_end: float
-    start_clockwise: bool
 
     # Middle line segment
     line_start: Point
@@ -37,20 +38,18 @@ class BeltPath:
     end_radius: float
     end_angle_begin: float
     end_angle_end: float
-    end_clockwise: bool
+    
+    # Total path length
+    total_length: float
 
 
 # Minimum turning radius for belts (in scene units)
 MIN_TURN_RADIUS = 25.0
 
 
-def _normalize_angle(angle: float) -> float:
-    """Normalize angle to [-pi, pi]."""
-    while angle > math.pi:
-        angle -= 2 * math.pi
-    while angle < -math.pi:
-        angle += 2 * math.pi
-    return angle
+def _get_angle(center: Point, p: Point) -> float:
+    """Get angle from center to point p."""
+    return math.atan2(p.y - center.y, p.x - center.x)
 
 
 def compute_belt_path(
@@ -61,224 +60,187 @@ def compute_belt_path(
     radius: float = MIN_TURN_RADIUS,
 ) -> BeltPath | None:
     """
-    Compute a circle-line-circle path between two points.
-
-    Uses outer tangent lines between the two turning circles.
-    Tries all 4 combinations (left/right turn at each end) and picks the shortest.
+    Compute optimal Dubins path (circle-line-circle).
+    
+    Tries all 4 path types (LL, RR, LR, RL) and picks the shortest.
     """
-    # If points are very close, just use straight line
-    dist = start.distance_to(end)
-    if dist < radius * 0.5:
+    # If points are very close, return None (caller should handle)
+    if start.distance_to(end) < radius * 0.1:
+        return None
+
+    us_x, us_y = math.cos(start_direction), math.sin(start_direction)
+    ue_x, ue_y = math.cos(end_direction), math.sin(end_direction)
+    
+    # Circle centers for left (CCW) and right (CW) turns
+    # Left turn: center is 90° CCW from direction (rotate by +90°)
+    C1L = Point(start.x + radius * (-us_y), start.y + radius * us_x)
+    # Right turn: center is 90° CW from direction (rotate by -90°)
+    C1R = Point(start.x + radius * us_y, start.y + radius * (-us_x))
+    # Same for end
+    C2L = Point(end.x + radius * (-ue_y), end.y + radius * ue_x)
+    C2R = Point(end.x + radius * ue_y, end.y + radius * (-ue_x))
+    
+    def compute_candidate(
+        C1: Point, C2: Point, type1: str, type2: str, external: bool
+    ) -> BeltPath | None:
+        """Compute a candidate path between two circles."""
+        V_x = C2.x - C1.x
+        V_y = C2.y - C1.y
+        d = math.sqrt(V_x * V_x + V_y * V_y)
+        
+        if d < 1e-8:
+            return None
+            
+        unit_v_x = V_x / d
+        unit_v_y = V_y / d
+        
+        if external:
+            # External tangent (LL or RR)
+            if type1 == 'L' and type2 == 'L':
+                # Rotate unit_v 90° CW
+                n_x, n_y = unit_v_y, -unit_v_x
+                P = Point(C1.x + radius * n_x, C1.y + radius * n_y)
+                Q = Point(C2.x + radius * n_x, C2.y + radius * n_y)
+                L_str = d
+            elif type1 == 'R' and type2 == 'R':
+                # Rotate unit_v 90° CCW
+                n_x, n_y = -unit_v_y, unit_v_x
+                P = Point(C1.x + radius * n_x, C1.y + radius * n_y)
+                Q = Point(C2.x + radius * n_x, C2.y + radius * n_y)
+                L_str = d
+            else:
+                return None
+        else:
+            # Internal tangent (LR or RL)
+            if d < 2 * radius:
+                return None  # Circles overlap
+            
+            L_str = math.sqrt(max(0, d * d - 4 * radius * radius))
+            
+            # Use complex number math for the tangent direction
+            Vc = complex(V_x, V_y)
+            if type1 == 'L' and type2 == 'R':
+                denom = complex(2 * radius, L_str)
+            elif type1 == 'R' and type2 == 'L':
+                denom = complex(2 * radius, -L_str)
+            else:
+                return None
+            
+            mc = Vc / denom
+            m_norm = abs(mc)
+            if m_norm < 1e-8:
+                return None
+            mc /= m_norm
+            m_x, m_y = mc.real, mc.imag
+            
+            P = Point(C1.x + radius * m_x, C1.y + radius * m_y)
+            Q = Point(C2.x - radius * m_x, C2.y - radius * m_y)
+        
+        # Compute arc lengths
+        phi_s = _get_angle(C1, start)
+        phi_p = _get_angle(C1, P)
+        
+        if type1 == 'L':
+            delta1 = (phi_p - phi_s + 2 * math.pi) % (2 * math.pi)
+        else:
+            delta1 = (phi_s - phi_p + 2 * math.pi) % (2 * math.pi)
+        arc1_len = radius * delta1
+        
+        phi_q = _get_angle(C2, Q)
+        phi_e = _get_angle(C2, end)
+        
+        if type2 == 'L':
+            delta2 = (phi_e - phi_q + 2 * math.pi) % (2 * math.pi)
+        else:
+            delta2 = (phi_q - phi_e + 2 * math.pi) % (2 * math.pi)
+        arc2_len = radius * delta2
+        
+        # Skip degenerate paths
+        if arc1_len < 1e-6 or arc2_len < 1e-6:
+            return None
+        
+        total_len = arc1_len + L_str + arc2_len
+        
         return BeltPath(
-            start_center=start,
-            start_radius=0,
-            start_angle_begin=0,
-            start_angle_end=0,
-            start_clockwise=True,
-            line_start=start,
-            line_end=end,
-            end_center=end,
-            end_radius=0,
-            end_angle_begin=0,
-            end_angle_end=0,
-            end_clockwise=True,
+            path_type=type1 + type2,
+            start_center=C1,
+            start_radius=radius,
+            start_angle_begin=phi_s,
+            start_angle_end=phi_p,
+            line_start=P,
+            line_end=Q,
+            end_center=C2,
+            end_radius=radius,
+            end_angle_begin=phi_q,
+            end_angle_end=phi_e,
+            total_length=total_len,
         )
-
-    best_path: BeltPath | None = None
-    best_length = float("inf")
-
-    # Try all 4 combinations: (start_left, end_left), (start_left, end_right), etc.
-    for start_sign in [-1, 1]:  # -1 = left (CCW), 1 = right (CW)
-        for end_sign in [-1, 1]:
-            path = _compute_single_path(
-                start, start_direction, end, end_direction, radius, start_sign, end_sign
-            )
-            if path:
-                length = _path_length(path)
-                if length < best_length:
-                    best_length = length
-                    best_path = path
-
-    return best_path
+    
+    # Try all 4 combinations
+    candidates = [
+        compute_candidate(C1L, C2L, 'L', 'L', True),   # External LL
+        compute_candidate(C1R, C2R, 'R', 'R', True),   # External RR
+        compute_candidate(C1L, C2R, 'L', 'R', False),  # Internal LR
+        compute_candidate(C1R, C2L, 'R', 'L', False),  # Internal RL
+    ]
+    
+    valid = [c for c in candidates if c is not None]
+    if not valid:
+        return None
+    
+    return min(valid, key=lambda c: c.total_length)
 
 
-def _compute_single_path(
-    start: Point,
-    start_dir: float,
-    end: Point,
-    end_dir: float,
-    radius: float,
-    start_sign: int,  # -1 for left/CCW, 1 for right/CW
-    end_sign: int,
-) -> BeltPath | None:
-    """Compute a single circle-line-circle path with given turn directions."""
-    # Perpendicular directions for circle centers
-    start_perp = start_dir + start_sign * math.pi / 2
-    end_perp = end_dir + end_sign * math.pi / 2
-
-    # Circle centers
-    c1 = Point(
-        start.x + radius * math.cos(start_perp),
-        start.y + radius * math.sin(start_perp),
-    )
-    c2 = Point(
-        end.x + radius * math.cos(end_perp),
-        end.y + radius * math.sin(end_perp),
-    )
-
-    # Distance between centers
-    d = c1.distance_to(c2)
-
-    # Angle from c1 to c2
-    theta = math.atan2(c2.y - c1.y, c2.x - c1.x)
-
-    # Compute tangent line
-    if start_sign == end_sign:
-        # Outer tangent (same turn direction)
-        if d < 0.001:
-            return None  # Centers too close
-        # For outer tangent, the tangent line is parallel to the line between centers
-        # The tangent points are perpendicular to this line, on opposite sides for CW vs CCW
-        # For CW (start_sign=1): tangent is to the RIGHT of the direction from c1 to c2
-        # For CCW (start_sign=-1): tangent is to the LEFT
-        perp_angle = theta - start_sign * math.pi / 2
-        t1 = Point(
-            c1.x + radius * math.cos(perp_angle),
-            c1.y + radius * math.sin(perp_angle),
-        )
-        t2 = Point(
-            c2.x + radius * math.cos(perp_angle),
-            c2.y + radius * math.sin(perp_angle),
-        )
+def get_arc_points(
+    center: Point, 
+    phi_start: float, 
+    phi_end: float, 
+    ccw: bool, 
+    radius: float, 
+    num_points: int = 20
+) -> list[Point]:
+    """Get points along an arc."""
+    points = []
+    if ccw:
+        delta = (phi_end - phi_start + 2 * math.pi) % (2 * math.pi)
+        for i in range(num_points + 1):
+            t = i / num_points * delta
+            phi = phi_start + t
+            points.append(Point(center.x + radius * math.cos(phi), 
+                               center.y + radius * math.sin(phi)))
     else:
-        # Inner tangent (opposite turn directions) - crosses between circles
-        if d < 2 * radius:
-            return None  # Circles overlap, no inner tangent
-        # Angle adjustment for inner tangent
-        alpha = math.asin(2 * radius / d)
-        if start_sign == 1:  # start CW, end CCW
-            tangent_angle = theta + alpha
-        else:  # start CCW, end CW
-            tangent_angle = theta - alpha
-        # Tangent points are perpendicular to the tangent line direction
-        t1 = Point(
-            c1.x + radius * math.cos(tangent_angle - start_sign * math.pi / 2),
-            c1.y + radius * math.sin(tangent_angle - start_sign * math.pi / 2),
-        )
-        t2 = Point(
-            c2.x + radius * math.cos(tangent_angle + math.pi - end_sign * math.pi / 2),
-            c2.y + radius * math.sin(tangent_angle + math.pi - end_sign * math.pi / 2),
-        )
-
-    # Compute arc angles
-    # Start arc: from start point to t1 around c1
-    start_angle_begin = math.atan2(start.y - c1.y, start.x - c1.x)
-    start_angle_end = math.atan2(t1.y - c1.y, t1.x - c1.x)
-
-    # End arc: from t2 to end point around c2
-    end_angle_begin = math.atan2(t2.y - c2.y, t2.x - c2.x)
-    end_angle_end = math.atan2(end.y - c2.y, end.x - c2.x)
-
-    return BeltPath(
-        start_center=c1,
-        start_radius=radius,
-        start_angle_begin=start_angle_begin,
-        start_angle_end=start_angle_end,
-        start_clockwise=(start_sign == 1),
-        line_start=t1,
-        line_end=t2,
-        end_center=c2,
-        end_radius=radius,
-        end_angle_begin=end_angle_begin,
-        end_angle_end=end_angle_end,
-        end_clockwise=(end_sign == 1),
-    )
+        delta = (phi_start - phi_end + 2 * math.pi) % (2 * math.pi)
+        for i in range(num_points + 1):
+            t = i / num_points * delta
+            phi = phi_start - t
+            points.append(Point(center.x + radius * math.cos(phi), 
+                               center.y + radius * math.sin(phi)))
+    return points
 
 
-def _arc_sweep(angle_begin: float, angle_end: float, clockwise: bool) -> float:
-    """Calculate the actual arc sweep, accounting for direction.
-    
-    Returns the sweep in the specified direction (always positive, 0 to 2*pi).
-    """
-    # Normalize both angles to [0, 2*pi)
-    a1 = angle_begin % (2 * math.pi)
-    a2 = angle_end % (2 * math.pi)
-    
-    if clockwise:
-        # CW: we go from a1 decreasing to a2
-        sweep = a1 - a2
-        if sweep < 0:  # Strict inequality - 0 means no turn needed
-            sweep += 2 * math.pi
-    else:
-        # CCW: we go from a1 increasing to a2
-        sweep = a2 - a1
-        if sweep < 0:  # Strict inequality - 0 means no turn needed
-            sweep += 2 * math.pi
-    
-    return sweep
-
-
-def _path_length(path: BeltPath) -> float:
-    """Calculate total path length."""
-    length = 0.0
-
-    # Start arc length
-    if path.start_radius > 0:
-        sweep = _arc_sweep(path.start_angle_begin, path.start_angle_end, path.start_clockwise)
-        # Penalize paths that loop more than 180 degrees
-        if sweep > math.pi:
-            length += sweep * path.start_radius * 3  # Heavy penalty
-        else:
-            length += sweep * path.start_radius
-
-    # Line segment
-    length += path.line_start.distance_to(path.line_end)
-
-    # End arc length
-    if path.end_radius > 0:
-        sweep = _arc_sweep(path.end_angle_begin, path.end_angle_end, path.end_clockwise)
-        # Penalize paths that loop more than 180 degrees
-        if sweep > math.pi:
-            length += sweep * path.end_radius * 3  # Heavy penalty
-        else:
-            length += sweep * path.end_radius
-
-    return length
-
-
-def path_to_points(path: BeltPath, segments_per_arc: int = 8) -> list[Point]:
+def path_to_points(path: BeltPath, segments_per_arc: int = 20) -> list[Point]:
     """Convert a BeltPath to a list of points for drawing."""
     points: list[Point] = []
-
-    # Start arc (if radius > 0)
-    if path.start_radius > 0:
-        angle_range = path.start_angle_end - path.start_angle_begin
-        for i in range(segments_per_arc + 1):
-            t = i / segments_per_arc
-            angle = path.start_angle_begin + t * angle_range
-            points.append(
-                Point(
-                    path.start_center.x + path.start_radius * math.cos(angle),
-                    path.start_center.y + path.start_radius * math.sin(angle),
-                )
-            )
-    else:
-        points.append(path.line_start)
-
-    # Line segment
+    
+    # Determine if arcs are CCW based on path type
+    ccw1 = path.path_type[0] == 'L'
+    ccw2 = path.path_type[1] == 'L'
+    
+    # Start arc
+    arc1 = get_arc_points(
+        path.start_center, path.start_angle_begin, path.start_angle_end,
+        ccw1, path.start_radius, segments_per_arc
+    )
+    points.extend(arc1)
+    
+    # Line segment (end point)
     points.append(path.line_end)
-
-    # End arc (if radius > 0)
-    if path.end_radius > 0:
-        angle_range = path.end_angle_end - path.end_angle_begin
-        for i in range(segments_per_arc + 1):
-            t = i / segments_per_arc
-            angle = path.end_angle_begin + t * angle_range
-            points.append(
-                Point(
-                    path.end_center.x + path.end_radius * math.cos(angle),
-                    path.end_center.y + path.end_radius * math.sin(angle),
-                )
-            )
-
+    
+    # End arc
+    arc2 = get_arc_points(
+        path.end_center, path.end_angle_begin, path.end_angle_end,
+        ccw2, path.end_radius, segments_per_arc
+    )
+    points.extend(arc2)
+    
     return points
