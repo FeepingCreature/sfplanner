@@ -276,16 +276,26 @@ class FactoryCanvas(QGraphicsView):
         # Cancel belt drag if released not on an input port
         if event.button() == Qt.LeftButton and self._is_connecting:
             # Check if we're over an input port - if not, cancel
-            # (The port's mouseReleaseEvent handles successful completion)
             scene_pos = self.mapToScene(event.pos())
-            item = self._scene.itemAt(scene_pos, self.transform())
             from satisfactory_planner.ui.items.port_item import PortItem
-            print(f"[DEBUG] mouseRelease: scene_pos={scene_pos}, item={item}, type={type(item)}")
-            if isinstance(item, PortItem):
-                print(f"[DEBUG]   PortItem: is_output={item.is_output}, building={item.building_id}, port={item.port_index}")
-            if not isinstance(item, PortItem) or item.is_output:
-                print(f"[DEBUG]   -> cancelling belt connection")
-                self.cancel_belt_connection()
+            
+            # Find all items at this point and look for an input port
+            items_at_pos = self._scene.items(scene_pos)
+            print(f"[DEBUG] mouseRelease: scene_pos={scene_pos}, items={len(items_at_pos)}")
+            for item in items_at_pos:
+                print(f"[DEBUG]   item: {type(item).__name__}")
+                if isinstance(item, PortItem):
+                    print(f"[DEBUG]     PortItem: is_output={item.is_output}, building={item.building_id}")
+                    if not item.is_output:
+                        # Found an input port - complete the connection
+                        print(f"[DEBUG]     -> completing belt connection")
+                        self.complete_belt_connection(item.building_id, item.port_index)
+                        super().mouseReleaseEvent(event)
+                        return
+            
+            # No input port found - cancel
+            print(f"[DEBUG]   -> no input port found, cancelling")
+            self.cancel_belt_connection()
 
         super().mouseReleaseEvent(event)
 
@@ -381,10 +391,12 @@ class FactoryCanvas(QGraphicsView):
         self._drag_start_pos = start_pos
         self.setCursor(Qt.CrossCursor)
 
-        # Create preview line
+        # Create preview line (not pickable so it doesn't block mouse events)
         self._drag_line = QGraphicsLineItem()
         self._drag_line.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.DashLine))
         self._drag_line.setZValue(1000)  # On top
+        self._drag_line.setFlag(QGraphicsItem.ItemIsSelectable, False)
+        self._drag_line.setAcceptedMouseButtons(Qt.NoButton)  # Ignore all mouse events
         self._scene.addItem(self._drag_line)
 
     def is_dragging_belt(self) -> bool:

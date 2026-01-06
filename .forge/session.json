@@ -195,6 +195,42 @@
       "streaming": true,
       "actual_cost": 0.1758575,
       "generation_id": "gen-1767726831-sgJWSVkh4brhnwYe6Cae"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767726839083.json",
+      "response_file": "/tmp/forge_debug/response_1767726839083.json",
+      "timestamp": 1767726839.083794,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000183,
+      "generation_id": "gen-1767726839-plbZqmA293ANGmY0YXMd"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767726894778.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767726894778.json",
+      "timestamp": 1767726894.7792382,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0275505,
+      "generation_id": "gen-1767726895-xxyc4L62a7s4tT7nxp9w"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767726902333.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767726902333.json",
+      "timestamp": 1767726902.3341618,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.17086375,
+      "generation_id": "gen-1767726902-bhIvoAasNl9YsTAs7iMa"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767726931979.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767726931979.json",
+      "timestamp": 1767726931.980281,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.15793875,
+      "generation_id": "gen-1767726932-9ZJVFf8yQ7pUlz9TWY8K"
     }
   ],
   "messages": [
@@ -510,6 +546,93 @@
     {
       "role": "assistant",
       "content": "Added debug prints in two places:\n\n1. **PortItem.mouseReleaseEvent** - logs when the port receives a release event, showing `is_output`, button, and whether we're dragging\n2. **FactoryCanvas.mouseReleaseEvent** - logs what item is under the cursor at release time, and whether it's a PortItem\n\nRun the app and try dragging from an output to an input - the console will show what's happening. My guess is that the mouse release event is being caught by the canvas before it reaches the port item, or the port isn't under the cursor position due to coordinate transforms."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: fd54c610",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "[DEBUG] mouseRelease: scene_pos=PySide6.QtCore.QPointF(0.000000, -148.000000), item=<PySide6.QtWidgets.QGraphicsLineItem(0x7eca0c0076a0, pos=0,0, z=1000) at 0x7eca19b8aa00>, type=<class 'PySide\n6.QtWidgets.QGraphicsLineItem'> \n[DEBUG]   -> cancelling belt connection \n[DEBUG] PortItem.mouseReleaseEvent: is_output=True, button=MouseButton.LeftButton, dragging=False\n\nwe should log where the other items are"
+    },
+    {
+      "role": "assistant",
+      "content": "Ah, the problem is clear! The `itemAt` is finding the drag preview line itself (the `QGraphicsLineItem` at z=1000) instead of the port underneath. Let me fix this by checking items properly and add more debug info.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"tool_call_ids\": [\"1\",\"2\",\"3\",\"4\",\"5\",\"6\",\"7\",\"8\",\"9\",\"10\",\"11\",\"12\",\"13\",\"14\",\"15\",\"16\"], \"summary\": \"Converted belt connection from two-click to drag-based: output port mousePressEvent starts drag with preview line, input port mouseReleaseEvent completes connection. Added debug prints showing the issue: itemAt() finds the drag preview line (QGraphicsLineItem z=1000) instead of the port underneath.\"}",
+            "name": "compact"
+          },
+          "id": "toolu_bdrk_01WdVzUzWvPcJBUNLXBvaEPX",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01WdVzUzWvPcJBUNLXBvaEPX",
+      "content": "{\"compact\": true, \"message\": \"Compacted 16 tool result(s)\", \"success\": true, \"summary\": \"Converted belt connection from two-click to drag-based: output port mousePressEvent starts drag with preview line, input port mouseReleaseEvent completes connection. Added debug prints showing the issue: itemAt() finds the drag preview line (QGraphicsLineItem z=1000) instead of the port underneath.\", \"tool_call_ids\": [\"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\", \"11\", \"12\", \"13\", \"14\", \"15\", \"16\"]}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "The issue is clear now - `itemAt()` returns the drag preview line instead of the port underneath. I need to either:\n1. Make the preview line ignore mouse events, or\n2. Look through all items at that point\n\nLet me fix this properly - I'll make the preview line not pickable and also use `items()` instead of `itemAt()` to find ports:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"        # Create preview line\\n        self._drag_line = QGraphicsLineItem()\\n        self._drag_line.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.DashLine))\\n        self._drag_line.setZValue(1000)  # On top\\n        self._scene.addItem(self._drag_line)\", \"replace\": \"        # Create preview line (not pickable so it doesn't block mouse events)\\n        self._drag_line = QGraphicsLineItem()\\n        self._drag_line.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.DashLine))\\n        self._drag_line.setZValue(1000)  # On top\\n        self._drag_line.setFlag(QGraphicsItem.ItemIsSelectable, False)\\n        self._drag_line.setAcceptedMouseButtons(Qt.NoButton)  # Ignore all mouse events\\n        self._scene.addItem(self._drag_line)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01MvtpEhpjDRBa2g5X7gG5ws",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"        # Cancel belt drag if released not on an input port\\n        if event.button() == Qt.LeftButton and self._is_connecting:\\n            # Check if we're over an input port - if not, cancel\\n            # (The port's mouseReleaseEvent handles successful completion)\\n            scene_pos = self.mapToScene(event.pos())\\n            item = self._scene.itemAt(scene_pos, self.transform())\\n            from satisfactory_planner.ui.items.port_item import PortItem\\n            print(f\\\"[DEBUG] mouseRelease: scene_pos={scene_pos}, item={item}, type={type(item)}\\\")\\n            if isinstance(item, PortItem):\\n                print(f\\\"[DEBUG]   PortItem: is_output={item.is_output}, building={item.building_id}, port={item.port_index}\\\")\\n            if not isinstance(item, PortItem) or item.is_output:\\n                print(f\\\"[DEBUG]   -> cancelling belt connection\\\")\\n                self.cancel_belt_connection()\", \"replace\": \"        # Cancel belt drag if released not on an input port\\n        if event.button() == Qt.LeftButton and self._is_connecting:\\n            # Check if we're over an input port - if not, cancel\\n            scene_pos = self.mapToScene(event.pos())\\n            from satisfactory_planner.ui.items.port_item import PortItem\\n            \\n            # Find all items at this point and look for an input port\\n            items_at_pos = self._scene.items(scene_pos)\\n            print(f\\\"[DEBUG] mouseRelease: scene_pos={scene_pos}, items={len(items_at_pos)}\\\")\\n            for item in items_at_pos:\\n                print(f\\\"[DEBUG]   item: {type(item).__name__}\\\")\\n                if isinstance(item, PortItem):\\n                    print(f\\\"[DEBUG]     PortItem: is_output={item.is_output}, building={item.building_id}\\\")\\n                    if not item.is_output:\\n                        # Found an input port - complete the connection\\n                        print(f\\\"[DEBUG]     -> completing belt connection\\\")\\n                        self.complete_belt_connection(item.building_id, item.port_index)\\n                        super().mouseReleaseEvent(event)\\n                        return\\n            \\n            # No input port found - cancel\\n            print(f\\\"[DEBUG]   -> no input port found, cancelling\\\")\\n            self.cancel_belt_connection()\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01WfJCzyuNT2gW3vz2h28XPu",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01MvtpEhpjDRBa2g5X7gG5ws",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01WfJCzyuNT2gW3vz2h28XPu",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now the canvas iterates through all items at the release point and looks for an input port. Try it again - the debug should show all items at the cursor position, including the port if it's there.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Added more detailed debug output. Now it:\\n\\n1. Lists **all items** at the release position (not just the top one)\\n2. For each item, prints its type\\n3. For PortItems, shows whether it's an input/output and the building ID\\n4. Also set `setAcceptedMouseButtons(Qt.NoButton)` on the preview line so it shouldn't intercept events\\n\\nRun it again and we'll see if the port is in the list but being skipped, or if it's not being found at all (coordinate issue).\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01NuSJsFjYCD19RaTxLNzZT4",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01NuSJsFjYCD19RaTxLNzZT4",
+      "content": "{\"done\": true, \"message\": \"Added more detailed debug output. Now it:\\n\\n1. Lists **all items** at the release position (not just the top one)\\n2. For each item, prints its type\\n3. For PortItems, shows whether it's an input/output and the building ID\\n4. Also set `setAcceptedMouseButtons(Qt.NoButton)` on the preview line so it shouldn't intercept events\\n\\nRun it again and we'll see if the port is in the list but being skipped, or if it's not being found at all (coordinate issue).\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Added more detailed debug output. Now it:\n\n1. Lists **all items** at the release position (not just the top one)\n2. For each item, prints its type\n3. For PortItems, shows whether it's an input/output and the building ID\n4. Also set `setAcceptedMouseButtons(Qt.NoButton)` on the preview line so it shouldn't intercept events\n\nRun it again and we'll see if the port is in the list but being skipped, or if it's not being found at all (coordinate issue)."
     }
   ]
 }
