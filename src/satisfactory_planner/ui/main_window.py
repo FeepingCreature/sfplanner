@@ -219,10 +219,10 @@ class MainWindow(QMainWindow):
 
         edit_menu.addSeparator()
 
-        delete_action = QAction("Delete", self)
-        delete_action.setShortcut(QKeySequence.Delete)
-        delete_action.triggered.connect(self._delete_selection)
-        edit_menu.addAction(delete_action)
+        self.delete_action = QAction("Delete", self)
+        self.delete_action.setShortcut(QKeySequence.Delete)
+        self.delete_action.triggered.connect(self._delete_selection)
+        edit_menu.addAction(self.delete_action)
 
         # View menu (merged with Layout)
         view_menu = self.menuBar().addMenu("View")

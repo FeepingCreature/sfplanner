@@ -112,15 +112,51 @@ class Building:
     def num_outputs(self) -> int:
         return BUILDING_METADATA[self.building_type][3]
 
+    def _get_display_size(self) -> tuple[int, int]:
+        """Get display size - smaller for logistics."""
+        if self.building_type in (BuildingType.SPLITTER, BuildingType.MERGER):
+            return (40, 40)  # LOGISTICS_SIZE
+        return (self.width, self.height)
+
     def input_port_pos(self, index: int) -> tuple[float, float]:
-        """Get position of input port by index."""
-        spacing = self.height / (self.num_inputs + 1)
-        return (self.x, self.y + spacing * (index + 1))
+        """Get position of input port by index (in scene coordinates)."""
+        w, h = self._get_display_size()
+        
+        if self.building_type == BuildingType.SPLITTER:
+            # Splitter: 1 input on left
+            return (self.x, self.y + h / 2)
+        elif self.building_type == BuildingType.MERGER:
+            # Merger: 3 inputs on top, left, bottom
+            positions = [
+                (self.x + w / 2, self.y),      # top
+                (self.x, self.y + h / 2),       # left
+                (self.x + w / 2, self.y + h),   # bottom
+            ]
+            return positions[index] if index < len(positions) else positions[0]
+        else:
+            # Standard: inputs on left
+            spacing = h / (self.num_inputs + 1)
+            return (self.x, self.y + spacing * (index + 1))
 
     def output_port_pos(self, index: int) -> tuple[float, float]:
-        """Get position of output port by index."""
-        spacing = self.height / (self.num_outputs + 1)
-        return (self.x + self.width, self.y + spacing * (index + 1))
+        """Get position of output port by index (in scene coordinates)."""
+        w, h = self._get_display_size()
+        
+        if self.building_type == BuildingType.SPLITTER:
+            # Splitter: 3 outputs on top, right, bottom
+            positions = [
+                (self.x + w / 2, self.y),      # top
+                (self.x + w, self.y + h / 2),   # right
+                (self.x + w / 2, self.y + h),   # bottom
+            ]
+            return positions[index] if index < len(positions) else positions[0]
+        elif self.building_type == BuildingType.MERGER:
+            # Merger: 1 output on right
+            return (self.x + w, self.y + h / 2)
+        else:
+            # Standard: outputs on right
+            spacing = h / (self.num_outputs + 1)
+            return (self.x + w, self.y + spacing * (index + 1))
 
 
 # Belt capacity by tier (items per minute)

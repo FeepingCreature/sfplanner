@@ -94,6 +94,9 @@ class FactoryCanvas(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
         self.setDragMode(QGraphicsView.NoDrag)
+        
+        # Make canvas focusable for keyboard events
+        self.setFocusPolicy(Qt.StrongFocus)
 
         # Background
         self.setBackgroundBrush(QBrush(QColor(40, 40, 45)))
@@ -377,6 +380,21 @@ class FactoryCanvas(QGraphicsView):
         self._is_connecting = False
         self._connect_start_building = None
         self.setCursor(Qt.ArrowCursor)
+
+    def keyPressEvent(self, event: object) -> None:
+        """Handle key presses."""
+        from PySide6.QtGui import QKeyEvent
+        if isinstance(event, QKeyEvent):
+            if event.key() == Qt.Key_Delete:
+                self.delete_selection()
+                return
+            elif event.key() == Qt.Key_Escape:
+                if self._placement_mode:
+                    self.set_placement_mode(None)
+                elif self._is_connecting:
+                    self.cancel_belt_connection()
+                return
+        super().keyPressEvent(event)  # type: ignore[arg-type]
 
     def on_building_moved(self, building_id: str, dx: float, dy: float) -> None:
         """Handle a building being moved."""
