@@ -1,0 +1,337 @@
+"""Factory canvas using QGraphicsView."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from PySide6.QtCore import Qt, Signal, QPointF, QRectF
+from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QWheelEvent, QMouseEvent
+from PySide6.QtWidgets import (
+    QGraphicsView,
+    QGraphicsScene,
+    QGraphicsItem,
+)
+
+from satisfactory_planner.core import (
+    Document,
+    CommandStack,
+    BuildingType,
+    Building,
+    Belt,
+    PlaceBuildingCommand,
+    DeleteItemsCommand,
+    MoveBuildingsCommand,
+    ConnectBeltCommand,
+)
+from satisfactory_planner.core.models import generate_id
+from satisfactory_planner.ui.items.building_item import BuildingItem
+from satisfactory_planner.ui.items.belt_item import BeltItem
+
+if TYPE_CHECKING:
+    pass
+
+
+class FactoryCanvas(QGraphicsView):
+    """The main factory canvas for placing buildings and belts."""
+
+    # Signals
+    selection_changed = Signal(list)  # List of selected item IDs
+    document_changed = Signal()  # Emitted when document is modified
+
+    def __init__(
+        self, document: Document, command_stack: CommandStack, parent: QGraphicsView | None = None
+    ) -> None:
+        super().__init__(parent)
+
+        self.document = document
+        self.command_stack = command_stack
+
+        self._setup_scene()
+        self._setup_view()
+
+        # Interaction state
+        self._placement_mode: BuildingType | None = None
+        self._is_panning = False
+        self._pan_start = QPointF()
+        self._is_connecting = False
+        self._connect_start_building: str | None = None
+        self._connect_start_port: int = 0
+        self._grid_snap = True
+        self._grid_size = 20
+
+        # Item tracking
+        self._building_items: dict[str, BuildingItem] = {}
+        self._belt_items: dict[str, BeltItem] = {}
+
+    def _setup_scene(self) -> None:
+        """Initialize the graphics scene."""
+        self._scene = QGraphicsScene(self)
+        self._scene.setSceneRect(-5000, -5000, 10000, 10000)
+        self.setScene(self._scene)
+
+    def _setup_view(self) -> None:
+        """Configure view settings."""
+        self.setRenderHint(QPainter.Antialiasing)
+        self.setRenderHint(QPainter.SmoothPixmapTransform)
+        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
+        self.setDragMode(QGraphicsView.NoDrag)
+
+        # Background
+        self.setBackgroundBrush(QBrush(QColor(40, 40, 45)))
+
+    def set_document(self, document: Document, command_stack: CommandStack) -> None:
+        """Set a new document."""
+        self.document = document
+        self.command_stack = command_stack
+        self.refresh()
+
+    def set_grid_snap(self, enabled: bool) -> None:
+        """Enable or disable grid snapping."""
+        self._grid_snap = enabled
+
+    def set_placement_mode(self, building_type: BuildingType | None) -> None:
+        """Enter placement mode for a building type."""
+        self._placement_mode = building_type
+        if building_type:
+            self.setCursor(Qt.CrossCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
+
+    def refresh(self) -> None:
+        """Refresh all items from the document."""
+        # Clear existing items
+        for item in list(self._building_items.values()):
+            self._scene.removeItem(item)
+        for item in list(self._belt_items.values()):
+            self._scene.removeItem(item)
+        self._building_items.clear()
+        self._belt_items.clear()
+
+        # Add buildings
+        for building in self.document.buildings.values():
+            self._add_building_item(building)
+
+        # Add belts
+        for belt in self.document.belts.values():
+            self._add_belt_item(belt)
+
+    def _add_building_item(self, building: Building) -> BuildingItem:
+        """Add a building item to the scene."""
+        item = BuildingItem(building, self)
+        self._scene.addItem(item)
+        self._building_items[building.id] = item
+        return item
+
+    def _add_belt_item(self, belt: Belt) -> BeltItem:
+        """Add a belt item to the scene."""
+        source = self.document.buildings.get(belt.source_building_id)
+        dest = self.document.buildings.get(belt.dest_building_id)
+        if source and dest:
+            item = BeltItem(belt, source, dest)
+            self._scene.addItem(item)
+            self._belt_items[belt.id] = item
+            return item
+        return None  # type: ignore[return-value]
+
+    def _snap_to_grid(self, pos: QPointF) -> QPointF:
+        """Snap a position to the grid if enabled."""
+        if self._grid_snap:
+            x = round(pos.x() / self._grid_size) * self._grid_size
+            y = round(pos.y() / self._grid_size) * self._grid_size
+            return QPointF(x, y)
+        return pos
+
+    # Event handlers
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        """Handle zoom with mouse wheel."""
+        factor = 1.15
+        if event.angleDelta().y() > 0:
+            self.scale(factor, factor)
+        else:
+            self.scale(1 / factor, 1 / factor)
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        """Handle mouse press."""
+        scene_pos = self.mapToScene(event.pos())
+
+        # Middle mouse or Space+Left for panning
+        if event.button() == Qt.MiddleButton:
+            self._is_panning = True
+            self._pan_start = event.pos()
+            self.setCursor(Qt.ClosedHandCursor)
+            return
+
+        # Left click
+        if event.button() == Qt.LeftButton:
+            # Placement mode
+            if self._placement_mode:
+                snapped = self._snap_to_grid(scene_pos)
+                self._place_building(self._placement_mode, snapped.x(), snapped.y())
+                self._placement_mode = None
+                self.setCursor(Qt.ArrowCursor)
+                return
+
+        super().mousePressEvent(event)
+        self._emit_selection_changed()
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        """Handle mouse move."""
+        if self._is_panning:
+            delta = event.pos() - self._pan_start
+            self._pan_start = event.pos()
+            self.horizontalScrollBar().setValue(
+                self.horizontalScrollBar().value() - int(delta.x())
+            )
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() - int(delta.y())
+            )
+            return
+
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        """Handle mouse release."""
+        if event.button() == Qt.MiddleButton and self._is_panning:
+            self._is_panning = False
+            self.setCursor(Qt.ArrowCursor)
+            return
+
+        super().mouseReleaseEvent(event)
+
+    def _place_building(self, building_type: BuildingType, x: float, y: float) -> None:
+        """Place a new building at the given position."""
+        building = Building(
+            id=generate_id(),
+            building_type=building_type,
+            x=x,
+            y=y,
+        )
+        cmd = PlaceBuildingCommand(document=self.document, building=building)
+        self.command_stack.execute(cmd)
+        self._add_building_item(building)
+        self.document_changed.emit()
+
+    def delete_selection(self) -> None:
+        """Delete selected items."""
+        selected_buildings: list[str] = []
+        selected_belts: list[str] = []
+
+        for item in self._scene.selectedItems():
+            if isinstance(item, BuildingItem):
+                selected_buildings.append(item.building.id)
+            elif isinstance(item, BeltItem):
+                selected_belts.append(item.belt.id)
+
+        if selected_buildings or selected_belts:
+            # Also delete belts connected to deleted buildings
+            for building_id in selected_buildings:
+                for belt in self.document.get_belts_for_building(building_id):
+                    if belt.id not in selected_belts:
+                        selected_belts.append(belt.id)
+
+            cmd = DeleteItemsCommand(
+                document=self.document,
+                building_ids=selected_buildings,
+                belt_ids=selected_belts,
+            )
+            self.command_stack.execute(cmd)
+            self.refresh()
+            self.document_changed.emit()
+
+    def _emit_selection_changed(self) -> None:
+        """Emit signal with current selection."""
+        selected_ids = []
+        for item in self._scene.selectedItems():
+            if isinstance(item, BuildingItem):
+                selected_ids.append(item.building.id)
+            elif isinstance(item, BeltItem):
+                selected_ids.append(item.belt.id)
+        self.selection_changed.emit(selected_ids)
+
+    def start_belt_connection(self, building_id: str, port_index: int) -> None:
+        """Start a belt connection from an output port."""
+        self._is_connecting = True
+        self._connect_start_building = building_id
+        self._connect_start_port = port_index
+        self.setCursor(Qt.CrossCursor)
+
+    def complete_belt_connection(self, building_id: str, port_index: int) -> None:
+        """Complete a belt connection to an input port."""
+        if self._is_connecting and self._connect_start_building:
+            belt = Belt(
+                id=generate_id(),
+                tier=1,  # Default to Mk.1
+                source_building_id=self._connect_start_building,
+                source_port_index=self._connect_start_port,
+                dest_building_id=building_id,
+                dest_port_index=port_index,
+            )
+            cmd = ConnectBeltCommand(document=self.document, belt=belt)
+            self.command_stack.execute(cmd)
+            self._add_belt_item(belt)
+            self.document_changed.emit()
+
+        self._is_connecting = False
+        self._connect_start_building = None
+        self.setCursor(Qt.ArrowCursor)
+
+    def cancel_belt_connection(self) -> None:
+        """Cancel the current belt connection."""
+        self._is_connecting = False
+        self._connect_start_building = None
+        self.setCursor(Qt.ArrowCursor)
+
+    def on_building_moved(self, building_id: str, dx: float, dy: float) -> None:
+        """Handle a building being moved."""
+        cmd = MoveBuildingsCommand(
+            document=self.document,
+            building_ids=[building_id],
+            dx=dx,
+            dy=dy,
+        )
+        self.command_stack.execute(cmd)
+
+        # Update connected belts
+        for belt_id, belt_item in self._belt_items.items():
+            belt = self.document.belts.get(belt_id)
+            if belt and (
+                belt.source_building_id == building_id or belt.dest_building_id == building_id
+            ):
+                source = self.document.buildings.get(belt.source_building_id)
+                dest = self.document.buildings.get(belt.dest_building_id)
+                if source and dest:
+                    belt_item.update_path(source, dest)
+
+        self.document_changed.emit()
+
+    def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
+        """Draw the grid background."""
+        super().drawBackground(painter, rect)
+
+        if not self._grid_snap:
+            return
+
+        # Draw grid
+        left = int(rect.left()) - (int(rect.left()) % self._grid_size)
+        top = int(rect.top()) - (int(rect.top()) % self._grid_size)
+
+        lines = []
+        x = left
+        while x < rect.right():
+            lines.append((x, rect.top(), x, rect.bottom()))
+            x += self._grid_size
+
+        y = top
+        while y < rect.bottom():
+            lines.append((rect.left(), y, rect.right(), y))
+            y += self._grid_size
+
+        pen = QPen(QColor(60, 60, 65), 0.5)
+        painter.setPen(pen)
+        for x1, y1, x2, y2 in lines:
+            painter.drawLine(int(x1), int(y1), int(x2), int(y2))
