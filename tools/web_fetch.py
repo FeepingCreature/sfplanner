@@ -68,7 +68,15 @@ def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
         if len(content) > max_len:
             content = content[:max_len] + "\n\n[... truncated ...]"
         
-        return {"success": True, "content": content, "url": url}
+        # Estimate tokens (rough: 1 token ≈ 4 chars)
+        token_estimate = len(content) // 4
+        
+        return {
+            "success": True, 
+            "content": content, 
+            "url": url,
+            "_token_estimate": token_estimate,
+        }
         
     except urllib.error.HTTPError as e:
         return {"success": False, "error": f"HTTP {e.code}: {e.reason}"}
