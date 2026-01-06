@@ -459,6 +459,60 @@
       "streaming": true,
       "actual_cost": 0.3068625,
       "generation_id": "gen-1767728149-fOujKD7EQN0iOUgOiVML"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767728156956.json",
+      "response_file": "/tmp/forge_debug/response_1767728156956.json",
+      "timestamp": 1767728156.956862,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000178,
+      "generation_id": "gen-1767728157-BS7wKNc3zvCGRZs1QTPS"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728222776.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728222776.json",
+      "timestamp": 1767728222.7779112,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.040102,
+      "generation_id": "gen-1767728224-VcBmk7eVaQmmpZQp06PY"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728232283.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728232283.json",
+      "timestamp": 1767728232.2844388,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.32702875,
+      "generation_id": "gen-1767728232-pPgmm5NtI8wgkuHjVW2N"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728250684.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728250684.json",
+      "timestamp": 1767728250.685788,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.33218875,
+      "generation_id": "gen-1767728250-stPUkOeAA156H551Mhw4"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728267381.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728267381.json",
+      "timestamp": 1767728267.3827662,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.31946875,
+      "generation_id": "gen-1767728268-US3FnMGhafqd1gVju4hw"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728273964.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728273964.json",
+      "timestamp": 1767728273.965656,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0411895,
+      "generation_id": "gen-1767728274-kZQ6xItnJVdTOLziqoAO"
     }
   ],
   "messages": [
@@ -1503,6 +1557,129 @@
     {
       "role": "assistant",
       "content": "Added debug logging to belt routing. Run the app, connect some buildings, and paste the console output. It will show:\n- Start/end positions\n- Start/end directions in degrees\n- Whether it chose clockwise or counter-clockwise for each arc\n\nThis will help us pinpoint what's wrong!"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 288e23f8",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "[DEBUG] Belt routing: \n start=Point(x=60.0, y=20.0), start_dir=-90.0\u00b0 \n end=Point(x=140.0, y=-80.0), end_dir=0.0\u00b0 \n path: start_cw=True, end_cw=True\n\nNot sure that's useful. They're definitely going the wrong way at both ends."
+    },
+    {
+      "role": "assistant",
+      "content": "Let me think about this more carefully. Looking at the debug output:\n\n- Start: (60, 20), direction -90\u00b0 (pointing UP in screen coords, since Y increases downward)\n- End: (140, -80), direction 0\u00b0 (pointing RIGHT)\n\nSo the belt leaves going UP and should arrive going RIGHT. But both arcs are CW which seems wrong.\n\nLet me visualize this better - I'll add more debug to see the actual arc angles:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/belt_item.py\", \"search\": \"        # Compute circle-line-circle path\\n        print(f\\\"[DEBUG] Belt routing:\\\")\\n        print(f\\\"  start={start}, start_dir={math.degrees(start_dir):.1f}\u00b0\\\")\\n        print(f\\\"  end={end}, end_dir={math.degrees(end_dir):.1f}\u00b0\\\")\\n        belt_path = compute_belt_path(start, start_dir, end, end_dir)\\n        if belt_path:\\n            print(f\\\"  path: start_cw={belt_path.start_clockwise}, end_cw={belt_path.end_clockwise}\\\")\", \"replace\": \"        # Compute circle-line-circle path\\n        belt_path = compute_belt_path(start, start_dir, end, end_dir)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_015QMpDbfpznBsCNizXkDwVL",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_015QMpDbfpznBsCNizXkDwVL",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/belt_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me think about this more carefully. The issue is that the algorithm is choosing paths that curve the wrong way. Looking at the geometry:",
+      "tool_calls": [
+        {
+          "id": "toolu_bdrk_01SrLeiP35XMgSbr6BzPUBZP",
+          "type": "function",
+          "function": {
+            "name": "think",
+            "arguments": "{\"_compacted\": true}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01SrLeiP35XMgSbr6BzPUBZP",
+      "content": "{\"conclusion\": \"The issue is coordinate system mismatch. The routing algorithm uses math conventions (Y up, CW = angles decrease) but Qt uses screen coords (Y down). In screen coords, CW means angles INCREASE. Need to invert the CW/CCW logic in _add_arc.\", \"message\": \"Thought through 439 tokens, concluded.\", \"success\": true, \"think\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `think`\n```json\n{\n  \"conclusion\": \"The issue is coordinate system mismatch. The routing algorithm uses math conventions (Y up, CW = angles decrease) but Qt uses screen coords (Y down). In screen coords, CW means angles INCREASE. Need to invert the CW/CCW logic in _add_arc.\",\n  \"scratchpad\": \"Looking at the debug output:\\n- start=(60, 20), start_dir=-90\\u00b0 (that's UP in Qt coords where Y increases downward)\\n- end=(140, -80), end_dir=0\\u00b0 (that's RIGHT)\\n\\nSo the belt should:\\n1. Leave the output port going UP (negative Y direction)\\n2. Curve around somehow\\n3. Arrive at the input port going RIGHT (positive X direction)\\n\\nThe destination is at (140, -80), which is to the right and above the start (60, 20).\\n\\nIf start_dir is -90\\u00b0 (up) and we're going to something up and to the right, we'd want to curve RIGHT (clockwise in screen coords).\\n\\nIf end_dir is 0\\u00b0 (right) and we're arriving from the left and below, we'd want to approach by curving... hmm.\\n\\nActually wait - I think the issue might be simpler. Let me re-examine the _add_arc function.\\n\\nThe `clockwise` parameter tells us which way to turn. In screen coordinates (Y down), clockwise means angles DECREASE. But in math coords (Y up), clockwise means angles INCREASE.\\n\\nQt uses Y-down coordinates. So:\\n- Angle 0 = right (+X)\\n- Angle 90 (or pi/2) = DOWN (+Y) \\n- Angle -90 (or -pi/2) = UP (-Y)\\n\\nHmm, actually looking at the _add_arc code:\\n```python\\nif clockwise:\\n    # CW: angle should decrease\\n    if angle_end > angle_begin:\\n        angle_end -= 2 * math.pi\\n```\\n\\nThis is for math coordinates. In screen coords (Y down), CW actually means angles INCREASE.\\n\\nSo the _add_arc function has the CW/CCW logic inverted for screen coordinates!\\n\\nActually wait, let me think again. In standard math (Y up):\\n- CCW = angles increase\\n- CW = angles decrease\\n\\nIn screen coords (Y down), everything is mirrored vertically:\\n- CCW = angles decrease\\n- CW = angles increase\\n\\nSo if we're using Y-down screen coordinates, and the algorithm computes \\\"clockwise\\\" based on math conventions, then the _add_arc function needs to INVERT the meaning.\\n\\nCurrently _add_arc treats `clockwise=True` as \\\"angles decrease\\\", which is correct for math coords but WRONG for screen coords.\\n\\nThe fix: in _add_arc, swap the logic - if clockwise is True in screen coords, angles should INCREASE.\\n\"\n}\n```\n**Result:**\n```json\n{\n  \"conclusion\": \"The issue is coordinate system mismatch. The routing algorithm uses math conventions (Y up, CW = angles decrease) but Qt uses screen coords (Y down). In screen coords, CW means angles INCREASE. Need to invert the CW/CCW logic in _add_arc.\",\n  \"message\": \"Thought through 439 tokens, concluded.\",\n  \"success\": true,\n  \"think\": true\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "The issue is a coordinate system mismatch. The routing algorithm uses math conventions (Y increases upward, CW = angles decrease) but Qt uses screen coordinates (Y increases downward). In screen coords, \"clockwise\" visually means angles INCREASE.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/belt_item.py\", \"search\": \"    def _add_arc(\\n        self,\\n        path: QPainterPath,\\n        center: Point,\\n        radius: float,\\n        angle_begin: float,\\n        angle_end: float,\\n        clockwise: bool,\\n    ) -> None:\\n        \\\"\\\"\\\"Add an arc to the path using line segments.\\\"\\\"\\\"\\n        import math\\n        \\n        # Determine sweep direction\\n        if clockwise:\\n            # CW: angle should decrease\\n            if angle_end > angle_begin:\\n                angle_end -= 2 * math.pi\\n        else:\\n            # CCW: angle should increase\\n            if angle_end < angle_begin:\\n                angle_end += 2 * math.pi\\n\\n        # Number of segments based on arc length\\n        angle_span = abs(angle_end - angle_begin)\\n        num_segments = max(4, int(angle_span * radius / 5))\\n        \\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = angle_begin + t * (angle_end - angle_begin)\\n            x = center.x + radius * math.cos(angle)\\n            y = center.y + radius * math.sin(angle)\\n            path.lineTo(x, y)\", \"replace\": \"    def _add_arc(\\n        self,\\n        path: QPainterPath,\\n        center: Point,\\n        radius: float,\\n        angle_begin: float,\\n        angle_end: float,\\n        clockwise: bool,\\n    ) -> None:\\n        \\\"\\\"\\\"Add an arc to the path using line segments.\\\"\\\"\\\"\\n        import math\\n        \\n        # Qt uses screen coordinates (Y down), so visual CW means angles INCREASE\\n        # The routing algorithm uses math coords (Y up), so we flip the logic\\n        if clockwise:\\n            # Visual CW in screen coords = angles increase\\n            if angle_end < angle_begin:\\n                angle_end += 2 * math.pi\\n        else:\\n            # Visual CCW in screen coords = angles decrease\\n            if angle_end > angle_begin:\\n                angle_end -= 2 * math.pi\\n\\n        # Number of segments based on arc length\\n        angle_span = abs(angle_end - angle_begin)\\n        num_segments = max(4, int(angle_span * radius / 5))\\n        \\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = angle_begin + t * (angle_end - angle_begin)\\n            x = center.x + radius * math.cos(angle)\\n            y = center.y + radius * math.sin(angle)\\n            path.lineTo(x, y)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01Pm6vi4f6Ltsb1ZtPfq6o67",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Pm6vi4f6Ltsb1ZtPfq6o67",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/belt_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me run the tests to make sure nothing broke:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_01M62pGA8riHeWJDRYM7iBVr",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01M62pGA8riHeWJDRYM7iBVr",
+      "content": "{\"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_ujo733v3\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.10s ==============================\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `run_tests`\n```json\n{}\n```\n**Result:**\n```json\n{\n  \"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_ujo733v3\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.10s ==============================\\n\",\n  \"passed\": true,\n  \"success\": true,\n  \"summary\": \"\\u2713 Tests passed (make test)\",\n  \"test_command\": \"make test\"\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Tests pass. Try it now - I flipped the arc direction logic to account for Qt's screen coordinate system (Y increases downward).",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fixed the coordinate system mismatch. The routing algorithm uses math conventions (Y up, CW = angles decrease) but Qt uses screen coords (Y down). I flipped the arc direction logic in `_add_arc()`:\\n\\n- **CW in screen coords** = angles increase\\n- **CCW in screen coords** = angles decrease\\n\\nTry connecting buildings again - the curves should now go the right direction at both ends!\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_012VRtnRYB8ht3deYmHgkWtQ",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_012VRtnRYB8ht3deYmHgkWtQ",
+      "content": "{\"done\": true, \"message\": \"Fixed the coordinate system mismatch. The routing algorithm uses math conventions (Y up, CW = angles decrease) but Qt uses screen coords (Y down). I flipped the arc direction logic in `_add_arc()`:\\n\\n- **CW in screen coords** = angles increase\\n- **CCW in screen coords** = angles decrease\\n\\nTry connecting buildings again - the curves should now go the right direction at both ends!\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Fixed the coordinate system mismatch. The routing algorithm uses math conventions (Y up, CW = angles decrease) but Qt uses screen coords (Y down). I flipped the arc direction logic in `_add_arc()`:\n\n- **CW in screen coords** = angles increase\n- **CCW in screen coords** = angles decrease\n\nTry connecting buildings again - the curves should now go the right direction at both ends!"
     }
   ]
 }

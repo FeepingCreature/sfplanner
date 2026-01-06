@@ -78,12 +78,7 @@ class BeltItem(QGraphicsPathItem):
         end = Point(end_pos[0], end_pos[1])
 
         # Compute circle-line-circle path
-        print(f"[DEBUG] Belt routing:")
-        print(f"  start={start}, start_dir={math.degrees(start_dir):.1f}°")
-        print(f"  end={end}, end_dir={math.degrees(end_dir):.1f}°")
         belt_path = compute_belt_path(start, start_dir, end, end_dir)
-        if belt_path:
-            print(f"  path: start_cw={belt_path.start_clockwise}, end_cw={belt_path.end_clockwise}")
 
         path = QPainterPath()
         
@@ -128,15 +123,16 @@ class BeltItem(QGraphicsPathItem):
         """Add an arc to the path using line segments."""
         import math
         
-        # Determine sweep direction
+        # Qt uses screen coordinates (Y down), so visual CW means angles INCREASE
+        # The routing algorithm uses math coords (Y up), so we flip the logic
         if clockwise:
-            # CW: angle should decrease
-            if angle_end > angle_begin:
-                angle_end -= 2 * math.pi
-        else:
-            # CCW: angle should increase
+            # Visual CW in screen coords = angles increase
             if angle_end < angle_begin:
                 angle_end += 2 * math.pi
+        else:
+            # Visual CCW in screen coords = angles decrease
+            if angle_end > angle_begin:
+                angle_end -= 2 * math.pi
 
         # Number of segments based on arc length
         angle_span = abs(angle_end - angle_begin)
