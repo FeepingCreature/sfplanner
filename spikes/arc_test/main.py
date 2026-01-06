@@ -9,7 +9,7 @@ import sys
 
 from PySide6.QtCore import Qt, QPointF
 from PySide6.QtGui import QPainter, QPen, QColor, QPainterPath, QBrush
-from PySide6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem
+from PySide6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem, QGraphicsTextItem
 
 
 class ArcTestView(QGraphicsView):
@@ -62,6 +62,12 @@ class ArcTestView(QGraphicsView):
         self.end_arrow.setPen(QPen(QColor(0, 150, 0), 2))
         self.scene.addItem(self.end_arrow)
         
+        # Debug text
+        self.debug_text = QGraphicsTextItem()
+        self.debug_text.setPos(-380, -380)
+        self.debug_text.setDefaultTextColor(Qt.white)
+        self.scene.addItem(self.debug_text)
+        
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             # Rotate start direction by 45 degrees
@@ -97,13 +103,15 @@ class ArcTestView(QGraphicsView):
         path.moveTo(self.start)
         
         # End direction: absolute (right-click rotates)
-        end_dir = self.end_dir
+        # The arrow shows where the belt is GOING, but for routing we need
+        # the direction the belt is COMING FROM (opposite)
+        end_dir = self.end_dir + math.pi  # Flip for routing
         
-        # Update end marker and direction arrow
+        # Update end marker and direction arrow (arrow shows actual end_dir, not flipped)
         self.end_marker.setPos(end)
         self.end_arrow.setPos(end)
-        arrow_dx = 30 * math.cos(end_dir)
-        arrow_dy = 30 * math.sin(end_dir)
+        arrow_dx = 30 * math.cos(self.end_dir)
+        arrow_dy = 30 * math.sin(self.end_dir)
         self.end_arrow.setLine(0, 0, arrow_dx, arrow_dy)
         
         # Determine which way to turn at each end based on relative position
@@ -179,6 +187,17 @@ class ArcTestView(QGraphicsView):
         
         # Draw arc from t2 to end around c2
         self._add_arc(path, c2, t2, end, end_sign)
+        
+        # Update debug text
+        def deg(r): return f"{math.degrees(r):.0f}°"
+        self.debug_text.setPlainText(
+            f"start_dir: {deg(self.start_dir)}  end_dir: {deg(self.end_dir)} (routing: {deg(end_dir)})\n"
+            f"start_sign: {'+CCW' if start_sign > 0 else '-CW'}  end_sign: {'+CCW' if end_sign > 0 else '-CW'}\n"
+            f"c1: ({c1.x():.0f}, {c1.y():.0f})  c2: ({c2.x():.0f}, {c2.y():.0f})\n"
+            f"theta (c1→c2): {deg(theta)}  tangent_angle: {deg(tangent_angle)}\n"
+            f"t1: ({t1.x():.0f}, {t1.y():.0f})  t2: ({t2.x():.0f}, {t2.y():.0f})\n"
+            f"cross: {cross:.1f}"
+        )
         
         return path
     
