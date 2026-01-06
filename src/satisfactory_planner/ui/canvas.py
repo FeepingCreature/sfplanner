@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QGraphicsView,
     QGraphicsScene,
     QGraphicsItem,
+    QGraphicsLineItem,
 )
 
 from satisfactory_planner.core import (
@@ -74,6 +75,10 @@ class FactoryCanvas(QGraphicsView):
         # Item tracking
         self._building_items: dict[str, BuildingItem] = {}
         self._belt_items: dict[str, BeltItem] = {}
+
+        # Belt drag preview
+        self._drag_line: QGraphicsLineItem | None = None
+        self._drag_start_pos: QPointF | None = None
 
         # Enable drag-drop
         self.setAcceptDrops(True)
@@ -243,6 +248,12 @@ class FactoryCanvas(QGraphicsView):
             )
             return
 
+        # Update belt drag preview line
+        if self._drag_line and self._drag_start_pos:
+            scene_pos = self.mapToScene(event.pos())
+            from PySide6.QtCore import QLineF
+            self._drag_line.setLine(QLineF(self._drag_start_pos, scene_pos))
+
         # Update ghost position in placement mode
         if self._placement_mode and self._ghost_item:
             scene_pos = self.mapToScene(event.pos())
@@ -261,6 +272,16 @@ class FactoryCanvas(QGraphicsView):
             else:
                 self.setCursor(Qt.ArrowCursor)
             return
+
+        # Cancel belt drag if released not on an input port
+        if event.button() == Qt.LeftButton and self._is_connecting:
+            # Check if we're over an input port - if not, cancel
+            # (The port's mouseReleaseEvent handles successful completion)
+            scene_pos = self.mapToScene(event.pos())
+            item = self._scene.itemAt(scene_pos, self.transform())
+            from satisfactory_planner.ui.items.port_item import PortItem
+            if not isinstance(item, PortItem) or item.is_output:
+                self.cancel_belt_connection()
 
         super().mouseReleaseEvent(event)
 
@@ -348,8 +369,26 @@ class FactoryCanvas(QGraphicsView):
                 selected_ids.append(item.belt.id)
         self.selection_changed.emit(selected_ids)
 
+    def start_belt_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:
+        """Start dragging a belt connection from an output port."""
+        self._is_connecting = True
+        self._connect_start_building = building_id
+        self._connect_start_port = port_index
+        self._drag_start_pos = start_pos
+        self.setCursor(Qt.CrossCursor)
+
+        # Create preview line
+        self._drag_line = QGraphicsLineItem()
+        self._drag_line.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.DashLine))
+        self._drag_line.setZValue(1000)  # On top
+        self._scene.addItem(self._drag_line)
+
+    def is_dragging_belt(self) -> bool:
+        """Return True if currently dragging a belt connection."""
+        return self._is_connecting and self._drag_line is not None
+
     def start_belt_connection(self, building_id: str, port_index: int) -> None:
-        """Start a belt connection from an output port."""
+        """Start a belt connection from an output port (legacy, kept for compatibility)."""
         self._is_connecting = True
         self._connect_start_building = building_id
         self._connect_start_port = port_index
@@ -371,14 +410,23 @@ class FactoryCanvas(QGraphicsView):
             self._add_belt_item(belt)
             self.document_changed.emit()
 
+        # Clean up drag state
         self._is_connecting = False
         self._connect_start_building = None
+        self._drag_start_pos = None
+        if self._drag_line:
+            self._scene.removeItem(self._drag_line)
+            self._drag_line = None
         self.setCursor(Qt.ArrowCursor)
 
     def cancel_belt_connection(self) -> None:
         """Cancel the current belt connection."""
         self._is_connecting = False
         self._connect_start_building = None
+        self._drag_start_pos = None
+        if self._drag_line:
+            self._scene.removeItem(self._drag_line)
+            self._drag_line = None
         self.setCursor(Qt.ArrowCursor)
 
     def keyPressEvent(self, event: object) -> None:
