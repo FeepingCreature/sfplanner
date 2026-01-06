@@ -24,7 +24,7 @@ class ArcTestView(QGraphicsView):
         # Fixed start point and direction
         self.start = QPointF(-100, 0)
         self.start_dir = 0  # radians, pointing RIGHT
-        self.end_dir_offset = math.pi  # end direction = toward mouse + this offset
+        self.end_dir = 0  # absolute end direction, pointing RIGHT
         self.radius = 40
         
         # Draw origin marker
@@ -69,7 +69,7 @@ class ArcTestView(QGraphicsView):
             self._update_arrow()
         elif event.button() == Qt.RightButton:
             # Rotate end direction by 45 degrees
-            self.end_dir_offset += math.pi / 4
+            self.end_dir += math.pi / 4
         super().mousePressEvent(event)
         
     def _update_arrow(self):
@@ -96,9 +96,8 @@ class ArcTestView(QGraphicsView):
         path = QPainterPath()
         path.moveTo(self.start)
         
-        # End direction: base direction + offset (right-click rotates)
-        base_angle = math.atan2(self.start.y() - end.y(), self.start.x() - end.x())
-        end_dir = base_angle + self.end_dir_offset
+        # End direction: absolute (right-click rotates)
+        end_dir = self.end_dir
         
         # Update end marker and direction arrow
         self.end_marker.setPos(end)
