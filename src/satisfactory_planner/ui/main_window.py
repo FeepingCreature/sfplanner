@@ -270,6 +270,10 @@ class MainWindow(QMainWindow):
         index = self.tab_widget.addTab(canvas, tab.name)
         self.tabs.append(tab)
         self.tab_widget.setCurrentIndex(index)
+        
+        # Ensure current_tab is set (signal might not fire on first tab)
+        self.current_tab = tab
+        self._on_tab_changed(index)
 
     def _close_tab(self, index: int) -> None:
         """Close a document tab."""
