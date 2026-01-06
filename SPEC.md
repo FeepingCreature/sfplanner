@@ -45,6 +45,14 @@ Icons from Satisfactory wiki will be available for all items/buildings.
 - Right-click to manually set belt tier
 - Faint gray arrows underneath indicate flow direction
 
+### Pipes (Fluids)
+- Same mechanics as belts, different visual theming
+- Fluid items (Water, Oil, etc.) use pipes instead of belts
+- Pipe tiers: Mk.1 (300 m³/min), Mk.2 (600 m³/min)
+- **Simplification**: Ignore head lift - assume full flow always
+- Same circle-line-circle routing as belts
+- Visual: thicker, different color scheme
+
 ### Belt Routing Algorithm
 Belts use a **circle-line-circle** routing:
 1. Constant-curvature arc leaving the source port
@@ -342,7 +350,6 @@ class CommandStack:
 **All state mutations must go through commands.** This is enforced architecturally.
 
 ## Future Considerations (Out of Scope v1)
-- Fluid pipes (different routing, different mechanics)
 - Trains/trucks/drones (logistics)
 - 3D view
 - Import from save file
