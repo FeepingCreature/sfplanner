@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt, Signal, QPointF, QRectF
-from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QWheelEvent, QMouseEvent
+from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QWheelEvent, QMouseEvent, QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
     QGraphicsView,
     QGraphicsScene,
@@ -31,6 +31,16 @@ if TYPE_CHECKING:
     pass
 
 
+class GhostBuildingItem(BuildingItem):
+    """Semi-transparent preview of building being placed."""
+
+    def __init__(self, building: Building, canvas: "FactoryCanvas") -> None:
+        super().__init__(building, canvas)
+        self.setOpacity(0.6)
+        self.setFlag(QGraphicsItem.ItemIsSelectable, False)
+        self.setFlag(QGraphicsItem.ItemIsMovable, False)
+
+
 class FactoryCanvas(QGraphicsView):
     """The main factory canvas for placing buildings and belts."""
 
@@ -51,6 +61,8 @@ class FactoryCanvas(QGraphicsView):
 
         # Interaction state
         self._placement_mode: BuildingType | None = None
+        self._placement_rotation: int = 0  # 0, 90, 180, 270
+        self._ghost_item: GhostBuildingItem | None = None
         self._is_panning = False
         self._pan_start = QPointF()
         self._is_connecting = False
@@ -62,6 +74,9 @@ class FactoryCanvas(QGraphicsView):
         # Item tracking
         self._building_items: dict[str, BuildingItem] = {}
         self._belt_items: dict[str, BeltItem] = {}
+
+        # Enable drag-drop
+        self.setAcceptDrops(True)
 
     def _setup_scene(self) -> None:
         """Initialize the graphics scene."""
@@ -92,12 +107,30 @@ class FactoryCanvas(QGraphicsView):
     def set_grid_snap(self, enabled: bool) -> None:
         """Enable or disable grid snapping."""
         self._grid_snap = enabled
+        self.viewport().update()
 
     def set_placement_mode(self, building_type: BuildingType | None) -> None:
         """Enter placement mode for a building type."""
+        # Clean up old ghost
+        if self._ghost_item:
+            self._scene.removeItem(self._ghost_item)
+            self._ghost_item = None
+
         self._placement_mode = building_type
+        self._placement_rotation = 0
+
         if building_type:
             self.setCursor(Qt.CrossCursor)
+            # Create ghost building for preview
+            ghost_building = Building(
+                id="ghost",
+                building_type=building_type,
+                x=0,
+                y=0,
+            )
+            self._ghost_item = GhostBuildingItem(ghost_building, self)
+            self._ghost_item.setVisible(False)
+            self._scene.addItem(self._ghost_item)
         else:
             self.setCursor(Qt.ArrowCursor)
 
@@ -126,7 +159,7 @@ class FactoryCanvas(QGraphicsView):
         self._building_items[building.id] = item
         return item
 
-    def _add_belt_item(self, belt: Belt) -> BeltItem:
+    def _add_belt_item(self, belt: Belt) -> BeltItem | None:
         """Add a belt item to the scene."""
         source = self.document.buildings.get(belt.source_building_id)
         dest = self.document.buildings.get(belt.dest_building_id)
@@ -135,7 +168,7 @@ class FactoryCanvas(QGraphicsView):
             self._scene.addItem(item)
             self._belt_items[belt.id] = item
             return item
-        return None  # type: ignore[return-value]
+        return None
 
     def _snap_to_grid(self, pos: QPointF) -> QPointF:
         """Snap a position to the grid if enabled."""
@@ -148,7 +181,18 @@ class FactoryCanvas(QGraphicsView):
     # Event handlers
 
     def wheelEvent(self, event: QWheelEvent) -> None:
-        """Handle zoom with mouse wheel."""
+        """Handle zoom with mouse wheel, rotation in placement mode."""
+        if self._placement_mode and self._ghost_item:
+            # Rotate building in placement mode
+            if event.angleDelta().y() > 0:
+                self._placement_rotation = (self._placement_rotation + 90) % 360
+            else:
+                self._placement_rotation = (self._placement_rotation - 90) % 360
+            self._ghost_item.rotation_angle = self._placement_rotation
+            self._ghost_item.update()
+            return
+
+        # Normal zoom
         factor = 1.15
         if event.angleDelta().y() > 0:
             self.scale(factor, factor)
@@ -159,11 +203,16 @@ class FactoryCanvas(QGraphicsView):
         """Handle mouse press."""
         scene_pos = self.mapToScene(event.pos())
 
-        # Middle mouse or Space+Left for panning
+        # Middle mouse for panning
         if event.button() == Qt.MiddleButton:
             self._is_panning = True
             self._pan_start = event.pos()
             self.setCursor(Qt.ClosedHandCursor)
+            return
+
+        # Right click to cancel placement
+        if event.button() == Qt.RightButton and self._placement_mode:
+            self.set_placement_mode(None)
             return
 
         # Left click
@@ -172,8 +221,7 @@ class FactoryCanvas(QGraphicsView):
             if self._placement_mode:
                 snapped = self._snap_to_grid(scene_pos)
                 self._place_building(self._placement_mode, snapped.x(), snapped.y())
-                self._placement_mode = None
-                self.setCursor(Qt.ArrowCursor)
+                # Stay in placement mode for rapid placement
                 return
 
         super().mousePressEvent(event)
@@ -192,16 +240,59 @@ class FactoryCanvas(QGraphicsView):
             )
             return
 
+        # Update ghost position in placement mode
+        if self._placement_mode and self._ghost_item:
+            scene_pos = self.mapToScene(event.pos())
+            snapped = self._snap_to_grid(scene_pos)
+            self._ghost_item.setPos(snapped)
+            self._ghost_item.setVisible(True)
+
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         """Handle mouse release."""
         if event.button() == Qt.MiddleButton and self._is_panning:
             self._is_panning = False
-            self.setCursor(Qt.ArrowCursor)
+            if self._placement_mode:
+                self.setCursor(Qt.CrossCursor)
+            else:
+                self.setCursor(Qt.ArrowCursor)
             return
 
         super().mouseReleaseEvent(event)
+
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+        """Handle drag enter for building placement."""
+        if event.mimeData().hasFormat("application/x-building-type"):
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event: QDragEnterEvent) -> None:
+        """Handle drag move."""
+        if event.mimeData().hasFormat("application/x-building-type"):
+            event.acceptProposedAction()
+        else:
+            super().dragMoveEvent(event)
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        """Handle drop to place building."""
+        if event.mimeData().hasFormat("application/x-building-type"):
+            building_name = event.mimeData().data("application/x-building-type").data().decode()
+            # Find the BuildingType by value
+            building_type = None
+            for bt in BuildingType:
+                if bt.value == building_name:
+                    building_type = bt
+                    break
+
+            if building_type:
+                scene_pos = self.mapToScene(event.position().toPoint())
+                snapped = self._snap_to_grid(scene_pos)
+                self._place_building(building_type, snapped.x(), snapped.y())
+                event.acceptProposedAction()
+        else:
+            super().dropEvent(event)
 
     def _place_building(self, building_type: BuildingType, x: float, y: float) -> None:
         """Place a new building at the given position."""
@@ -213,7 +304,8 @@ class FactoryCanvas(QGraphicsView):
         )
         cmd = PlaceBuildingCommand(document=self.document, building=building)
         self.command_stack.execute(cmd)
-        self._add_building_item(building)
+        item = self._add_building_item(building)
+        item.rotation_angle = self._placement_rotation
         self.document_changed.emit()
 
     def delete_selection(self) -> None:

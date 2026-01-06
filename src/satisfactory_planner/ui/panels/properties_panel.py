@@ -13,12 +13,234 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QGroupBox,
+    QPushButton,
+    QDialog,
+    QDialogButtonBox,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QHBoxLayout,
+    QSpinBox,
 )
 
-from satisfactory_planner.core import Document, CommandStack, SetClockSpeedCommand
+from satisfactory_planner.core import Document, CommandStack, SetClockSpeedCommand, BuildingType
 
 if TYPE_CHECKING:
     pass
+
+
+class RecipeEditorDialog(QDialog):
+    """Dialog for viewing and editing recipes."""
+
+    def __init__(self, document: Document, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.document = document
+        self.setWindowTitle("Recipe Editor")
+        self.setMinimumSize(500, 400)
+
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Create the dialog UI."""
+        layout = QVBoxLayout(self)
+
+        # Recipe list
+        list_layout = QHBoxLayout()
+
+        self.recipe_list = QListWidget()
+        self.recipe_list.currentItemChanged.connect(self._on_recipe_selected)
+        list_layout.addWidget(self.recipe_list, 1)
+
+        # Recipe details form
+        details_widget = QWidget()
+        details_layout = QFormLayout(details_widget)
+
+        self.name_edit = QLineEdit()
+        details_layout.addRow("Name:", self.name_edit)
+
+        self.building_combo = QComboBox()
+        for bt in BuildingType:
+            if bt not in (BuildingType.SPLITTER, BuildingType.MERGER,
+                          BuildingType.MINER_MK1, BuildingType.MINER_MK2, BuildingType.MINER_MK3):
+                self.building_combo.addItem(bt.value, bt)
+        details_layout.addRow("Building:", self.building_combo)
+
+        # Inputs section
+        details_layout.addRow(QLabel("<b>Inputs (per minute):</b>"))
+        self.input1_name = QLineEdit()
+        self.input1_rate = QDoubleSpinBox()
+        self.input1_rate.setRange(0, 10000)
+        input1_layout = QHBoxLayout()
+        input1_layout.addWidget(self.input1_name)
+        input1_layout.addWidget(self.input1_rate)
+        details_layout.addRow("Input 1:", input1_layout)
+
+        self.input2_name = QLineEdit()
+        self.input2_rate = QDoubleSpinBox()
+        self.input2_rate.setRange(0, 10000)
+        input2_layout = QHBoxLayout()
+        input2_layout.addWidget(self.input2_name)
+        input2_layout.addWidget(self.input2_rate)
+        details_layout.addRow("Input 2:", input2_layout)
+
+        # Outputs section
+        details_layout.addRow(QLabel("<b>Outputs (per minute):</b>"))
+        self.output1_name = QLineEdit()
+        self.output1_rate = QDoubleSpinBox()
+        self.output1_rate.setRange(0, 10000)
+        output1_layout = QHBoxLayout()
+        output1_layout.addWidget(self.output1_name)
+        output1_layout.addWidget(self.output1_rate)
+        details_layout.addRow("Output 1:", output1_layout)
+
+        self.output2_name = QLineEdit()
+        self.output2_rate = QDoubleSpinBox()
+        self.output2_rate.setRange(0, 10000)
+        output2_layout = QHBoxLayout()
+        output2_layout.addWidget(self.output2_name)
+        output2_layout.addWidget(self.output2_rate)
+        details_layout.addRow("Output 2:", output2_layout)
+
+        self.power_spin = QDoubleSpinBox()
+        self.power_spin.setRange(0, 1000)
+        self.power_spin.setSuffix(" MW")
+        details_layout.addRow("Power:", self.power_spin)
+
+        list_layout.addWidget(details_widget, 2)
+        layout.addLayout(list_layout)
+
+        # Buttons
+        button_layout = QHBoxLayout()
+
+        add_btn = QPushButton("Add New")
+        add_btn.clicked.connect(self._add_recipe)
+        button_layout.addWidget(add_btn)
+
+        save_btn = QPushButton("Save Changes")
+        save_btn.clicked.connect(self._save_recipe)
+        button_layout.addWidget(save_btn)
+
+        button_layout.addStretch()
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        button_layout.addWidget(close_btn)
+
+        layout.addLayout(button_layout)
+
+        # Load existing recipes
+        self._load_recipes()
+
+    def _load_recipes(self) -> None:
+        """Load recipes into list."""
+        self.recipe_list.clear()
+        for recipe_id, recipe in self.document.recipes.items():
+            item = QListWidgetItem(recipe.name)
+            item.setData(Qt.UserRole, recipe_id)
+            self.recipe_list.addItem(item)
+
+    def _on_recipe_selected(self, current: QListWidgetItem | None, previous: QListWidgetItem | None) -> None:
+        """Handle recipe selection."""
+        if not current:
+            return
+
+        recipe_id = current.data(Qt.UserRole)
+        recipe = self.document.recipes.get(recipe_id)
+        if not recipe:
+            return
+
+        self.name_edit.setText(recipe.name)
+
+        # Set building type
+        for i in range(self.building_combo.count()):
+            if self.building_combo.itemData(i) == recipe.building_type:
+                self.building_combo.setCurrentIndex(i)
+                break
+
+        # Set inputs
+        if len(recipe.inputs) >= 1:
+            self.input1_name.setText(recipe.inputs[0].item_id)
+            self.input1_rate.setValue(recipe.inputs[0].rate)
+        else:
+            self.input1_name.clear()
+            self.input1_rate.setValue(0)
+
+        if len(recipe.inputs) >= 2:
+            self.input2_name.setText(recipe.inputs[1].item_id)
+            self.input2_rate.setValue(recipe.inputs[1].rate)
+        else:
+            self.input2_name.clear()
+            self.input2_rate.setValue(0)
+
+        # Set outputs
+        if len(recipe.outputs) >= 1:
+            self.output1_name.setText(recipe.outputs[0].item_id)
+            self.output1_rate.setValue(recipe.outputs[0].rate)
+        else:
+            self.output1_name.clear()
+            self.output1_rate.setValue(0)
+
+        if len(recipe.outputs) >= 2:
+            self.output2_name.setText(recipe.outputs[1].item_id)
+            self.output2_rate.setValue(recipe.outputs[1].rate)
+        else:
+            self.output2_name.clear()
+            self.output2_rate.setValue(0)
+
+        self.power_spin.setValue(recipe.power_mw)
+
+    def _add_recipe(self) -> None:
+        """Add a new recipe."""
+        from satisfactory_planner.core.models import generate_id, Recipe, ItemRate
+
+        recipe_id = generate_id()
+        recipe = Recipe(
+            id=recipe_id,
+            name="New Recipe",
+            building_type=self.building_combo.currentData(),
+            inputs=[],
+            outputs=[],
+            power_mw=0,
+            crafting_time=1.0,
+        )
+        self.document.recipes[recipe_id] = recipe
+        self._load_recipes()
+
+    def _save_recipe(self) -> None:
+        """Save current recipe changes."""
+        current = self.recipe_list.currentItem()
+        if not current:
+            return
+
+        from satisfactory_planner.core.models import Recipe, ItemRate
+
+        recipe_id = current.data(Qt.UserRole)
+
+        inputs = []
+        if self.input1_name.text() and self.input1_rate.value() > 0:
+            inputs.append(ItemRate(self.input1_name.text(), self.input1_rate.value()))
+        if self.input2_name.text() and self.input2_rate.value() > 0:
+            inputs.append(ItemRate(self.input2_name.text(), self.input2_rate.value()))
+
+        outputs = []
+        if self.output1_name.text() and self.output1_rate.value() > 0:
+            outputs.append(ItemRate(self.output1_name.text(), self.output1_rate.value()))
+        if self.output2_name.text() and self.output2_rate.value() > 0:
+            outputs.append(ItemRate(self.output2_name.text(), self.output2_rate.value()))
+
+        recipe = Recipe(
+            id=recipe_id,
+            name=self.name_edit.text(),
+            building_type=self.building_combo.currentData(),
+            inputs=inputs,
+            outputs=outputs,
+            power_mw=self.power_spin.value(),
+            crafting_time=1.0,
+        )
+        self.document.recipes[recipe_id] = recipe
+
+        # Update list item text
+        current.setText(recipe.name)
 
 
 class PropertiesPanel(QWidget):
@@ -56,11 +278,16 @@ class PropertiesPanel(QWidget):
         self.type_label = QLabel("-")
         building_layout.addRow("Type:", self.type_label)
 
-        # Recipe selector
+        # Recipe selector with edit button
+        recipe_layout = QHBoxLayout()
         self.recipe_combo = QComboBox()
         self.recipe_combo.addItem("(No recipe)", None)
-        # TODO: Populate with actual recipes
-        building_layout.addRow("Recipe:", self.recipe_combo)
+        recipe_layout.addWidget(self.recipe_combo, 1)
+
+        self.recipe_edit_btn = QPushButton("Edit...")
+        self.recipe_edit_btn.clicked.connect(self._open_recipe_editor)
+        recipe_layout.addWidget(self.recipe_edit_btn)
+        building_layout.addRow("Recipe:", recipe_layout)
 
         # Clock speed
         self.clock_spin = QDoubleSpinBox()
@@ -116,11 +343,26 @@ class PropertiesPanel(QWidget):
 
         layout.addStretch()
 
+    def _open_recipe_editor(self) -> None:
+        """Open the recipe editor dialog."""
+        dialog = RecipeEditorDialog(self.document, self)
+        dialog.exec()
+        # Refresh recipe combo
+        self._update_recipe_combo()
+
+    def _update_recipe_combo(self) -> None:
+        """Update recipe combo with available recipes."""
+        self.recipe_combo.clear()
+        self.recipe_combo.addItem("(No recipe)", None)
+        for recipe_id, recipe in self.document.recipes.items():
+            self.recipe_combo.addItem(recipe.name, recipe_id)
+
     def set_document(self, document: Document, command_stack: CommandStack) -> None:
         """Set a new document."""
         self.document = document
         self.command_stack = command_stack
         self._selected_ids = []
+        self._update_recipe_combo()
         self._update_display()
 
     def set_selection(self, selected_ids: list[str]) -> None:

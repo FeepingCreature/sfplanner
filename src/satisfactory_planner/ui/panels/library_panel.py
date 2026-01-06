@@ -2,18 +2,52 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, Signal, QMimeData, QPoint
+from PySide6.QtGui import QDrag, QPixmap, QPainter, QColor
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QLabel,
-    QListWidget,
-    QListWidgetItem,
-    QGroupBox,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QAbstractItemView,
 )
 
-from satisfactory_planner.core import BuildingType
+from satisfactory_planner.core import BuildingType, BUILDING_METADATA
+
+
+# Building info: (description, extra_info)
+BUILDING_INFO: dict[BuildingType, tuple[str, str]] = {
+    BuildingType.SMELTER: ("Smelts ore into ingots", "1 input → 1 output"),
+    BuildingType.FOUNDRY: ("Alloy smelting", "2 inputs → 1 output"),
+    BuildingType.CONSTRUCTOR: ("Basic crafting", "1 input → 1 output"),
+    BuildingType.ASSEMBLER: ("Two-part assembly", "2 inputs → 1 output"),
+    BuildingType.MANUFACTURER: ("Complex crafting", "4 inputs → 1 output"),
+    BuildingType.REFINERY: ("Fluid processing", "2 inputs → 2 outputs"),
+    BuildingType.PACKAGER: ("Fluid packaging", "2 inputs → 2 outputs"),
+    BuildingType.BLENDER: ("Fluid blending", "4 inputs → 2 outputs"),
+    BuildingType.MINER_MK1: ("60/min base rate", "Extracts ore"),
+    BuildingType.MINER_MK2: ("120/min base rate", "Extracts ore"),
+    BuildingType.MINER_MK3: ("240/min base rate", "Extracts ore"),
+    BuildingType.SPLITTER: ("1 → 3 split", "Divides belt"),
+    BuildingType.MERGER: ("3 → 1 merge", "Combines belts"),
+}
+
+
+class BuildingTreeItem(QTreeWidgetItem):
+    """Tree item for a building type with rich display."""
+
+    def __init__(self, building_type: BuildingType) -> None:
+        super().__init__()
+        self.building_type = building_type
+
+        info = BUILDING_INFO.get(building_type, ("", ""))
+        meta = BUILDING_METADATA.get(building_type, (80, 60, 1, 1))
+
+        # Main text is the building name
+        self.setText(0, building_type.value)
+        # Store extra info for tooltip
+        self.setToolTip(0, f"{info[0]}\n{info[1]}\nSize: {meta[0]}x{meta[1]}")
+        self.setData(0, Qt.UserRole, building_type)
 
 
 class LibraryPanel(QWidget):
@@ -31,13 +65,21 @@ class LibraryPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
 
-        # Production buildings
-        production_group = QGroupBox("Production")
-        production_layout = QVBoxLayout(production_group)
-        self.production_list = QListWidget()
-        self.production_list.setMaximumHeight(200)
+        # Single tree view for all buildings
+        self.tree = QTreeWidget()
+        self.tree.setHeaderHidden(True)
+        self.tree.setIndentation(15)
+        self.tree.setDragEnabled(True)
+        self.tree.setDragDropMode(QAbstractItemView.DragOnly)
 
-        production_types = [
+        # Production category
+        production_item = QTreeWidgetItem(["Production"])
+        production_item.setFlags(production_item.flags() & ~Qt.ItemIsDragEnabled)
+        font = production_item.font(0)
+        font.setBold(True)
+        production_item.setFont(0, font)
+
+        for bt in [
             BuildingType.SMELTER,
             BuildingType.FOUNDRY,
             BuildingType.CONSTRUCTOR,
@@ -46,82 +88,90 @@ class LibraryPanel(QWidget):
             BuildingType.REFINERY,
             BuildingType.PACKAGER,
             BuildingType.BLENDER,
-        ]
-        for building_type in production_types:
-            item = QListWidgetItem(building_type.value)
-            item.setData(Qt.UserRole, building_type)
-            self.production_list.addItem(item)
+        ]:
+            production_item.addChild(BuildingTreeItem(bt))
 
-        self.production_list.itemClicked.connect(self._on_item_clicked)
-        production_layout.addWidget(self.production_list)
-        layout.addWidget(production_group)
+        self.tree.addTopLevelItem(production_item)
+        production_item.setExpanded(True)
 
-        # Extraction buildings
-        extraction_group = QGroupBox("Extraction")
-        extraction_layout = QVBoxLayout(extraction_group)
-        self.extraction_list = QListWidget()
-        self.extraction_list.setMaximumHeight(100)
+        # Extraction category
+        extraction_item = QTreeWidgetItem(["Extraction"])
+        extraction_item.setFlags(extraction_item.flags() & ~Qt.ItemIsDragEnabled)
+        extraction_item.setFont(0, font)
 
-        extraction_types = [
+        for bt in [
             BuildingType.MINER_MK1,
             BuildingType.MINER_MK2,
             BuildingType.MINER_MK3,
-        ]
-        for building_type in extraction_types:
-            item = QListWidgetItem(building_type.value)
-            item.setData(Qt.UserRole, building_type)
-            self.extraction_list.addItem(item)
+        ]:
+            extraction_item.addChild(BuildingTreeItem(bt))
 
-        self.extraction_list.itemClicked.connect(self._on_item_clicked)
-        extraction_layout.addWidget(self.extraction_list)
-        layout.addWidget(extraction_group)
+        self.tree.addTopLevelItem(extraction_item)
+        extraction_item.setExpanded(True)
 
-        # Logistics buildings
-        logistics_group = QGroupBox("Logistics")
-        logistics_layout = QVBoxLayout(logistics_group)
-        self.logistics_list = QListWidget()
-        self.logistics_list.setMaximumHeight(80)
+        # Logistics category
+        logistics_item = QTreeWidgetItem(["Logistics"])
+        logistics_item.setFlags(logistics_item.flags() & ~Qt.ItemIsDragEnabled)
+        logistics_item.setFont(0, font)
 
-        logistics_types = [
+        for bt in [
             BuildingType.SPLITTER,
             BuildingType.MERGER,
-        ]
-        for building_type in logistics_types:
-            item = QListWidgetItem(building_type.value)
-            item.setData(Qt.UserRole, building_type)
-            self.logistics_list.addItem(item)
+        ]:
+            logistics_item.addChild(BuildingTreeItem(bt))
 
-        self.logistics_list.itemClicked.connect(self._on_item_clicked)
-        logistics_layout.addWidget(self.logistics_list)
-        layout.addWidget(logistics_group)
+        self.tree.addTopLevelItem(logistics_item)
+        logistics_item.setExpanded(True)
 
-        # User blueprints section (placeholder)
-        blueprints_group = QGroupBox("Blueprints")
-        blueprints_layout = QVBoxLayout(blueprints_group)
-        self.blueprints_list = QListWidget()
-        self.blueprints_list.setMaximumHeight(100)
+        # Blueprints category (placeholder)
+        blueprints_item = QTreeWidgetItem(["Blueprints"])
+        blueprints_item.setFlags(blueprints_item.flags() & ~Qt.ItemIsDragEnabled)
+        blueprints_item.setFont(0, font)
 
-        placeholder = QListWidgetItem("(No saved blueprints)")
-        placeholder.setFlags(placeholder.flags() & ~Qt.ItemIsEnabled)
-        self.blueprints_list.addItem(placeholder)
+        placeholder = QTreeWidgetItem(["(No saved blueprints)"])
+        placeholder.setFlags(placeholder.flags() & ~Qt.ItemIsEnabled & ~Qt.ItemIsDragEnabled)
+        blueprints_item.addChild(placeholder)
 
-        blueprints_layout.addWidget(self.blueprints_list)
-        layout.addWidget(blueprints_group)
+        self.tree.addTopLevelItem(blueprints_item)
+        blueprints_item.setExpanded(True)
 
-        layout.addStretch()
+        # Connect signals
+        self.tree.itemClicked.connect(self._on_item_clicked)
+        self.tree.startDrag = self._start_drag  # type: ignore[method-assign]
 
-    def _on_item_clicked(self, item: QListWidgetItem) -> None:
-        """Handle building selection."""
-        building_type = item.data(Qt.UserRole)
+        layout.addWidget(self.tree)
+
+    def _on_item_clicked(self, item: QTreeWidgetItem, column: int) -> None:
+        """Handle building selection - attach to cursor."""
+        building_type = item.data(0, Qt.UserRole)
         if building_type:
             self.building_selected.emit(building_type)
 
-            # Clear selection in other lists
-            sender = self.sender()
-            for list_widget in [
-                self.production_list,
-                self.extraction_list,
-                self.logistics_list,
-            ]:
-                if list_widget != sender:
-                    list_widget.clearSelection()
+    def _start_drag(self, supported_actions: Qt.DropActions) -> None:
+        """Start drag operation with building type."""
+        item = self.tree.currentItem()
+        if not item:
+            return
+
+        building_type = item.data(0, Qt.UserRole)
+        if not building_type:
+            return
+
+        # Create drag with building type data
+        drag = QDrag(self.tree)
+        mime_data = QMimeData()
+        mime_data.setText(building_type.value)
+        mime_data.setData("application/x-building-type", building_type.value.encode())
+        drag.setMimeData(mime_data)
+
+        # Create a simple pixmap for drag preview
+        pixmap = QPixmap(60, 40)
+        pixmap.fill(QColor(100, 100, 100, 180))
+        painter = QPainter(pixmap)
+        painter.setPen(QColor(255, 255, 255))
+        painter.drawText(pixmap.rect(), Qt.AlignCenter, building_type.value[:8])
+        painter.end()
+        drag.setPixmap(pixmap)
+        drag.setHotSpot(QPoint(30, 20))
+
+        drag.exec(Qt.CopyAction)

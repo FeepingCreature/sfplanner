@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, QRectF
-from PySide6.QtGui import QPainter, QPen, QBrush, QColor
+from PySide6.QtCore import Qt, QRectF, QPointF
+from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QPolygonF
 from PySide6.QtWidgets import (
-    QGraphicsEllipseItem,
     QGraphicsItem,
     QStyleOptionGraphicsItem,
     QWidget,
@@ -22,11 +22,12 @@ if TYPE_CHECKING:
 INPUT_COLOR = QColor(255, 200, 50)   # Yellow for inputs
 OUTPUT_COLOR = QColor(50, 200, 100)  # Green for outputs
 
-PORT_RADIUS = 8
+PORT_RADIUS = 10
+ARROW_SIZE = 7
 
 
-class PortItem(QGraphicsEllipseItem):
-    """A clickable port for connecting belts."""
+class PortItem(QGraphicsItem):
+    """A clickable port for connecting belts with directional arrow."""
 
     def __init__(
         self,
@@ -34,38 +35,80 @@ class PortItem(QGraphicsEllipseItem):
         port_index: int,
         building_id: str,
         canvas: FactoryCanvas,
+        angle: float = 0,  # 0=right, 90=down, 180=left, 270=up
     ) -> None:
-        super().__init__(-PORT_RADIUS, -PORT_RADIUS, PORT_RADIUS * 2, PORT_RADIUS * 2)
+        super().__init__()
 
         self.is_output = is_output
         self.port_index = port_index
         self.building_id = building_id
         self.canvas = canvas
+        self.angle = angle  # Direction the port faces
 
-        self._setup_appearance()
         self._setup_flags()
-
-    def _setup_appearance(self) -> None:
-        """Configure appearance."""
-        color = OUTPUT_COLOR if self.is_output else INPUT_COLOR
-        self.setBrush(QBrush(color))
-        self.setPen(QPen(QColor(255, 255, 255), 1))
+        self._hovered = False
 
     def _setup_flags(self) -> None:
         """Configure flags."""
-        self.setFlag(QGraphicsItem.ItemIsSelectable, False)
         self.setAcceptHoverEvents(True)
         self.setCursor(Qt.PointingHandCursor)
 
+    def boundingRect(self) -> QRectF:
+        """Return bounding rectangle."""
+        r = PORT_RADIUS + 2
+        return QRectF(-r, -r, r * 2, r * 2)
+
+    def paint(
+        self,
+        painter: QPainter,
+        option: QStyleOptionGraphicsItem,
+        widget: QWidget | None = None,
+    ) -> None:
+        """Paint the port as an arrow pointing in/out."""
+        color = OUTPUT_COLOR if self.is_output else INPUT_COLOR
+
+        painter.save()
+
+        # Rotate to face the right direction
+        painter.rotate(self.angle)
+
+        # Scale up if hovered
+        if self._hovered:
+            painter.scale(1.2, 1.2)
+
+        # Draw filled arrow pointing outward (for output) or inward (for input)
+        # Arrow points right by default
+        arrow = QPolygonF()
+
+        if self.is_output:
+            # Arrow pointing outward (right): tip at right
+            arrow.append(QPointF(ARROW_SIZE, 0))       # tip
+            arrow.append(QPointF(-ARROW_SIZE, -ARROW_SIZE))  # top left
+            arrow.append(QPointF(-ARROW_SIZE / 2, 0))  # indent
+            arrow.append(QPointF(-ARROW_SIZE, ARROW_SIZE))   # bottom left
+        else:
+            # Arrow pointing inward (left): tip at left
+            arrow.append(QPointF(-ARROW_SIZE, 0))      # tip
+            arrow.append(QPointF(ARROW_SIZE, -ARROW_SIZE))   # top right
+            arrow.append(QPointF(ARROW_SIZE / 2, 0))   # indent
+            arrow.append(QPointF(ARROW_SIZE, ARROW_SIZE))    # bottom right
+
+        painter.setBrush(QBrush(color))
+        pen_width = 2 if self._hovered else 1.5
+        painter.setPen(QPen(QColor(255, 255, 255), pen_width))
+        painter.drawPolygon(arrow)
+
+        painter.restore()
+
     def hoverEnterEvent(self, event: object) -> None:
         """Highlight on hover."""
-        self.setPen(QPen(QColor(255, 255, 255), 2))
-        self.setScale(1.2)
+        self._hovered = True
+        self.update()
 
     def hoverLeaveEvent(self, event: object) -> None:
         """Remove highlight."""
-        self.setPen(QPen(QColor(255, 255, 255), 1))
-        self.setScale(1.0)
+        self._hovered = False
+        self.update()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle click to start/complete belt connection."""
@@ -79,25 +122,3 @@ class PortItem(QGraphicsEllipseItem):
             event.accept()
         else:
             super().mousePressEvent(event)
-
-    def paint(
-        self,
-        painter: QPainter,
-        option: QStyleOptionGraphicsItem,
-        widget: QWidget | None = None,
-    ) -> None:
-        """Paint the port with direction indicator."""
-        super().paint(painter, option, widget)
-
-        # Draw arrow to indicate direction
-        painter.setPen(QPen(QColor(255, 255, 255), 1.5))
-        if self.is_output:
-            # Arrow pointing right
-            painter.drawLine(int(-3), int(0), int(3), int(0))
-            painter.drawLine(int(1), int(-3), int(3), int(0))
-            painter.drawLine(int(1), int(3), int(3), int(0))
-        else:
-            # Arrow pointing left (into the building)
-            painter.drawLine(int(-3), int(0), int(3), int(0))
-            painter.drawLine(int(-1), int(-3), int(-3), int(0))
-            painter.drawLine(int(-1), int(3), int(-3), int(0))
