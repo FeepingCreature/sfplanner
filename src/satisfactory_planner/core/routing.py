@@ -26,6 +26,7 @@ class BeltPath:
     start_radius: float
     start_angle_begin: float  # radians
     start_angle_end: float
+    start_clockwise: bool
 
     # Middle line segment
     line_start: Point
@@ -36,11 +37,20 @@ class BeltPath:
     end_radius: float
     end_angle_begin: float
     end_angle_end: float
+    end_clockwise: bool
 
 
 # Minimum turning radius for belts (in scene units)
-# TODO: Measure actual in-game radius
-MIN_TURN_RADIUS = 30.0
+MIN_TURN_RADIUS = 25.0
+
+
+def _normalize_angle(angle: float) -> float:
+    """Normalize angle to [-pi, pi]."""
+    while angle > math.pi:
+        angle -= 2 * math.pi
+    while angle < -math.pi:
+        angle += 2 * math.pi
+    return angle
 
 
 def compute_belt_path(
@@ -53,28 +63,152 @@ def compute_belt_path(
     """
     Compute a circle-line-circle path between two points.
 
-    This is a simplified implementation. The full algorithm requires:
-    1. Compute the two possible tangent circles at start
-    2. Compute the two possible tangent circles at end
-    3. Find the tangent lines between all combinations
-    4. Choose the shortest valid path
-
-    TODO: Implement full circle-line-circle routing
-    For now, returns a straight line path.
+    Uses outer tangent lines between the two turning circles.
+    Tries all 4 combinations (left/right turn at each end) and picks the shortest.
     """
-    # Simplified: just return straight line with placeholder arcs
-    return BeltPath(
-        start_center=Point(start.x, start.y),
-        start_radius=0,
-        start_angle_begin=0,
-        start_angle_end=0,
-        line_start=start,
-        line_end=end,
-        end_center=Point(end.x, end.y),
-        end_radius=0,
-        end_angle_begin=0,
-        end_angle_end=0,
+    # If points are very close, just use straight line
+    dist = start.distance_to(end)
+    if dist < radius * 0.5:
+        return BeltPath(
+            start_center=start,
+            start_radius=0,
+            start_angle_begin=0,
+            start_angle_end=0,
+            start_clockwise=True,
+            line_start=start,
+            line_end=end,
+            end_center=end,
+            end_radius=0,
+            end_angle_begin=0,
+            end_angle_end=0,
+            end_clockwise=True,
+        )
+
+    best_path: BeltPath | None = None
+    best_length = float("inf")
+
+    # Try all 4 combinations: (start_left, end_left), (start_left, end_right), etc.
+    for start_sign in [-1, 1]:  # -1 = left (CCW), 1 = right (CW)
+        for end_sign in [-1, 1]:
+            path = _compute_single_path(
+                start, start_direction, end, end_direction, radius, start_sign, end_sign
+            )
+            if path:
+                length = _path_length(path)
+                if length < best_length:
+                    best_length = length
+                    best_path = path
+
+    return best_path
+
+
+def _compute_single_path(
+    start: Point,
+    start_dir: float,
+    end: Point,
+    end_dir: float,
+    radius: float,
+    start_sign: int,  # -1 for left/CCW, 1 for right/CW
+    end_sign: int,
+) -> BeltPath | None:
+    """Compute a single circle-line-circle path with given turn directions."""
+    # Perpendicular directions for circle centers
+    start_perp = start_dir + start_sign * math.pi / 2
+    end_perp = end_dir + end_sign * math.pi / 2
+
+    # Circle centers
+    c1 = Point(
+        start.x + radius * math.cos(start_perp),
+        start.y + radius * math.sin(start_perp),
     )
+    c2 = Point(
+        end.x + radius * math.cos(end_perp),
+        end.y + radius * math.sin(end_perp),
+    )
+
+    # Distance between centers
+    d = c1.distance_to(c2)
+
+    # Angle from c1 to c2
+    theta = math.atan2(c2.y - c1.y, c2.x - c1.x)
+
+    # Compute tangent line
+    if start_sign == end_sign:
+        # Outer tangent (same turn direction)
+        if d < 0.001:
+            return None  # Centers too close
+        # Tangent is parallel to line between centers, offset by radius
+        tangent_angle = theta + start_sign * math.pi / 2
+        t1 = Point(
+            c1.x + radius * math.cos(tangent_angle),
+            c1.y + radius * math.sin(tangent_angle),
+        )
+        t2 = Point(
+            c2.x + radius * math.cos(tangent_angle),
+            c2.y + radius * math.sin(tangent_angle),
+        )
+    else:
+        # Inner tangent (opposite turn directions)
+        if d < 2 * radius:
+            return None  # Circles overlap, no inner tangent
+        # Angle adjustment for inner tangent
+        alpha = math.asin(2 * radius / d) if d > 2 * radius else 0
+        if start_sign == -1:  # start CCW, end CW
+            tangent_angle = theta + alpha
+        else:  # start CW, end CCW
+            tangent_angle = theta - alpha
+        t1 = Point(
+            c1.x + radius * math.cos(tangent_angle + start_sign * math.pi / 2),
+            c1.y + radius * math.sin(tangent_angle + start_sign * math.pi / 2),
+        )
+        t2 = Point(
+            c2.x + radius * math.cos(tangent_angle + math.pi + end_sign * math.pi / 2),
+            c2.y + radius * math.sin(tangent_angle + math.pi + end_sign * math.pi / 2),
+        )
+
+    # Compute arc angles
+    # Start arc: from start point to t1 around c1
+    start_angle_begin = math.atan2(start.y - c1.y, start.x - c1.x)
+    start_angle_end = math.atan2(t1.y - c1.y, t1.x - c1.x)
+
+    # End arc: from t2 to end point around c2
+    end_angle_begin = math.atan2(t2.y - c2.y, t2.x - c2.x)
+    end_angle_end = math.atan2(end.y - c2.y, end.x - c2.x)
+
+    return BeltPath(
+        start_center=c1,
+        start_radius=radius,
+        start_angle_begin=start_angle_begin,
+        start_angle_end=start_angle_end,
+        start_clockwise=(start_sign == 1),
+        line_start=t1,
+        line_end=t2,
+        end_center=c2,
+        end_radius=radius,
+        end_angle_begin=end_angle_begin,
+        end_angle_end=end_angle_end,
+        end_clockwise=(end_sign == 1),
+    )
+
+
+def _path_length(path: BeltPath) -> float:
+    """Calculate total path length."""
+    length = 0.0
+
+    # Start arc length
+    if path.start_radius > 0:
+        angle_diff = abs(_normalize_angle(path.start_angle_end - path.start_angle_begin))
+        length += path.start_radius * angle_diff
+
+    # Line segment
+    length += path.line_start.distance_to(path.line_end)
+
+    # End arc length
+    if path.end_radius > 0:
+        angle_diff = abs(_normalize_angle(path.end_angle_end - path.end_angle_begin))
+        length += path.end_radius * angle_diff
+
+    return length
 
 
 def path_to_points(path: BeltPath, segments_per_arc: int = 8) -> list[Point]:

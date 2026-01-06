@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import Belt, Building, BELT_CAPACITIES
+from satisfactory_planner.core.routing import compute_belt_path, Point
 
 if TYPE_CHECKING:
     pass
@@ -65,17 +66,83 @@ class BeltItem(QGraphicsPathItem):
 
     def update_path(self, source: Building, dest: Building) -> None:
         """Update the belt path between source and dest buildings."""
-        # Get port positions
-        start = source.output_port_pos(self.belt.source_port_index)
-        end = dest.input_port_pos(self.belt.dest_port_index)
+        import math
+        
+        # Get port positions and directions
+        start_pos = source.output_port_pos(self.belt.source_port_index)
+        end_pos = dest.input_port_pos(self.belt.dest_port_index)
+        start_dir = source.output_port_direction(self.belt.source_port_index)
+        end_dir = dest.input_port_direction(self.belt.dest_port_index)
 
-        # TODO: Use circle-line-circle routing
-        # For now, just draw a straight line
+        start = Point(start_pos[0], start_pos[1])
+        end = Point(end_pos[0], end_pos[1])
+
+        # Compute circle-line-circle path
+        belt_path = compute_belt_path(start, start_dir, end, end_dir)
+
         path = QPainterPath()
-        path.moveTo(start[0], start[1])
-        path.lineTo(end[0], end[1])
+        
+        if belt_path and belt_path.start_radius > 0:
+            # Draw start arc
+            path.moveTo(start.x, start.y)
+            self._add_arc(
+                path,
+                belt_path.start_center,
+                belt_path.start_radius,
+                belt_path.start_angle_begin,
+                belt_path.start_angle_end,
+                belt_path.start_clockwise,
+            )
+            # Draw line segment
+            path.lineTo(belt_path.line_end.x, belt_path.line_end.y)
+            # Draw end arc
+            self._add_arc(
+                path,
+                belt_path.end_center,
+                belt_path.end_radius,
+                belt_path.end_angle_begin,
+                belt_path.end_angle_end,
+                belt_path.end_clockwise,
+            )
+        else:
+            # Fallback to straight line
+            path.moveTo(start.x, start.y)
+            path.lineTo(end.x, end.y)
 
         self.setPath(path)
+
+    def _add_arc(
+        self,
+        path: QPainterPath,
+        center: Point,
+        radius: float,
+        angle_begin: float,
+        angle_end: float,
+        clockwise: bool,
+    ) -> None:
+        """Add an arc to the path using line segments."""
+        import math
+        
+        # Determine sweep direction
+        if clockwise:
+            # CW: angle should decrease
+            if angle_end > angle_begin:
+                angle_end -= 2 * math.pi
+        else:
+            # CCW: angle should increase
+            if angle_end < angle_begin:
+                angle_end += 2 * math.pi
+
+        # Number of segments based on arc length
+        angle_span = abs(angle_end - angle_begin)
+        num_segments = max(4, int(angle_span * radius / 5))
+        
+        for i in range(1, num_segments + 1):
+            t = i / num_segments
+            angle = angle_begin + t * (angle_end - angle_begin)
+            x = center.x + radius * math.cos(angle)
+            y = center.y + radius * math.sin(angle)
+            path.lineTo(x, y)
 
     def paint(
         self,

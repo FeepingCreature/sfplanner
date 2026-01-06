@@ -299,6 +299,12 @@ class FactoryCanvas(QGraphicsView):
             # Find all items at this point and look for an input port
             for item in self._scene.items(scene_pos):
                 if isinstance(item, PortItem) and not item.is_output:
+                    # Check if port is already connected
+                    if self.document.is_port_connected(item.building_id, item.port_index, False):
+                        # Port already has a connection - cancel
+                        self.cancel_belt_connection()
+                        super().mouseReleaseEvent(event)
+                        return
                     self.complete_belt_connection(item.building_id, item.port_index)
                     super().mouseReleaseEvent(event)
                     return
@@ -394,6 +400,10 @@ class FactoryCanvas(QGraphicsView):
 
     def start_belt_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:
         """Start dragging a belt connection from an output port."""
+        # Check if output port is already connected
+        if self.document.is_port_connected(building_id, port_index, True):
+            return  # Don't allow starting a new connection from an already-connected output
+        
         self._is_connecting = True
         self._connect_start_building = building_id
         self._connect_start_port = port_index

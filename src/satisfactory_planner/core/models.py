@@ -139,6 +139,18 @@ class Building:
             spacing = h / (self.num_inputs + 1)
             return (self.x, self.y + spacing * (index + 1))
 
+    def input_port_direction(self, index: int) -> float:
+        """Get direction (radians) a belt should enter this input port."""
+        import math
+        if self.building_type == BuildingType.SPLITTER:
+            return math.pi  # from left
+        elif self.building_type == BuildingType.MERGER:
+            # top, left, bottom
+            directions = [-math.pi / 2, math.pi, math.pi / 2]
+            return directions[index] if index < len(directions) else math.pi
+        else:
+            return math.pi  # from left
+
     def output_port_pos(self, index: int) -> tuple[float, float]:
         """Get position of output port by index (in scene coordinates)."""
         w, h = self._get_display_size()
@@ -158,6 +170,18 @@ class Building:
             # Standard: outputs on right
             spacing = h / (self.num_outputs + 1)
             return (self.x + w, self.y + spacing * (index + 1))
+
+    def output_port_direction(self, index: int) -> float:
+        """Get direction (radians) a belt should leave this output port."""
+        import math
+        if self.building_type == BuildingType.SPLITTER:
+            # top, right, bottom
+            directions = [-math.pi / 2, 0, math.pi / 2]
+            return directions[index] if index < len(directions) else 0
+        elif self.building_type == BuildingType.MERGER:
+            return 0  # to right
+        else:
+            return 0  # to right
 
 
 # Belt capacity by tier (items per minute)
@@ -246,6 +270,25 @@ class Document:
             for b in self.belts.values()
             if b.source_building_id == building_id or b.dest_building_id == building_id
         ]
+
+    def is_port_connected(
+        self, building_id: str, port_index: int, is_output: bool
+    ) -> bool:
+        """Check if a port already has a belt connected."""
+        for belt in self.belts.values():
+            if is_output:
+                if (
+                    belt.source_building_id == building_id
+                    and belt.source_port_index == port_index
+                ):
+                    return True
+            else:
+                if (
+                    belt.dest_building_id == building_id
+                    and belt.dest_port_index == port_index
+                ):
+                    return True
+        return False
 
 
 def generate_id() -> str:
