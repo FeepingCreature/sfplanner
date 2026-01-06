@@ -226,5 +226,12 @@ class BuildingItem(QGraphicsRectItem):
                 grid = self.canvas._grid_size
                 x = round(new_pos.x() / grid) * grid
                 y = round(new_pos.y() / grid) * grid
-                return QPointF(x, y)
+                new_pos = QPointF(x, y)
+            return new_pos
+        elif change == QGraphicsItem.ItemPositionHasChanged and self.scene():
+            # Update model position and redraw belts during drag
+            new_pos = self.pos()
+            self.building.x = new_pos.x()
+            self.building.y = new_pos.y()
+            self.canvas._update_belts_for_building(self.building.id)
         return super().itemChange(change, value)

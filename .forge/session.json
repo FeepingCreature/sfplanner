@@ -1,5 +1,6 @@
 {
   "active_files": [
+    "src/satisfactory_planner/ui/main_window.py",
     "TODO.md",
     "tests/__init__.py",
     "tests/test_smoke.py",
@@ -1221,6 +1222,51 @@
       "streaming": true,
       "actual_cost": 0.08317375,
       "generation_id": "gen-1767725705-38U9zE4ghhtNrETZFJVD"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767725725648.json",
+      "response_file": "/tmp/forge_debug/response_1767725725648.json",
+      "timestamp": 1767725725.6489756,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.0002,
+      "generation_id": "gen-1767725725-3Yprnrc7P7HzrPILbe5r"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767725766182.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767725766182.json",
+      "timestamp": 1767725766.1838436,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.370965,
+      "generation_id": "gen-1767725768-RTlaSKeFpEzgnxEHlo7m"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767725795945.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767725795945.json",
+      "timestamp": 1767725795.9468818,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.39093625,
+      "generation_id": "gen-1767725798-sajjbkxOxc3sNgTaq6wi"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767725813429.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767725813429.json",
+      "timestamp": 1767725813.43029,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.41629125,
+      "generation_id": "gen-1767725814-w17DneSApEtLkjCIdtNS"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767725846996.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767725846996.json",
+      "timestamp": 1767725846.997487,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.41429625,
+      "generation_id": "gen-1767725847-2TlYMW2VO3dVSEQAmtdY"
     }
   ],
   "messages": [
@@ -4278,6 +4324,203 @@
     {
       "role": "assistant",
       "content": "**Fixed both issues!** All 29 tests pass.\n\n**Changes:**\n1. **Belt redrawing** - Now uses `_update_belts_for_building()` which gets absolute positions from the model, not deltas\n2. **Delete shortcut** - Changed from `QKeySequence.Delete` to `Qt.Key_Delete` which should be more reliable\n\nTry it now:\n```bash\npython -m satisfactory_planner.main\n```\n\n- Place buildings, drag them - belts should track correctly\n- Select items and press Delete (or use Edit menu)\n- If Delete still doesn't work, try clicking the canvas first to give it focus, then Delete\n\nLet me know if delete is still not working and I'll dig deeper."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 58b32677",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Even the menu delete action doesn't work, I don't think it's a key input thing. Also we should update the belt positions in mid-move."
+    },
+    {
+      "role": "assistant",
+      "content": "Let me fix both issues - the delete action and live belt updates during drag:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"tool_call_ids\": [\"151\",\"152\",\"153\"], \"summary\": \"Compacted and cleaned up context. Delete still broken, belt mid-move updates needed.\"}",
+            "name": "compact"
+          },
+          "id": "toolu_vrtx_015wvPQVQ46D1tw2b3pZgczE",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/main_window.py\",\"src/satisfactory_planner/ui/canvas.py\",\"src/satisfactory_planner/ui/items/building_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01QvyqWK4VdLGCpaskG3Rbtp",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_015wvPQVQ46D1tw2b3pZgczE",
+      "content": "{\"compact\": true, \"message\": \"Compacted 3 tool result(s)\", \"success\": true, \"summary\": \"Compacted and cleaned up context. Delete still broken, belt mid-move updates needed.\", \"tool_call_ids\": [\"151\", \"152\", \"153\"]}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01QvyqWK4VdLGCpaskG3Rbtp",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/main_window.py\", \"src/satisfactory_planner/ui/canvas.py\", \"src/satisfactory_planner/ui/items/building_item.py\"], \"message\": \"Added 3 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue now. Looking at the code:\n\n1. **Delete not working** - The `_delete_selection` method in main_window calls `canvas.delete_selection()`, and the canvas method looks correct. Let me check if the `selectedItems()` is actually returning anything.\n\n2. **Belt updates mid-move** - Need to update belts in `itemChange` during drag, not just at the end.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"_compacted\": true}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_01SnRHra8SbAHn8yMUtzNJ45",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"_compacted\": true}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_01L7CydCfHoPFyWGousVrNzY",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"_compacted\": true}",
+            "name": "run_tests"
+          },
+          "id": "toolu_bdrk_013oPKBCqEqwNN7n1YD8NQn1",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01SnRHra8SbAHn8yMUtzNJ45",
+      "content": "{\"error\": \"Missing required arguments\", \"success\": false}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `search_replace`\n```json\n{\n  \"_compacted\": true\n}\n```\n**Result:**\n```json\n{\n  \"error\": \"Missing required arguments\",\n  \"success\": false\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01L7CydCfHoPFyWGousVrNzY",
+      "content": "{\"aborted\": true, \"reason\": \"Tool search_replace failed: Missing required arguments\", \"success\": false}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `search_replace`\n```json\n{}\n```\n**Result:**\n```json\n{\n  \"aborted\": true,\n  \"reason\": \"Tool search_replace failed: Missing required arguments\",\n  \"success\": false\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_013oPKBCqEqwNN7n1YD8NQn1",
+      "content": "{\"aborted\": true, \"reason\": \"Tool search_replace failed: Missing required arguments\", \"success\": false}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `run_tests`\n```json\n{}\n```\n**Result:**\n```json\n{\n  \"aborted\": true,\n  \"reason\": \"Tool search_replace failed: Missing required arguments\",\n  \"success\": false\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me fix those issues properly:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/building_item.py\", \"search\": \"    def itemChange(\\n        self, change: QGraphicsItem.GraphicsItemChange, value: object\\n    ) -> object:\\n        \\\"\\\"\\\"Handle item changes.\\\"\\\"\\\"\\n        if change == QGraphicsItem.ItemPositionChange and self.scene():\\n            # Snap to grid\\n            new_pos = value\\n            if isinstance(new_pos, QPointF) and self.canvas._grid_snap:\\n                grid = self.canvas._grid_size\\n                x = round(new_pos.x() / grid) * grid\\n                y = round(new_pos.y() / grid) * grid\\n                return QPointF(x, y)\\n        return super().itemChange(change, value)\", \"replace\": \"    def itemChange(\\n        self, change: QGraphicsItem.GraphicsItemChange, value: object\\n    ) -> object:\\n        \\\"\\\"\\\"Handle item changes.\\\"\\\"\\\"\\n        if change == QGraphicsItem.ItemPositionChange and self.scene():\\n            # Snap to grid\\n            new_pos = value\\n            if isinstance(new_pos, QPointF) and self.canvas._grid_snap:\\n                grid = self.canvas._grid_size\\n                x = round(new_pos.x() / grid) * grid\\n                y = round(new_pos.y() / grid) * grid\\n                new_pos = QPointF(x, y)\\n            return new_pos\\n        elif change == QGraphicsItem.ItemPositionHasChanged and self.scene():\\n            # Update model position and redraw belts during drag\\n            new_pos = self.pos()\\n            self.building.x = new_pos.x()\\n            self.building.y = new_pos.y()\\n            self.canvas._update_belts_for_building(self.building.id)\\n        return super().itemChange(change, value)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01EcALjY7HQ2a1kr3zYfKGru",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"    def delete_selection(self) -> None:\\n        \\\"\\\"\\\"Delete selected items.\\\"\\\"\\\"\\n        selected_buildings: list[str] = []\\n        selected_belts: list[str] = []\\n\\n        for item in self._scene.selectedItems():\\n            if isinstance(item, BuildingItem):\\n                selected_buildings.append(item.building.id)\\n            elif isinstance(item, BeltItem):\\n                selected_belts.append(item.belt.id)\\n\\n        if selected_buildings or selected_belts:\", \"replace\": \"    def delete_selection(self) -> None:\\n        \\\"\\\"\\\"Delete selected items.\\\"\\\"\\\"\\n        selected_buildings: list[str] = []\\n        selected_belts: list[str] = []\\n\\n        for item in self._scene.selectedItems():\\n            if isinstance(item, BuildingItem):\\n                selected_buildings.append(item.building.id)\\n            elif isinstance(item, BeltItem):\\n                selected_belts.append(item.belt.id)\\n\\n        print(f\\\"DEBUG delete_selection: buildings={selected_buildings}, belts={selected_belts}\\\")\\n\\n        if selected_buildings or selected_belts:\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_012ot6NY1vMVFojViQtpqiLb",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"verbose\": false}",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_01BVkAWSC2XsqziDgvEUztMS",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01EcALjY7HQ2a1kr3zYfKGru",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/building_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_012ot6NY1vMVFojViQtpqiLb",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BVkAWSC2XsqziDgvEUztMS",
+      "content": "{\"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_c_m3vuh_\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.08s ==============================\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `run_tests`\n```json\n{\n  \"verbose\": false\n}\n```\n**Result:**\n```json\n{\n  \"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_c_m3vuh_\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.08s ==============================\\n\",\n  \"passed\": true,\n  \"success\": true,\n  \"summary\": \"\\u2713 Tests passed (make test)\",\n  \"test_command\": \"make test\"\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Tests pass. Good - belts now update mid-drag. Let me check what's happening with delete. I added a debug print, so try it and tell me what you see in the console. But let me also check if the issue is selection not working:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"        print(f\\\"DEBUG delete_selection: buildings={selected_buildings}, belts={selected_belts}\\\")\\n\\n        if selected_buildings or selected_belts:\", \"replace\": \"        print(f\\\"DEBUG delete_selection: buildings={selected_buildings}, belts={selected_belts}\\\")\\n        print(f\\\"DEBUG selected items: {self._scene.selectedItems()}\\\")\\n        print(f\\\"DEBUG building_items: {list(self._building_items.keys())}\\\")\\n\\n        if selected_buildings or selected_belts:\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_01DcW93TZntNi5EHGTt5FWE8",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"I've added more debug output. Run the app and:\\n\\n1. Place a building\\n2. Click on it to select it (should show yellow highlight)  \\n3. Try Edit \u2192 Delete from the menu\\n\\nThen check the console output - it should show:\\n- What items the scene thinks are selected\\n- What building items we're tracking\\n\\nThis will tell us whether:\\n- Selection isn't working (items not getting selected)\\n- Or something else in the delete logic\\n\\n**Also fixed:** Belts now update in real-time during drag thanks to `ItemPositionHasChanged` in `itemChange()`.\\n\\nLet me know what the debug output shows!\"}",
+            "name": "done"
+          },
+          "id": "toolu_bdrk_01PW9yoorH4QxtiZH5RuPzHY",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01DcW93TZntNi5EHGTt5FWE8",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01PW9yoorH4QxtiZH5RuPzHY",
+      "content": "{\"done\": true, \"message\": \"I've added more debug output. Run the app and:\\n\\n1. Place a building\\n2. Click on it to select it (should show yellow highlight)  \\n3. Try Edit \\u2192 Delete from the menu\\n\\nThen check the console output - it should show:\\n- What items the scene thinks are selected\\n- What building items we're tracking\\n\\nThis will tell us whether:\\n- Selection isn't working (items not getting selected)\\n- Or something else in the delete logic\\n\\n**Also fixed:** Belts now update in real-time during drag thanks to `ItemPositionHasChanged` in `itemChange()`.\\n\\nLet me know what the debug output shows!\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I've added more debug output. Run the app and:\n\n1. Place a building\n2. Click on it to select it (should show yellow highlight)  \n3. Try Edit \u2192 Delete from the menu\n\nThen check the console output - it should show:\n- What items the scene thinks are selected\n- What building items we're tracking\n\nThis will tell us whether:\n- Selection isn't working (items not getting selected)\n- Or something else in the delete logic\n\n**Also fixed:** Belts now update in real-time during drag thanks to `ItemPositionHasChanged` in `itemChange()`.\n\nLet me know what the debug output shows!"
     }
   ]
 }

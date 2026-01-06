@@ -322,6 +322,10 @@ class FactoryCanvas(QGraphicsView):
             elif isinstance(item, BeltItem):
                 selected_belts.append(item.belt.id)
 
+        print(f"DEBUG delete_selection: buildings={selected_buildings}, belts={selected_belts}")
+        print(f"DEBUG selected items: {self._scene.selectedItems()}")
+        print(f"DEBUG building_items: {list(self._building_items.keys())}")
+
         if selected_buildings or selected_belts:
             # Also delete belts connected to deleted buildings
             for building_id in selected_buildings:
