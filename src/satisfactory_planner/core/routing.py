@@ -191,22 +191,45 @@ def _compute_single_path(
     )
 
 
+def _arc_sweep(angle_begin: float, angle_end: float, clockwise: bool) -> float:
+    """Calculate the actual arc sweep, accounting for direction."""
+    if clockwise:
+        # CW: angle decreases
+        sweep = angle_begin - angle_end
+        if sweep < 0:
+            sweep += 2 * math.pi
+    else:
+        # CCW: angle increases
+        sweep = angle_end - angle_begin
+        if sweep < 0:
+            sweep += 2 * math.pi
+    return sweep
+
+
 def _path_length(path: BeltPath) -> float:
     """Calculate total path length."""
     length = 0.0
 
     # Start arc length
     if path.start_radius > 0:
-        angle_diff = abs(_normalize_angle(path.start_angle_end - path.start_angle_begin))
-        length += path.start_radius * angle_diff
+        sweep = _arc_sweep(path.start_angle_begin, path.start_angle_end, path.start_clockwise)
+        # Penalize paths that loop more than 180 degrees
+        if sweep > math.pi:
+            length += sweep * path.start_radius * 3  # Heavy penalty
+        else:
+            length += sweep * path.start_radius
 
     # Line segment
     length += path.line_start.distance_to(path.line_end)
 
     # End arc length
     if path.end_radius > 0:
-        angle_diff = abs(_normalize_angle(path.end_angle_end - path.end_angle_begin))
-        length += path.end_radius * angle_diff
+        sweep = _arc_sweep(path.end_angle_begin, path.end_angle_end, path.end_clockwise)
+        # Penalize paths that loop more than 180 degrees
+        if sweep > math.pi:
+            length += sweep * path.end_radius * 3  # Heavy penalty
+        else:
+            length += sweep * path.end_radius
 
     return length
 

@@ -140,16 +140,16 @@ class Building:
             return (self.x, self.y + spacing * (index + 1))
 
     def input_port_direction(self, index: int) -> float:
-        """Get direction (radians) a belt should enter this input port."""
+        """Get direction (radians) a belt is TRAVELING when it enters this input port."""
         import math
         if self.building_type == BuildingType.SPLITTER:
-            return math.pi  # from left
+            return 0  # traveling right, into left side
         elif self.building_type == BuildingType.MERGER:
-            # top, left, bottom
-            directions = [-math.pi / 2, math.pi, math.pi / 2]
-            return directions[index] if index < len(directions) else math.pi
+            # top (traveling down), left (traveling right), bottom (traveling up)
+            directions = [math.pi / 2, 0, -math.pi / 2]
+            return directions[index] if index < len(directions) else 0
         else:
-            return math.pi  # from left
+            return 0  # traveling right, into left side
 
     def output_port_pos(self, index: int) -> tuple[float, float]:
         """Get position of output port by index (in scene coordinates)."""
@@ -172,16 +172,16 @@ class Building:
             return (self.x + w, self.y + spacing * (index + 1))
 
     def output_port_direction(self, index: int) -> float:
-        """Get direction (radians) a belt should leave this output port."""
+        """Get direction (radians) a belt is TRAVELING when it leaves this output port."""
         import math
         if self.building_type == BuildingType.SPLITTER:
-            # top, right, bottom
+            # top (traveling up), right (traveling right), bottom (traveling down)
             directions = [-math.pi / 2, 0, math.pi / 2]
             return directions[index] if index < len(directions) else 0
         elif self.building_type == BuildingType.MERGER:
-            return 0  # to right
+            return 0  # traveling right
         else:
-            return 0  # to right
+            return 0  # traveling right
 
 
 # Belt capacity by tier (items per minute)
