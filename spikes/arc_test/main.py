@@ -100,12 +100,8 @@ class ArcTestView(QGraphicsView):
         """
         Compute circle-line-circle path.
         
-        The key insight: we have two turning circles (one at start, one at end).
-        We need to find the tangent line between them, then draw arcs to that line.
+        Try all 4 combinations of (start CW/CCW, end CW/CCW) and pick shortest.
         """
-        path = QPainterPath()
-        path.moveTo(self.start)
-        
         # End direction: absolute (right-click rotates)
         # The arrow shows where the belt is GOING, but for routing we need
         # the direction the belt is COMING FROM (opposite)
@@ -118,33 +114,48 @@ class ArcTestView(QGraphicsView):
         arrow_dy = 30 * math.sin(self.end_dir)
         self.end_arrow.setLine(0, 0, arrow_dx, arrow_dy)
         
-        # Determine which way to turn at START based on where end is
-        # Vector from start to end
-        to_end = QPointF(end.x() - self.start.x(), end.y() - self.start.y())
+        # Try all 4 combinations and pick shortest
+        best_result = None
+        best_length = float('inf')
         
-        # Cross product with start direction tells us which side end is on
-        start_dx = math.cos(self.start_dir)
-        start_dy = math.sin(self.start_dir)
-        start_cross = start_dx * to_end.y() - start_dy * to_end.x()
+        for start_sign in [-1, 1]:
+            for end_sign in [-1, 1]:
+                result = self._try_path(end, end_dir, start_sign, end_sign)
+                if result and result['length'] < best_length:
+                    best_length = result['length']
+                    best_result = result
         
-        # If cross > 0, end is to the left, turn left (CCW)
-        # If cross < 0, end is to the right, turn right (CW)
-        start_sign = 1 if start_cross >= 0 else -1  # +1 = left/CCW, -1 = right/CW
+        if not best_result:
+            # Fallback: straight line
+            path = QPainterPath()
+            path.moveTo(self.start)
+            path.lineTo(end)
+            return path
         
-        # Determine which way to turn at END based on where start is
-        # Vector from end to start
-        to_start = QPointF(self.start.x() - end.x(), self.start.y() - end.y())
+        # Update debug visuals with best result
+        self.circle1.setPos(best_result['c1'])
+        self.circle2.setPos(best_result['c2'])
+        self.t1_marker.setPos(best_result['t1'])
+        self.t2_marker.setPos(best_result['t2'])
         
-        # Cross product with end direction (flipped) tells us which side start is on
-        end_dx = math.cos(end_dir)
-        end_dy = math.sin(end_dir)
-        end_cross = end_dx * to_start.y() - end_dy * to_start.x()
+        # Update debug text
+        def deg(r): return f"{math.degrees(r):.0f}°"
+        r = best_result
+        tangent_type = "OUTER" if r['start_sign'] == r['end_sign'] else "INNER"
+        self.debug_text.setPlainText(
+            f"start_dir: {deg(self.start_dir)}  end_dir: {deg(self.end_dir)} (routing: {deg(end_dir)})\n"
+            f"start_sign: {'+CCW' if r['start_sign'] > 0 else '-CW'}  end_sign: {'+CCW' if r['end_sign'] > 0 else '-CW'}  [{tangent_type}]\n"
+            f"c1: ({r['c1'].x():.0f}, {r['c1'].y():.0f})  c2: ({r['c2'].x():.0f}, {r['c2'].y():.0f})  d: {r['d']:.0f}\n"
+            f"t1: ({r['t1'].x():.0f}, {r['t1'].y():.0f})  t2: ({r['t2'].x():.0f}, {r['t2'].y():.0f})\n"
+            f"length: {r['length']:.0f}  arc1: {deg(r['arc1_sweep'])}  arc2: {deg(r['arc2_sweep'])}"
+        )
         
-        # Same logic for end
-        end_sign = 1 if end_cross >= 0 else -1
+        return best_result['path']
+    
+    def _try_path(self, end: QPointF, end_dir: float, start_sign: int, end_sign: int) -> dict | None:
+        """Try computing a path with given turn directions. Returns dict with path and metadata, or None."""
         
         # Compute circle centers
-        # Perpendicular to direction, offset by radius
         start_perp = self.start_dir + start_sign * math.pi / 2
         c1 = QPointF(
             self.start.x() + self.radius * math.cos(start_perp),
@@ -157,24 +168,18 @@ class ArcTestView(QGraphicsView):
             end.y() + self.radius * math.sin(end_perp)
         )
         
-        # Update debug circles
-        self.circle1.setPos(c1)
-        self.circle2.setPos(c2)
-        
-        # Find tangent line between the two circles
+        # Distance between centers
         d = math.sqrt((c2.x() - c1.x())**2 + (c2.y() - c1.y())**2)
         
         if d < 0.001:
-            # Centers coincide, just draw line
-            path.lineTo(end)
-            return path
+            return None
         
         # Angle from c1 to c2
         theta = math.atan2(c2.y() - c1.y(), c2.x() - c1.x())
         
+        # Compute tangent points based on tangent type
         if start_sign == end_sign:
-            # OUTER tangent: same turn direction at both ends
-            # Tangent points are at same angle from both centers, perpendicular to center line
+            # OUTER tangent
             tangent_angle = theta - start_sign * math.pi / 2
             
             t1 = QPointF(
@@ -186,75 +191,60 @@ class ArcTestView(QGraphicsView):
                 c2.y() + self.radius * math.sin(tangent_angle)
             )
         else:
-            # INNER tangent: opposite turn directions
-            # The tangent crosses between the circles
-            # For equal radii, the crossing point is at the midpoint
+            # INNER tangent
             if d < 2 * self.radius:
-                # Circles overlap too much, fall back to straight line
-                path.lineTo(end)
-                return path
+                return None  # Circles overlap
             
-            # Angle offset for inner tangent
-            alpha = math.asin(2 * self.radius / d) if d > 2 * self.radius else 0
+            half_d = d / 2
+            beta = math.acos(self.radius / half_d)
             
-            # Tangent angle depends on which way we're turning
-            if start_sign > 0:  # start CCW, end CW
-                tangent_angle = theta + alpha
-            else:  # start CW, end CCW
-                tangent_angle = theta - alpha
-            
-            # t1 is on c1, perpendicular in start_sign direction
+            t1_angle = theta + start_sign * beta
             t1 = QPointF(
-                c1.x() + self.radius * math.cos(tangent_angle - start_sign * math.pi / 2),
-                c1.y() + self.radius * math.sin(tangent_angle - start_sign * math.pi / 2)
+                c1.x() + self.radius * math.cos(t1_angle),
+                c1.y() + self.radius * math.sin(t1_angle)
             )
-            # t2 is on c2, perpendicular in end_sign direction (opposite side)
+            
+            t2_angle = theta + math.pi - end_sign * beta
             t2 = QPointF(
-                c2.x() + self.radius * math.cos(tangent_angle + math.pi - end_sign * math.pi / 2),
-                c2.y() + self.radius * math.sin(tangent_angle + math.pi - end_sign * math.pi / 2)
+                c2.x() + self.radius * math.cos(t2_angle),
+                c2.y() + self.radius * math.sin(t2_angle)
             )
         
-        # Update tangent markers
-        self.t1_marker.setPos(t1)
-        self.t2_marker.setPos(t2)
+        # Compute arc sweeps
+        arc1_sweep = self._compute_sweep(c1, self.start, t1, start_sign)
+        arc2_sweep = self._compute_sweep(c2, t2, end, end_sign)
         
-        # Draw arc from start to t1 around c1
-        self._add_arc(path, c1, self.start, t1, start_sign)
+        # Compute total length
+        line_len = math.sqrt((t2.x() - t1.x())**2 + (t2.y() - t1.y())**2)
+        arc1_len = abs(arc1_sweep) * self.radius
+        arc2_len = abs(arc2_sweep) * self.radius
+        total_length = arc1_len + line_len + arc2_len
         
-        # Draw line from t1 to t2
+        # Build the path
+        path = QPainterPath()
+        path.moveTo(self.start)
+        self._add_arc_with_sweep(path, c1, self.start, arc1_sweep)
         path.lineTo(t2)
+        self._add_arc_with_sweep(path, c2, t2, arc2_sweep)
         
-        # Draw arc from t2 to end around c2
-        self._add_arc(path, c2, t2, end, end_sign)
-        
-        # Update debug text
-        def deg(r): return f"{math.degrees(r):.0f}°"
-        tangent_type = "OUTER" if start_sign == end_sign else "INNER"
-        self.debug_text.setPlainText(
-            f"start_dir: {deg(self.start_dir)}  end_dir: {deg(self.end_dir)} (routing: {deg(end_dir)})\n"
-            f"start_sign: {'+CCW' if start_sign > 0 else '-CW'}  end_sign: {'+CCW' if end_sign > 0 else '-CW'}  [{tangent_type}]\n"
-            f"c1: ({c1.x():.0f}, {c1.y():.0f})  c2: ({c2.x():.0f}, {c2.y():.0f})  d: {d:.0f}\n"
-            f"theta (c1→c2): {deg(theta)}  tangent_angle: {deg(tangent_angle)}\n"
-            f"t1: ({t1.x():.0f}, {t1.y():.0f})  t2: ({t2.x():.0f}, {t2.y():.0f})\n"
-            f"start_cross: {start_cross:.1f}  end_cross: {end_cross:.1f}"
-        )
-        
-        return path
+        return {
+            'path': path,
+            'length': total_length,
+            'c1': c1, 'c2': c2,
+            't1': t1, 't2': t2,
+            'd': d,
+            'start_sign': start_sign, 'end_sign': end_sign,
+            'arc1_sweep': arc1_sweep, 'arc2_sweep': arc2_sweep,
+        }
     
-    def _add_arc(self, path: QPainterPath, center: QPointF, 
-                 p1: QPointF, p2: QPointF, sign: int) -> None:
-        """
-        Add arc from p1 to p2 around center.
-        sign: +1 for CCW, -1 for CW
-        """
-        # Angles from center to points
+    def _compute_sweep(self, center: QPointF, p1: QPointF, p2: QPointF, sign: int) -> float:
+        """Compute sweep angle from p1 to p2 around center, respecting sign direction."""
         a1 = math.atan2(p1.y() - center.y(), p1.x() - center.x())
         a2 = math.atan2(p2.y() - center.y(), p2.x() - center.x())
         
-        # Compute sweep
         sweep = a2 - a1
         
-        # Normalize based on direction
+        # Normalize based on required direction
         if sign > 0:  # CCW: sweep should be positive
             while sweep < 0:
                 sweep += 2 * math.pi
@@ -265,6 +255,46 @@ class ArcTestView(QGraphicsView):
                 sweep -= 2 * math.pi
             while sweep < -2 * math.pi:
                 sweep += 2 * math.pi
+        
+        return sweep
+    
+    def _add_arc_with_sweep(self, path: QPainterPath, center: QPointF, start: QPointF, sweep: float) -> None:
+        """Add arc starting at start, going sweep radians around center."""
+        if abs(sweep) < 0.01:
+            return
+        
+        a1 = math.atan2(start.y() - center.y(), start.x() - center.x())
+        
+        num_segments = max(8, int(abs(sweep) * self.radius / 5))
+        for i in range(1, num_segments + 1):
+            t = i / num_segments
+            angle = a1 + t * sweep
+            x = center.x() + self.radius * math.cos(angle)
+            y = center.y() + self.radius * math.sin(angle)
+            path.lineTo(x, y)
+    
+    def _add_arc(self, path: QPainterPath, center: QPointF, 
+                 p1: QPointF, p2: QPointF, sign: int) -> None:
+        """
+        Add arc from p1 to p2 around center.
+        sign: +1 for CCW, -1 for CW (but we actually just take the short way)
+        """
+        # Angles from center to points
+        a1 = math.atan2(p1.y() - center.y(), p1.x() - center.x())
+        a2 = math.atan2(p2.y() - center.y(), p2.x() - center.x())
+        
+        # Compute sweep - ALWAYS take the short way
+        sweep = a2 - a1
+        
+        # Normalize to [-pi, pi] to get shortest path
+        while sweep > math.pi:
+            sweep -= 2 * math.pi
+        while sweep < -math.pi:
+            sweep += 2 * math.pi
+        
+        # Skip tiny arcs
+        if abs(sweep) < 0.01:
+            return
         
         # Draw arc
         num_segments = max(8, int(abs(sweep) * self.radius / 5))

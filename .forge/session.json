@@ -1047,6 +1047,60 @@
       "streaming": true,
       "actual_cost": 0.34272375,
       "generation_id": "gen-1767730828-XvPjmA1eSGU3AgISng8W"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767730863125.json",
+      "response_file": "/tmp/forge_debug/response_1767730863125.json",
+      "timestamp": 1767730863.125146,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000316,
+      "generation_id": "gen-1767730863-5XD1tKREzToGK6sFfqgj"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767731052656.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767731052656.json",
+      "timestamp": 1767731052.6577346,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.04561275,
+      "generation_id": "gen-1767731053-UGEeD2UjxXIE6b2OlH6B"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767731099445.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767731099445.json",
+      "timestamp": 1767731099.4469013,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.065603,
+      "generation_id": "gen-1767731100-W04Zh3HSN4VxbmzfAtEg"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767731129510.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767731129510.json",
+      "timestamp": 1767731129.5114014,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.38324125,
+      "generation_id": "gen-1767731129-WoEilmYvP99jsXoOaSq8"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767731204442.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767731204442.json",
+      "timestamp": 1767731204.4439554,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.4809425,
+      "generation_id": "gen-1767731204-toKsL2RKzmRKDiv7uyWd"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767731278162.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767731278162.json",
+      "timestamp": 1767731278.1631975,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.39843375,
+      "generation_id": "gen-1767731279-RKADKeuJsUH8yhfJSHlW"
     }
   ],
   "messages": [
@@ -3576,6 +3630,137 @@
     {
       "role": "assistant",
       "content": "Updated the routing to:\n\n1. **Compute `start_sign` and `end_sign` independently** - each based on where the other point is relative to its direction\n2. **Handle both OUTER and INNER tangents** - outer when both turn same way, inner when opposite\n3. **Debug shows** `[OUTER]` or `[INNER]`, both cross products, and distance between centers\n\nTry the broken case again (start=0\u00b0, end=180\u00b0) - it should now use an inner tangent since the signs will differ."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: b61711ac",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "start 0 end 180\nstart +ccw end -cw inner\nc1 (-100,40) c2 (212, -28) d 319\ntheta -12 tangent 2\nt1 (-98,0) t2 (214, -68)\nstart cross 12 end cross -12"
+    },
+    {
+      "role": "assistant",
+      "content": "The signs are now different (+CCW, -CW) and it's picking INNER tangent - that's correct! But looking at the values, t1 is at (-98, 0) which is basically at the start point, meaning almost no arc at the start. And t2 is way off at (214, -68).\n\nThe issue is the arc drawing is still going the wrong way. When `start_sign = +1` (CCW) and sweep calculation happens, it's probably going the long way around.\n\nLet me check: with start at (-100, 0), c1 at (-100, 40), and t1 at (-98, 0), the arc from start to t1 is almost nothing (they're nearly the same point). That's actually correct for this case - when you're already pointing the right direction, you don't need much arc.\n\nWhat does the actual path look like? Does it draw correctly now, or is it still looping weirdly?",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"The numbers look much better now:\\n- Signs are different (+CCW/-CW) \u2192 INNER tangent \u2713\\n- t1 at (-98, 0) is very close to start (-100, 0) \u2192 almost no start arc needed \u2713\\n- This makes sense for start=0\u00b0 pointing right when end is to the right\\n\\nHow does the actual drawn path look? Does it:\\n1. Curve correctly from start toward t1?\\n2. Draw the straight line to t2?\\n3. Curve into the end point?\\n\\nIf it's still drawing wrong, the issue is in `_add_arc` - specifically the sweep direction logic.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01N2c6U4XnonTRDH1Ha4nqsz",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01N2c6U4XnonTRDH1Ha4nqsz",
+      "content": "{\"done\": true, \"message\": \"The numbers look much better now:\\n- Signs are different (+CCW/-CW) \\u2192 INNER tangent \\u2713\\n- t1 at (-98, 0) is very close to start (-100, 0) \\u2192 almost no start arc needed \\u2713\\n- This makes sense for start=0\\u00b0 pointing right when end is to the right\\n\\nHow does the actual drawn path look? Does it:\\n1. Curve correctly from start toward t1?\\n2. Draw the straight line to t2?\\n3. Curve into the end point?\\n\\nIf it's still drawing wrong, the issue is in `_add_arc` - specifically the sweep direction logic.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "The numbers look much better now:\n- Signs are different (+CCW/-CW) \u2192 INNER tangent \u2713\n- t1 at (-98, 0) is very close to start (-100, 0) \u2192 almost no start arc needed \u2713\n- This makes sense for start=0\u00b0 pointing right when end is to the right\n\nHow does the actual drawn path look? Does it:\n1. Curve correctly from start toward t1?\n2. Draw the straight line to t2?\n3. Curve into the end point?\n\nIf it's still drawing wrong, the issue is in `_add_arc` - specifically the sweep direction logic."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 46b77a1d",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "well it has a 180 arc at the end despite me going straight left right so I'd say it's still wrong yeah"
+    },
+    {
+      "role": "assistant",
+      "content": "Right - the end arc is still doing a 180\u00b0 loop when it should be nearly zero. The problem is in `_add_arc` - when the sign says CW (-1), but the sweep calculation is forcing it to go the long way.\n\nLet me look at the end arc case:\n- End point is at the mouse (let's say ~212, 0)\n- c2 is at (212, -28) - above the end point\n- t2 is at (214, -68) - even further above\n- We need to arc from t2 to end, going CW (sign=-1)\n\nThe issue is: from t2 to end around c2, the short way is actually CCW (going down and right), but we're forcing CW which goes the long way around.\n\nThe fundamental problem is that `_add_arc` blindly follows the sign, but the sign was computed for \"which way to turn to get to the destination\" - not \"which way to draw this specific arc segment\". The tangent point computation already handles the geometry; the arc just needs to go the short way.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"spikes/arc_test/main.py\", \"search\": \"    def _add_arc(self, path: QPainterPath, center: QPointF, \\n                 p1: QPointF, p2: QPointF, sign: int) -> None:\\n        \\\"\\\"\\\"\\n        Add arc from p1 to p2 around center.\\n        sign: +1 for CCW, -1 for CW\\n        \\\"\\\"\\\"\\n        # Angles from center to points\\n        a1 = math.atan2(p1.y() - center.y(), p1.x() - center.x())\\n        a2 = math.atan2(p2.y() - center.y(), p2.x() - center.x())\\n        \\n        # Compute sweep\\n        sweep = a2 - a1\\n        \\n        # Normalize based on direction\\n        if sign > 0:  # CCW: sweep should be positive\\n            while sweep < 0:\\n                sweep += 2 * math.pi\\n            while sweep > 2 * math.pi:\\n                sweep -= 2 * math.pi\\n        else:  # CW: sweep should be negative\\n            while sweep > 0:\\n                sweep -= 2 * math.pi\\n            while sweep < -2 * math.pi:\\n                sweep += 2 * math.pi\\n        \\n        # Draw arc\\n        num_segments = max(8, int(abs(sweep) * self.radius / 5))\\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = a1 + t * sweep\\n            x = center.x() + self.radius * math.cos(angle)\\n            y = center.y() + self.radius * math.sin(angle)\\n            path.lineTo(x, y)\", \"replace\": \"    def _add_arc(self, path: QPainterPath, center: QPointF, \\n                 p1: QPointF, p2: QPointF, sign: int) -> None:\\n        \\\"\\\"\\\"\\n        Add arc from p1 to p2 around center.\\n        sign: +1 for CCW, -1 for CW (but we actually just take the short way)\\n        \\\"\\\"\\\"\\n        # Angles from center to points\\n        a1 = math.atan2(p1.y() - center.y(), p1.x() - center.x())\\n        a2 = math.atan2(p2.y() - center.y(), p2.x() - center.x())\\n        \\n        # Compute sweep - ALWAYS take the short way\\n        sweep = a2 - a1\\n        \\n        # Normalize to [-pi, pi] to get shortest path\\n        while sweep > math.pi:\\n            sweep -= 2 * math.pi\\n        while sweep < -math.pi:\\n            sweep += 2 * math.pi\\n        \\n        # Skip tiny arcs\\n        if abs(sweep) < 0.01:\\n            return\\n        \\n        # Draw arc\\n        num_segments = max(8, int(abs(sweep) * self.radius / 5))\\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = a1 + t * sweep\\n            x = center.x() + self.radius * math.cos(angle)\\n            y = center.y() + self.radius * math.sin(angle)\\n            path.lineTo(x, y)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01RF9PjL1ddmx93FkkjzvUuP",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01RF9PjL1ddmx93FkkjzvUuP",
+      "content": "{\"message\": \"Replaced in spikes/arc_test/main.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "The arc drawing should now just take the short path. But wait - I think the issue is actually in the tangent point calculation for the inner tangent case. Let me look at the debug values again:\n\n- t2 is at (214, -68) but end is around (212, 0)\n- c2 is at (212, -28)\n\nThe arc from t2 (214, -68) to end (212, 0) going around c2 (212, -28) - that's a long way! t2 is 40 units below c2, and end is 28 units above c2. That's almost opposite sides of the circle.\n\nThe problem is in the inner tangent calculation - t2 is being placed wrong. Let me reconsider the math:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"spikes/arc_test/main.py\", \"search\": \"        else:\\n            # INNER tangent: opposite turn directions\\n            # The tangent crosses between the circles\\n            # For equal radii, the crossing point is at the midpoint\\n            if d < 2 * self.radius:\\n                # Circles overlap too much, fall back to straight line\\n                path.lineTo(end)\\n                return path\\n            \\n            # Angle offset for inner tangent\\n            alpha = math.asin(2 * self.radius / d) if d > 2 * self.radius else 0\\n            \\n            # Tangent angle depends on which way we're turning\\n            if start_sign > 0:  # start CCW, end CW\\n                tangent_angle = theta + alpha\\n            else:  # start CW, end CCW\\n                tangent_angle = theta - alpha\\n            \\n            # t1 is on c1, perpendicular in start_sign direction\\n            t1 = QPointF(\\n                c1.x() + self.radius * math.cos(tangent_angle - start_sign * math.pi / 2),\\n                c1.y() + self.radius * math.sin(tangent_angle - start_sign * math.pi / 2)\\n            )\\n            # t2 is on c2, perpendicular in end_sign direction (opposite side)\\n            t2 = QPointF(\\n                c2.x() + self.radius * math.cos(tangent_angle + math.pi - end_sign * math.pi / 2),\\n                c2.y() + self.radius * math.sin(tangent_angle + math.pi - end_sign * math.pi / 2)\\n            )\", \"replace\": \"        else:\\n            # INNER tangent: opposite turn directions\\n            # The tangent crosses between the circles\\n            if d < 2 * self.radius:\\n                # Circles overlap too much, fall back to straight line\\n                path.lineTo(end)\\n                return path\\n            \\n            # For inner tangent with equal radii:\\n            # The tangent line passes through the midpoint of the centers\\n            # and the tangent points are perpendicular to the line from center to midpoint\\n            \\n            # Midpoint\\n            mid = QPointF((c1.x() + c2.x()) / 2, (c1.y() + c2.y()) / 2)\\n            \\n            # Distance from each center to midpoint\\n            half_d = d / 2\\n            \\n            # Angle from c1 to midpoint (same as theta)\\n            # The tangent point on c1 is where a line from mid, tangent to circle c1, touches\\n            # For a circle of radius r, point at distance D, tangent angle = acos(r/D)\\n            beta = math.acos(self.radius / half_d) if half_d > self.radius else 0\\n            \\n            # t1 is at angle (theta + beta) or (theta - beta) from c1, depending on turn direction\\n            t1_angle = theta + start_sign * beta\\n            t1 = QPointF(\\n                c1.x() + self.radius * math.cos(t1_angle),\\n                c1.y() + self.radius * math.sin(t1_angle)\\n            )\\n            \\n            # t2 is at angle (theta + pi + end_sign * beta) from c2\\n            # (theta + pi because we're looking back from c2 toward c1)\\n            t2_angle = theta + math.pi - end_sign * beta\\n            t2 = QPointF(\\n                c2.x() + self.radius * math.cos(t2_angle),\\n                c2.y() + self.radius * math.sin(t2_angle)\\n            )\\n            \\n            tangent_angle = t1_angle  # For debug display\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01JEEHsptS29C6gpP5wUFj6M",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01JEEHsptS29C6gpP5wUFj6M",
+      "content": "{\"message\": \"Replaced in spikes/arc_test/main.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "user",
+      "content": "try fixing whether to go cw or ccw, compute the object curve on that basis, and then just go all fourth and pick the shortest one",
+      "_mid_turn": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good idea - instead of trying to be clever about picking signs, just compute all 4 combinations and pick the shortest valid path:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"spikes/arc_test/main.py\", \"search\": \"    def _compute_clc_path(self, end: QPointF) -> QPainterPath:\\n        \\\"\\\"\\\"\\n        Compute circle-line-circle path.\\n        \\n        The key insight: we have two turning circles (one at start, one at end).\\n        We need to find the tangent line between them, then draw arcs to that line.\\n        \\\"\\\"\\\"\\n        path = QPainterPath()\\n        path.moveTo(self.start)\\n        \\n        # End direction: absolute (right-click rotates)\\n        # The arrow shows where the belt is GOING, but for routing we need\\n        # the direction the belt is COMING FROM (opposite)\\n        end_dir = self.end_dir + math.pi  # Flip for routing\\n        \\n        # Update end marker and direction arrow (arrow shows actual end_dir, not flipped)\\n        self.end_marker.setPos(end)\\n        self.end_arrow.setPos(end)\\n        arrow_dx = 30 * math.cos(self.end_dir)\\n        arrow_dy = 30 * math.sin(self.end_dir)\\n        self.end_arrow.setLine(0, 0, arrow_dx, arrow_dy)\\n        \\n        # Determine which way to turn at START based on where end is\\n        # Vector from start to end\\n        to_end = QPointF(end.x() - self.start.x(), end.y() - self.start.y())\\n        \\n        # Cross product with start direction tells us which side end is on\\n        start_dx = math.cos(self.start_dir)\\n        start_dy = math.sin(self.start_dir)\\n        start_cross = start_dx * to_end.y() - start_dy * to_end.x()\\n        \\n        # If cross > 0, end is to the left, turn left (CCW)\\n        # If cross < 0, end is to the right, turn right (CW)\\n        start_sign = 1 if start_cross >= 0 else -1  # +1 = left/CCW, -1 = right/CW\\n        \\n        # Determine which way to turn at END based on where start is\\n        # Vector from end to start\\n        to_start = QPointF(self.start.x() - end.x(), self.start.y() - end.y())\\n        \\n        # Cross product with end direction (flipped) tells us which side start is on\\n        end_dx = math.cos(end_dir)\\n        end_dy = math.sin(end_dir)\\n        end_cross = end_dx * to_start.y() - end_dy * to_start.x()\\n        \\n        # Same logic for end\\n        end_sign = 1 if end_cross >= 0 else -1\\n        \\n        # Compute circle centers\\n        # Perpendicular to direction, offset by radius\\n        start_perp = self.start_dir + start_sign * math.pi / 2\\n        c1 = QPointF(\\n            self.start.x() + self.radius * math.cos(start_perp),\\n            self.start.y() + self.radius * math.sin(start_perp)\\n        )\\n        \\n        end_perp = end_dir + end_sign * math.pi / 2\\n        c2 = QPointF(\\n            end.x() + self.radius * math.cos(end_perp),\\n            end.y() + self.radius * math.sin(end_perp)\\n        )\\n        \\n        # Update debug circles\\n        self.circle1.setPos(c1)\\n        self.circle2.setPos(c2)\\n        \\n        # Find tangent line between the two circles\\n        d = math.sqrt((c2.x() - c1.x())**2 + (c2.y() - c1.y())**2)\\n        \\n        if d < 0.001:\\n            # Centers coincide, just draw line\\n            path.lineTo(end)\\n            return path\\n        \\n        # Angle from c1 to c2\\n        theta = math.atan2(c2.y() - c1.y(), c2.x() - c1.x())\\n        \\n        if start_sign == end_sign:\\n            # OUTER tangent: same turn direction at both ends\\n            # Tangent points are at same angle from both centers, perpendicular to center line\\n            tangent_angle = theta - start_sign * math.pi / 2\\n            \\n            t1 = QPointF(\\n                c1.x() + self.radius * math.cos(tangent_angle),\\n                c1.y() + self.radius * math.sin(tangent_angle)\\n            )\\n            t2 = QPointF(\\n                c2.x() + self.radius * math.cos(tangent_angle),\\n                c2.y() + self.radius * math.sin(tangent_angle)\\n            )\\n        else:\\n            # INNER tangent: opposite turn directions\\n            # The tangent crosses between the circles\\n            if d < 2 * self.radius:\\n                # Circles overlap too much, fall back to straight line\\n                path.lineTo(end)\\n                return path\\n            \\n            # For inner tangent with equal radii:\\n            # The tangent line passes through the midpoint of the centers\\n            # and the tangent points are perpendicular to the line from center to midpoint\\n            \\n            # Midpoint\\n            mid = QPointF((c1.x() + c2.x()) / 2, (c1.y() + c2.y()) / 2)\\n            \\n            # Distance from each center to midpoint\\n            half_d = d / 2\\n            \\n            # Angle from c1 to midpoint (same as theta)\\n            # The tangent point on c1 is where a line from mid, tangent to circle c1, touches\\n            # For a circle of radius r, point at distance D, tangent angle = acos(r/D)\\n            beta = math.acos(self.radius / half_d) if half_d > self.radius else 0\\n            \\n            # t1 is at angle (theta + beta) or (theta - beta) from c1, depending on turn direction\\n            t1_angle = theta + start_sign * beta\\n            t1 = QPointF(\\n                c1.x() + self.radius * math.cos(t1_angle),\\n                c1.y() + self.radius * math.sin(t1_angle)\\n            )\\n            \\n            # t2 is at angle (theta + pi + end_sign * beta) from c2\\n            # (theta + pi because we're looking back from c2 toward c1)\\n            t2_angle = theta + math.pi - end_sign * beta\\n            t2 = QPointF(\\n                c2.x() + self.radius * math.cos(t2_angle),\\n                c2.y() + self.radius * math.sin(t2_angle)\\n            )\\n            \\n            tangent_angle = t1_angle  # For debug display\\n        \\n        # Update tangent markers\\n        self.t1_marker.setPos(t1)\\n        self.t2_marker.setPos(t2)\\n        \\n        # Draw arc from start to t1 around c1\\n        self._add_arc(path, c1, self.start, t1, start_sign)\\n        \\n        # Draw line from t1 to t2\\n        path.lineTo(t2)\\n        \\n        # Draw arc from t2 to end around c2\\n        self._add_arc(path, c2, t2, end, end_sign)\\n        \\n        # Update debug text\\n        def deg(r): return f\\\"{math.degrees(r):.0f}\u00b0\\\"\\n        tangent_type = \\\"OUTER\\\" if start_sign == end_sign else \\\"INNER\\\"\\n        self.debug_text.setPlainText(\\n            f\\\"start_dir: {deg(self.start_dir)}  end_dir: {deg(self.end_dir)} (routing: {deg(end_dir)})\\\\n\\\"\\n            f\\\"start_sign: {'+CCW' if start_sign > 0 else '-CW'}  end_sign: {'+CCW' if end_sign > 0 else '-CW'}  [{tangent_type}]\\\\n\\\"\\n            f\\\"c1: ({c1.x():.0f}, {c1.y():.0f})  c2: ({c2.x():.0f}, {c2.y():.0f})  d: {d:.0f}\\\\n\\\"\\n            f\\\"theta (c1\u2192c2): {deg(theta)}  tangent_angle: {deg(tangent_angle)}\\\\n\\\"\\n            f\\\"t1: ({t1.x():.0f}, {t1.y():.0f})  t2: ({t2.x():.0f}, {t2.y():.0f})\\\\n\\\"\\n            f\\\"start_cross: {start_cross:.1f}  end_cross: {end_cross:.1f}\\\"\\n        )\\n        \\n        return path\", \"replace\": \"    def _compute_clc_path(self, end: QPointF) -> QPainterPath:\\n        \\\"\\\"\\\"\\n        Compute circle-line-circle path.\\n        \\n        Try all 4 combinations of (start CW/CCW, end CW/CCW) and pick shortest.\\n        \\\"\\\"\\\"\\n        # End direction: absolute (right-click rotates)\\n        # The arrow shows where the belt is GOING, but for routing we need\\n        # the direction the belt is COMING FROM (opposite)\\n        end_dir = self.end_dir + math.pi  # Flip for routing\\n        \\n        # Update end marker and direction arrow (arrow shows actual end_dir, not flipped)\\n        self.end_marker.setPos(end)\\n        self.end_arrow.setPos(end)\\n        arrow_dx = 30 * math.cos(self.end_dir)\\n        arrow_dy = 30 * math.sin(self.end_dir)\\n        self.end_arrow.setLine(0, 0, arrow_dx, arrow_dy)\\n        \\n        # Try all 4 combinations and pick shortest\\n        best_result = None\\n        best_length = float('inf')\\n        \\n        for start_sign in [-1, 1]:\\n            for end_sign in [-1, 1]:\\n                result = self._try_path(end, end_dir, start_sign, end_sign)\\n                if result and result['length'] < best_length:\\n                    best_length = result['length']\\n                    best_result = result\\n        \\n        if not best_result:\\n            # Fallback: straight line\\n            path = QPainterPath()\\n            path.moveTo(self.start)\\n            path.lineTo(end)\\n            return path\\n        \\n        # Update debug visuals with best result\\n        self.circle1.setPos(best_result['c1'])\\n        self.circle2.setPos(best_result['c2'])\\n        self.t1_marker.setPos(best_result['t1'])\\n        self.t2_marker.setPos(best_result['t2'])\\n        \\n        # Update debug text\\n        def deg(r): return f\\\"{math.degrees(r):.0f}\u00b0\\\"\\n        r = best_result\\n        tangent_type = \\\"OUTER\\\" if r['start_sign'] == r['end_sign'] else \\\"INNER\\\"\\n        self.debug_text.setPlainText(\\n            f\\\"start_dir: {deg(self.start_dir)}  end_dir: {deg(self.end_dir)} (routing: {deg(end_dir)})\\\\n\\\"\\n            f\\\"start_sign: {'+CCW' if r['start_sign'] > 0 else '-CW'}  end_sign: {'+CCW' if r['end_sign'] > 0 else '-CW'}  [{tangent_type}]\\\\n\\\"\\n            f\\\"c1: ({r['c1'].x():.0f}, {r['c1'].y():.0f})  c2: ({r['c2'].x():.0f}, {r['c2'].y():.0f})  d: {r['d']:.0f}\\\\n\\\"\\n            f\\\"t1: ({r['t1'].x():.0f}, {r['t1'].y():.0f})  t2: ({r['t2'].x():.0f}, {r['t2'].y():.0f})\\\\n\\\"\\n            f\\\"length: {r['length']:.0f}  arc1: {deg(r['arc1_sweep'])}  arc2: {deg(r['arc2_sweep'])}\\\"\\n        )\\n        \\n        return best_result['path']\\n    \\n    def _try_path(self, end: QPointF, end_dir: float, start_sign: int, end_sign: int) -> dict | None:\\n        \\\"\\\"\\\"Try computing a path with given turn directions. Returns dict with path and metadata, or None.\\\"\\\"\\\"\\n        \\n        # Compute circle centers\\n        start_perp = self.start_dir + start_sign * math.pi / 2\\n        c1 = QPointF(\\n            self.start.x() + self.radius * math.cos(start_perp),\\n            self.start.y() + self.radius * math.sin(start_perp)\\n        )\\n        \\n        end_perp = end_dir + end_sign * math.pi / 2\\n        c2 = QPointF(\\n            end.x() + self.radius * math.cos(end_perp),\\n            end.y() + self.radius * math.sin(end_perp)\\n        )\\n        \\n        # Distance between centers\\n        d = math.sqrt((c2.x() - c1.x())**2 + (c2.y() - c1.y())**2)\\n        \\n        if d < 0.001:\\n            return None\\n        \\n        # Angle from c1 to c2\\n        theta = math.atan2(c2.y() - c1.y(), c2.x() - c1.x())\\n        \\n        # Compute tangent points based on tangent type\\n        if start_sign == end_sign:\\n            # OUTER tangent\\n            tangent_angle = theta - start_sign * math.pi / 2\\n            \\n            t1 = QPointF(\\n                c1.x() + self.radius * math.cos(tangent_angle),\\n                c1.y() + self.radius * math.sin(tangent_angle)\\n            )\\n            t2 = QPointF(\\n                c2.x() + self.radius * math.cos(tangent_angle),\\n                c2.y() + self.radius * math.sin(tangent_angle)\\n            )\\n        else:\\n            # INNER tangent\\n            if d < 2 * self.radius:\\n                return None  # Circles overlap\\n            \\n            half_d = d / 2\\n            beta = math.acos(self.radius / half_d)\\n            \\n            t1_angle = theta + start_sign * beta\\n            t1 = QPointF(\\n                c1.x() + self.radius * math.cos(t1_angle),\\n                c1.y() + self.radius * math.sin(t1_angle)\\n            )\\n            \\n            t2_angle = theta + math.pi - end_sign * beta\\n            t2 = QPointF(\\n                c2.x() + self.radius * math.cos(t2_angle),\\n                c2.y() + self.radius * math.sin(t2_angle)\\n            )\\n        \\n        # Compute arc sweeps\\n        arc1_sweep = self._compute_sweep(c1, self.start, t1, start_sign)\\n        arc2_sweep = self._compute_sweep(c2, t2, end, end_sign)\\n        \\n        # Compute total length\\n        line_len = math.sqrt((t2.x() - t1.x())**2 + (t2.y() - t1.y())**2)\\n        arc1_len = abs(arc1_sweep) * self.radius\\n        arc2_len = abs(arc2_sweep) * self.radius\\n        total_length = arc1_len + line_len + arc2_len\\n        \\n        # Build the path\\n        path = QPainterPath()\\n        path.moveTo(self.start)\\n        self._add_arc_with_sweep(path, c1, self.start, arc1_sweep)\\n        path.lineTo(t2)\\n        self._add_arc_with_sweep(path, c2, t2, arc2_sweep)\\n        \\n        return {\\n            'path': path,\\n            'length': total_length,\\n            'c1': c1, 'c2': c2,\\n            't1': t1, 't2': t2,\\n            'd': d,\\n            'start_sign': start_sign, 'end_sign': end_sign,\\n            'arc1_sweep': arc1_sweep, 'arc2_sweep': arc2_sweep,\\n        }\\n    \\n    def _compute_sweep(self, center: QPointF, p1: QPointF, p2: QPointF, sign: int) -> float:\\n        \\\"\\\"\\\"Compute sweep angle from p1 to p2 around center, respecting sign direction.\\\"\\\"\\\"\\n        a1 = math.atan2(p1.y() - center.y(), p1.x() - center.x())\\n        a2 = math.atan2(p2.y() - center.y(), p2.x() - center.x())\\n        \\n        sweep = a2 - a1\\n        \\n        # Normalize based on required direction\\n        if sign > 0:  # CCW: sweep should be positive\\n            while sweep < 0:\\n                sweep += 2 * math.pi\\n            while sweep > 2 * math.pi:\\n                sweep -= 2 * math.pi\\n        else:  # CW: sweep should be negative\\n            while sweep > 0:\\n                sweep -= 2 * math.pi\\n            while sweep < -2 * math.pi:\\n                sweep += 2 * math.pi\\n        \\n        return sweep\\n    \\n    def _add_arc_with_sweep(self, path: QPainterPath, center: QPointF, start: QPointF, sweep: float) -> None:\\n        \\\"\\\"\\\"Add arc starting at start, going sweep radians around center.\\\"\\\"\\\"\\n        if abs(sweep) < 0.01:\\n            return\\n        \\n        a1 = math.atan2(start.y() - center.y(), start.x() - center.x())\\n        \\n        num_segments = max(8, int(abs(sweep) * self.radius / 5))\\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = a1 + t * sweep\\n            x = center.x() + self.radius * math.cos(angle)\\n            y = center.y() + self.radius * math.sin(angle)\\n            path.lineTo(x, y)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01PvECPGbaoeX2qQhLWu8vAK",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01PvECPGbaoeX2qQhLWu8vAK",
+      "content": "{\"message\": \"Replaced in spikes/arc_test/main.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now it tries all 4 combinations and picks the shortest. Try it out - the debug now shows the arc sweeps in degrees so you can see exactly how much each arc is turning.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Rewrote the routing to try all 4 combinations:\\n- `(CW, CW)`, `(CW, CCW)`, `(CCW, CW)`, `(CCW, CCW)`\\n- Computes full path for each, calculates total length\\n- Picks shortest valid path\\n\\nDebug now shows:\\n- `arc1` and `arc2` sweeps in degrees\\n- `length` of the total path\\n\\nTry it - this should always find the most direct route regardless of directions!\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01BFEZEVGxLiYL6e2c2R1xVK",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BFEZEVGxLiYL6e2c2R1xVK",
+      "content": "{\"done\": true, \"message\": \"Rewrote the routing to try all 4 combinations:\\n- `(CW, CW)`, `(CW, CCW)`, `(CCW, CW)`, `(CCW, CCW)`\\n- Computes full path for each, calculates total length\\n- Picks shortest valid path\\n\\nDebug now shows:\\n- `arc1` and `arc2` sweeps in degrees\\n- `length` of the total path\\n\\nTry it - this should always find the most direct route regardless of directions!\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Rewrote the routing to try all 4 combinations:\n- `(CW, CW)`, `(CW, CCW)`, `(CCW, CW)`, `(CCW, CCW)`\n- Computes full path for each, calculates total length\n- Picks shortest valid path\n\nDebug now shows:\n- `arc1` and `arc2` sweeps in degrees\n- `length` of the total path\n\nTry it - this should always find the most direct route regardless of directions!"
     }
   ]
 }
