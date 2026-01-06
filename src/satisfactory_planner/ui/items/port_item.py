@@ -47,6 +47,7 @@ class PortItem(QGraphicsItem):
 
         self._setup_flags()
         self._hovered = False
+        self._drag_target = False  # Highlighted as valid drop target during belt drag
 
     def _setup_flags(self) -> None:
         """Configure flags."""
@@ -72,9 +73,9 @@ class PortItem(QGraphicsItem):
         # Rotate to face the right direction
         painter.rotate(self.angle)
 
-        # Scale up if hovered
-        if self._hovered:
-            painter.scale(1.2, 1.2)
+        # Scale up if hovered or targeted during belt drag
+        if self._hovered or self._drag_target:
+            painter.scale(1.3, 1.3)
 
         # Draw filled arrow pointing outward (for output) or inward (for input)
         # Arrow points right by default
@@ -121,12 +122,15 @@ class PortItem(QGraphicsItem):
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle release to complete belt connection on input port."""
-        print(f"[DEBUG] PortItem.mouseReleaseEvent: is_output={self.is_output}, button={event.button()}, dragging={self.canvas.is_dragging_belt()}")
         if event.button() == Qt.LeftButton and not self.is_output:
             # Complete connection to this input
             if self.canvas.is_dragging_belt():
-                print(f"[DEBUG]   -> completing belt to {self.building_id}:{self.port_index}")
                 self.canvas.complete_belt_connection(self.building_id, self.port_index)
                 event.accept()
                 return
         super().mouseReleaseEvent(event)
+
+    def set_drag_target(self, targeted: bool) -> None:
+        """Set whether this port is being targeted during belt drag."""
+        self._drag_target = targeted
+        self.update()

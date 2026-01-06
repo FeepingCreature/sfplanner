@@ -79,6 +79,7 @@ class FactoryCanvas(QGraphicsView):
         # Belt drag preview
         self._drag_line: QGraphicsLineItem | None = None
         self._drag_start_pos: QPointF | None = None
+        self._hover_target_port: object | None = None  # PortItem being hovered during drag
 
         # Enable drag-drop
         self.setAcceptDrops(True)
@@ -248,11 +249,27 @@ class FactoryCanvas(QGraphicsView):
             )
             return
 
-        # Update belt drag preview line
+        # Update belt drag preview line and check for target port
         if self._drag_line and self._drag_start_pos:
             scene_pos = self.mapToScene(event.pos())
             from PySide6.QtCore import QLineF
             self._drag_line.setLine(QLineF(self._drag_start_pos, scene_pos))
+            
+            # Check if hovering over a valid input port
+            from satisfactory_planner.ui.items.port_item import PortItem
+            new_target = None
+            for item in self._scene.items(scene_pos):
+                if isinstance(item, PortItem) and not item.is_output:
+                    new_target = item
+                    break
+            
+            # Update hover state if target changed
+            if new_target != self._hover_target_port:
+                if self._hover_target_port:
+                    self._hover_target_port.set_drag_target(False)
+                if new_target:
+                    new_target.set_drag_target(True)
+                self._hover_target_port = new_target
 
         # Update ghost position in placement mode
         if self._placement_mode and self._ghost_item:
@@ -280,21 +297,13 @@ class FactoryCanvas(QGraphicsView):
             from satisfactory_planner.ui.items.port_item import PortItem
             
             # Find all items at this point and look for an input port
-            items_at_pos = self._scene.items(scene_pos)
-            print(f"[DEBUG] mouseRelease: scene_pos={scene_pos}, items={len(items_at_pos)}")
-            for item in items_at_pos:
-                print(f"[DEBUG]   item: {type(item).__name__}")
-                if isinstance(item, PortItem):
-                    print(f"[DEBUG]     PortItem: is_output={item.is_output}, building={item.building_id}")
-                    if not item.is_output:
-                        # Found an input port - complete the connection
-                        print(f"[DEBUG]     -> completing belt connection")
-                        self.complete_belt_connection(item.building_id, item.port_index)
-                        super().mouseReleaseEvent(event)
-                        return
+            for item in self._scene.items(scene_pos):
+                if isinstance(item, PortItem) and not item.is_output:
+                    self.complete_belt_connection(item.building_id, item.port_index)
+                    super().mouseReleaseEvent(event)
+                    return
             
             # No input port found - cancel
-            print(f"[DEBUG]   -> no input port found, cancelling")
             self.cancel_belt_connection()
 
         super().mouseReleaseEvent(event)
@@ -433,6 +442,9 @@ class FactoryCanvas(QGraphicsView):
         if self._drag_line:
             self._scene.removeItem(self._drag_line)
             self._drag_line = None
+        if self._hover_target_port:
+            self._hover_target_port.set_drag_target(False)
+            self._hover_target_port = None
         self.setCursor(Qt.ArrowCursor)
 
     def cancel_belt_connection(self) -> None:
