@@ -432,6 +432,33 @@
       "streaming": true,
       "actual_cost": 0.0399775,
       "generation_id": "gen-1767727680-YDyxO80dl7MlPkfZFfma"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767727694170.json",
+      "response_file": "/tmp/forge_debug/response_1767727694170.json",
+      "timestamp": 1767727694.1706173,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000181,
+      "generation_id": "gen-1767727694-UzJ9tf2HqP3v7ZvnlsSa"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728140757.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728140757.json",
+      "timestamp": 1767728140.7580662,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.3077425,
+      "generation_id": "gen-1767728141-5ewXD6cBjIpfM978kDgD"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728149340.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728149340.json",
+      "timestamp": 1767728149.341274,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.3068625,
+      "generation_id": "gen-1767728149-fOujKD7EQN0iOUgOiVML"
     }
   ],
   "messages": [
@@ -1423,6 +1450,59 @@
     {
       "role": "assistant",
       "content": "Fixed both issues:\n\n**1. Port directions corrected:**\n- Input ports now specify the direction the belt is **traveling INTO** the port (not the direction it faces outward)\n- Regular buildings & splitter inputs: direction = 0 (traveling right, into the left side)\n- Merger inputs: top = \u03c0/2 (down), left = 0 (right), bottom = -\u03c0/2 (up)\n\n**2. Path selection improved:**\n- Added `_arc_sweep()` function that correctly calculates arc length accounting for CW/CCW direction\n- Paths with arcs > 180\u00b0 get a 3x length penalty, so the algorithm strongly prefers paths that don't loop around unnecessarily\n\nTry connecting buildings now - the curves should follow natural paths without weird loops!"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: da5e4f06",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "I think the output ports are the wrong way around maybe, I'm not sure what the exact issue is with them."
+    },
+    {
+      "role": "assistant",
+      "content": "Let me add some debug output to see what's happening with the routing. This will help us figure out what's wrong:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/belt_item.py\", \"search\": \"        # Compute circle-line-circle path\\n        belt_path = compute_belt_path(start, start_dir, end, end_dir)\", \"replace\": \"        # Compute circle-line-circle path\\n        print(f\\\"[DEBUG] Belt routing:\\\")\\n        print(f\\\"  start={start}, start_dir={math.degrees(start_dir):.1f}\u00b0\\\")\\n        print(f\\\"  end={end}, end_dir={math.degrees(end_dir):.1f}\u00b0\\\")\\n        belt_path = compute_belt_path(start, start_dir, end, end_dir)\\n        if belt_path:\\n            print(f\\\"  path: start_cw={belt_path.start_clockwise}, end_cw={belt_path.end_clockwise}\\\")\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_01K8LkD6YyT9vuoQnjAH4NrF",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01K8LkD6YyT9vuoQnjAH4NrF",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/belt_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Run the app, connect a couple buildings, and paste the debug output here. That'll show us exactly what directions are being calculated and which path it's choosing.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Added debug logging to belt routing. Run the app, connect some buildings, and paste the console output. It will show:\\n- Start/end positions\\n- Start/end directions in degrees\\n- Whether it chose clockwise or counter-clockwise for each arc\\n\\nThis will help us pinpoint what's wrong!\"}",
+            "name": "done"
+          },
+          "id": "toolu_bdrk_0148oLzzKxbxzR422S8Yasyk",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_0148oLzzKxbxzR422S8Yasyk",
+      "content": "{\"done\": true, \"message\": \"Added debug logging to belt routing. Run the app, connect some buildings, and paste the console output. It will show:\\n- Start/end positions\\n- Start/end directions in degrees\\n- Whether it chose clockwise or counter-clockwise for each arc\\n\\nThis will help us pinpoint what's wrong!\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Added debug logging to belt routing. Run the app, connect some buildings, and paste the console output. It will show:\n- Start/end positions\n- Start/end directions in degrees\n- Whether it chose clockwise or counter-clockwise for each arc\n\nThis will help us pinpoint what's wrong!"
     }
   ]
 }

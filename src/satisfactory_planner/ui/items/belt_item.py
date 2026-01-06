@@ -78,7 +78,12 @@ class BeltItem(QGraphicsPathItem):
         end = Point(end_pos[0], end_pos[1])
 
         # Compute circle-line-circle path
+        print(f"[DEBUG] Belt routing:")
+        print(f"  start={start}, start_dir={math.degrees(start_dir):.1f}°")
+        print(f"  end={end}, end_dir={math.degrees(end_dir):.1f}°")
         belt_path = compute_belt_path(start, start_dir, end, end_dir)
+        if belt_path:
+            print(f"  path: start_cw={belt_path.start_clockwise}, end_cw={belt_path.end_clockwise}")
 
         path = QPainterPath()
         
