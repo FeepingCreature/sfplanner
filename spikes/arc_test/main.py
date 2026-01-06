@@ -1,11 +1,15 @@
-"""Minimal test: draw an arc from a fixed point toward the mouse."""
+"""Circle-line-circle routing test.
+
+Left-click to rotate start direction.
+Move mouse to see the path.
+"""
 
 import math
 import sys
 
 from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QPainter, QPen, QColor, QPainterPath
-from PySide6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPathItem
+from PySide6.QtGui import QPainter, QPen, QColor, QPainterPath, QBrush
+from PySide6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem
 
 
 class ArcTestView(QGraphicsView):
@@ -18,125 +22,188 @@ class ArcTestView(QGraphicsView):
         self.setMouseTracking(True)
         
         # Fixed start point and direction
-        self.start = QPointF(0, 0)
+        self.start = QPointF(-100, 0)
         self.start_dir = 0  # radians, pointing RIGHT
-        self.radius = 50
+        self.radius = 40
         
         # Draw origin marker
-        self.scene.addEllipse(-5, -5, 10, 10, QPen(Qt.red), QColor(255, 0, 0))
+        self.start_marker = self.scene.addEllipse(-5, -5, 10, 10, QPen(Qt.red), QColor(255, 0, 0))
+        self.start_marker.setPos(self.start)
         
         # Draw start direction arrow
-        arrow_len = 30
-        self.scene.addLine(0, 0, arrow_len, 0, QPen(Qt.blue, 2))
+        self.dir_arrow = QGraphicsLineItem(0, 0, 30, 0)
+        self.dir_arrow.setPen(QPen(Qt.blue, 2))
+        self.dir_arrow.setPos(self.start)
+        self.scene.addItem(self.dir_arrow)
         
-        # Path item for the arc
+        # Path item for the belt
         self.path_item = QGraphicsPathItem()
         self.path_item.setPen(QPen(QColor(0, 200, 0), 3))
         self.scene.addItem(self.path_item)
         
+        # Debug circles for the turn circles
+        self.circle1 = self.scene.addEllipse(-self.radius, -self.radius, 
+                                              self.radius*2, self.radius*2,
+                                              QPen(QColor(255, 0, 0, 100)))
+        self.circle2 = self.scene.addEllipse(-self.radius, -self.radius,
+                                              self.radius*2, self.radius*2,
+                                              QPen(QColor(0, 0, 255, 100)))
+        
+        # Tangent point markers
+        self.t1_marker = self.scene.addEllipse(-4, -4, 8, 8, QPen(Qt.black), QBrush(Qt.yellow))
+        self.t2_marker = self.scene.addEllipse(-4, -4, 8, 8, QPen(Qt.black), QBrush(Qt.cyan))
+        
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            # Rotate start direction by 45 degrees
+            self.start_dir += math.pi / 4
+            self._update_arrow()
+        super().mousePressEvent(event)
+        
+    def _update_arrow(self):
+        """Update the direction arrow rotation."""
+        # Draw arrow in start direction
+        length = 30
+        dx = length * math.cos(self.start_dir)
+        dy = length * math.sin(self.start_dir)
+        self.dir_arrow.setLine(0, 0, dx, dy)
+        
     def mouseMoveEvent(self, event):
-        # Get mouse position in scene coords
         mouse = self.mapToScene(event.pos())
-        
-        # Compute the arc from start toward mouse
-        path = self._compute_arc_path(mouse)
+        path = self._compute_clc_path(mouse)
         self.path_item.setPath(path)
-        
         super().mouseMoveEvent(event)
     
-    def _compute_arc_path(self, end: QPointF) -> QPainterPath:
-        """Draw arc from start point, leaving in start_dir, curving toward end."""
+    def _compute_clc_path(self, end: QPointF) -> QPainterPath:
+        """
+        Compute circle-line-circle path.
+        
+        The key insight: we have two turning circles (one at start, one at end).
+        We need to find the tangent line between them, then draw arcs to that line.
+        """
         path = QPainterPath()
         path.moveTo(self.start)
         
-        # Direction from start to end
-        dx = end.x() - self.start.x()
-        dy = end.y() - self.start.y()
-        target_angle = math.atan2(dy, dx)
+        # End direction: pointing toward start (so belt enters smoothly)
+        dx = self.start.x() - end.x()
+        dy = self.start.y() - end.y()
+        end_dir = math.atan2(dy, dx)
         
-        # How much do we need to turn?
-        turn = target_angle - self.start_dir
-        # Normalize to [-pi, pi]
-        while turn > math.pi:
-            turn -= 2 * math.pi
-        while turn < -math.pi:
-            turn += 2 * math.pi
+        # Determine which way to turn at each end based on relative position
+        # Vector from start to end
+        to_end = QPointF(end.x() - self.start.x(), end.y() - self.start.y())
         
-        # If turn is positive, we turn CCW (in math coords) = CW in screen coords
-        # If turn is negative, we turn CW (in math coords) = CCW in screen coords
+        # Cross product with start direction tells us which side end is on
+        start_dx = math.cos(self.start_dir)
+        start_dy = math.sin(self.start_dir)
+        cross = start_dx * to_end.y() - start_dy * to_end.x()
         
-        # Circle center is perpendicular to start direction
-        # If turning right (turn < 0), center is to the right (start_dir - 90)
-        # If turning left (turn > 0), center is to the left (start_dir + 90)
-        if turn >= 0:
-            # Turn left (CCW in math) - center is to the left
-            perp = self.start_dir + math.pi / 2
-        else:
-            # Turn right (CW in math) - center is to the right
-            perp = self.start_dir - math.pi / 2
+        # If cross > 0, end is to the left, turn left (CCW)
+        # If cross < 0, end is to the right, turn right (CW)
+        start_sign = 1 if cross >= 0 else -1  # +1 = left/CCW, -1 = right/CW
         
-        center = QPointF(
-            self.start.x() + self.radius * math.cos(perp),
-            self.start.y() + self.radius * math.sin(perp)
+        # For the end circle, we want to approach smoothly
+        # Use opposite sign so we have outer tangent
+        end_sign = start_sign
+        
+        # Compute circle centers
+        # Perpendicular to direction, offset by radius
+        start_perp = self.start_dir + start_sign * math.pi / 2
+        c1 = QPointF(
+            self.start.x() + self.radius * math.cos(start_perp),
+            self.start.y() + self.radius * math.sin(start_perp)
         )
         
-        # Angle from center to start point
-        start_angle = math.atan2(self.start.y() - center.y(), self.start.x() - center.x())
+        end_perp = end_dir + end_sign * math.pi / 2
+        c2 = QPointF(
+            end.x() + self.radius * math.cos(end_perp),
+            end.y() + self.radius * math.sin(end_perp)
+        )
         
-        # We want to arc until we're pointing at the target
-        # The tangent direction at any point on the circle is perpendicular to the radius
-        # We want the tangent to equal target_angle
+        # Update debug circles
+        self.circle1.setPos(c1)
+        self.circle2.setPos(c2)
         
-        # For CCW motion: tangent = radius_angle + 90
-        # For CW motion: tangent = radius_angle - 90
-        # So: radius_angle = tangent -/+ 90
+        # Find outer tangent line between the two circles
+        # For outer tangent (same-side), tangent points are at same angle from both centers
+        d = math.sqrt((c2.x() - c1.x())**2 + (c2.y() - c1.y())**2)
         
-        if turn >= 0:
-            # CCW: tangent = radius_angle + 90, so radius_angle = tangent - 90
-            end_angle = target_angle - math.pi / 2
-        else:
-            # CW: tangent = radius_angle - 90, so radius_angle = tangent + 90
-            end_angle = target_angle + math.pi / 2
+        if d < 0.001:
+            # Centers coincide, just draw line
+            path.lineTo(end)
+            return path
         
-        # Draw the arc
-        sweep = end_angle - start_angle
-        # Normalize sweep based on direction
-        if turn >= 0:
-            # CCW: sweep should be positive
+        # Angle from c1 to c2
+        theta = math.atan2(c2.y() - c1.y(), c2.x() - c1.x())
+        
+        # For outer tangent with equal radii, tangent is perpendicular to center line
+        # Tangent points are at theta +/- 90 degrees from centers
+        # Choose the side based on turn direction
+        tangent_angle = theta - start_sign * math.pi / 2
+        
+        t1 = QPointF(
+            c1.x() + self.radius * math.cos(tangent_angle),
+            c1.y() + self.radius * math.sin(tangent_angle)
+        )
+        t2 = QPointF(
+            c2.x() + self.radius * math.cos(tangent_angle),
+            c2.y() + self.radius * math.sin(tangent_angle)
+        )
+        
+        # Update tangent markers
+        self.t1_marker.setPos(t1)
+        self.t2_marker.setPos(t2)
+        
+        # Draw arc from start to t1 around c1
+        self._add_arc(path, c1, self.start, t1, start_sign)
+        
+        # Draw line from t1 to t2
+        path.lineTo(t2)
+        
+        # Draw arc from t2 to end around c2
+        self._add_arc(path, c2, t2, end, end_sign)
+        
+        return path
+    
+    def _add_arc(self, path: QPainterPath, center: QPointF, 
+                 p1: QPointF, p2: QPointF, sign: int) -> None:
+        """
+        Add arc from p1 to p2 around center.
+        sign: +1 for CCW, -1 for CW
+        """
+        # Angles from center to points
+        a1 = math.atan2(p1.y() - center.y(), p1.x() - center.x())
+        a2 = math.atan2(p2.y() - center.y(), p2.x() - center.x())
+        
+        # Compute sweep
+        sweep = a2 - a1
+        
+        # Normalize based on direction
+        if sign > 0:  # CCW: sweep should be positive
             while sweep < 0:
                 sweep += 2 * math.pi
             while sweep > 2 * math.pi:
                 sweep -= 2 * math.pi
-        else:
-            # CW: sweep should be negative
+        else:  # CW: sweep should be negative
             while sweep > 0:
                 sweep -= 2 * math.pi
             while sweep < -2 * math.pi:
                 sweep += 2 * math.pi
         
-        # Clamp to max 180 degrees for sanity
-        if abs(sweep) > math.pi:
-            sweep = math.copysign(math.pi, sweep)
-        
-        # Draw arc as line segments
+        # Draw arc
         num_segments = max(8, int(abs(sweep) * self.radius / 5))
         for i in range(1, num_segments + 1):
             t = i / num_segments
-            angle = start_angle + t * sweep
+            angle = a1 + t * sweep
             x = center.x() + self.radius * math.cos(angle)
             y = center.y() + self.radius * math.sin(angle)
             path.lineTo(x, y)
-        
-        # Continue with straight line to mouse
-        path.lineTo(end)
-        
-        return path
 
 
 def main():
     app = QApplication(sys.argv)
     view = ArcTestView()
-    view.setWindowTitle("Arc Test - move mouse around origin")
+    view.setWindowTitle("Circle-Line-Circle Test - LEFT CLICK to rotate start direction")
     view.resize(800, 800)
     view.show()
     sys.exit(app.exec())
