@@ -123,41 +123,28 @@ class BeltItem(QGraphicsPathItem):
         """Add an arc to the path using line segments."""
         import math
         
-        # Skip nearly-zero arcs
-        angle_diff = abs(angle_end - angle_begin)
-        if angle_diff < 0.01 or abs(angle_diff - 2 * math.pi) < 0.01:
-            # Nearly zero or full circle - just go to end point
+        # Calculate sweep - always take the SHORT way around
+        # Normalize angle difference to [-pi, pi]
+        diff = angle_end - angle_begin
+        while diff > math.pi:
+            diff -= 2 * math.pi
+        while diff < -math.pi:
+            diff += 2 * math.pi
+        
+        # Skip tiny arcs
+        if abs(diff) < 0.01:
             x = center.x + radius * math.cos(angle_end)
             y = center.y + radius * math.sin(angle_end)
             path.lineTo(x, y)
             return
         
-        # Qt uses screen coordinates (Y down), so visual CW means angles INCREASE
-        # The routing algorithm uses math coords (Y up), so we flip the logic
-        if clockwise:
-            # Visual CW in screen coords = angles increase
-            if angle_end < angle_begin:
-                angle_end += 2 * math.pi
-        else:
-            # Visual CCW in screen coords = angles decrease
-            if angle_end > angle_begin:
-                angle_end -= 2 * math.pi
-
-        # Check again after adjustment - avoid full loops
-        angle_span = abs(angle_end - angle_begin)
-        if angle_span > math.pi * 1.5:
-            # This would be a big loop - go the other way
-            if clockwise:
-                angle_end -= 2 * math.pi
-            else:
-                angle_end += 2 * math.pi
-            angle_span = abs(angle_end - angle_begin)
-
+        # Draw the arc by interpolating from begin to end
+        angle_span = abs(diff)
         num_segments = max(4, int(angle_span * radius / 5))
         
         for i in range(1, num_segments + 1):
             t = i / num_segments
-            angle = angle_begin + t * (angle_end - angle_begin)
+            angle = angle_begin + t * diff
             x = center.x + radius * math.cos(angle)
             y = center.y + radius * math.sin(angle)
             path.lineTo(x, y)

@@ -657,6 +657,42 @@
       "streaming": true,
       "actual_cost": 0.05089975,
       "generation_id": "gen-1767728877-41b6qy1LlKB0xZyciPg6"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767728887935.json",
+      "response_file": "/tmp/forge_debug/response_1767728887935.json",
+      "timestamp": 1767728887.935137,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000214,
+      "generation_id": "gen-1767728888-wn3GuLdaaDYIRXCvolEP"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728931239.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728931239.json",
+      "timestamp": 1767728931.2405994,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.09080275,
+      "generation_id": "gen-1767728932-Z6HAkNFMAIvs7D9UK6Lx"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728963083.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728963083.json",
+      "timestamp": 1767728963.0849428,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.4460675,
+      "generation_id": "gen-1767728963-McnCrEXk5EcllrtHKvbt"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767728978951.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767728978951.json",
+      "timestamp": 1767728978.953317,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0524795,
+      "generation_id": "gen-1767728980-09uAkigf9sznporFqkpX"
     }
   ],
   "messages": [
@@ -2260,6 +2296,98 @@
     {
       "role": "assistant",
       "content": "Fixed the 360\u00b0 loop issue. The bug was in `_arc_sweep()`:\n\n**Before:** `if sweep <= 0: sweep += 2 * math.pi`\n**After:** `if sweep < 0: sweep += 2 * math.pi`\n\nWhen start and end angles were equal (meaning no turn is needed, like dragging straight out), the sweep was 0, and the `<= 0` condition was adding a full 2\u03c0 circle. With strict `< 0`, a sweep of 0 stays 0.\n\nTry dragging straight out from a port now - it should go straight without looping!"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 07701153",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Now it works if I hold the line exactly straight but it still makes the full turn if I'm slightly off from zero. Maybe the way you draw the arc is confused."
+    },
+    {
+      "role": "assistant",
+      "content": "You're right - the arc drawing logic is still confused. The problem is that the `_add_arc` function's logic for determining which way to sweep is fighting with the computed path. Let me simplify - the routing algorithm already tells us `clockwise`, so we should just use that directly with proper sweep calculation:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/belt_item.py\", \"search\": \"    def _add_arc(\\n        self,\\n        path: QPainterPath,\\n        center: Point,\\n        radius: float,\\n        angle_begin: float,\\n        angle_end: float,\\n        clockwise: bool,\\n    ) -> None:\\n        \\\"\\\"\\\"Add an arc to the path using line segments.\\\"\\\"\\\"\\n        import math\\n        \\n        # Skip nearly-zero arcs\\n        angle_diff = abs(angle_end - angle_begin)\\n        if angle_diff < 0.01 or abs(angle_diff - 2 * math.pi) < 0.01:\\n            # Nearly zero or full circle - just go to end point\\n            x = center.x + radius * math.cos(angle_end)\\n            y = center.y + radius * math.sin(angle_end)\\n            path.lineTo(x, y)\\n            return\\n        \\n        # Qt uses screen coordinates (Y down), so visual CW means angles INCREASE\\n        # The routing algorithm uses math coords (Y up), so we flip the logic\\n        if clockwise:\\n            # Visual CW in screen coords = angles increase\\n            if angle_end < angle_begin:\\n                angle_end += 2 * math.pi\\n        else:\\n            # Visual CCW in screen coords = angles decrease\\n            if angle_end > angle_begin:\\n                angle_end -= 2 * math.pi\\n\\n        # Check again after adjustment - avoid full loops\\n        angle_span = abs(angle_end - angle_begin)\\n        if angle_span > math.pi * 1.5:\\n            # This would be a big loop - go the other way\\n            if clockwise:\\n                angle_end -= 2 * math.pi\\n            else:\\n                angle_end += 2 * math.pi\\n            angle_span = abs(angle_end - angle_begin)\\n\\n        num_segments = max(4, int(angle_span * radius / 5))\\n        \\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = angle_begin + t * (angle_end - angle_begin)\\n            x = center.x + radius * math.cos(angle)\\n            y = center.y + radius * math.sin(angle)\\n            path.lineTo(x, y)\", \"replace\": \"    def _add_arc(\\n        self,\\n        path: QPainterPath,\\n        center: Point,\\n        radius: float,\\n        angle_begin: float,\\n        angle_end: float,\\n        clockwise: bool,\\n    ) -> None:\\n        \\\"\\\"\\\"Add an arc to the path using line segments.\\\"\\\"\\\"\\n        import math\\n        \\n        # Calculate sweep - always take the SHORT way around\\n        # Normalize angle difference to [-pi, pi]\\n        diff = angle_end - angle_begin\\n        while diff > math.pi:\\n            diff -= 2 * math.pi\\n        while diff < -math.pi:\\n            diff += 2 * math.pi\\n        \\n        # Skip tiny arcs\\n        if abs(diff) < 0.01:\\n            x = center.x + radius * math.cos(angle_end)\\n            y = center.y + radius * math.sin(angle_end)\\n            path.lineTo(x, y)\\n            return\\n        \\n        # Draw the arc by interpolating from begin to end\\n        angle_span = abs(diff)\\n        num_segments = max(4, int(angle_span * radius / 5))\\n        \\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = angle_begin + t * diff\\n            x = center.x + radius * math.cos(angle)\\n            y = center.y + radius * math.sin(angle)\\n            path.lineTo(x, y)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01M5WUAGF5o3kQm9gDSh2MLD",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"    def _add_arc_to_path(\\n        self, path: \\\"QPainterPath\\\", center: Point, radius: float,\\n        angle_begin: float, angle_end: float, clockwise: bool\\n    ) -> None:\\n        \\\"\\\"\\\"Add an arc to the path using line segments.\\\"\\\"\\\"\\n        import math\\n        \\n        # Skip nearly-zero arcs\\n        angle_diff = abs(angle_end - angle_begin)\\n        if angle_diff < 0.01 or abs(angle_diff - 2 * math.pi) < 0.01:\\n            x = center.x + radius * math.cos(angle_end)\\n            y = center.y + radius * math.sin(angle_end)\\n            path.lineTo(x, y)\\n            return\\n        \\n        # Qt uses screen coordinates (Y down), so visual CW means angles INCREASE\\n        if clockwise:\\n            if angle_end < angle_begin:\\n                angle_end += 2 * math.pi\\n        else:\\n            if angle_end > angle_begin:\\n                angle_end -= 2 * math.pi\\n\\n        # Avoid full loops\\n        angle_span = abs(angle_end - angle_begin)\\n        if angle_span > math.pi * 1.5:\\n            if clockwise:\\n                angle_end -= 2 * math.pi\\n            else:\\n                angle_end += 2 * math.pi\\n            angle_span = abs(angle_end - angle_begin)\\n\\n        num_segments = max(4, int(angle_span * radius / 5))\\n        \\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = angle_begin + t * (angle_end - angle_begin)\\n            x = center.x + radius * math.cos(angle)\\n            y = center.y + radius * math.sin(angle)\\n            path.lineTo(x, y)\", \"replace\": \"    def _add_arc_to_path(\\n        self, path: \\\"QPainterPath\\\", center: Point, radius: float,\\n        angle_begin: float, angle_end: float, clockwise: bool\\n    ) -> None:\\n        \\\"\\\"\\\"Add an arc to the path using line segments.\\\"\\\"\\\"\\n        import math\\n        \\n        # Calculate sweep - always take the SHORT way around\\n        # Normalize angle difference to [-pi, pi]\\n        diff = angle_end - angle_begin\\n        while diff > math.pi:\\n            diff -= 2 * math.pi\\n        while diff < -math.pi:\\n            diff += 2 * math.pi\\n        \\n        # Skip tiny arcs\\n        if abs(diff) < 0.01:\\n            x = center.x + radius * math.cos(angle_end)\\n            y = center.y + radius * math.sin(angle_end)\\n            path.lineTo(x, y)\\n            return\\n        \\n        # Draw the arc by interpolating from begin to end\\n        angle_span = abs(diff)\\n        num_segments = max(4, int(angle_span * radius / 5))\\n        \\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = angle_begin + t * diff\\n            x = center.x + radius * math.cos(angle)\\n            y = center.y + radius * math.sin(angle)\\n            path.lineTo(x, y)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_015RsUgmosY33cbAtE8poxFJ",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01M5WUAGF5o3kQm9gDSh2MLD",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/belt_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_015RsUgmosY33cbAtE8poxFJ",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me run the tests:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_012ys8GKRBFyu4LxBqXuQa1t",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_012ys8GKRBFyu4LxBqXuQa1t",
+      "content": "{\"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_9y3q5mj6\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.10s ==============================\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `run_tests`\n```json\n{}\n```\n**Result:**\n```json\n{\n  \"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_9y3q5mj6\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.10s ==============================\\n\",\n  \"passed\": true,\n  \"success\": true,\n  \"summary\": \"\\u2713 Tests passed (make test)\",\n  \"test_command\": \"make test\"\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Tests pass. Try it now - I simplified the arc drawing to always take the short way around by normalizing the angle difference to [-\u03c0, \u03c0]. This should fix the issue where being slightly off from straight caused a full loop.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Simplified the arc drawing logic in both `_add_arc` functions. Instead of trying to respect the `clockwise` flag and then fixing up edge cases, it now:\\n\\n1. Calculates `diff = angle_end - angle_begin`\\n2. Normalizes `diff` to [-\u03c0, \u03c0] (always taking the short way)\\n3. Interpolates along that difference\\n\\nThis means arcs will never go more than 180\u00b0 - they always take the shortest path between the two angles. Try dragging slightly off-straight now - it should curve gently instead of looping!\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_0117HNFak1a6YTigv54UX3PD",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_0117HNFak1a6YTigv54UX3PD",
+      "content": "{\"done\": true, \"message\": \"Simplified the arc drawing logic in both `_add_arc` functions. Instead of trying to respect the `clockwise` flag and then fixing up edge cases, it now:\\n\\n1. Calculates `diff = angle_end - angle_begin`\\n2. Normalizes `diff` to [-\\u03c0, \\u03c0] (always taking the short way)\\n3. Interpolates along that difference\\n\\nThis means arcs will never go more than 180\\u00b0 - they always take the shortest path between the two angles. Try dragging slightly off-straight now - it should curve gently instead of looping!\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Simplified the arc drawing logic in both `_add_arc` functions. Instead of trying to respect the `clockwise` flag and then fixing up edge cases, it now:\n\n1. Calculates `diff = angle_end - angle_begin`\n2. Normalizes `diff` to [-\u03c0, \u03c0] (always taking the short way)\n3. Interpolates along that difference\n\nThis means arcs will never go more than 180\u00b0 - they always take the shortest path between the two angles. Try dragging slightly off-straight now - it should curve gently instead of looping!"
     }
   ]
 }
