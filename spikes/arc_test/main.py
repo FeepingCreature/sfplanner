@@ -24,6 +24,7 @@ class ArcTestView(QGraphicsView):
         # Fixed start point and direction
         self.start = QPointF(-100, 0)
         self.start_dir = 0  # radians, pointing RIGHT
+        self.end_dir_offset = math.pi  # end direction = toward mouse + this offset
         self.radius = 40
         
         # Draw origin marker
@@ -53,11 +54,19 @@ class ArcTestView(QGraphicsView):
         self.t1_marker = self.scene.addEllipse(-4, -4, 8, 8, QPen(Qt.black), QBrush(Qt.yellow))
         self.t2_marker = self.scene.addEllipse(-4, -4, 8, 8, QPen(Qt.black), QBrush(Qt.cyan))
         
+        # End direction arrow (follows mouse)
+        self.end_arrow = QGraphicsLineItem(0, 0, 30, 0)
+        self.end_arrow.setPen(QPen(QColor(0, 150, 0), 2))
+        self.scene.addItem(self.end_arrow)
+        
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             # Rotate start direction by 45 degrees
             self.start_dir += math.pi / 4
             self._update_arrow()
+        elif event.button() == Qt.RightButton:
+            # Rotate end direction by 45 degrees
+            self.end_dir_offset += math.pi / 4
         super().mousePressEvent(event)
         
     def _update_arrow(self):
@@ -84,10 +93,15 @@ class ArcTestView(QGraphicsView):
         path = QPainterPath()
         path.moveTo(self.start)
         
-        # End direction: pointing toward start (so belt enters smoothly)
-        dx = self.start.x() - end.x()
-        dy = self.start.y() - end.y()
-        end_dir = math.atan2(dy, dx)
+        # End direction: base direction + offset (right-click rotates)
+        base_angle = math.atan2(self.start.y() - end.y(), self.start.x() - end.x())
+        end_dir = base_angle + self.end_dir_offset
+        
+        # Update end direction arrow
+        self.end_arrow.setPos(end)
+        arrow_dx = 30 * math.cos(end_dir)
+        arrow_dy = 30 * math.sin(end_dir)
+        self.end_arrow.setLine(0, 0, arrow_dx, arrow_dy)
         
         # Determine which way to turn at each end based on relative position
         # Vector from start to end
@@ -203,7 +217,7 @@ class ArcTestView(QGraphicsView):
 def main():
     app = QApplication(sys.argv)
     view = ArcTestView()
-    view.setWindowTitle("Circle-Line-Circle Test - LEFT CLICK to rotate start direction")
+    view.setWindowTitle("Circle-Line-Circle Test - LEFT=rotate start, RIGHT=rotate end")
     view.resize(800, 800)
     view.show()
     sys.exit(app.exec())
