@@ -66,13 +66,27 @@ The minimum turning radius should match the actual in-game belt radius (to be me
   - Refuses (TBD which is better UX)
 - The split is necessary because linked blueprints cannot be edited directly until unlinked
 
+### Building Outlines (Sub-factory Boundaries)
+- A **building outline** is a resizable rectangle primitive
+- Used to group items into a logical "sub-factory"
+- When drawn, captures all items inside its area
+- Items newly placed inside are automatically parented to it
+- Moving the outline moves all children with it
+- Resizing does NOT move children (just changes boundary)
+- Constraints:
+  - Cannot be placed across an existing building
+  - Buildings cannot be placed across its boundary
+  - Connectors snap/lock to the outline edges
+
 ### Blueprints
-- A blueprint is a container of buildings, belts, and sub-blueprints
+- A **blueprint** is created from a building outline
+- Contains: the outline's buildings, belts, sub-outlines, and connectors
 - Can be **saved to user library**
 - Can be **instantiated** (linked copy) or **embedded** (independent copy)
 - Linked blueprints update when the source is edited
-- Right-click to **delink** (convert to independent copy)
-- Have defined input/output ports visible from outside
+- Linked blueprints **cannot be edited directly** - must delink first
+- Right-click → "Delink" to convert to independent copy
+- Input/output ports are defined by connectors on the outline
 
 ## Validation & Warnings
 
@@ -95,6 +109,20 @@ Each node in the chain is clickable to navigate to that element.
 
 ## UI Layout
 
+**Blender-style fully reconfigurable panel system:**
+- Any panel can be a foldout within another panel, or a standalone docked panel
+- Panels can be docked to any edge, floated, or tabbed together
+- User can save/load layout presets
+- Ship with sensible defaults
+
+### Available Panels
+- **Library Panel** - Building primitives (icons), user blueprints
+- **Properties Panel** - Selected item details (recipe, clock speed, stats)
+- **Warnings Panel** - Clickable tree of validation issues
+- **Power Summary Panel** - Total consumption, breakdown by type
+- **Production Summary Panel** - Net inputs/outputs
+
+### Default Layout
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Menu Bar: File | Edit | View | Help                        │
@@ -102,23 +130,16 @@ Each node in the chain is clickable to navigate to that element.
 │  Toolbar: [Grid snap toggle] [Grid size] ...                │
 ├───────────────┬─────────────────────────────────────────────┤
 │               │                                             │
-│   Library     │                                             │
-│   Panel       │            Canvas                           │
-│               │         (QGraphicsView)                     │
-│  ┌─────────┐  │                                             │
-│  │Buildings│  │     - Pan: middle-drag or space+drag        │
-│  │(icons)  │  │     - Zoom: scroll wheel                    │
-│  ├─────────┤  │     - Select: click                         │
-│  │ User    │  │     - Multi-select: shift+click or drag-box │
-│  │Blueprints│ │     - Drag: click+drag selected items       │
-│  └─────────┘  │     - Belt: drag from output to input port  │
+│  [Library   ] │            Canvas                           │
+│  [foldout   ] │         (QGraphicsView)                     │
 │               │                                             │
-├───────────────┼─────────────────────────────────────────────┤
-│  Properties   │                                             │
-│  Panel        │  Warnings Panel                             │
-│  - Recipe     │  (clickable tree of validation issues)      │
-│  - Clock speed│                                             │
-│  - Stats      │                                             │
+│  [Properties] │     - Pan: middle-drag or space+drag        │
+│  [foldout   ] │     - Zoom: scroll wheel                    │
+│               │     - Select: click                         │
+│  [Warnings  ] │     - Multi-select: shift+click or drag-box │
+│  [foldout   ] │     - Drag: click+drag selected items       │
+│               │     - Belt: drag from output to input port  │
+│               │                                             │
 └───────────────┴─────────────────────────────────────────────┘
 ```
 
@@ -184,7 +205,7 @@ class Building:
 @dataclass  
 class Belt:
     id: str
-    tier: int  # 1-5
+    tier: int  # 1-6
     source_building_id: str
     source_port_index: int
     dest_building_id: str
@@ -193,17 +214,47 @@ class Belt:
     # Routing is computed, not stored
 ```
 
+### Outline
+```python
+@dataclass
+class Outline:
+    id: str
+    rect: tuple[float, float, float, float]  # x, y, width, height
+    children: list[str]  # IDs of contained buildings/belts/outlines
+    connectors: list[Connector]
+```
+
+### Connector
+```python
+@dataclass
+class Connector:
+    id: str
+    outline_id: str
+    edge: str  # "top", "bottom", "left", "right"
+    position: float  # 0.0-1.0 along edge
+    direction: str  # "in" or "out"
+    connected_belt_inside: str | None  # belt ID
+    connected_belt_outside: str | None  # belt ID
+```
+
 ### Blueprint
 ```python
 @dataclass
 class Blueprint:
     id: str
     name: str
-    buildings: list[Building]
-    belts: list[Belt]
-    sub_blueprints: list[BlueprintInstance]
-    input_ports: list[PortDefinition]   # exposed to parent
-    output_ports: list[PortDefinition]
+    outline: Outline  # The defining outline
+    # Contents are stored within the outline
+```
+
+### BlueprintInstance
+```python
+@dataclass
+class BlueprintInstance:
+    id: str
+    blueprint_id: str  # Reference to library blueprint
+    position: tuple[float, float]
+    is_linked: bool  # If True, cannot edit; mirrors source
 ```
 
 ## File Formats
@@ -231,6 +282,65 @@ User can add custom recipes which are saved in project file.
 - Net outputs (what the factory produces)
 - Internal flows (what's consumed internally)
 
+## Undo/Redo System
+
+**Command pattern** - all mutations go through commands:
+
+```python
+class Command(ABC):
+    @abstractmethod
+    def execute(self) -> None: ...
+    
+    @abstractmethod  
+    def undo(self) -> None: ...
+    
+    def merge_with(self, other: Command) -> Command | None:
+        """Optional: merge consecutive commands (e.g., drag movements)"""
+        return None
+
+class CommandStack:
+    def __init__(self):
+        self.undo_stack: list[Command] = []
+        self.redo_stack: list[Command] = []
+    
+    def execute(self, cmd: Command) -> None:
+        cmd.execute()
+        # Try to merge with previous
+        if self.undo_stack:
+            merged = self.undo_stack[-1].merge_with(cmd)
+            if merged:
+                self.undo_stack[-1] = merged
+                self.redo_stack.clear()
+                return
+        self.undo_stack.append(cmd)
+        self.redo_stack.clear()
+    
+    def undo(self) -> None:
+        if self.undo_stack:
+            cmd = self.undo_stack.pop()
+            cmd.undo()
+            self.redo_stack.append(cmd)
+    
+    def redo(self) -> None:
+        if self.redo_stack:
+            cmd = self.redo_stack.pop()
+            cmd.execute()
+            self.undo_stack.append(cmd)
+```
+
+### Command Types
+- `PlaceBuildingCommand`
+- `DeleteItemsCommand`
+- `MoveBuildingsCommand` (mergeable - consecutive drags combine)
+- `ConnectBeltCommand`
+- `SetRecipeCommand`
+- `SetClockSpeedCommand`
+- `ResizeOutlineCommand`
+- `CreateBlueprintCommand`
+- `DelinkBlueprintCommand`
+
+**All state mutations must go through commands.** This is enforced architecturally.
+
 ## Future Considerations (Out of Scope v1)
 - Fluid pipes (different routing, different mechanics)
 - Trains/trucks/drones (logistics)
@@ -253,7 +363,8 @@ satisfactory-planner/
 │       ├── main.py
 │       ├── core/
 │       │   ├── __init__.py
-│       │   ├── models.py          # Recipe, Building, Belt, Blueprint
+│       │   ├── models.py          # Recipe, Building, Belt, Blueprint, Outline
+│       │   ├── commands.py        # Command pattern for undo/redo
 │       │   ├── flow_solver.py     # Graph analysis, rate propagation
 │       │   └── routing.py         # Circle-line-circle belt routing math
 │       ├── ui/
@@ -267,6 +378,7 @@ satisfactory-planner/
 │       │   │   └── port_item.py
 │       │   ├── panels/
 │       │   │   ├── __init__.py
+│       │   │   ├── panel_system.py     # Docking/tabbing infrastructure
 │       │   │   ├── library_panel.py
 │       │   │   ├── properties_panel.py
 │       │   │   └── warnings_panel.py

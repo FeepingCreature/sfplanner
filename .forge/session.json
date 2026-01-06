@@ -92,6 +92,42 @@
       "streaming": true,
       "actual_cost": 0.072728,
       "generation_id": "gen-1767714511-rNvHsP4wddU97EFEt5m7"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767714522987.json",
+      "response_file": "/tmp/forge_debug/response_1767714522987.json",
+      "timestamp": 1767714522.987401,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000491,
+      "generation_id": "gen-1767714523-bR0UgbldbvWq7DzU6OeN"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767714828523.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767714828523.json",
+      "timestamp": 1767714828.5242405,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.17777375,
+      "generation_id": "gen-1767714828-DLHiLgPXRH504deKhhJt"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767714862335.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767714862335.json",
+      "timestamp": 1767714862.3363128,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.154575,
+      "generation_id": "gen-1767714862-QHQEOo0xbrWr19wYrzmD"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767714874165.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767714874165.json",
+      "timestamp": 1767714874.1660118,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.15484625,
+      "generation_id": "gen-1767714874-K8XYsoZ7PtWHMW7Et96F"
     }
   ],
   "messages": [
@@ -282,6 +318,129 @@
     {
       "role": "assistant",
       "content": "Good, spec is updated. A couple things I noticed I should fix:\n\n1. **Splitters/Mergers** - You said 1 input, 4 outputs for splitter (I wrote 3 outputs). Let me correct that - though actually in Satisfactory isn't it 1\u21923 for splitters and 3\u21921 for mergers? Or do you want 4 outputs for flexibility?\n\n2. **Belt tier in data model** - Still says `tier: int # 1-5`, should be 1-6\n\n3. **Building outline** - This is a new concept I didn't capture. It sounds like there's a \"boundary rectangle\" primitive that:\n   - Defines the edges of a blueprint region\n   - Connectors snap to it\n   - Can be resized (and connectors move with it)\n   - Is what gets \"converted to blueprint\"\n\nLet me clarify: Is the workflow something like:\n1. Draw a building outline (rectangle) on the canvas\n2. Place buildings/belts inside it\n3. Connectors snap to the outline edges\n4. Select the outline \u2192 \"Save as Blueprint\"\n5. The outline + everything inside + connectors become the blueprint definition\n\nOr is the outline implicit/auto-created when you save a selection as blueprint?\n\nAlso - should I fix the splitter to 1\u21923 or 1\u21924?"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: aca7221d",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "yeah 1-3, my bad. Yep, you can draw a building, this is just a square. When you draw it, it captures the items inside its area (items newly placed will also be added). It can be resized, though this doesn't move the items inside it. It can't be placed across a building, and buildings cannot be placed across its boundary. The \"building\" primitive is basically what you use to create a \"sub-factory\" from a new or existing part of the sketch. The buildings inside it are reparented to it and if the factory is moved they are also moved. Also in the diagram, put the properties panel as a foldout inside the main area, warnings can be another foldout... actually, let's step a bit back from that, let's just make the UI fully reconfigurable. You can have a big panel with foldout library and warnings and item settings, or you can make any of them a sub-panel anywhere, fully positionable. Think blender. View model with a few defaults.\nWe'll also need an undo/redo system, so we should probably consider that from the start."
+    },
+    {
+      "role": "assistant",
+      "content": "Got it - major clarifications here. Let me update the spec with:\n\n1. **Building Outline** as a first-class primitive (not just blueprints)\n2. **Blender-style dockable/reconfigurable panels**\n3. **Undo/redo system** from the start\n4. Fix belt tier in data model to 1-6",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"SPEC.md\", \"search\": \"### Blueprints\\n- A blueprint is a container of buildings, belts, and sub-blueprints\\n- Can be **saved to user library**\\n- Can be **instantiated** (linked copy) or **embedded** (independent copy)\\n- Linked blueprints update when the source is edited\\n- Right-click to **delink** (convert to independent copy)\\n- Have defined input/output ports visible from outside\", \"replace\": \"### Building Outlines (Sub-factory Boundaries)\\n- A **building outline** is a resizable rectangle primitive\\n- Used to group items into a logical \\\"sub-factory\\\"\\n- When drawn, captures all items inside its area\\n- Items newly placed inside are automatically parented to it\\n- Moving the outline moves all children with it\\n- Resizing does NOT move children (just changes boundary)\\n- Constraints:\\n  - Cannot be placed across an existing building\\n  - Buildings cannot be placed across its boundary\\n  - Connectors snap/lock to the outline edges\\n\\n### Blueprints\\n- A **blueprint** is created from a building outline\\n- Contains: the outline's buildings, belts, sub-outlines, and connectors\\n- Can be **saved to user library**\\n- Can be **instantiated** (linked copy) or **embedded** (independent copy)\\n- Linked blueprints update when the source is edited\\n- Linked blueprints **cannot be edited directly** - must delink first\\n- Right-click \u2192 \\\"Delink\\\" to convert to independent copy\\n- Input/output ports are defined by connectors on the outline\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_01GAwQtxAJ5yrxBs415qQkKU",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"SPEC.md\", \"search\": \"## UI Layout\\n\\n```\\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\\n\u2502  Menu Bar: File | Edit | View | Help                        \u2502\\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\\n\u2502  Toolbar: [Grid snap toggle] [Grid size] ...                \u2502\\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\\n\u2502               \u2502                                             \u2502\\n\u2502   Library     \u2502                                             \u2502\\n\u2502   Panel       \u2502            Canvas                           \u2502\\n\u2502               \u2502         (QGraphicsView)                     \u2502\\n\u2502  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510  \u2502                                             \u2502\\n\u2502  \u2502Buildings\u2502  \u2502     - Pan: middle-drag or space+drag        \u2502\\n\u2502  \u2502(icons)  \u2502  \u2502     - Zoom: scroll wheel                    \u2502\\n\u2502  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524  \u2502     - Select: click                         \u2502\\n\u2502  \u2502 User    \u2502  \u2502     - Multi-select: shift+click or drag-box \u2502\\n\u2502  \u2502Blueprints\u2502 \u2502     - Drag: click+drag selected items       \u2502\\n\u2502  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518  \u2502     - Belt: drag from output to input port  \u2502\\n\u2502               \u2502                                             \u2502\\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\\n\u2502  Properties   \u2502                                             \u2502\\n\u2502  Panel        \u2502  Warnings Panel                             \u2502\\n\u2502  - Recipe     \u2502  (clickable tree of validation issues)      \u2502\\n\u2502  - Clock speed\u2502                                             \u2502\\n\u2502  - Stats      \u2502                                             \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n```\", \"replace\": \"## UI Layout\\n\\n**Blender-style fully reconfigurable panel system:**\\n- Any panel can be a foldout within another panel, or a standalone docked panel\\n- Panels can be docked to any edge, floated, or tabbed together\\n- User can save/load layout presets\\n- Ship with sensible defaults\\n\\n### Available Panels\\n- **Library Panel** - Building primitives (icons), user blueprints\\n- **Properties Panel** - Selected item details (recipe, clock speed, stats)\\n- **Warnings Panel** - Clickable tree of validation issues\\n- **Power Summary Panel** - Total consumption, breakdown by type\\n- **Production Summary Panel** - Net inputs/outputs\\n\\n### Default Layout\\n```\\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\\n\u2502  Menu Bar: File | Edit | View | Help                        \u2502\\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\\n\u2502  Toolbar: [Grid snap toggle] [Grid size] ...                \u2502\\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\\n\u2502               \u2502                                             \u2502\\n\u2502  [Library   ] \u2502            Canvas                           \u2502\\n\u2502  [foldout   ] \u2502         (QGraphicsView)                     \u2502\\n\u2502               \u2502                                             \u2502\\n\u2502  [Properties] \u2502     - Pan: middle-drag or space+drag        \u2502\\n\u2502  [foldout   ] \u2502     - Zoom: scroll wheel                    \u2502\\n\u2502               \u2502     - Select: click                         \u2502\\n\u2502  [Warnings  ] \u2502     - Multi-select: shift+click or drag-box \u2502\\n\u2502  [foldout   ] \u2502     - Drag: click+drag selected items       \u2502\\n\u2502               \u2502     - Belt: drag from output to input port  \u2502\\n\u2502               \u2502                                             \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n```\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_018oXeaQhMK8y3pcvKDgfbwf",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"SPEC.md\", \"search\": \"    tier: int  # 1-5\", \"replace\": \"    tier: int  # 1-6\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_01NZ57VsGbKEEv3n3nKLFERz",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"SPEC.md\", \"search\": \"## Future Considerations (Out of Scope v1)\\n- Fluid pipes (different routing, different mechanics)\\n- Trains/trucks/drones (logistics)\\n- 3D view\\n- Import from save file\\n- Auto-layout suggestions\", \"replace\": \"## Undo/Redo System\\n\\n**Command pattern** - all mutations go through commands:\\n\\n```python\\nclass Command(ABC):\\n    @abstractmethod\\n    def execute(self) -> None: ...\\n    \\n    @abstractmethod  \\n    def undo(self) -> None: ...\\n    \\n    def merge_with(self, other: Command) -> Command | None:\\n        \\\"\\\"\\\"Optional: merge consecutive commands (e.g., drag movements)\\\"\\\"\\\"\\n        return None\\n\\nclass CommandStack:\\n    def __init__(self):\\n        self.undo_stack: list[Command] = []\\n        self.redo_stack: list[Command] = []\\n    \\n    def execute(self, cmd: Command) -> None:\\n        cmd.execute()\\n        # Try to merge with previous\\n        if self.undo_stack:\\n            merged = self.undo_stack[-1].merge_with(cmd)\\n            if merged:\\n                self.undo_stack[-1] = merged\\n                self.redo_stack.clear()\\n                return\\n        self.undo_stack.append(cmd)\\n        self.redo_stack.clear()\\n    \\n    def undo(self) -> None:\\n        if self.undo_stack:\\n            cmd = self.undo_stack.pop()\\n            cmd.undo()\\n            self.redo_stack.append(cmd)\\n    \\n    def redo(self) -> None:\\n        if self.redo_stack:\\n            cmd = self.redo_stack.pop()\\n            cmd.execute()\\n            self.undo_stack.append(cmd)\\n```\\n\\n### Command Types\\n- `PlaceBuildingCommand`\\n- `DeleteItemsCommand`\\n- `MoveBuildingsCommand` (mergeable - consecutive drags combine)\\n- `ConnectBeltCommand`\\n- `SetRecipeCommand`\\n- `SetClockSpeedCommand`\\n- `ResizeOutlineCommand`\\n- `CreateBlueprintCommand`\\n- `DelinkBlueprintCommand`\\n\\n**All state mutations must go through commands.** This is enforced architecturally.\\n\\n## Future Considerations (Out of Scope v1)\\n- Fluid pipes (different routing, different mechanics)\\n- Trains/trucks/drones (logistics)\\n- 3D view\\n- Import from save file\\n- Auto-layout suggestions\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_013gU5d74mtSHWzfj4mHCATR",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"SPEC.md\", \"search\": \"\u2502       \u2502   \u251c\u2500\u2500 models.py          # Recipe, Building, Belt, Blueprint\\n\u2502       \u2502   \u251c\u2500\u2500 flow_solver.py     # Graph analysis, rate propagation\\n\u2502       \u2502   \u2514\u2500\u2500 routing.py         # Circle-line-circle belt routing math\", \"replace\": \"\u2502       \u2502   \u251c\u2500\u2500 models.py          # Recipe, Building, Belt, Blueprint, Outline\\n\u2502       \u2502   \u251c\u2500\u2500 commands.py        # Command pattern for undo/redo\\n\u2502       \u2502   \u251c\u2500\u2500 flow_solver.py     # Graph analysis, rate propagation\\n\u2502       \u2502   \u2514\u2500\u2500 routing.py         # Circle-line-circle belt routing math\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_01JWsCRtncuRhXoMV97j2Xgf",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01GAwQtxAJ5yrxBs415qQkKU",
+      "content": "{\"message\": \"Replaced in SPEC.md\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_018oXeaQhMK8y3pcvKDgfbwf",
+      "content": "{\"message\": \"Replaced in SPEC.md\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01NZ57VsGbKEEv3n3nKLFERz",
+      "content": "{\"message\": \"Replaced in SPEC.md\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_013gU5d74mtSHWzfj4mHCATR",
+      "content": "{\"message\": \"Replaced in SPEC.md\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01JWsCRtncuRhXoMV97j2Xgf",
+      "content": "{\"message\": \"Replaced in SPEC.md\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Spec is looking solid. Let me add a data model for Outline and update the project structure to reflect the docking system:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"SPEC.md\", \"search\": \"### Blueprint\\n```python\\n@dataclass\\nclass Blueprint:\\n    id: str\\n    name: str\\n    buildings: list[Building]\\n    belts: list[Belt]\\n    sub_blueprints: list[BlueprintInstance]\\n    input_ports: list[PortDefinition]   # exposed to parent\\n    output_ports: list[PortDefinition]\\n```\", \"replace\": \"### Outline\\n```python\\n@dataclass\\nclass Outline:\\n    id: str\\n    rect: tuple[float, float, float, float]  # x, y, width, height\\n    children: list[str]  # IDs of contained buildings/belts/outlines\\n    connectors: list[Connector]\\n```\\n\\n### Connector\\n```python\\n@dataclass\\nclass Connector:\\n    id: str\\n    outline_id: str\\n    edge: str  # \\\"top\\\", \\\"bottom\\\", \\\"left\\\", \\\"right\\\"\\n    position: float  # 0.0-1.0 along edge\\n    direction: str  # \\\"in\\\" or \\\"out\\\"\\n    connected_belt_inside: str | None  # belt ID\\n    connected_belt_outside: str | None  # belt ID\\n```\\n\\n### Blueprint\\n```python\\n@dataclass\\nclass Blueprint:\\n    id: str\\n    name: str\\n    outline: Outline  # The defining outline\\n    # Contents are stored within the outline\\n```\\n\\n### BlueprintInstance\\n```python\\n@dataclass\\nclass BlueprintInstance:\\n    id: str\\n    blueprint_id: str  # Reference to library blueprint\\n    position: tuple[float, float]\\n    is_linked: bool  # If True, cannot edit; mirrors source\\n```\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_01ShpNL43Vg6yQHM3BTc61xR",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"SPEC.md\", \"search\": \"\u2502       \u2502   \u251c\u2500\u2500 panels/\\n\u2502       \u2502   \u2502   \u251c\u2500\u2500 __init__.py\\n\u2502       \u2502   \u2502   \u251c\u2500\u2500 library_panel.py\\n\u2502       \u2502   \u2502   \u251c\u2500\u2500 properties_panel.py\\n\u2502       \u2502   \u2502   \u2514\u2500\u2500 warnings_panel.py\", \"replace\": \"\u2502       \u2502   \u251c\u2500\u2500 panels/\\n\u2502       \u2502   \u2502   \u251c\u2500\u2500 __init__.py\\n\u2502       \u2502   \u2502   \u251c\u2500\u2500 panel_system.py     # Docking/tabbing infrastructure\\n\u2502       \u2502   \u2502   \u251c\u2500\u2500 library_panel.py\\n\u2502       \u2502   \u2502   \u251c\u2500\u2500 properties_panel.py\\n\u2502       \u2502   \u2502   \u2514\u2500\u2500 warnings_panel.py\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_01PhoabemHFgW2ARcePi7wVv",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01ShpNL43Vg6yQHM3BTc61xR",
+      "content": "{\"message\": \"Replaced in SPEC.md\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01PhoabemHFgW2ARcePi7wVv",
+      "content": "{\"message\": \"Replaced in SPEC.md\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Spec is looking good now. Let me summarize what we've got and check if anything's missing before we scaffold:\n\n**Captured:**\n- \u2705 Buildings (all factory types, splitters/mergers 1\u21943)\n- \u2705 Belts (6 tiers, circle-line-circle routing, annotations, flow arrows)\n- \u2705 Building Outlines (resizable boundary, auto-captures children, moves children with it)\n- \u2705 Connectors (snap to outline edges, split belts at boundary)\n- \u2705 Blueprints (created from outlines, linked/unlinked)\n- \u2705 Validation/warnings with causal chains\n- \u2705 Blender-style dockable panel system\n- \u2705 Undo/redo command pattern\n- \u2705 Data models for all entities\n\n**Open questions before we start coding:**\n\n1. **Panel system implementation** - Qt has `QDockWidget` which gets us 80% there, but full Blender-style splitting/tabbing is significant work. Options:\n   - Start with `QDockWidget` (dockable, floatable, but limited splitting)\n   - Use a library like `qtpyads` (Advanced Docking System)\n   - Roll our own (most work, most control)\n   \n   Recommendation: Start with `QDockWidget`, upgrade later if needed.\n\n2. **State architecture** - The command system needs to mutate *something*. I'm thinking:\n   - `Document` class holds all state (buildings, belts, outlines, etc.)\n   - Commands take a `Document` reference and mutate it\n   - UI observes `Document` via Qt signals\n   \n   This keeps core logic pure and testable.\n\n3. **Immediate next step** - I'd scaffold:\n   - pyproject.toml with deps\n   - Basic `Document` model + one command\n   - Canvas with pan/zoom + one draggable building\n   - One test proving the drag works\n   \n   This validates the whole stack before we build features.\n\nSound right? Any adjustments to the spec, or shall I start scaffolding?"
     }
   ]
 }
