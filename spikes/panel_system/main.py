@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-import PySide6Ads as ads
+import PySide6QtAds as ads
 
 
 class LibraryPanel(QWidget):

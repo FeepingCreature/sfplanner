@@ -45,5 +45,5 @@ and we'll evaluate alternatives.
 ## Notes
 
 - PyQtAds wraps the C++ Qt-Advanced-Docking-System
-- The import is `PySide6Ads` (note capitalization)
+- Package: `PyQtAds[PySide6]`, import: `PySide6QtAds`
 - Layouts are saved as binary QByteArray data
