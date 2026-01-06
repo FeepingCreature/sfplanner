@@ -1,13 +1,14 @@
 {
   "active_files": [
-    "src/satisfactory_planner/ui/items/port_item.py",
-    "src/satisfactory_planner/core/routing.py",
-    "src/satisfactory_planner/ui/canvas.py",
     "SPEC.md",
     "TODO.md",
-    "src/satisfactory_planner/core/models.py",
+    "src/satisfactory_planner/ui/items/port_item.py",
+    "src/satisfactory_planner/ui/canvas.py",
+    "spikes/arc_test/main.py",
     "src/satisfactory_planner/ui/items/belt_item.py",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "src/satisfactory_planner/core/routing.py",
+    "src/satisfactory_planner/core/models.py"
   ],
   "request_log_entries": [
     {
@@ -747,6 +748,87 @@
       "streaming": true,
       "actual_cost": 0.490635,
       "generation_id": "gen-1767729128-CMPdQhX39GKeRnn6It0S"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767729516260.json",
+      "response_file": "/tmp/forge_debug/response_1767729516260.json",
+      "timestamp": 1767729516.2607582,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.003679,
+      "generation_id": "gen-1767729516-LiXp2t8K3prVMjCk1xdA"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767729516260.json",
+      "response_file": "/tmp/forge_debug/response_1767729516260.json",
+      "timestamp": 1767729516.2611306,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.005151,
+      "generation_id": "gen-1767729516-ebPlx446wTyatp2OZrDq"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767729516261.json",
+      "response_file": "/tmp/forge_debug/response_1767729516261.json",
+      "timestamp": 1767729516.2655022,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.004259,
+      "generation_id": "gen-1767729516-Cez2qDet0k6g40NPkwuO"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767729516263.json",
+      "response_file": "/tmp/forge_debug/response_1767729516263.json",
+      "timestamp": 1767729516.2677383,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.002694,
+      "generation_id": "gen-1767729516-bcjCkqPFoxgBVnsM1B50"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767729516265.json",
+      "response_file": "/tmp/forge_debug/response_1767729516265.json",
+      "timestamp": 1767729516.26827,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.002104,
+      "generation_id": "gen-1767729516-E1o0LmykNZTuT8yhA8Q8"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767729548844.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767729548844.json",
+      "timestamp": 1767729548.846167,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.49433625,
+      "generation_id": "gen-1767729549-QszbHpkoMl68lkCfjxV7"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767729561844.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767729561844.json",
+      "timestamp": 1767729561.8458078,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.37628625,
+      "generation_id": "gen-1767729562-Scwe1cSjqoQXcHV1MmYV"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767729595845.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767729595845.json",
+      "timestamp": 1767729595.8463526,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0586165,
+      "generation_id": "gen-1767729596-grUuBgabeeKfMH1B0Pa7"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767729608343.json",
+      "response_file": "/tmp/forge_debug/response_1767729608343.json",
+      "timestamp": 1767729608.3440502,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.002284,
+      "generation_id": "gen-1767729608-Z8ZQx66o8zGIuI1NEPuB"
     }
   ],
   "messages": [
@@ -2579,6 +2661,79 @@
     {
       "role": "assistant",
       "content": "Added debug output. Try dragging from a right-facing output port (like on a Constructor) down and to the right, and paste the console output. It'll show:\n\n- `start_dir` - should be 0\u00b0 for right-facing port\n- `end_dir` - the direction you're dragging toward\n- `start_cw` - whether it's choosing clockwise for the start arc\n- `start_arc` angles - the actual arc angles being computed\n\nThis will tell us if the routing algorithm is picking the wrong turn direction, or if the arc rendering is still confused."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Generated summaries for 40 files",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "it's doing wild shit. hang on. drop every py file and make a small test that just has a line from the center to the mouse, let's spike this."
+    },
+    {
+      "role": "assistant",
+      "content": "Good idea - let's isolate this in a simple test file. Let me compact the old context and create a minimal spike:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"tool_call_ids\": [\"44\",\"45\",\"46\",\"47\",\"48\",\"49\",\"50\",\"51\",\"52\",\"53\",\"54\",\"55\",\"56\",\"57\",\"58\",\"59\",\"60\",\"61\",\"62\",\"63\",\"64\",\"65\",\"66\",\"67\",\"68\",\"69\",\"70\",\"71\",\"72\",\"73\",\"74\",\"75\",\"76\",\"77\",\"78\",\"79\",\"80\",\"81\",\"82\",\"83\",\"84\",\"85\",\"86\",\"87\"], \"summary\": \"Attempted multiple fixes to circle-line-circle belt routing. Issues: arcs were going wrong direction, 360\u00b0 loops when near-straight, arcing \\\"backwards\\\" into buildings. Tried fixes to _arc_sweep, _add_arc coordinate handling, CW/CCW logic. Current state: still broken - arcs curve wrong direction.\"}",
+            "name": "compact"
+          },
+          "id": "toolu_vrtx_01CDXpsBBZRDgUBxZhmLCKFw",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01CDXpsBBZRDgUBxZhmLCKFw",
+      "content": "{\"compact\": true, \"message\": \"Compacted 44 tool result(s)\", \"success\": true, \"summary\": \"Attempted multiple fixes to circle-line-circle belt routing. Issues: arcs were going wrong direction, 360\\u00b0 loops when near-straight, arcing \\\"backwards\\\" into buildings. Tried fixes to _arc_sweep, _add_arc coordinate handling, CW/CCW logic. Current state: still broken - arcs curve wrong direction.\", \"tool_call_ids\": [\"44\", \"45\", \"46\", \"47\", \"48\", \"49\", \"50\", \"51\", \"52\", \"53\", \"54\", \"55\", \"56\", \"57\", \"58\", \"59\", \"60\", \"61\", \"62\", \"63\", \"64\", \"65\", \"66\", \"67\", \"68\", \"69\", \"70\", \"71\", \"72\", \"73\", \"74\", \"75\", \"76\", \"77\", \"78\", \"79\", \"80\", \"81\", \"82\", \"83\", \"84\", \"85\", \"86\", \"87\"]}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"spikes/arc_test/main.py\", \"content\": \"\\\"\\\"\\\"Minimal test: draw an arc from a fixed point toward the mouse.\\\"\\\"\\\"\\n\\nimport math\\nimport sys\\n\\nfrom PySide6.QtCore import Qt, QPointF\\nfrom PySide6.QtGui import QPainter, QPen, QColor, QPainterPath\\nfrom PySide6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPathItem\\n\\n\\nclass ArcTestView(QGraphicsView):\\n    def __init__(self):\\n        super().__init__()\\n        self.scene = QGraphicsScene(self)\\n        self.scene.setSceneRect(-400, -400, 800, 800)\\n        self.setScene(self.scene)\\n        self.setRenderHint(QPainter.Antialiasing)\\n        self.setMouseTracking(True)\\n        \\n        # Fixed start point and direction\\n        self.start = QPointF(0, 0)\\n        self.start_dir = 0  # radians, pointing RIGHT\\n        self.radius = 50\\n        \\n        # Draw origin marker\\n        self.scene.addEllipse(-5, -5, 10, 10, QPen(Qt.red), QColor(255, 0, 0))\\n        \\n        # Draw start direction arrow\\n        arrow_len = 30\\n        self.scene.addLine(0, 0, arrow_len, 0, QPen(Qt.blue, 2))\\n        \\n        # Path item for the arc\\n        self.path_item = QGraphicsPathItem()\\n        self.path_item.setPen(QPen(QColor(0, 200, 0), 3))\\n        self.scene.addItem(self.path_item)\\n        \\n    def mouseMoveEvent(self, event):\\n        # Get mouse position in scene coords\\n        mouse = self.mapToScene(event.pos())\\n        \\n        # Compute the arc from start toward mouse\\n        path = self._compute_arc_path(mouse)\\n        self.path_item.setPath(path)\\n        \\n        super().mouseMoveEvent(event)\\n    \\n    def _compute_arc_path(self, end: QPointF) -> QPainterPath:\\n        \\\"\\\"\\\"Draw arc from start point, leaving in start_dir, curving toward end.\\\"\\\"\\\"\\n        path = QPainterPath()\\n        path.moveTo(self.start)\\n        \\n        # Direction from start to end\\n        dx = end.x() - self.start.x()\\n        dy = end.y() - self.start.y()\\n        target_angle = math.atan2(dy, dx)\\n        \\n        # How much do we need to turn?\\n        turn = target_angle - self.start_dir\\n        # Normalize to [-pi, pi]\\n        while turn > math.pi:\\n            turn -= 2 * math.pi\\n        while turn < -math.pi:\\n            turn += 2 * math.pi\\n        \\n        # If turn is positive, we turn CCW (in math coords) = CW in screen coords\\n        # If turn is negative, we turn CW (in math coords) = CCW in screen coords\\n        \\n        # Circle center is perpendicular to start direction\\n        # If turning right (turn < 0), center is to the right (start_dir - 90)\\n        # If turning left (turn > 0), center is to the left (start_dir + 90)\\n        if turn >= 0:\\n            # Turn left (CCW in math) - center is to the left\\n            perp = self.start_dir + math.pi / 2\\n        else:\\n            # Turn right (CW in math) - center is to the right\\n            perp = self.start_dir - math.pi / 2\\n        \\n        center = QPointF(\\n            self.start.x() + self.radius * math.cos(perp),\\n            self.start.y() + self.radius * math.sin(perp)\\n        )\\n        \\n        # Angle from center to start point\\n        start_angle = math.atan2(self.start.y() - center.y(), self.start.x() - center.x())\\n        \\n        # We want to arc until we're pointing at the target\\n        # The tangent direction at any point on the circle is perpendicular to the radius\\n        # We want the tangent to equal target_angle\\n        \\n        # For CCW motion: tangent = radius_angle + 90\\n        # For CW motion: tangent = radius_angle - 90\\n        # So: radius_angle = tangent -/+ 90\\n        \\n        if turn >= 0:\\n            # CCW: tangent = radius_angle + 90, so radius_angle = tangent - 90\\n            end_angle = target_angle - math.pi / 2\\n        else:\\n            # CW: tangent = radius_angle - 90, so radius_angle = tangent + 90\\n            end_angle = target_angle + math.pi / 2\\n        \\n        # Draw the arc\\n        sweep = end_angle - start_angle\\n        # Normalize sweep based on direction\\n        if turn >= 0:\\n            # CCW: sweep should be positive\\n            while sweep < 0:\\n                sweep += 2 * math.pi\\n            while sweep > 2 * math.pi:\\n                sweep -= 2 * math.pi\\n        else:\\n            # CW: sweep should be negative\\n            while sweep > 0:\\n                sweep -= 2 * math.pi\\n            while sweep < -2 * math.pi:\\n                sweep += 2 * math.pi\\n        \\n        # Clamp to max 180 degrees for sanity\\n        if abs(sweep) > math.pi:\\n            sweep = math.copysign(math.pi, sweep)\\n        \\n        # Draw arc as line segments\\n        num_segments = max(8, int(abs(sweep) * self.radius / 5))\\n        for i in range(1, num_segments + 1):\\n            t = i / num_segments\\n            angle = start_angle + t * sweep\\n            x = center.x() + self.radius * math.cos(angle)\\n            y = center.y() + self.radius * math.sin(angle)\\n            path.lineTo(x, y)\\n        \\n        # Continue with straight line to mouse\\n        path.lineTo(end)\\n        \\n        return path\\n\\n\\ndef main():\\n    app = QApplication(sys.argv)\\n    view = ArcTestView()\\n    view.setWindowTitle(\\\"Arc Test - move mouse around origin\\\")\\n    view.resize(800, 800)\\n    view.show()\\n    sys.exit(app.exec())\\n\\n\\nif __name__ == \\\"__main__\\\":\\n    main()\\n\"}",
+            "name": "write_file"
+          },
+          "id": "toolu_vrtx_01KBvMRifs1Q4EhZa8mHwrAW",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01KBvMRifs1Q4EhZa8mHwrAW",
+      "content": "{\"message\": \"Wrote 5178 bytes to spikes/arc_test/main.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Created a minimal spike at `spikes/arc_test/main.py`. Run it with:\n\n```bash\ncd spikes/arc_test && python main.py\n```\n\nIt shows:\n- Red dot at origin (start point)\n- Blue line pointing right (start direction)\n- Green arc that curves from origin toward your mouse\n\nMove your mouse around and see if the arc behaves correctly. It should:\n- Curve DOWN when mouse is below the horizontal\n- Curve UP when mouse is above the horizontal\n- Go straight when mouse is directly to the right\n\nLet me know what it does - this will help us isolate the math issue without all the routing complexity.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Created `spikes/arc_test/main.py` - a minimal test harness for the arc math.\\n\\nRun it with:\\n```bash\\ncd spikes/arc_test && python main.py\\n```\\n\\nMove your mouse around the red origin dot. The green arc should curve smoothly from the origin (following the blue \\\"start direction\\\" arrow) toward your mouse. \\n\\nThis isolates just the single-arc problem without the full circle-line-circle routing. Let me know what behavior you see!\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01PHvLE5W2EL6FJNqKo7UoTW",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01PHvLE5W2EL6FJNqKo7UoTW",
+      "content": "{\"done\": true, \"message\": \"Created `spikes/arc_test/main.py` - a minimal test harness for the arc math.\\n\\nRun it with:\\n```bash\\ncd spikes/arc_test && python main.py\\n```\\n\\nMove your mouse around the red origin dot. The green arc should curve smoothly from the origin (following the blue \\\"start direction\\\" arrow) toward your mouse. \\n\\nThis isolates just the single-arc problem without the full circle-line-circle routing. Let me know what behavior you see!\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Created `spikes/arc_test/main.py` - a minimal test harness for the arc math.\n\nRun it with:\n```bash\ncd spikes/arc_test && python main.py\n```\n\nMove your mouse around the red origin dot. The green arc should curve smoothly from the origin (following the blue \"start direction\" arrow) toward your mouse. \n\nThis isolates just the single-arc problem without the full circle-line-circle routing. Let me know what behavior you see!"
     }
   ]
 }
