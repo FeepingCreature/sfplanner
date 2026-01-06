@@ -31,9 +31,9 @@ class ArcTestView(QGraphicsView):
         self.start_marker = self.scene.addEllipse(-5, -5, 10, 10, QPen(Qt.red), QColor(255, 0, 0))
         self.start_marker.setPos(self.start)
         
-        # Draw start direction arrow
+        # Draw start direction arrow (green like end arrow)
         self.dir_arrow = QGraphicsLineItem(0, 0, 30, 0)
-        self.dir_arrow.setPen(QPen(Qt.blue, 2))
+        self.dir_arrow.setPen(QPen(QColor(0, 150, 0), 2))
         self.dir_arrow.setPos(self.start)
         self.scene.addItem(self.dir_arrow)
         
@@ -53,6 +53,9 @@ class ArcTestView(QGraphicsView):
         # Tangent point markers
         self.t1_marker = self.scene.addEllipse(-4, -4, 8, 8, QPen(Qt.black), QBrush(Qt.yellow))
         self.t2_marker = self.scene.addEllipse(-4, -4, 8, 8, QPen(Qt.black), QBrush(Qt.cyan))
+        
+        # End point marker (blue like start marker is red)
+        self.end_marker = self.scene.addEllipse(-5, -5, 10, 10, QPen(Qt.blue), QColor(0, 0, 255))
         
         # End direction arrow (follows mouse)
         self.end_arrow = QGraphicsLineItem(0, 0, 30, 0)
@@ -97,7 +100,8 @@ class ArcTestView(QGraphicsView):
         base_angle = math.atan2(self.start.y() - end.y(), self.start.x() - end.x())
         end_dir = base_angle + self.end_dir_offset
         
-        # Update end direction arrow
+        # Update end marker and direction arrow
+        self.end_marker.setPos(end)
         self.end_arrow.setPos(end)
         arrow_dx = 30 * math.cos(end_dir)
         arrow_dy = 30 * math.sin(end_dir)
