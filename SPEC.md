@@ -15,15 +15,31 @@ A PCB-style factory floor planner for Satisfactory. Manual placement of building
 ## Core Concepts
 
 ### Buildings
-- Represent machines (Smelter, Constructor, Assembler, etc.)
+Factory machine primitives:
+- **Production**: Smelter, Foundry, Constructor, Assembler, Manufacturer, Refinery, Packager, Blender
+- **Extraction**: Miner (Mk.1/2/3)
+- **Logistics**: Splitter, Merger
+
+Properties:
 - Have **input ports** (yellow arrow) and **output ports** (green arrow)
-- Configurable recipe selection
-- Configurable clock speed (affects rates and power)
+- Splitters: 1 input, 3 outputs (square shape)
+- Mergers: 3 inputs, 1 output (square shape)
+- Configurable recipe selection (for production buildings)
+- Configurable clock speed 0.01 - 2.5 (affects rates and power)
 - Display current production rates
+- Each building type has a defined bounding box size
+
+Icons from Satisfactory wiki will be available for all items/buildings.
 
 ### Belts
 - Connect output ports to input ports
-- Have a **tier** determining max throughput (60/120/270/480/780 items/min)
+- Have a **tier** determining max throughput:
+  - Mk.1: 60/min
+  - Mk.2: 120/min
+  - Mk.3: 270/min
+  - Mk.4: 480/min
+  - Mk.5: 780/min
+  - Mk.6: 1200/min
 - Visual thickness varies by tier
 - Show **item type** and **flow rate** as annotation
 - Right-click to manually set belt tier
@@ -37,9 +53,18 @@ Belts use a **circle-line-circle** routing:
 
 This requires solving for tangent points between two circles with a connecting line.
 
+The minimum turning radius should match the actual in-game belt radius (to be measured).
+
 ### Connectors
 - **Cross-wall/cross-building connectors**: Square icon
-- Represent logical connections that span blueprint boundaries
+- Snap/lock to the **building outline** (boundary rectangle)
+- Move with the building outline when it's resized
+- Used to separate "inside" from "outside" of a blueprint
+- When a building is converted to a blueprint, everything up to the connector is included
+- Drawing a belt across a building boundary either:
+  - Auto-creates a connector at the boundary, splitting into two connected belts, OR
+  - Refuses (TBD which is better UX)
+- The split is necessary because linked blueprints cannot be edited directly until unlinked
 
 ### Blueprints
 - A blueprint is a container of buildings, belts, and sub-blueprints
@@ -73,6 +98,8 @@ Each node in the chain is clickable to navigate to that element.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Menu Bar: File | Edit | View | Help                        │
+├─────────────────────────────────────────────────────────────┤
+│  Toolbar: [Grid snap toggle] [Grid size] ...                │
 ├───────────────┬─────────────────────────────────────────────┤
 │               │                                             │
 │   Library     │                                             │
@@ -80,18 +107,19 @@ Each node in the chain is clickable to navigate to that element.
 │               │         (QGraphicsView)                     │
 │  ┌─────────┐  │                                             │
 │  │Buildings│  │     - Pan: middle-drag or space+drag        │
-│  ├─────────┤  │     - Zoom: scroll wheel                    │
-│  │ Belts   │  │     - Select: click                         │
-│  ├─────────┤  │     - Multi-select: shift+click or drag-box │
-│  │ User    │  │     - Drag: click+drag selected items       │
-│  │Blueprints│ │     - Belt: drag from output to input port  │
-│  └─────────┘  │                                             │
+│  │(icons)  │  │     - Zoom: scroll wheel                    │
+│  ├─────────┤  │     - Select: click                         │
+│  │ User    │  │     - Multi-select: shift+click or drag-box │
+│  │Blueprints│ │     - Drag: click+drag selected items       │
+│  └─────────┘  │     - Belt: drag from output to input port  │
 │               │                                             │
-├───────────────┴──────────────────────┬──────────────────────┤
-│  Properties Panel                    │  Warnings Panel      │
-│  (selected item details, recipe,     │  (clickable tree of  │
-│   clock speed, etc.)                 │   validation issues) │
-└──────────────────────────────────────┴──────────────────────┘
+├───────────────┼─────────────────────────────────────────────┤
+│  Properties   │                                             │
+│  Panel        │  Warnings Panel                             │
+│  - Recipe     │  (clickable tree of validation issues)      │
+│  - Clock speed│                                             │
+│  - Stats      │                                             │
+└───────────────┴─────────────────────────────────────────────┘
 ```
 
 ## Interactions
@@ -105,6 +133,7 @@ Each node in the chain is clickable to navigate to that element.
 - **Delete**: Delete key on selection
 - **Copy/Paste**: Ctrl+C / Ctrl+V (pastes at cursor)
 - **Undo/Redo**: Ctrl+Z / Ctrl+Shift+Z
+- **Grid snap**: Toggle via toolbar icon, configurable grid size
 
 ### Belt Drawing
 - Click and drag from output port
