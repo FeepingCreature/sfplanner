@@ -10,6 +10,7 @@ from satisfactory_planner.core.models import (
     Outline,
     Recipe,
     BELT_CAPACITIES,
+    BUILDING_METADATA,
 )
 from satisfactory_planner.core.commands import (
     Command,
@@ -28,6 +29,7 @@ __all__ = [
     "BELT_CAPACITIES",
     "Building",
     "BuildingType",
+    "BUILDING_METADATA",
     "Command",
     "CommandStack",
     "ConnectBeltCommand",
