@@ -223,6 +223,7 @@ class MainWindow(QMainWindow):
         self.delete_action.setShortcut(Qt.Key_Delete)
         self.delete_action.triggered.connect(self._delete_selection)
         edit_menu.addAction(self.delete_action)
+        print("DEBUG: Delete action connected")
 
         # View menu (merged with Layout)
         view_menu = self.menuBar().addMenu("View")
@@ -310,6 +311,7 @@ class MainWindow(QMainWindow):
 
     def _delete_selection(self) -> None:
         """Delete selected items in current canvas."""
+        print(f"DEBUG _delete_selection called: current_tab={self.current_tab}, canvas={self.current_tab.canvas if self.current_tab else None}")
         if self.current_tab and self.current_tab.canvas:
             self.current_tab.canvas.delete_selection()
 
