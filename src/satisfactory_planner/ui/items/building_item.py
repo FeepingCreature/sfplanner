@@ -49,6 +49,7 @@ class BuildingItem(QGraphicsRectItem):
         self._drag_start_pos: QPointF | None = None
         self._drag_start_rotation: int = 0
         self._is_dragging: bool = False
+        self._multi_drag_offsets: dict[str, QPointF] = {}
 
     def _get_display_size(self) -> tuple[int, int]:
         """Get display size - delegates to model."""
@@ -318,7 +319,7 @@ class BuildingItem(QGraphicsRectItem):
 
         # For multi-select drag: compute offset from this item's position
         # All other selected items will move by the same delta (not snap individually)
-        self._multi_drag_offsets: dict[str, QPointF] = {}
+        self._multi_drag_offsets.clear()
         for item in self.scene().selectedItems():
             if isinstance(item, BuildingItem) and item is not self:
                 # Store offset from this building's current position
@@ -347,6 +348,8 @@ class BuildingItem(QGraphicsRectItem):
             self._drag_start_pos = None
 
         self._is_dragging = False
+        # Clear multi-drag offsets to prevent stale data on next drag
+        self._multi_drag_offsets = {}
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Handle item changes."""
