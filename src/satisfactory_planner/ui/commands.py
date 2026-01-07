@@ -230,7 +230,6 @@ class MoveBuildingsCommand(Command):
 
     def execute(self, document: Document) -> None:
         scene = get_scene(document, self.scene_room_id)
-        any_changed = False
         for move in self.moves:
             building = scene.buildings.get(move.building_id)
             if not building:
@@ -238,43 +237,30 @@ class MoveBuildingsCommand(Command):
                     f"MoveBuildingsCommand.execute: building {move.building_id} not found"
                 )
                 continue
-            changed = False
-            if building.x != move.new_x or building.y != move.new_y:
-                building.x = move.new_x
-                building.y = move.new_y
-                changed = True
-            if building.rotation != move.new_rotation:
-                building.rotation = move.new_rotation
-                changed = True
-            if changed:
-                self.canvas.refresh_building(move.building_id)
-                self.canvas.refresh_belts_for_building(move.building_id)
-                any_changed = True
-        if any_changed:
-            self.canvas.notify_mutation()
+            # Always update model (may already be synced by Qt drag)
+            building.x = move.new_x
+            building.y = move.new_y
+            building.rotation = move.new_rotation
+            # Always refresh - for rooms this updates all linked instances
+            self.canvas.refresh_building(move.building_id)
+            self.canvas.refresh_belts_for_building(move.building_id)
+        self.canvas.notify_mutation()
 
     def undo(self, document: Document) -> None:
         scene = get_scene(document, self.scene_room_id)
-        any_changed = False
         for move in self.moves:
             building = scene.buildings.get(move.building_id)
             if not building:
                 logger.warning(f"MoveBuildingsCommand.undo: building {move.building_id} not found")
                 continue
-            changed = False
-            if building.x != move.old_x or building.y != move.old_y:
-                building.x = move.old_x
-                building.y = move.old_y
-                changed = True
-            if building.rotation != move.old_rotation:
-                building.rotation = move.old_rotation
-                changed = True
-            if changed:
-                self.canvas.refresh_building(move.building_id)
-                self.canvas.refresh_belts_for_building(move.building_id)
-                any_changed = True
-        if any_changed:
-            self.canvas.notify_mutation()
+            # Always restore old position
+            building.x = move.old_x
+            building.y = move.old_y
+            building.rotation = move.old_rotation
+            # Always refresh - for rooms this updates all linked instances
+            self.canvas.refresh_building(move.building_id)
+            self.canvas.refresh_belts_for_building(move.building_id)
+        self.canvas.notify_mutation()
 
     def merge_with(self, other: Command) -> Command | None:
         """Merge consecutive move commands for same buildings."""

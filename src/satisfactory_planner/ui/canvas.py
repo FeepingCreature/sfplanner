@@ -1337,12 +1337,13 @@ class FactoryCanvas(QGraphicsView):
             old_y: Original y position before the move
             old_rotation: Original rotation before the move (if changed)
         """
-        building = self.document.buildings.get(building_id)
-        if not building:
-            return
-
         item = self._building_items.get(building_id)
         if not item:
+            return
+
+        # Get building from item's scene (could be root document or a Room)
+        building = item.building_scene.buildings.get(building_id)
+        if not building:
             return
 
         # Get the new position from the visual item (may have grid snap applied)
@@ -1353,9 +1354,8 @@ class FactoryCanvas(QGraphicsView):
         new_rot = building.rotation
         old_rot = old_rotation if old_rotation is not None else new_rot
 
-        # Sync model to visual position
-        building.x = new_x
-        building.y = new_y
+        # NOTE: Do NOT sync model here - let the command do it.
+        # This ensures the command's execute() sees a real change and triggers refresh.
 
         # Create immutable command with captured positions and rotation
         move = BuildingMove(
@@ -1400,14 +1400,26 @@ class FactoryCanvas(QGraphicsView):
     def _refresh_all_room_items(self, room_id: str) -> None:
         """Refresh ALL RoomItems that display the given room.
 
-        Simply calls refresh() on each RoomItem - lets the RoomItem handle
-        syncing all its children to the Room data.
+        Calls refresh() on each RoomItem and re-tracks the new child items.
         """
         from satisfactory_planner.ui.items.room_item import RoomItem
 
         for room_item in self._room_items.values():
             if isinstance(room_item, RoomItem) and room_item.room.id == room_id:
+                # Untrack old children
+                for building_id in list(room_item._building_items.keys()):
+                    self._building_items.pop(building_id, None)
+                for belt_id in list(room_item._belt_items.keys()):
+                    self._belt_items.pop(belt_id, None)
+
+                # Refresh (recreates child items)
                 room_item.refresh()
+
+                # Re-track new children
+                for building_id, building_item in room_item._building_items.items():
+                    self._building_items[building_id] = building_item
+                for belt_id, belt_item in room_item._belt_items.items():
+                    self._belt_items[belt_id] = belt_item
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]
         """Draw the grid background."""
