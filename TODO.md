@@ -4,6 +4,10 @@
 - [ ] Room resizing (drag edges/corners)
 - [ ] Constrain building movement to stay within room bounds
 - [ ] Room name editing in properties panel
+- [ ] Clamp port movement to room edge (drag along boundary only)
+- [ ] Prevent/intercept belts crossing room boundary (auto-create port or reject)
+- [x] Fix redo of room creation (building state not restored)
+- [ ] Undo stack is per-canvas, not per-scene (actions inside rooms should undo)
 
 ## Known Incomplete Items
 - [x] Belt routing: Dubins path (circle-line-circle) implementation
