@@ -640,7 +640,7 @@ class FactoryCanvas(QGraphicsView):
         super().mouseReleaseEvent(event)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
-        """Handle drag enter for building placement."""
+        """Handle drag enter for building or blueprint placement."""
         if event.mimeData().hasFormat("application/x-building-type"):
             # Track drag state for wheel rotation
             building_name = bytes(
@@ -672,6 +672,33 @@ class FactoryCanvas(QGraphicsView):
             if app:
                 app.installEventFilter(self)
             event.acceptProposedAction()
+        elif event.mimeData().hasFormat("application/x-blueprint-room-id"):
+            # Blueprint drag - get room from library panel's drag state
+            from satisfactory_planner.ui.panels.library_panel import LibraryPanel
+
+            # Find the library panel (it's the drag source)
+            source = event.source()
+            if source:
+                parent = source.parent()
+                while parent and not isinstance(parent, LibraryPanel):
+                    parent = parent.parent()
+                if isinstance(parent, LibraryPanel) and parent._dragging_blueprint:
+                    self._blueprint_placement_room = parent._dragging_blueprint
+
+                    # Create ghost rectangle for preview
+                    room = self._blueprint_placement_room
+                    self._blueprint_ghost = QGraphicsRectItem(0, 0, room.width, room.height)
+                    self._blueprint_ghost.setPen(
+                        QPen(QColor(100, 200, 100), 2, Qt.PenStyle.DashLine)
+                    )
+                    self._blueprint_ghost.setBrush(QBrush(QColor(100, 200, 100, 50)))
+                    self._blueprint_ghost.setOpacity(0.7)
+                    self._blueprint_ghost.setZValue(1000)
+                    scene_pos = self.mapToScene(event.position().toPoint())
+                    self._blueprint_ghost.setPos(self._snap_to_grid(scene_pos))
+                    self._scene.addItem(self._blueprint_ghost)
+
+            event.acceptProposedAction()
         else:
             super().dragEnterEvent(event)
 
@@ -685,6 +712,11 @@ class FactoryCanvas(QGraphicsView):
                 centered = QPointF(scene_pos.x() - w / 2, scene_pos.y() - h / 2)
                 self._drag_ghost.setPos(self._snap_to_grid(centered))
             event.acceptProposedAction()
+        elif event.mimeData().hasFormat("application/x-blueprint-room-id"):
+            if self._blueprint_ghost:
+                scene_pos = self.mapToScene(event.position().toPoint())
+                self._blueprint_ghost.setPos(self._snap_to_grid(scene_pos))
+            event.acceptProposedAction()
         else:
             super().dragMoveEvent(event)
 
@@ -692,10 +724,12 @@ class FactoryCanvas(QGraphicsView):
         """Handle drag leave - clear drag state."""
         self._drag_building_type = None
         self._drag_rotation = 0
-        # Remove ghost
+        # Remove building ghost
         if self._drag_ghost:
             self._scene.removeItem(self._drag_ghost)
             self._drag_ghost = None
+        # Remove blueprint ghost
+        self._clear_blueprint_placement()
         # Remove event filter
         from PySide6.QtWidgets import QApplication
 
@@ -719,7 +753,7 @@ class FactoryCanvas(QGraphicsView):
         return super().eventFilter(obj, event)  # type: ignore[arg-type]
 
     def dropEvent(self, event: QDropEvent) -> None:
-        """Handle drop to place building."""
+        """Handle drop to place building or blueprint."""
         if event.mimeData().hasFormat("application/x-building-type"):
             building_name = bytes(
                 event.mimeData().data("application/x-building-type").data()
@@ -760,6 +794,16 @@ class FactoryCanvas(QGraphicsView):
             app = QApplication.instance()
             if app:
                 app.removeEventFilter(self)
+        elif event.mimeData().hasFormat("application/x-blueprint-room-id"):
+            # Place the blueprint
+            if self._blueprint_placement_room:
+                scene_pos = self.mapToScene(event.position().toPoint())
+                snapped = self._snap_to_grid(scene_pos)
+                self._place_blueprint(self._blueprint_placement_room, snapped.x(), snapped.y())
+                event.acceptProposedAction()
+
+            # Clean up
+            self._clear_blueprint_placement()
         else:
             super().dropEvent(event)
 
