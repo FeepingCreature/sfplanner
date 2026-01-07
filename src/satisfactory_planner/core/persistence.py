@@ -159,18 +159,25 @@ def dict_to_belt(data: dict[str, Any]) -> Belt:
 
 # --- Document Serialization ---
 
-def document_to_dict(document: Document) -> dict[str, Any]:
+def document_to_dict(document: Document, view_state: dict[str, Any] | None = None) -> dict[str, Any]:
     """Serialize a Document to a dictionary."""
-    return {
+    data: dict[str, Any] = {
         "version": 1,
         "buildings": [building_to_dict(b) for b in document.buildings.values()],
         "belts": [belt_to_dict(b) for b in document.belts.values()],
         "recipes": [recipe_to_dict(r) for r in document.recipes.values()],
     }
+    if view_state:
+        data["view"] = view_state
+    return data
 
 
-def dict_to_document(data: dict[str, Any]) -> Document:
-    """Deserialize a Document from a dictionary."""
+def dict_to_document(data: dict[str, Any]) -> tuple[Document, dict[str, Any] | None]:
+    """Deserialize a Document from a dictionary.
+    
+    Returns:
+        Tuple of (document, view_state) where view_state may be None.
+    """
     doc = Document()
     
     for building_data in data.get("buildings", []):
@@ -185,18 +192,23 @@ def dict_to_document(data: dict[str, Any]) -> Document:
         recipe = dict_to_recipe(recipe_data)
         doc.recipes[recipe.id] = recipe
     
-    return doc
+    view_state = data.get("view")
+    return doc, view_state
 
 
-def save_document(document: Document, path: Path | str) -> None:
-    """Save a document to a .satplan file."""
+def save_document(document: Document, path: Path | str, view_state: dict[str, Any] | None = None) -> None:
+    """Save a document to a .sfp file."""
     path = Path(path)
-    data = document_to_dict(document)
+    data = document_to_dict(document, view_state)
     path.write_text(json.dumps(data, indent=2))
 
 
-def load_document(path: Path | str) -> Document:
-    """Load a document from a .satplan file."""
+def load_document(path: Path | str) -> tuple[Document, dict[str, Any] | None]:
+    """Load a document from a .sfp file.
+    
+    Returns:
+        Tuple of (document, view_state) where view_state may be None.
+    """
     path = Path(path)
     data = json.loads(path.read_text())
     return dict_to_document(data)

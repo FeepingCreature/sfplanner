@@ -320,33 +320,52 @@ class MainWindow(QMainWindow):
     def _open_document(self) -> None:
         """Open a document from file."""
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open Project", "", "Satisfactory Planner (*.satplan)"
+            self, "Open Project", "", "Satisfactory Planner (*.sfp)"
         )
         if path:
-            try:
-                document = load_document(path)
-                
-                # Create new tab with loaded document
-                tab = DocumentTab(Path(path).stem)
-                tab.document = document
-                tab.command_stack = CommandStack()
-                tab.flow_solver = FlowSolver(document)
-                tab.file_path = path
-                
-                canvas = FactoryCanvas(tab.document, tab.command_stack)
-                tab.canvas = canvas
-                
-                # Connect signals
-                canvas.selection_changed.connect(self.properties_panel.set_selection)
-                canvas.document_changed.connect(self._update_warnings)
-                
-                # Add tab
-                index = self.tab_widget.addTab(canvas, tab.name)
-                self.tabs.append(tab)
-                self.tab_widget.setCurrentIndex(index)
-                
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to open file:\n{e}")
+            self._open_file(path)
+
+    def _open_file(self, path: str) -> bool:
+        """Open a file by path. Returns True on success."""
+        try:
+            document, view_state = load_document(path)
+            
+            # Create new tab with loaded document
+            tab = DocumentTab(Path(path).stem)
+            tab.document = document
+            tab.command_stack = CommandStack()
+            tab.flow_solver = FlowSolver(document)
+            tab.file_path = path
+            
+            canvas = FactoryCanvas(tab.document, tab.command_stack)
+            tab.canvas = canvas
+            
+            # Refresh canvas to show loaded buildings/belts
+            canvas.refresh()
+            
+            # Restore view state (zoom, pan)
+            if view_state:
+                if "scale" in view_state:
+                    scale = view_state["scale"]
+                    canvas.resetTransform()
+                    canvas.scale(scale, scale)
+                if "center_x" in view_state and "center_y" in view_state:
+                    canvas.centerOn(view_state["center_x"], view_state["center_y"])
+            
+            # Connect signals
+            canvas.selection_changed.connect(self.properties_panel.set_selection)
+            canvas.document_changed.connect(self._update_warnings)
+            
+            # Add tab
+            index = self.tab_widget.addTab(canvas, tab.name)
+            self.tabs.append(tab)
+            self.tab_widget.setCurrentIndex(index)
+            
+            return True
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to open file:\n{e}")
+            return False
 
     def _save_document(self) -> None:
         """Save the document to file."""
@@ -358,16 +377,28 @@ class MainWindow(QMainWindow):
             path = self.current_tab.file_path
         else:
             path, _ = QFileDialog.getSaveFileName(
-                self, "Save Project", "", "Satisfactory Planner (*.satplan)"
+                self, "Save Project", "", "Satisfactory Planner (*.sfp)"
             )
         
         if path:
             try:
-                # Ensure .satplan extension
-                if not path.endswith(".satplan"):
-                    path += ".satplan"
+                # Ensure .sfp extension
+                if not path.endswith(".sfp"):
+                    path += ".sfp"
                 
-                save_document(self.current_tab.document, path)
+                # Capture view state from canvas
+                view_state = None
+                if self.current_tab.canvas:
+                    canvas = self.current_tab.canvas
+                    transform = canvas.transform()
+                    center = canvas.mapToScene(canvas.viewport().rect().center())
+                    view_state = {
+                        "scale": transform.m11(),  # Horizontal scale factor
+                        "center_x": center.x(),
+                        "center_y": center.y(),
+                    }
+                
+                save_document(self.current_tab.document, path, view_state)
                 self.current_tab.file_path = path
                 self.current_tab.name = Path(path).stem
                 
