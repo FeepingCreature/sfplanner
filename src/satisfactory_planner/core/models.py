@@ -168,13 +168,34 @@ class Building:
             return (LOGISTICS_DISPLAY_SIZE, LOGISTICS_DISPLAY_SIZE)
         return (self.width, self.height)
 
+    def _rotate_point(self, px: float, py: float) -> tuple[float, float]:
+        """Rotate a point around the building center by current rotation."""
+        if self.rotation == 0:
+            return (px, py)
+        w, h = self._get_display_size()
+        # Center of building in scene coordinates
+        cx, cy = self.x + w / 2, self.y + h / 2
+        # Translate to origin
+        dx, dy = px - cx, py - cy
+        # Rotate
+        rad = math.radians(self.rotation)
+        cos_r, sin_r = math.cos(rad), math.sin(rad)
+        rx = dx * cos_r - dy * sin_r
+        ry = dx * sin_r + dy * cos_r
+        # Translate back
+        return (cx + rx, cy + ry)
+
+    def _rotate_direction(self, direction: float) -> float:
+        """Rotate a direction (radians) by current rotation."""
+        return direction + math.radians(self.rotation)
+
     def input_port_pos(self, index: int) -> tuple[float, float]:
         """Get position of input port by index (in scene coordinates)."""
         w, h = self._get_display_size()
 
         if self.building_type == BuildingType.SPLITTER:
             # Splitter: 1 input on left
-            return (self.x, self.y + h / 2)
+            base_pos = (self.x, self.y + h / 2)
         elif self.building_type == BuildingType.MERGER:
             # Merger: 3 inputs on top, left, bottom
             positions = [
@@ -182,22 +203,26 @@ class Building:
                 (self.x, self.y + h / 2),  # left
                 (self.x + w / 2, self.y + h),  # bottom
             ]
-            return positions[index] if index < len(positions) else positions[0]
+            base_pos = positions[index] if index < len(positions) else positions[0]
         else:
             # Standard: inputs on left
             spacing = h / (self.num_inputs + 1)
-            return (self.x, self.y + spacing * (index + 1))
+            base_pos = (self.x, self.y + spacing * (index + 1))
+
+        return self._rotate_point(*base_pos)
 
     def input_port_direction(self, index: int) -> float:
         """Get direction (radians) a belt is TRAVELING when it enters this input port."""
         if self.building_type == BuildingType.SPLITTER:
-            return 0  # traveling right, into left side
+            base_dir = 0.0  # traveling right, into left side
         elif self.building_type == BuildingType.MERGER:
             # top (traveling down), left (traveling right), bottom (traveling up)
-            directions = [math.pi / 2, 0, -math.pi / 2]
-            return directions[index] if index < len(directions) else 0
+            directions = [math.pi / 2, 0.0, -math.pi / 2]
+            base_dir = directions[index] if index < len(directions) else 0.0
         else:
-            return 0  # traveling right, into left side
+            base_dir = 0.0  # traveling right, into left side
+
+        return self._rotate_direction(base_dir)
 
     def output_port_pos(self, index: int) -> tuple[float, float]:
         """Get position of output port by index (in scene coordinates)."""
@@ -210,25 +235,29 @@ class Building:
                 (self.x + w, self.y + h / 2),  # right
                 (self.x + w / 2, self.y + h),  # bottom
             ]
-            return positions[index] if index < len(positions) else positions[0]
+            base_pos = positions[index] if index < len(positions) else positions[0]
         elif self.building_type == BuildingType.MERGER:
             # Merger: 1 output on right
-            return (self.x + w, self.y + h / 2)
+            base_pos = (self.x + w, self.y + h / 2)
         else:
             # Standard: outputs on right
             spacing = h / (self.num_outputs + 1)
-            return (self.x + w, self.y + spacing * (index + 1))
+            base_pos = (self.x + w, self.y + spacing * (index + 1))
+
+        return self._rotate_point(*base_pos)
 
     def output_port_direction(self, index: int) -> float:
         """Get direction (radians) a belt is TRAVELING when it leaves this output port."""
         if self.building_type == BuildingType.SPLITTER:
             # top (traveling up), right (traveling right), bottom (traveling down)
-            directions = [-math.pi / 2, 0, math.pi / 2]
-            return directions[index] if index < len(directions) else 0
+            directions = [-math.pi / 2, 0.0, math.pi / 2]
+            base_dir = directions[index] if index < len(directions) else 0.0
         elif self.building_type == BuildingType.MERGER:
-            return 0  # traveling right
+            base_dir = 0.0  # traveling right
         else:
-            return 0  # traveling right
+            base_dir = 0.0  # traveling right
+
+        return self._rotate_direction(base_dir)
 
 
 # Belt capacity by tier (items per minute)
