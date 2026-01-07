@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen, QTransform
 from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsRectItem,
@@ -53,6 +53,45 @@ class BuildingItem(QGraphicsRectItem):
     def _get_display_size(self) -> tuple[int, int]:
         """Get display size - delegates to model."""
         return self.building._get_display_size()
+
+    def boundingRect(self) -> QRectF:
+        """Return bounding rect accounting for rotation."""
+        import math
+
+        w, h = self._get_display_size()
+        if self.building.rotation == 0:
+            return QRectF(-2, -2, w + 4, h + 4)  # Small margin for selection highlight
+
+        # For rotated buildings, compute the axis-aligned bounding box
+        rad = math.radians(self.building.rotation)
+        cos_r, sin_r = abs(math.cos(rad)), abs(math.sin(rad))
+        # Rotated width/height
+        new_w = w * cos_r + h * sin_r
+        new_h = w * sin_r + h * cos_r
+        # Center offset
+        cx, cy = w / 2, h / 2
+        new_cx, new_cy = new_w / 2, new_h / 2
+        offset_x = cx - new_cx
+        offset_y = cy - new_cy
+        return QRectF(offset_x - 2, offset_y - 2, new_w + 4, new_h + 4)
+
+    def shape(self) -> QPainterPath:
+        """Return shape for hit testing, accounting for rotation."""
+        import math
+
+        w, h = self._get_display_size()
+        path = QPainterPath()
+        path.addRect(QRectF(0, 0, w, h))
+
+        if self.building.rotation != 0:
+            # Transform the path by rotating around center
+            transform = QTransform()
+            transform.translate(w / 2, h / 2)
+            transform.rotate(self.building.rotation)
+            transform.translate(-w / 2, -h / 2)
+            path = transform.map(path)
+
+        return path
 
     def _setup_rect(self) -> None:
         """Configure the rectangle."""
@@ -256,11 +295,17 @@ class BuildingItem(QGraphicsRectItem):
         else:
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, name)
 
-        # Draw selection highlight
+        # Draw selection highlight (rotated with the building)
         if self.isSelected():
+            painter.save()
+            if self.rotation_angle != 0:
+                painter.translate(w / 2, h / 2)
+                painter.rotate(self.rotation_angle)
+                painter.translate(-w / 2, -h / 2)
             painter.setPen(QPen(QColor(255, 255, 0), 3))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRect(rect.adjusted(-2, -2, 2, 2))
+            painter.restore()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Track drag start."""

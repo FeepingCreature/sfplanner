@@ -116,6 +116,7 @@ class FactoryCanvas(QGraphicsView):
         # Drag-drop state for building placement from library
         self._drag_building_type: BuildingType | None = None
         self._drag_rotation: int = 0
+        self._drag_ghost: GhostBuildingItem | None = None
 
         # Enable drag-drop
         self.setAcceptDrops(True)
@@ -297,10 +298,6 @@ class FactoryCanvas(QGraphicsView):
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         """Handle zoom with mouse wheel, rotation in placement/drag mode."""
-        logger.info(
-            f"wheelEvent: placement_mode={self._placement_mode}, "
-            f"drag_building={self._drag_building_type}"
-        )
 
         # Case 1: Placement mode (click in library, then move to canvas)
         if self._placement_mode and self._ghost_item:
@@ -316,7 +313,6 @@ class FactoryCanvas(QGraphicsView):
         # Check if any selected building is being dragged
         for item in self._scene.selectedItems():
             if isinstance(item, BuildingItem) and item._is_dragging:
-                logger.info(f"wheelEvent: rotating dragged building {item.building.id}")
                 if event.angleDelta().y() > 0:
                     item.rotate_building(90)
                 else:
@@ -444,10 +440,23 @@ class FactoryCanvas(QGraphicsView):
                     self._drag_building_type = bt
                     break
             self._drag_rotation = 0
+
+            # Create ghost building for visual preview
+            if self._drag_building_type:
+                ghost_building = Building(
+                    id="drag_ghost",
+                    building_type=self._drag_building_type,
+                    x=0,
+                    y=0,
+                )
+                self._drag_ghost = GhostBuildingItem(ghost_building, self)
+                scene_pos = self.mapToScene(event.position().toPoint())
+                self._drag_ghost.setPos(self._snap_to_grid(scene_pos))
+                self._scene.addItem(self._drag_ghost)
+
             # Install event filter to capture wheel events during drag
             from PySide6.QtWidgets import QApplication
             app = QApplication.instance()
-            logger.info(f"dragEnterEvent: building={self._drag_building_type}, installing filter on {app}")
             if app:
                 app.installEventFilter(self)
             event.acceptProposedAction()
@@ -455,8 +464,14 @@ class FactoryCanvas(QGraphicsView):
             super().dragEnterEvent(event)
 
     def dragMoveEvent(self, event: QDragEnterEvent) -> None:  # type: ignore[override]
-        """Handle drag move."""
+        """Handle drag move - update ghost position."""
         if event.mimeData().hasFormat("application/x-building-type"):
+            if self._drag_ghost:
+                scene_pos = self.mapToScene(event.position().toPoint())
+                # Center ghost on cursor
+                w, h = self._drag_ghost.building._get_display_size()
+                centered = QPointF(scene_pos.x() - w / 2, scene_pos.y() - h / 2)
+                self._drag_ghost.setPos(self._snap_to_grid(centered))
             event.acceptProposedAction()
         else:
             super().dragMoveEvent(event)
@@ -465,6 +480,10 @@ class FactoryCanvas(QGraphicsView):
         """Handle drag leave - clear drag state."""
         self._drag_building_type = None
         self._drag_rotation = 0
+        # Remove ghost
+        if self._drag_ghost:
+            self._scene.removeItem(self._drag_ghost)
+            self._drag_ghost = None
         # Remove event filter
         from PySide6.QtWidgets import QApplication
         app = QApplication.instance()
@@ -474,15 +493,15 @@ class FactoryCanvas(QGraphicsView):
 
     def eventFilter(self, obj: object, event: QEvent) -> bool:
         """Capture wheel events during drag-drop for building rotation."""
-        # Log all events during drag for debugging
         if self._drag_building_type is not None and event.type() == QEvent.Type.Wheel:
-            logger.info(f"eventFilter: WHEEL event! drag_building={self._drag_building_type}")
             wheel_event: QWheelEvent = event  # type: ignore[assignment]
             if wheel_event.angleDelta().y() > 0:
                 self._drag_rotation = (self._drag_rotation + 90) % 360
             else:
                 self._drag_rotation = (self._drag_rotation - 90) % 360
-            logger.info(f"eventFilter: rotation now {self._drag_rotation}")
+            # Update ghost building rotation
+            if self._drag_ghost:
+                self._drag_ghost.rotation_angle = self._drag_rotation
             return True  # Consume the event
         return super().eventFilter(obj, event)  # type: ignore[arg-type]
 
@@ -512,13 +531,15 @@ class FactoryCanvas(QGraphicsView):
                 snapped = self._snap_to_grid(scene_pos)
                 # Use rotation accumulated during drag
                 rotation = self._drag_rotation
-                logger.info(f"dropEvent: placing {building_type} with rotation={rotation}")
                 self._place_building_with_rotation(building_type, snapped.x(), snapped.y(), rotation)
                 event.acceptProposedAction()
 
             # Clean up drag state
             self._drag_building_type = None
             self._drag_rotation = 0
+            if self._drag_ghost:
+                self._scene.removeItem(self._drag_ghost)
+                self._drag_ghost = None
             from PySide6.QtWidgets import QApplication
             app = QApplication.instance()
             if app:
