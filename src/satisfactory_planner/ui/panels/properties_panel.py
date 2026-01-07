@@ -537,9 +537,10 @@ class PropertiesPanel(QWidget):
         self.room_group = QGroupBox("Room Properties")
         room_layout = QFormLayout(self.room_group)
 
-        # Room name
-        self.room_name_label = QLabel("-")
-        room_layout.addRow("Name:", self.room_name_label)
+        # Room name (editable)
+        self.room_name_edit = QLineEdit()
+        self.room_name_edit.editingFinished.connect(self._on_room_name_changed)
+        room_layout.addRow("Name:", self.room_name_edit)
 
         # Size
         self.room_size_label = QLabel("-")
@@ -709,7 +710,7 @@ class PropertiesPanel(QWidget):
                     placement, room = room_info
                     self.selection_label.setText(f"Room: {room.name}")
 
-                    self.room_name_label.setText(room.name)
+                    self.room_name_edit.setText(room.name)
                     self.room_size_label.setText(f"{int(room.width)} × {int(room.height)}")
                     self.room_contents_label.setText(
                         f"{len(room.buildings)} buildings, {len(room.belts)} belts"
@@ -814,6 +815,33 @@ class PropertiesPanel(QWidget):
                         canvas=self.canvas,
                     )
                     self.command_stack.execute(cmd)
+
+    def _on_room_name_changed(self) -> None:
+        """Handle room name edit."""
+        if self._updating or not self.canvas:
+            return
+
+        room_info = self._get_selected_room_item()
+        if not room_info:
+            return
+
+        _placement, room = room_info
+        new_name = self.room_name_edit.text().strip()
+
+        if new_name and new_name != room.name:
+            # Directly update room name (affects all linked placements)
+            room.name = new_name
+            self.selection_label.setText(f"Room: {new_name}")
+
+            # Refresh canvas to update room item display
+            self.canvas.notify_mutation()
+
+            # Refresh all room items showing this room
+            from satisfactory_planner.ui.items import RoomItem
+
+            for _placement_id, room_item in self.canvas._room_items.items():
+                if isinstance(room_item, RoomItem) and room_item.room.id == room.id:
+                    room_item.update()
 
     def _on_save_blueprint(self) -> None:
         """Save the selected room as a blueprint."""

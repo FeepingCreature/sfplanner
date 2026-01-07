@@ -1,9 +1,8 @@
 # TODO
 
 ## Room System
-- [ ] Room resizing (drag edges/corners)
+- [ ] Room resizing (drag edges/corners to resize, with building constraint checks)
 - [ ] Constrain building movement to stay within room bounds
-- [ ] Room name editing in properties panel
 - [ ] Clamp port movement to room edge (drag along boundary only)
 - [ ] Prevent/intercept belts crossing room boundary (auto-create port or reject)
 - [ ] Fix redo of room creation (buildings not restored - command captures IDs but buildings were moved)
