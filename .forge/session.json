@@ -918,6 +918,42 @@
       "streaming": true,
       "actual_cost": 0.11135325,
       "generation_id": "gen-1767796757-flZRocqWr1Meq0dh0440"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767796837971.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767796837971.json",
+      "timestamp": 1767796837.9728587,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05652325,
+      "generation_id": "gen-1767796838-KjeM0TUe2ZVzOzbbbCks"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767796843424.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767796843424.json",
+      "timestamp": 1767796843.4258947,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1670815,
+      "generation_id": "gen-1767796843-DwSzyoLVyJscBXxMQLvC"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767796865477.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767796865477.json",
+      "timestamp": 1767796865.4793591,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.16844825,
+      "generation_id": "gen-1767796865-QKMAKtO8YpaPXqVsFQpF"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767796879029.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767796879029.json",
+      "timestamp": 1767796879.0305526,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.16892075,
+      "generation_id": "gen-1767796879-DluDLrmc3J8Pn9MUQNkY"
     }
   ],
   "messages": [
@@ -4038,6 +4074,188 @@
     {
       "role": "assistant",
       "content": "Fixed! The building now drops centered on the cursor instead of with its top-left corner there. The fix offsets by half the building's width and height before snapping to grid."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 75d03df9",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Nice! Alright, now the recipe dropdown has to filter for building. Also we can put the edit button on the right now we have the width fixed. Also make the height of the warnings tab much smaller, or the properties much larger, by default."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/panels/properties_panel.py\", \"src/satisfactory_planner/ui/main_window.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_01XR1FKSK8JYhn4hP1LKAk6Y",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01XR1FKSK8JYhn4hP1LKAk6Y",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/panels/properties_panel.py\", \"src/satisfactory_planner/ui/main_window.py\"], \"message\": \"Added 2 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Got it - three fixes: 1) Filter recipes by building type, 2) Move edit button to right, 3) Make warnings panel smaller by default.\"}",
+            "name": "say"
+          },
+          "id": "toolu_012SLUq4HBxQcxX2VgnAGo2d",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/panels/properties_panel.py\", \"search\": \"        # Recipe selector with edit button (button on left so it doesn't get hidden)\\n        recipe_layout = QHBoxLayout()\\n        recipe_layout.setSpacing(4)\\n\\n        self.recipe_edit_btn = QToolButton()\\n        self.recipe_edit_btn.setText(\\\"\u270e\\\")\\n        self.recipe_edit_btn.setToolTip(\\\"Edit recipes...\\\")\\n        self.recipe_edit_btn.setAutoRaise(True)  # Flat look, highlights on hover\\n        self.recipe_edit_btn.clicked.connect(self._open_recipe_editor)\\n        recipe_layout.addWidget(self.recipe_edit_btn)\\n\\n        self.recipe_combo = QComboBox()\\n        self.recipe_combo.addItem(\\\"(No recipe)\\\", None)\\n        self.recipe_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)\\n        self.recipe_combo.currentIndexChanged.connect(self._on_recipe_changed)\\n        recipe_layout.addWidget(self.recipe_combo, 1)\\n\\n        building_layout.addRow(\\\"Recipe:\\\", recipe_layout)\", \"replace\": \"        # Recipe selector with edit button on right\\n        recipe_layout = QHBoxLayout()\\n        recipe_layout.setSpacing(4)\\n\\n        self.recipe_combo = QComboBox()\\n        self.recipe_combo.addItem(\\\"(No recipe)\\\", None)\\n        self.recipe_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)\\n        self.recipe_combo.currentIndexChanged.connect(self._on_recipe_changed)\\n        recipe_layout.addWidget(self.recipe_combo, 1)\\n\\n        self.recipe_edit_btn = QToolButton()\\n        self.recipe_edit_btn.setText(\\\"\u270e\\\")\\n        self.recipe_edit_btn.setToolTip(\\\"Edit recipes...\\\")\\n        self.recipe_edit_btn.setAutoRaise(True)  # Flat look, highlights on hover\\n        self.recipe_edit_btn.clicked.connect(self._open_recipe_editor)\\n        recipe_layout.addWidget(self.recipe_edit_btn)\\n\\n        building_layout.addRow(\\\"Recipe:\\\", recipe_layout)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_01XNCVMVgtAtTpQMhaWCGz1y",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/panels/properties_panel.py\", \"search\": \"    def _update_recipe_combo(self) -> None:\\n        \\\"\\\"\\\"Update recipe combo with available recipes (base + user).\\\"\\\"\\\"\\n        # Load all recipes (base game + user) into the document\\n        all_recipes = load_all_recipes()\\n        for recipe_id, recipe in all_recipes.items():\\n            if recipe_id not in self.document.recipes:\\n                self.document.recipes[recipe_id] = recipe\\n\\n        self.recipe_combo.clear()\\n        self.recipe_combo.addItem(\\\"(No recipe)\\\", None)\\n        for recipe_id, recipe in self.document.recipes.items():\\n            self.recipe_combo.addItem(recipe.name, recipe_id)\", \"replace\": \"    def _update_recipe_combo(self, building_type: BuildingType | None = None) -> None:\\n        \\\"\\\"\\\"Update recipe combo with available recipes filtered by building type.\\\"\\\"\\\"\\n        # Load all recipes (base game + user) into the document\\n        all_recipes = load_all_recipes()\\n        for recipe_id, recipe in all_recipes.items():\\n            if recipe_id not in self.document.recipes:\\n                self.document.recipes[recipe_id] = recipe\\n\\n        self.recipe_combo.clear()\\n        self.recipe_combo.addItem(\\\"(No recipe)\\\", None)\\n        for recipe_id, recipe in self.document.recipes.items():\\n            # Filter by building type if specified\\n            if building_type is None or recipe.building_type == building_type:\\n                self.recipe_combo.addItem(recipe.name, recipe_id)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_01R9ddNfqWVGMCdEwa1AgwA6",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/panels/properties_panel.py\", \"search\": \"            # Check if it's a building\\n            if item_id in self.document.buildings:\\n                building = self.document.buildings[item_id]\\n                self.selection_label.setText(f\\\"Building: {building.building_type.value}\\\")\\n                self.type_label.setText(building.building_type.value)\\n                self.clock_spin.setValue(building.clock_speed * 100)\\n\\n                self.building_group.show()\\n                self.stats_group.show()\\n                self.belt_group.hide()\\n\\n                # Update stats\\n                self.power_label.setText(\\\"- MW\\\")  # TODO: Calculate from recipe\\n                self.input_label.setText(\\\"-\\\")\\n                self.output_label.setText(\\\"-\\\")\", \"replace\": \"            # Check if it's a building\\n            if item_id in self.document.buildings:\\n                building = self.document.buildings[item_id]\\n                self.selection_label.setText(f\\\"Building: {building.building_type.value}\\\")\\n                self.type_label.setText(building.building_type.value)\\n                self.clock_spin.setValue(building.clock_speed * 100)\\n\\n                # Update recipe combo filtered by building type\\n                self._update_recipe_combo(building.building_type)\\n\\n                # Select current recipe in combo\\n                if building.recipe_id:\\n                    for i in range(self.recipe_combo.count()):\\n                        if self.recipe_combo.itemData(i) == building.recipe_id:\\n                            self.recipe_combo.setCurrentIndex(i)\\n                            break\\n                else:\\n                    self.recipe_combo.setCurrentIndex(0)\\n\\n                self.building_group.show()\\n                self.stats_group.show()\\n                self.belt_group.hide()\\n\\n                # Update stats\\n                self.power_label.setText(\\\"- MW\\\")  # TODO: Calculate from recipe\\n                self.input_label.setText(\\\"-\\\")\\n                self.output_label.setText(\\\"-\\\")\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_011JRMoohHet4J372p555WZ8",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_012SLUq4HBxQcxX2VgnAGo2d",
+      "content": "{\"message\": \"Got it - three fixes: 1) Filter recipes by building type, 2) Move edit button to right, 3) Make warnings panel smaller by default.\", \"say\": true, \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Got it - three fixes: 1) Filter recipes by building type, 2) Move edit button to right, 3) Make warnings panel smaller by default.",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01XNCVMVgtAtTpQMhaWCGz1y",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/panels/properties_panel.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01R9ddNfqWVGMCdEwa1AgwA6",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/panels/properties_panel.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_011JRMoohHet4J372p555WZ8",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/panels/properties_panel.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I need to adjust the default panel sizes. Looking at `_setup_panels`, the warnings dock is added below properties. I'll set a minimum/maximum height hint:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/main_window.py\", \"search\": \"        # Warnings panel - below properties panel\\n        self.warnings_panel = WarningsPanel(Document(), FlowSolver(Document()))\\n        self.warnings_panel.warning_clicked.connect(self._on_warning_clicked)\\n        warnings_dock = ads.CDockWidget(\\\"Warnings\\\")\\n        warnings_dock.setWidget(self.warnings_panel)\\n        self.dock_manager.addDockWidget(\\n            ads.DockWidgetArea.BottomDockWidgetArea, warnings_dock, props_dock.dockAreaWidget()\\n        )\", \"replace\": \"        # Warnings panel - below properties panel (smaller by default)\\n        self.warnings_panel = WarningsPanel(Document(), FlowSolver(Document()))\\n        self.warnings_panel.warning_clicked.connect(self._on_warning_clicked)\\n        self.warnings_panel.setMaximumHeight(150)  # Keep warnings compact\\n        warnings_dock = ads.CDockWidget(\\\"Warnings\\\")\\n        warnings_dock.setWidget(self.warnings_panel)\\n        self.dock_manager.addDockWidget(\\n            ads.DockWidgetArea.BottomDockWidgetArea, warnings_dock, props_dock.dockAreaWidget()\\n        )\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_01L2vJH1dYBomZgG6vLQxT3u",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"verbose\": false}",
+            "name": "run_tests"
+          },
+          "id": "toolu_012ecRvK2NDGCXhpSEk3fstu",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01L2vJH1dYBomZgG6vLQxT3u",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/main_window.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_012ecRvK2NDGCXhpSEk3fstu",
+      "content": "{\"output\": \"ruff check --fix src/ tests/\\nFound 2 errors (2 fixed, 0 remaining).\\nruff format src/ tests/\\n2 files reformatted, 28 files left unchanged\\nruff check src/ tests/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 21 source files\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Filter recipe dropdown by building type, move edit button right, smaller warnings panel\\n\\n- Recipe combo now only shows recipes valid for the selected building type\\n- Edit button moved to right side of recipe dropdown\\n- Warnings panel has maxHeight=150 to keep it compact by default\"}",
+            "name": "commit"
+          },
+          "id": "toolu_01FQtbetoNMtpdExAbdhAHBh",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"src/satisfactory_planner/ui/panels/properties_panel.py\", \"src/satisfactory_planner/ui/main_window.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_017pDwrmQqp11Abt5gDHx9SY",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Done! Three fixes:\\n\\n1. **Recipe dropdown filters by building type** - Only shows recipes valid for the selected building (e.g., Smelter only shows smelting recipes)\\n2. **Edit button moved to right** - Now that panel width is fixed, button sits nicely on the right\\n3. **Warnings panel smaller** - Set maxHeight=150 to keep it compact, giving more space to properties\"}",
+            "name": "done"
+          },
+          "id": "toolu_019FWPTJWBcizA7CRdCHoT64",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01FQtbetoNMtpdExAbdhAHBh",
+      "content": "{\"commit\": \"15ada68c742d\", \"message\": \"Committed: 2 file(s) modified/created\", \"side_effects\": [\"mid_turn_commit\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_017pDwrmQqp11Abt5gDHx9SY",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 2 files from context\", \"remove\": [\"src/satisfactory_planner/ui/panels/properties_panel.py\", \"src/satisfactory_planner/ui/main_window.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_019FWPTJWBcizA7CRdCHoT64",
+      "content": "{\"done\": true, \"message\": \"Done! Three fixes:\\n\\n1. **Recipe dropdown filters by building type** - Only shows recipes valid for the selected building (e.g., Smelter only shows smelting recipes)\\n2. **Edit button moved to right** - Now that panel width is fixed, button sits nicely on the right\\n3. **Warnings panel smaller** - Set maxHeight=150 to keep it compact, giving more space to properties\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Done! Three fixes:\n\n1. **Recipe dropdown filters by building type** - Only shows recipes valid for the selected building (e.g., Smelter only shows smelting recipes)\n2. **Edit button moved to right** - Now that panel width is fixed, button sits nicely on the right\n3. **Warnings panel smaller** - Set maxHeight=150 to keep it compact, giving more space to properties"
     }
   ]
 }

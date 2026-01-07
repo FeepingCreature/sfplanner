@@ -476,9 +476,15 @@ class PropertiesPanel(QWidget):
         self.type_label = QLabel("-")
         building_layout.addRow("Type:", self.type_label)
 
-        # Recipe selector with edit button (button on left so it doesn't get hidden)
+        # Recipe selector with edit button on right
         recipe_layout = QHBoxLayout()
         recipe_layout.setSpacing(4)
+
+        self.recipe_combo = QComboBox()
+        self.recipe_combo.addItem("(No recipe)", None)
+        self.recipe_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.recipe_combo.currentIndexChanged.connect(self._on_recipe_changed)
+        recipe_layout.addWidget(self.recipe_combo, 1)
 
         self.recipe_edit_btn = QToolButton()
         self.recipe_edit_btn.setText("✎")
@@ -486,12 +492,6 @@ class PropertiesPanel(QWidget):
         self.recipe_edit_btn.setAutoRaise(True)  # Flat look, highlights on hover
         self.recipe_edit_btn.clicked.connect(self._open_recipe_editor)
         recipe_layout.addWidget(self.recipe_edit_btn)
-
-        self.recipe_combo = QComboBox()
-        self.recipe_combo.addItem("(No recipe)", None)
-        self.recipe_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.recipe_combo.currentIndexChanged.connect(self._on_recipe_changed)
-        recipe_layout.addWidget(self.recipe_combo, 1)
 
         building_layout.addRow("Recipe:", recipe_layout)
 
@@ -557,8 +557,8 @@ class PropertiesPanel(QWidget):
         # Refresh recipe combo
         self._update_recipe_combo()
 
-    def _update_recipe_combo(self) -> None:
-        """Update recipe combo with available recipes (base + user)."""
+    def _update_recipe_combo(self, building_type: BuildingType | None = None) -> None:
+        """Update recipe combo with available recipes filtered by building type."""
         # Load all recipes (base game + user) into the document
         all_recipes = load_all_recipes()
         for recipe_id, recipe in all_recipes.items():
@@ -568,7 +568,9 @@ class PropertiesPanel(QWidget):
         self.recipe_combo.clear()
         self.recipe_combo.addItem("(No recipe)", None)
         for recipe_id, recipe in self.document.recipes.items():
-            self.recipe_combo.addItem(recipe.name, recipe_id)
+            # Filter by building type if specified
+            if building_type is None or recipe.building_type == building_type:
+                self.recipe_combo.addItem(recipe.name, recipe_id)
 
     def set_document(
         self, document: Document, command_stack: CommandStack, canvas: FactoryCanvas
@@ -607,6 +609,18 @@ class PropertiesPanel(QWidget):
                 self.selection_label.setText(f"Building: {building.building_type.value}")
                 self.type_label.setText(building.building_type.value)
                 self.clock_spin.setValue(building.clock_speed * 100)
+
+                # Update recipe combo filtered by building type
+                self._update_recipe_combo(building.building_type)
+
+                # Select current recipe in combo
+                if building.recipe_id:
+                    for i in range(self.recipe_combo.count()):
+                        if self.recipe_combo.itemData(i) == building.recipe_id:
+                            self.recipe_combo.setCurrentIndex(i)
+                            break
+                else:
+                    self.recipe_combo.setCurrentIndex(0)
 
                 self.building_group.show()
                 self.stats_group.show()
