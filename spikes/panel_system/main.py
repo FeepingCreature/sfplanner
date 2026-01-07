@@ -31,8 +31,15 @@ class LibraryPanel(QWidget):
         layout.addWidget(QLabel("<b>Library</b>"))
 
         self.list = QListWidget()
-        for item in ["Smelter", "Constructor", "Assembler", "Manufacturer",
-                     "Splitter", "Merger", "Miner Mk.1"]:
+        for item in [
+            "Smelter",
+            "Constructor",
+            "Assembler",
+            "Manufacturer",
+            "Splitter",
+            "Merger",
+            "Miner Mk.1",
+        ]:
             self.list.addItem(QListWidgetItem(item))
         layout.addWidget(self.list)
 
@@ -145,18 +152,14 @@ class MainWindow(QMainWindow):
             view_menu.addAction(dock_widget.toggleViewAction())
 
     def _save_layout(self):
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Save Layout", "", "Layout Files (*.layout)"
-        )
+        path, _ = QFileDialog.getSaveFileName(self, "Save Layout", "", "Layout Files (*.layout)")
         if path:
             state = self.dock_manager.saveState()
             Path(path).write_bytes(state.data())
             print(f"Saved layout to {path}")
 
     def _load_layout(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Load Layout", "", "Layout Files (*.layout)"
-        )
+        path, _ = QFileDialog.getOpenFileName(self, "Load Layout", "", "Layout Files (*.layout)")
         if path:
             state = Path(path).read_bytes()
             self.dock_manager.restoreState(state)
