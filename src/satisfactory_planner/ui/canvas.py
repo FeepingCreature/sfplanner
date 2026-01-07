@@ -31,6 +31,7 @@ from satisfactory_planner.core import (
     Document,
 )
 from satisfactory_planner.core.models import generate_id
+import copy
 from satisfactory_planner.core.routing import Point, compute_belt_path
 from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 from satisfactory_planner.ui.commands import (
@@ -103,6 +104,10 @@ class FactoryCanvas(QGraphicsView):
 
         # Mutation callback (set by MainWindow to handle warnings, dirty flag, etc.)
         self._mutation_callback: Callable[[], None] | None = None
+
+        # Clipboard for copy/paste
+        self._clipboard_buildings: list[Building] = []
+        self._clipboard_belts: list[Belt] = []
 
         # Enable drag-drop
         self.setAcceptDrops(True)
@@ -611,7 +616,93 @@ class FactoryCanvas(QGraphicsView):
                 elif self._is_connecting:
                     self.cancel_belt_connection()
                 return
+            elif event.key() == Qt.Key.Key_C and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                self.copy_selection()
+                return
+            elif event.key() == Qt.Key.Key_V and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                self.paste()
+                return
+            elif event.key() == Qt.Key.Key_A and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                self.select_all()
+                return
         super().keyPressEvent(event)  # type: ignore[arg-type]
+
+    def select_all(self) -> None:
+        """Select all buildings and belts."""
+        for building_item in self._building_items.values():
+            building_item.setSelected(True)
+        for belt_item in self._belt_items.values():
+            belt_item.setSelected(True)
+        self._emit_selection_changed()
+
+    def copy_selection(self) -> None:
+        """Copy selected buildings and their connecting belts to clipboard."""
+        self._clipboard_buildings.clear()
+        self._clipboard_belts.clear()
+
+        selected_building_ids: set[str] = set()
+        for item in self._scene.selectedItems():
+            if isinstance(item, BuildingItem):
+                # Deep copy the building
+                self._clipboard_buildings.append(copy.deepcopy(item.building))
+                selected_building_ids.add(item.building.id)
+
+        # Copy belts that connect selected buildings to each other
+        for belt in self.document.belts.values():
+            if belt.source_building_id in selected_building_ids and belt.dest_building_id in selected_building_ids:
+                self._clipboard_belts.append(copy.deepcopy(belt))
+
+    def paste(self) -> None:
+        """Paste buildings from clipboard at an offset from originals."""
+        if not self._clipboard_buildings:
+            return
+
+        # Offset for pasted items
+        offset = 50.0
+
+        # Map old IDs to new IDs
+        id_map: dict[str, str] = {}
+
+        # Create new buildings with new IDs
+        for old_building in self._clipboard_buildings:
+            new_id = generate_id()
+            id_map[old_building.id] = new_id
+            new_building = Building(
+                id=new_id,
+                building_type=old_building.building_type,
+                x=old_building.x + offset,
+                y=old_building.y + offset,
+                recipe_id=old_building.recipe_id,
+                clock_speed=old_building.clock_speed,
+                rotation=old_building.rotation,
+            )
+            cmd = PlaceBuildingCommand(document=self.document, building=new_building, canvas=self)
+            self.command_stack.execute(cmd)
+
+        # Create new belts with updated building references
+        for old_belt in self._clipboard_belts:
+            new_source = id_map.get(old_belt.source_building_id)
+            new_dest = id_map.get(old_belt.dest_building_id)
+            if new_source and new_dest:
+                new_belt = Belt(
+                    id=generate_id(),
+                    tier=old_belt.tier,
+                    source_building_id=new_source,
+                    source_port_index=old_belt.source_port_index,
+                    dest_building_id=new_dest,
+                    dest_port_index=old_belt.dest_port_index,
+                    item_id=old_belt.item_id,
+                )
+                belt_cmd = ConnectBeltCommand(document=self.document, belt=new_belt, canvas=self)
+                self.command_stack.execute(belt_cmd)
+
+        # Select the newly pasted buildings
+        self._scene.clearSelection()
+        for new_id in id_map.values():
+            item = self._building_items.get(new_id)
+            if item:
+                item.setSelected(True)
+        self._emit_selection_changed()
 
     def on_building_moved(
         self, building_id: str, old_x: float, old_y: float, old_rotation: int | None = None

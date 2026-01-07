@@ -14,12 +14,8 @@ The codebase is well-structured with clear separation between core logic and UI.
 
 ## DRY Violations
 
-### 5. Duplicate Dubins path drawing code
-**Files**:
-- `canvas.py` (`_update_drag_preview`)
-- `belt_item.py` (`update_path`)
-
-Nearly identical code for converting `BeltPath` to `QPainterPath`. Should be a shared utility.
+### ~~5. Duplicate Dubins path drawing code~~ ✓ FIXED
+Extracted to `ui/items/path_utils.py::belt_path_to_painter_path()`.
 
 ---
 
