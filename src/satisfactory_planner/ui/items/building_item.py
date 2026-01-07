@@ -104,7 +104,7 @@ class BuildingItem(QGraphicsRectItem):
             # Merger: 3 inputs (top, left, bottom), 1 output (right)
             base_angles = [270, 180, 90]
             base_positions = [(w / 2, 0), (0, h / 2), (w / 2, h)]
-            for i, (base_angle, (px, py)) in enumerate(zip(base_angles, base_positions)):
+            for i, (base_angle, (px, py)) in enumerate(zip(base_angles, base_positions, strict=True)):
                 angle = base_angle + rotation
                 port = PortItem(False, i, self.building.id, self.canvas, angle=angle)
                 port.setParentItem(self)

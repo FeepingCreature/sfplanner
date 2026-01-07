@@ -296,10 +296,14 @@ class FactoryCanvas(QGraphicsView):
     # Event handlers
 
     def wheelEvent(self, event: QWheelEvent) -> None:
-        """Handle zoom with mouse wheel, rotation in placement mode."""
-        logger.info(f"wheelEvent: placement_mode={self._placement_mode}, drag_building={self._drag_building_type}")
+        """Handle zoom with mouse wheel, rotation in placement/drag mode."""
+        logger.info(
+            f"wheelEvent: placement_mode={self._placement_mode}, "
+            f"drag_building={self._drag_building_type}"
+        )
+
+        # Case 1: Placement mode (click in library, then move to canvas)
         if self._placement_mode and self._ghost_item:
-            # Rotate building in placement mode
             if event.angleDelta().y() > 0:
                 self._placement_rotation = (self._placement_rotation + 90) % 360
             else:
@@ -307,6 +311,19 @@ class FactoryCanvas(QGraphicsView):
             self._ghost_item.rotation_angle = self._placement_rotation
             self._ghost_item.update()
             return
+
+        # Case 2: Dragging an existing building on canvas
+        # Check if any selected building is being dragged
+        for item in self._scene.selectedItems():
+            if isinstance(item, BuildingItem) and item._is_dragging:
+                logger.info(f"wheelEvent: rotating dragged building {item.building.id}")
+                if event.angleDelta().y() > 0:
+                    item.rotate_building(90)
+                else:
+                    item.rotate_building(-90)
+                # Update connected belts
+                self._update_belts_for_building(item.building.id)
+                return
 
         # Normal zoom
         factor = 1.15
