@@ -52,19 +52,6 @@ class WarningsPanel(QWidget):
         """Create the panel UI."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
-        
-        # Style the panel with background and rounded corners
-        self.setStyleSheet("""
-            WarningsPanel {
-                background-color: #2d2d30;
-                border-radius: 6px;
-            }
-            QTreeWidget {
-                background-color: #252528;
-                border: none;
-                border-radius: 4px;
-            }
-        """)
 
         # Summary label
         self.summary_label = QLabel("No warnings")

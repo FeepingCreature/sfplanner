@@ -84,11 +84,15 @@ class BuildingItemDelegate(QStyledItemDelegate):
 
         painter.save()
         
-        # Draw selection/hover background
+        # Draw selection/hover background using palette colors
+        palette = option.palette
         if option.state & QStyle.StateFlag.State_Selected:
-            painter.fillRect(option.rect, QColor(80, 80, 100))
+            painter.fillRect(option.rect, palette.highlight())
         elif option.state & QStyle.StateFlag.State_MouseOver:
-            painter.fillRect(option.rect, QColor(60, 60, 70))
+            # Slightly lighter/darker than background for hover
+            hover_color = palette.base().color()
+            hover_color = hover_color.lighter(110) if hover_color.lightness() < 128 else hover_color.darker(110)
+            painter.fillRect(option.rect, hover_color)
 
         rect = option.rect.adjusted(ITEM_PADDING, ITEM_PADDING, -ITEM_PADDING, -ITEM_PADDING)
         
@@ -105,17 +109,19 @@ class BuildingItemDelegate(QStyledItemDelegate):
         font.setBold(True)
         font.setPointSize(9)
         painter.setFont(font)
-        painter.setPen(QColor(230, 230, 230))
+        painter.setPen(palette.text().color())
         
         name_rect = QRect(text_rect.left(), text_rect.top(), text_rect.width(), 16)
         painter.drawText(name_rect, Qt.AlignLeft | Qt.AlignVCenter, building_type.value)
         
-        # Line 2: Description (smaller, gray)
+        # Line 2: Description (smaller, dimmer)
         info = BUILDING_INFO.get(building_type, ("", ""))
         font.setBold(False)
         font.setPointSize(8)
         painter.setFont(font)
-        painter.setPen(QColor(180, 180, 180))
+        dim_color = palette.text().color()
+        dim_color.setAlphaF(0.7)
+        painter.setPen(dim_color)
         
         desc_rect = QRect(text_rect.left(), text_rect.top() + 16, text_rect.width(), 14)
         painter.drawText(desc_rect, Qt.AlignLeft | Qt.AlignVCenter, info[0])
@@ -123,7 +129,9 @@ class BuildingItemDelegate(QStyledItemDelegate):
         # Line 3: Port info (even smaller, dimmer)
         font.setPointSize(7)
         painter.setFont(font)
-        painter.setPen(QColor(140, 140, 140))
+        dimmer_color = palette.text().color()
+        dimmer_color.setAlphaF(0.5)
+        painter.setPen(dimmer_color)
         
         port_rect = QRect(text_rect.left(), text_rect.top() + 30, text_rect.width(), 12)
         painter.drawText(port_rect, Qt.AlignLeft | Qt.AlignVCenter, info[1])
@@ -311,19 +319,6 @@ class LibraryPanel(QWidget):
         # Set custom delegate for rich item rendering
         self.tree.setItemDelegate(BuildingItemDelegate(self.tree))
         self.tree.setMouseTracking(True)  # Enable hover effects
-        
-        # Style the panel with background and rounded corners
-        self.setStyleSheet("""
-            LibraryPanel {
-                background-color: #2d2d30;
-                border-radius: 6px;
-            }
-            QTreeWidget {
-                background-color: #252528;
-                border: none;
-                border-radius: 4px;
-            }
-        """)
 
         # Connect signals
         self.tree.itemClicked.connect(self._on_item_clicked)
