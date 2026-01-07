@@ -31,6 +31,7 @@
 
 ## Polish Items
 - [x] Library panel: 3-line entries with icon spacer, info on second line
-- [ ] Copy/paste
-- [ ] Keyboard shortcuts
+- [x] Copy/paste (Ctrl+C/V)
+- [x] Keyboard shortcuts (Ctrl+A select all)
 - [ ] Building detailed rendering (room for future expansion)
+- [ ] Toolbar with selection/placement tools

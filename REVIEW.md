@@ -84,11 +84,11 @@ Each `DocumentTab` has its own `FlowSolver`, but the solver just runs on `refres
 
 These are core to the value proposition of the app.
 
-### 17. No copy/paste implementation
-Listed in TODO.md, no code exists.
+### ~~17. No copy/paste implementation~~ ✓ FIXED
+Implemented Ctrl+C/V in canvas.py.
 
-### 18. No keyboard shortcuts beyond delete/undo/redo
-The SPEC mentions Ctrl+C/V, but they're not implemented.
+### ~~18. No keyboard shortcuts beyond delete/undo/redo~~ ✓ FIXED
+Added Ctrl+C, Ctrl+V, Ctrl+A shortcuts.
 
 
 
