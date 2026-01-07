@@ -33,6 +33,7 @@ from satisfactory_planner.core import (
 from satisfactory_planner.core.models import generate_id
 from satisfactory_planner.core.routing import Point, compute_belt_path, get_arc_points
 from satisfactory_planner.ui.commands import (
+    BuildingMove,
     CommandStack,
     ConnectBeltCommand,
     DeleteItemsCommand,
@@ -681,10 +682,19 @@ class FactoryCanvas(QGraphicsView):
         building.y = new_y
 
         # Create immutable command with captured positions and rotation
+        move = BuildingMove(
+            building_id=building_id,
+            old_x=old_x,
+            old_y=old_y,
+            old_rotation=old_rot,
+            new_x=new_x,
+            new_y=new_y,
+            new_rotation=new_rot,
+        )
         cmd = MoveBuildingsCommand(
             document=self.document,
             canvas=self,
-            positions=((building_id, old_x, old_y, old_rot, new_x, new_y, new_rot),),
+            moves=(move,),
         )
         # Command will see model already at new position and log warning, which is fine
         # The important thing is the command captures old/new for undo/redo

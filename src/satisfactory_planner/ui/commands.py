@@ -12,13 +12,25 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from satisfactory_planner.core.models import Belt, Building, Document
     from satisfactory_planner.ui.canvas import FactoryCanvas
 
 logger = logging.getLogger(__name__)
+
+
+class BuildingMove(NamedTuple):
+    """A single building's position/rotation change."""
+
+    building_id: str
+    old_x: float
+    old_y: float
+    old_rotation: int
+    new_x: float
+    new_y: float
+    new_rotation: int
 
 
 class Command(ABC):
@@ -172,49 +184,50 @@ class MoveBuildingsCommand(Command):
 
     document: Document
     canvas: FactoryCanvas
-    # Maps building_id -> (old_x, old_y, old_rot, new_x, new_y, new_rot)
-    positions: tuple[tuple[str, float, float, int, float, float, int], ...]
+    moves: tuple[BuildingMove, ...]
 
     def execute(self) -> None:
         any_changed = False
-        for building_id, _old_x, _old_y, _old_rot, new_x, new_y, new_rot in self.positions:
-            building = self.document.buildings.get(building_id)
+        for move in self.moves:
+            building = self.document.buildings.get(move.building_id)
             if not building:
-                logger.warning(f"MoveBuildingsCommand.execute: building {building_id} not found")
+                logger.warning(
+                    f"MoveBuildingsCommand.execute: building {move.building_id} not found"
+                )
                 continue
             changed = False
-            if building.x != new_x or building.y != new_y:
-                building.x = new_x
-                building.y = new_y
+            if building.x != move.new_x or building.y != move.new_y:
+                building.x = move.new_x
+                building.y = move.new_y
                 changed = True
-            if building.rotation != new_rot:
-                building.rotation = new_rot
+            if building.rotation != move.new_rotation:
+                building.rotation = move.new_rotation
                 changed = True
             if changed:
-                self.canvas.refresh_building(building_id)
-                self.canvas.refresh_belts_for_building(building_id)
+                self.canvas.refresh_building(move.building_id)
+                self.canvas.refresh_belts_for_building(move.building_id)
                 any_changed = True
         if any_changed:
             self.canvas.notify_mutation()
 
     def undo(self) -> None:
         any_changed = False
-        for building_id, old_x, old_y, old_rot, _new_x, _new_y, _new_rot in self.positions:
-            building = self.document.buildings.get(building_id)
+        for move in self.moves:
+            building = self.document.buildings.get(move.building_id)
             if not building:
-                logger.warning(f"MoveBuildingsCommand.undo: building {building_id} not found")
+                logger.warning(f"MoveBuildingsCommand.undo: building {move.building_id} not found")
                 continue
             changed = False
-            if building.x != old_x or building.y != old_y:
-                building.x = old_x
-                building.y = old_y
+            if building.x != move.old_x or building.y != move.old_y:
+                building.x = move.old_x
+                building.y = move.old_y
                 changed = True
-            if building.rotation != old_rot:
-                building.rotation = old_rot
+            if building.rotation != move.old_rotation:
+                building.rotation = move.old_rotation
                 changed = True
             if changed:
-                self.canvas.refresh_building(building_id)
-                self.canvas.refresh_belts_for_building(building_id)
+                self.canvas.refresh_building(move.building_id)
+                self.canvas.refresh_belts_for_building(move.building_id)
                 any_changed = True
         if any_changed:
             self.canvas.notify_mutation()
@@ -224,21 +237,29 @@ class MoveBuildingsCommand(Command):
         if not isinstance(other, MoveBuildingsCommand):
             return None
 
-        self_ids = {p[0] for p in self.positions}
-        other_ids = {p[0] for p in other.positions}
+        self_ids = {m.building_id for m in self.moves}
+        other_ids = {m.building_id for m in other.moves}
         if self_ids != other_ids:
             return None
 
         # Merge: keep our old state, use their new state
-        other_new = {p[0]: (p[4], p[5], p[6]) for p in other.positions}
-        merged_positions = tuple(
-            (bid, old_x, old_y, old_rot, other_new[bid][0], other_new[bid][1], other_new[bid][2])
-            for bid, old_x, old_y, old_rot, new_x, new_y, new_rot in self.positions
+        other_new = {m.building_id: (m.new_x, m.new_y, m.new_rotation) for m in other.moves}
+        merged_moves = tuple(
+            BuildingMove(
+                building_id=m.building_id,
+                old_x=m.old_x,
+                old_y=m.old_y,
+                old_rotation=m.old_rotation,
+                new_x=other_new[m.building_id][0],
+                new_y=other_new[m.building_id][1],
+                new_rotation=other_new[m.building_id][2],
+            )
+            for m in self.moves
         )
         return MoveBuildingsCommand(
             document=self.document,
             canvas=self.canvas,
-            positions=merged_positions,
+            moves=merged_moves,
         )
 
 

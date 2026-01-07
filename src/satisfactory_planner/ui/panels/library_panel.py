@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import NamedTuple
+
 from PySide6.QtCore import QMimeData, QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QDrag, QFont, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
@@ -19,31 +21,44 @@ from satisfactory_planner.core import (
     BUILDING_COLORS,
     BUILDING_METADATA,
     LOGISTICS_DISPLAY_SIZE,
+    BuildingSpec,
     BuildingType,
 )
 
-# Building info: (description, extra_info)
-BUILDING_INFO: dict[BuildingType, tuple[str, str]] = {
-    BuildingType.SMELTER: ("Smelts ore into ingots", "1 in → 1 out"),
-    BuildingType.FOUNDRY: ("Alloy smelting", "2 in → 1 out"),
-    BuildingType.CONSTRUCTOR: ("Basic crafting", "1 in → 1 out"),
-    BuildingType.ASSEMBLER: ("Two-part assembly", "2 in → 1 out"),
-    BuildingType.MANUFACTURER: ("Complex crafting", "4 in → 1 out"),
-    BuildingType.REFINERY: ("Fluid processing", "2 in → 2 out"),
-    BuildingType.PACKAGER: ("Fluid packaging", "2 in → 2 out"),
-    BuildingType.BLENDER: ("Fluid blending", "4 in → 2 out"),
-    BuildingType.MINER_MK1: ("60/min base rate", "Extracts ore"),
-    BuildingType.MINER_MK2: ("120/min base rate", "Extracts ore"),
-    BuildingType.MINER_MK3: ("240/min base rate", "Extracts ore"),
-    BuildingType.SPLITTER: ("1 → 3 split", "Divides belt"),
-    BuildingType.MERGER: ("3 → 1 merge", "Combines belts"),
+
+class BuildingInfo(NamedTuple):
+    """Display info for a building type in the library panel."""
+
+    description: str
+    port_info: str
+
+
+BUILDING_INFO: dict[BuildingType, BuildingInfo] = {
+    BuildingType.SMELTER: BuildingInfo("Smelts ore into ingots", "1 in → 1 out"),
+    BuildingType.FOUNDRY: BuildingInfo("Alloy smelting", "2 in → 1 out"),
+    BuildingType.CONSTRUCTOR: BuildingInfo("Basic crafting", "1 in → 1 out"),
+    BuildingType.ASSEMBLER: BuildingInfo("Two-part assembly", "2 in → 1 out"),
+    BuildingType.MANUFACTURER: BuildingInfo("Complex crafting", "4 in → 1 out"),
+    BuildingType.REFINERY: BuildingInfo("Fluid processing", "2 in → 2 out"),
+    BuildingType.PACKAGER: BuildingInfo("Fluid packaging", "2 in → 2 out"),
+    BuildingType.BLENDER: BuildingInfo("Fluid blending", "4 in → 2 out"),
+    BuildingType.MINER_MK1: BuildingInfo("60/min base rate", "Extracts ore"),
+    BuildingType.MINER_MK2: BuildingInfo("120/min base rate", "Extracts ore"),
+    BuildingType.MINER_MK3: BuildingInfo("240/min base rate", "Extracts ore"),
+    BuildingType.SPLITTER: BuildingInfo("1 → 3 split", "Divides belt"),
+    BuildingType.MERGER: BuildingInfo("3 → 1 merge", "Combines belts"),
 }
+
+
+_DEFAULT_COLOR = (150, 150, 150)
 
 
 def _get_building_color(building_type: BuildingType) -> QColor:
     """Get QColor for a building type from the core color definitions."""
-    rgb = BUILDING_COLORS.get(building_type, (150, 150, 150))
-    return QColor(rgb[0], rgb[1], rgb[2])
+    rgb = BUILDING_COLORS.get(building_type)
+    if rgb:
+        return QColor(rgb.r, rgb.g, rgb.b)
+    return QColor(*_DEFAULT_COLOR)
 
 
 # Item dimensions
@@ -117,7 +132,7 @@ class BuildingItemDelegate(QStyledItemDelegate):
         )
 
         # Line 2: Description (smaller, dimmer)
-        info = BUILDING_INFO.get(building_type, ("", ""))
+        info = BUILDING_INFO.get(building_type, BuildingInfo("", ""))
         font.setBold(False)
         font.setPointSize(8)
         painter.setFont(font)
@@ -127,7 +142,7 @@ class BuildingItemDelegate(QStyledItemDelegate):
 
         desc_rect = QRect(text_rect.left(), text_rect.top() + 16, text_rect.width(), 14)
         painter.drawText(
-            desc_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, info[0]
+            desc_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, info.description
         )
 
         # Line 3: Port info (even smaller, dimmer)
@@ -139,7 +154,7 @@ class BuildingItemDelegate(QStyledItemDelegate):
 
         port_rect = QRect(text_rect.left(), text_rect.top() + 30, text_rect.width(), 12)
         painter.drawText(
-            port_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, info[1]
+            port_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, info.port_info
         )
 
         painter.restore()
@@ -159,9 +174,9 @@ class BuildingItemDelegate(QStyledItemDelegate):
         painter.drawRect(building_rect)
 
         # Draw ports
-        meta = BUILDING_METADATA.get(building_type, (80, 60, 1, 1))
-        num_inputs = meta[2]
-        num_outputs = meta[3]
+        spec = BUILDING_METADATA.get(building_type, BuildingSpec(80, 60, 1, 1, 0.0))
+        num_inputs = spec.num_inputs
+        num_outputs = spec.num_outputs
 
         port_radius = 3
 
@@ -245,13 +260,15 @@ class BuildingTreeItem(QTreeWidgetItem):
         super().__init__()
         self.building_type = building_type
 
-        info = BUILDING_INFO.get(building_type, ("", ""))
-        meta = BUILDING_METADATA.get(building_type, (80, 60, 1, 1))
+        info = BUILDING_INFO.get(building_type, BuildingInfo("", ""))
+        spec = BUILDING_METADATA.get(building_type, BuildingSpec(80, 60, 1, 1, 0.0))
 
         # Main text is the building name (used by delegate)
         self.setText(0, building_type.value)
         # Store extra info for tooltip
-        self.setToolTip(0, f"{info[0]}\n{info[1]}\nSize: {meta[0]}x{meta[1]}")
+        self.setToolTip(
+            0, f"{info.description}\n{info.port_info}\nSize: {spec.width}x{spec.height}"
+        )
         self.setData(0, Qt.ItemDataRole.UserRole, building_type)
         # Set size hint for this item
         self.setSizeHint(0, QSize(200, ITEM_HEIGHT))
@@ -386,16 +403,16 @@ class LibraryPanel(QWidget):
 
     def _create_building_pixmap(self, building_type: BuildingType) -> QPixmap:
         """Create a pixmap showing the full building with ports."""
-        meta = BUILDING_METADATA.get(building_type, (80, 60, 1, 1))
+        spec = BUILDING_METADATA.get(building_type, BuildingSpec(80, 60, 1, 1, 0.0))
 
         # Use display size (smaller for logistics)
         if building_type in (BuildingType.SPLITTER, BuildingType.MERGER):
             w, h = LOGISTICS_DISPLAY_SIZE, LOGISTICS_DISPLAY_SIZE
         else:
-            w, h = meta[0], meta[1]
+            w, h = spec.width, spec.height
 
-        num_inputs = meta[2]
-        num_outputs = meta[3]
+        num_inputs = spec.num_inputs
+        num_outputs = spec.num_outputs
 
         # Add padding for ports
         padding = 12

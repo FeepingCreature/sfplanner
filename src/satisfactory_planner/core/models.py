@@ -6,10 +6,25 @@ import math
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import NamedTuple
 
-if TYPE_CHECKING:
-    pass
+
+class BuildingSpec(NamedTuple):
+    """Specification for a building type."""
+
+    width: int
+    height: int
+    num_inputs: int
+    num_outputs: int
+    power_mw: float
+
+
+class RGB(NamedTuple):
+    """RGB color tuple."""
+
+    r: int
+    g: int
+    b: int
 
 
 class BuildingType(Enum):
@@ -35,21 +50,20 @@ class BuildingType(Enum):
     MERGER = "Merger"
 
 
-# Building metadata: (width, height, num_inputs, num_outputs, power_mw)
-BUILDING_METADATA: dict[BuildingType, tuple[int, int, int, int, float]] = {
-    BuildingType.SMELTER: (80, 60, 1, 1, 4.0),
-    BuildingType.FOUNDRY: (100, 80, 2, 1, 16.0),
-    BuildingType.CONSTRUCTOR: (80, 60, 1, 1, 4.0),
-    BuildingType.ASSEMBLER: (100, 80, 2, 1, 15.0),
-    BuildingType.MANUFACTURER: (120, 100, 4, 1, 55.0),
-    BuildingType.REFINERY: (120, 100, 2, 2, 30.0),
-    BuildingType.PACKAGER: (80, 80, 2, 2, 10.0),
-    BuildingType.BLENDER: (120, 100, 4, 2, 75.0),
-    BuildingType.MINER_MK1: (80, 80, 0, 1, 5.0),
-    BuildingType.MINER_MK2: (80, 80, 0, 1, 12.0),
-    BuildingType.MINER_MK3: (80, 80, 0, 1, 30.0),
-    BuildingType.SPLITTER: (60, 60, 1, 3, 0.0),
-    BuildingType.MERGER: (60, 60, 3, 1, 0.0),
+BUILDING_METADATA: dict[BuildingType, BuildingSpec] = {
+    BuildingType.SMELTER: BuildingSpec(80, 60, 1, 1, 4.0),
+    BuildingType.FOUNDRY: BuildingSpec(100, 80, 2, 1, 16.0),
+    BuildingType.CONSTRUCTOR: BuildingSpec(80, 60, 1, 1, 4.0),
+    BuildingType.ASSEMBLER: BuildingSpec(100, 80, 2, 1, 15.0),
+    BuildingType.MANUFACTURER: BuildingSpec(120, 100, 4, 1, 55.0),
+    BuildingType.REFINERY: BuildingSpec(120, 100, 2, 2, 30.0),
+    BuildingType.PACKAGER: BuildingSpec(80, 80, 2, 2, 10.0),
+    BuildingType.BLENDER: BuildingSpec(120, 100, 4, 2, 75.0),
+    BuildingType.MINER_MK1: BuildingSpec(80, 80, 0, 1, 5.0),
+    BuildingType.MINER_MK2: BuildingSpec(80, 80, 0, 1, 12.0),
+    BuildingType.MINER_MK3: BuildingSpec(80, 80, 0, 1, 30.0),
+    BuildingType.SPLITTER: BuildingSpec(60, 60, 1, 3, 0.0),
+    BuildingType.MERGER: BuildingSpec(60, 60, 3, 1, 0.0),
 }
 
 # Display size for splitter/merger (smaller than metadata size)
@@ -58,33 +72,32 @@ LOGISTICS_DISPLAY_SIZE = 40
 # Default grid size for snapping
 DEFAULT_GRID_SIZE = 20
 
-# Colors for different building types
-BUILDING_COLORS: dict[BuildingType, tuple[int, int, int]] = {
-    BuildingType.SMELTER: (200, 100, 50),
-    BuildingType.FOUNDRY: (180, 80, 40),
-    BuildingType.CONSTRUCTOR: (80, 150, 200),
-    BuildingType.ASSEMBLER: (100, 180, 100),
-    BuildingType.MANUFACTURER: (150, 100, 180),
-    BuildingType.REFINERY: (120, 120, 180),
-    BuildingType.PACKAGER: (100, 150, 150),
-    BuildingType.BLENDER: (180, 150, 100),
-    BuildingType.MINER_MK1: (150, 120, 80),
-    BuildingType.MINER_MK2: (160, 130, 90),
-    BuildingType.MINER_MK3: (170, 140, 100),
-    BuildingType.SPLITTER: (200, 200, 100),
-    BuildingType.MERGER: (100, 200, 200),
+BUILDING_COLORS: dict[BuildingType, RGB] = {
+    BuildingType.SMELTER: RGB(200, 100, 50),
+    BuildingType.FOUNDRY: RGB(180, 80, 40),
+    BuildingType.CONSTRUCTOR: RGB(80, 150, 200),
+    BuildingType.ASSEMBLER: RGB(100, 180, 100),
+    BuildingType.MANUFACTURER: RGB(150, 100, 180),
+    BuildingType.REFINERY: RGB(120, 120, 180),
+    BuildingType.PACKAGER: RGB(100, 150, 150),
+    BuildingType.BLENDER: RGB(180, 150, 100),
+    BuildingType.MINER_MK1: RGB(150, 120, 80),
+    BuildingType.MINER_MK2: RGB(160, 130, 90),
+    BuildingType.MINER_MK3: RGB(170, 140, 100),
+    BuildingType.SPLITTER: RGB(200, 200, 100),
+    BuildingType.MERGER: RGB(100, 200, 200),
 }
 
 
 def get_building_power(building_type: BuildingType) -> float:
     """Get base power consumption for a building type in MW."""
-    return BUILDING_METADATA[building_type][4]
+    return BUILDING_METADATA[building_type].power_mw
 
 
 def get_building_io_counts(building_type: BuildingType) -> tuple[int, int]:
     """Get (num_inputs, num_outputs) for a building type."""
-    meta = BUILDING_METADATA[building_type]
-    return (meta[2], meta[3])
+    spec = BUILDING_METADATA[building_type]
+    return (spec.num_inputs, spec.num_outputs)
 
 
 @dataclass
@@ -134,19 +147,19 @@ class Building:
 
     @property
     def width(self) -> int:
-        return BUILDING_METADATA[self.building_type][0]
+        return BUILDING_METADATA[self.building_type].width
 
     @property
     def height(self) -> int:
-        return BUILDING_METADATA[self.building_type][1]
+        return BUILDING_METADATA[self.building_type].height
 
     @property
     def num_inputs(self) -> int:
-        return BUILDING_METADATA[self.building_type][2]
+        return BUILDING_METADATA[self.building_type].num_inputs
 
     @property
     def num_outputs(self) -> int:
-        return BUILDING_METADATA[self.building_type][3]
+        return BUILDING_METADATA[self.building_type].num_outputs
 
     def _get_display_size(self) -> tuple[int, int]:
         """Get display size - smaller for logistics."""

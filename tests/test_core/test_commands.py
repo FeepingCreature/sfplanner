@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 from satisfactory_planner.core.models import Belt, Building, BuildingType, Document
 from satisfactory_planner.ui.commands import (
+    BuildingMove,
     CommandStack,
     DeleteItemsCommand,
     MoveBuildingsCommand,
@@ -89,12 +90,16 @@ class TestMoveBuildingsCommand:
         canvas = make_mock_canvas()
 
         stack = CommandStack()
-        # positions tuple: (id, old_x, old_y, old_rot, new_x, new_y, new_rot)
-        cmd = MoveBuildingsCommand(
-            document=doc,
-            canvas=canvas,
-            positions=(("b1", 0, 0, 0, 50, 30, 0),),
+        move = BuildingMove(
+            building_id="b1",
+            old_x=0,
+            old_y=0,
+            old_rotation=0,
+            new_x=50,
+            new_y=30,
+            new_rotation=0,
         )
+        cmd = MoveBuildingsCommand(document=doc, canvas=canvas, moves=(move,))
 
         stack.execute(cmd)
         assert doc.buildings["b1"].x == 50
@@ -112,12 +117,16 @@ class TestMoveBuildingsCommand:
         canvas = make_mock_canvas()
 
         stack = CommandStack()
-        # Move and rotate 90 degrees
-        cmd = MoveBuildingsCommand(
-            document=doc,
-            canvas=canvas,
-            positions=(("b1", 0, 0, 0, 50, 30, 90),),
+        move = BuildingMove(
+            building_id="b1",
+            old_x=0,
+            old_y=0,
+            old_rotation=0,
+            new_x=50,
+            new_y=30,
+            new_rotation=90,
         )
+        cmd = MoveBuildingsCommand(document=doc, canvas=canvas, moves=(move,))
 
         stack.execute(cmd)
         assert doc.buildings["b1"].x == 50
@@ -138,15 +147,27 @@ class TestMoveBuildingsCommand:
 
         stack = CommandStack()
 
-        # Simulate dragging in small increments (id, old_x, old_y, old_rot, new_x, new_y, new_rot)
+        # Simulate dragging in small increments
         stack.execute(
-            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 0, 0, 0, 10, 0, 0),))
+            MoveBuildingsCommand(
+                document=doc,
+                canvas=canvas,
+                moves=(BuildingMove("b1", 0, 0, 0, 10, 0, 0),),
+            )
         )
         stack.execute(
-            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 10, 0, 0, 20, 0, 0),))
+            MoveBuildingsCommand(
+                document=doc,
+                canvas=canvas,
+                moves=(BuildingMove("b1", 10, 0, 0, 20, 0, 0),),
+            )
         )
         stack.execute(
-            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 20, 0, 0, 30, 0, 90),))
+            MoveBuildingsCommand(
+                document=doc,
+                canvas=canvas,
+                moves=(BuildingMove("b1", 20, 0, 0, 30, 0, 90),),
+            )
         )
 
         # Should have merged into one command

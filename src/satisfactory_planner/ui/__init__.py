@@ -1,6 +1,7 @@
 """UI components for the factory planner."""
 
 from satisfactory_planner.ui.commands import (
+    BuildingMove,
     Command,
     CommandStack,
     ConnectBeltCommand,
@@ -13,6 +14,7 @@ from satisfactory_planner.ui.commands import (
 )
 
 __all__ = [
+    "BuildingMove",
     "Command",
     "CommandStack",
     "ConnectBeltCommand",
