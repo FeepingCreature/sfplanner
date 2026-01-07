@@ -493,6 +493,15 @@
       "streaming": true,
       "actual_cost": 0.111882,
       "generation_id": "gen-1767807490-xSCPiPXMO4QJaNr6xPo3"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767807576961.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767807576961.json",
+      "timestamp": 1767807576.9626346,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.045387,
+      "generation_id": "gen-1767807577-IAoB8mQV5cFqKgiCVqMK"
     }
   ],
   "messages": [
@@ -2065,6 +2074,67 @@
     {
       "role": "assistant",
       "content": "I've moved `super().mousePressEvent(event)` to run BEFORE computing `_multi_drag_offsets`. This should let Qt update the selection first, so when we compute offsets, we're working with the new selection (just the clicked building) rather than the old one.\n\nCan you test this? If the bug persists, it might be Qt's built-in multi-select drag behavior interfering - Qt automatically moves all selected items when any one is dragged. If that's the case, we may need to dig deeper into Qt's selection timing."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: b4d088e5",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Can confirm it is fixed! All good! Let's delete REVIEW.md because we've done all the obvious from it and I think the rest is taste."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"REVIEW.md\"}",
+            "name": "delete_file"
+          },
+          "id": "toolu_vrtx_01KjgHGcBoUXNuHoKRmscjds",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Remove REVIEW.md - all actionable items addressed\"}",
+            "name": "commit"
+          },
+          "id": "toolu_vrtx_01VMkhsTuwBSjz7PaQCuMk7s",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Done! Deleted REVIEW.md - we've addressed all the actionable items from it.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01YYSRCYe41CqiM8inV9APmi",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01KjgHGcBoUXNuHoKRmscjds",
+      "content": "{\"message\": \"Deleted REVIEW.md\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01VMkhsTuwBSjz7PaQCuMk7s",
+      "content": "{\"commit\": \"88f3e074cb8c\", \"message\": \"Committed: 1 file(s) deleted\", \"side_effects\": [\"mid_turn_commit\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01YYSRCYe41CqiM8inV9APmi",
+      "content": "{\"done\": true, \"message\": \"Done! Deleted REVIEW.md - we've addressed all the actionable items from it.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Done! Deleted REVIEW.md - we've addressed all the actionable items from it."
     }
   ]
 }
