@@ -105,7 +105,7 @@ class BuildingItemDelegate(QStyledItemDelegate):
         font.setBold(True)
         font.setPointSize(9)
         painter.setFont(font)
-        painter.setPen(QColor(255, 255, 255))
+        painter.setPen(QColor(230, 230, 230))
         
         name_rect = QRect(text_rect.left(), text_rect.top(), text_rect.width(), 16)
         painter.drawText(name_rect, Qt.AlignLeft | Qt.AlignVCenter, building_type.value)
@@ -311,6 +311,19 @@ class LibraryPanel(QWidget):
         # Set custom delegate for rich item rendering
         self.tree.setItemDelegate(BuildingItemDelegate(self.tree))
         self.tree.setMouseTracking(True)  # Enable hover effects
+        
+        # Style the panel with background and rounded corners
+        self.setStyleSheet("""
+            LibraryPanel {
+                background-color: #2d2d30;
+                border-radius: 6px;
+            }
+            QTreeWidget {
+                background-color: #252528;
+                border: none;
+                border-radius: 4px;
+            }
+        """)
 
         # Connect signals
         self.tree.itemClicked.connect(self._on_item_clicked)

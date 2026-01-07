@@ -142,6 +142,33 @@
       "streaming": true,
       "actual_cost": 0.22295,
       "generation_id": "gen-1767767104-QBzmOMvsyBmrGJJcQV2v"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767768384750.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767768384750.json",
+      "timestamp": 1767768384.7511609,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.23474625,
+      "generation_id": "gen-1767768385-kOeSOMKBLMJ1VGcQf9Ny"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767768393563.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767768393563.json",
+      "timestamp": 1767768393.5645442,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.22841,
+      "generation_id": "gen-1767768393-TaUia9JhssPl9t6EeD1U"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767768399438.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767768399438.json",
+      "timestamp": 1767768399.439026,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.24111125,
+      "generation_id": "gen-1767768399-u5lLNTMqrsM79EDf2H8u"
     }
   ],
   "messages": [
@@ -424,6 +451,97 @@
     {
       "role": "assistant",
       "content": "Done! I've made two improvements:\n\n**1. Library Panel 3-Line Items**\n- Each building entry now shows:\n  - Mini building icon with colored rect and port dots\n  - Bold building name\n  - Gray description text (e.g., \"Smelts ore into ingots\")\n  - Dimmer port info (e.g., \"1 in \u2192 1 out\")\n- Custom `BuildingItemDelegate` handles rich rendering\n- Hover highlighting enabled\n\n**2. Full Building Drag Preview**\n- When dragging from library, the cursor now shows the complete building:\n  - Colored building body at correct size\n  - Building name/abbreviation\n  - All ports with directional arrows matching the actual placement appearance\n  - Splitter/merger ports correctly positioned (top/right/bottom, etc.)\n\nAlso added the tool framework feedback reminder to CLAUDE.md as requested.\n\nAll 29 tests pass."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 15ef3739",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Cheers.\n\nError calling Python override of QStyledItemDelegate::paint(): Traceback (most recent call last): \n File \"/home/feep/sfplan2/src/satisfactory_planner/ui/panels/library_panel.py\", line 87, in paint \n   if option.state & option.State_Selected: \n                     ^^^^^^^^^^^^^^^^^^^^^ \nAttributeError: 'PySide6.QtWidgets.QStyleOptionViewItem' object has no attribute 'State_Selected'\n\nWhy didn't mypy notice this?"
+    },
+    {
+      "role": "assistant",
+      "content": "Good catch! The issue is that `State_Selected` is on `QStyle`, not on the option object itself. Let me fix that and explain why mypy missed it:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/panels/library_panel.py\", \"search\": \"from PySide6.QtWidgets import (\\n    QWidget,\\n    QVBoxLayout,\\n    QTreeWidget,\\n    QTreeWidgetItem,\\n    QAbstractItemView,\\n    QStyledItemDelegate,\\n    QStyleOptionViewItem,\\n)\", \"replace\": \"from PySide6.QtWidgets import (\\n    QWidget,\\n    QVBoxLayout,\\n    QTreeWidget,\\n    QTreeWidgetItem,\\n    QAbstractItemView,\\n    QStyledItemDelegate,\\n    QStyleOptionViewItem,\\n    QStyle,\\n)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_01N5WzeV9QA5ehzGUVJVYVyY",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/panels/library_panel.py\", \"search\": \"        # Draw selection/hover background\\n        if option.state & option.State_Selected:\\n            painter.fillRect(option.rect, QColor(80, 80, 100))\\n        elif option.state & option.State_MouseOver:\\n            painter.fillRect(option.rect, QColor(60, 60, 70))\", \"replace\": \"        # Draw selection/hover background\\n        if option.state & QStyle.StateFlag.State_Selected:\\n            painter.fillRect(option.rect, QColor(80, 80, 100))\\n        elif option.state & QStyle.StateFlag.State_MouseOver:\\n            painter.fillRect(option.rect, QColor(60, 60, 70))\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_bdrk_014TXKjbFUFgEZV6rfFZXSUT",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01N5WzeV9QA5ehzGUVJVYVyY",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/panels/library_panel.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_014TXKjbFUFgEZV6rfFZXSUT",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/panels/library_panel.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "",
+            "name": "run_tests"
+          },
+          "id": "toolu_bdrk_017bGHevJJfvrA5GhJjXEFLK",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fix State_Selected attribute error - use QStyle.StateFlag enum\"}",
+            "name": "commit"
+          },
+          "id": "toolu_bdrk_01E5SDNBUTtX3kSMQwE5oChk",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_017bGHevJJfvrA5GhJjXEFLK",
+      "content": "{\"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_4vx27xs2\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.07s ==============================\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `run_tests`\n```json\n{}\n```\n**Result:**\n```json\n{\n  \"output\": \"pytest\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0 -- /usr/bin/python3\\ncachedir: .pytest_cache\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_4vx27xs2\\nconfigfile: pyproject.toml\\ntestpaths: tests\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollecting ... collected 29 items\\n\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_and_undo PASSED [  3%]\\ntests/test_core/test_commands.py::TestCommandStack::test_redo PASSED     [  6%]\\ntests/test_core/test_commands.py::TestCommandStack::test_execute_clears_redo PASSED [ 10%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_building PASSED [ 13%]\\ntests/test_core/test_commands.py::TestMoveBuildingsCommand::test_move_merge PASSED [ 17%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_building PASSED [ 20%]\\ntests/test_core/test_commands.py::TestDeleteItemsCommand::test_delete_belt PASSED [ 24%]\\ntests/test_core/test_commands.py::TestSetClockSpeedCommand::test_set_clock_speed PASSED [ 27%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_no_warnings_empty_document PASSED [ 31%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_source PASSED [ 34%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_disconnected_belt_missing_dest PASSED [ 37%]\\ntests/test_core/test_flow_solver.py::TestFlowSolver::test_valid_connection_no_warnings PASSED [ 41%]\\ntests/test_core/test_models.py::TestBuilding::test_building_dimensions PASSED [ 44%]\\ntests/test_core/test_models.py::TestBuilding::test_building_ports PASSED [ 48%]\\ntests/test_core/test_models.py::TestBuilding::test_port_positions PASSED [ 51%]\\ntests/test_core/test_models.py::TestBelt::test_belt_capacity PASSED      [ 55%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_building PASSED [ 58%]\\ntests/test_core/test_models.py::TestDocument::test_add_remove_belt PASSED [ 62%]\\ntests/test_core/test_models.py::TestDocument::test_get_belts_for_building PASSED [ 65%]\\ntests/test_core/test_models.py::TestRecipe::test_recipe_scaling PASSED   [ 68%]\\ntests/test_core/test_models.py::TestGenerateId::test_unique_ids PASSED   [ 72%]\\ntests/test_smoke.py::test_import PASSED                                  [ 75%]\\ntests/test_smoke.py::test_main_window PASSED                             [ 79%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_canvas_creation PASSED [ 82%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_place_building PASSED [ 86%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_delete_selection PASSED [ 89%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap PASSED   [ 93%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_grid_snap_disabled PASSED [ 96%]\\ntests/test_ui/test_canvas.py::TestFactoryCanvas::test_belt_connection PASSED [100%]\\n\\n============================== 29 passed in 0.07s ==============================\\n\",\n  \"passed\": true,\n  \"success\": true,\n  \"summary\": \"\\u2713 Tests passed (make test)\",\n  \"test_command\": \"make test\"\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01E5SDNBUTtX3kSMQwE5oChk",
+      "content": "{\"commit\": \"1d5d3addb246\", \"message\": \"Committed: 1 file(s) modified/created\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `commit`\n```json\n{\n  \"message\": \"Fix State_Selected attribute error - use QStyle.StateFlag enum\"\n}\n```\n**Result:**\n```json\n{\n  \"commit\": \"1d5d3addb246\",\n  \"message\": \"Committed: 1 file(s) modified/created\",\n  \"success\": true\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Fixed! As for why mypy didn't catch it:\n\n**PySide6's type stubs are incomplete/permissive.** The `QStyleOptionViewItem` type annotations don't strictly define what attributes exist, so mypy treats attribute access as `Any` and doesn't flag the error. This is a common problem with auto-generated bindings for C++ libraries like Qt.\n\nIn contrast, if this were pure Python with proper type annotations, mypy would catch `option.State_Selected` as a missing attribute.\n\n**Workarounds:**\n1. Use `QStyle.StateFlag.State_Selected` (the correct way, now fixed)\n2. Consider `pyright` which is sometimes stricter with Qt bindings\n3. Run the app occasionally during development to catch runtime errors\n\nThe PySide6 stubs have improved over time but Qt's API surface is massive, so gaps remain."
     }
   ]
 }

@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QGroupBox,
     QPushButton,
+    QToolButton,
     QDialog,
     QDialogButtonBox,
     QLineEdit,
@@ -21,6 +22,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QHBoxLayout,
     QSpinBox,
+    QSizePolicy,
 )
 
 from satisfactory_planner.core import Document, CommandStack, SetClockSpeedCommand, BuildingType
@@ -264,7 +266,28 @@ class PropertiesPanel(QWidget):
     def _setup_ui(self) -> None:
         """Create the panel UI."""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setContentsMargins(8, 8, 8, 8)
+        
+        # Set minimum width for the panel
+        self.setMinimumWidth(220)
+        
+        # Style the panel with background and rounded corners
+        self.setStyleSheet("""
+            PropertiesPanel {
+                background-color: #2d2d30;
+                border-radius: 6px;
+            }
+            QGroupBox {
+                background-color: #252528;
+                border-radius: 4px;
+                margin-top: 8px;
+                padding-top: 8px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 8px;
+            }
+        """)
 
         # Selection info
         self.selection_label = QLabel("No selection")
@@ -280,11 +303,26 @@ class PropertiesPanel(QWidget):
 
         # Recipe selector with edit button
         recipe_layout = QHBoxLayout()
+        recipe_layout.setSpacing(4)
         self.recipe_combo = QComboBox()
         self.recipe_combo.addItem("(No recipe)", None)
+        self.recipe_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         recipe_layout.addWidget(self.recipe_combo, 1)
 
-        self.recipe_edit_btn = QPushButton("Edit...")
+        self.recipe_edit_btn = QToolButton()
+        self.recipe_edit_btn.setText("✎")
+        self.recipe_edit_btn.setToolTip("Edit recipes...")
+        self.recipe_edit_btn.setStyleSheet("""
+            QToolButton {
+                border: none;
+                padding: 2px 6px;
+                font-size: 14px;
+            }
+            QToolButton:hover {
+                background-color: #3d3d40;
+                border-radius: 3px;
+            }
+        """)
         self.recipe_edit_btn.clicked.connect(self._open_recipe_editor)
         recipe_layout.addWidget(self.recipe_edit_btn)
         building_layout.addRow("Recipe:", recipe_layout)
