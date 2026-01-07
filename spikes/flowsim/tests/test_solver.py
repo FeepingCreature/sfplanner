@@ -290,3 +290,183 @@ class TestSolveFlows:
 
         # Constructor demands 30, that's what flows
         assert solved.flows["belt1"] == 30.0
+
+
+class TestDutyCycle:
+    """Tests for duty cycle / efficiency computation."""
+
+    def test_full_duty_cycle(self):
+        """Building at 100% when supply matches demand."""
+        from models import LimitingFactor
+
+        doc = Document(
+            buildings={
+                "smelter1": Building(
+                    id="smelter1",
+                    building_type=BuildingType.SMELTER,
+                    recipe_id="Iron Ingot",  # 30/min out
+                ),
+                "constructor1": Building(
+                    id="constructor1",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Plate",  # 30/min in - exact match
+                ),
+            },
+            belts={
+                "belt1": Belt(
+                    id="belt1",
+                    source_building_id="smelter1",
+                    source_port_index=0,
+                    dest_building_id="constructor1",
+                    dest_port_index=0,
+                )
+            },
+        )
+        result = build_flow_graph(doc)
+        solved = solve_flows(result.graph)
+
+        # Find smelter efficiency
+        smelter_eff = None
+        for eff in solved.efficiencies.values():
+            if "smelter" in eff.building_id:
+                smelter_eff = eff
+                break
+
+        assert smelter_eff is not None
+        assert smelter_eff.duty_cycle == 1.0
+        assert smelter_eff.limiting_factor == LimitingFactor.NONE
+
+    def test_downstream_limited(self):
+        """Building at 50% when downstream only needs half."""
+        from models import LimitingFactor
+
+        doc = Document(
+            buildings={
+                "smelter1": Building(
+                    id="smelter1",
+                    building_type=BuildingType.SMELTER,
+                    recipe_id="Iron Ingot",  # 30/min out
+                ),
+                "constructor1": Building(
+                    id="constructor1",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Rod",  # 15/min in - only needs half
+                ),
+            },
+            belts={
+                "belt1": Belt(
+                    id="belt1",
+                    source_building_id="smelter1",
+                    source_port_index=0,
+                    dest_building_id="constructor1",
+                    dest_port_index=0,
+                )
+            },
+        )
+        result = build_flow_graph(doc)
+        solved = solve_flows(result.graph)
+
+        # Find smelter efficiency
+        smelter_eff = None
+        for eff in solved.efficiencies.values():
+            if "smelter" in eff.building_id:
+                smelter_eff = eff
+                break
+
+        assert smelter_eff is not None
+        assert smelter_eff.duty_cycle == 0.5
+        assert smelter_eff.limiting_factor == LimitingFactor.DOWNSTREAM
+        assert "15" in smelter_eff.limiting_details  # Shows actual consumption
+
+    def test_input_starved(self):
+        """Building at 50% when upstream can only provide half."""
+        from models import LimitingFactor
+
+        doc = Document(
+            buildings={
+                "smelter1": Building(
+                    id="smelter1",
+                    building_type=BuildingType.SMELTER,
+                    recipe_id="Iron Ingot",  # 30/min out
+                ),
+                "constructor1": Building(
+                    id="constructor1",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Plate",
+                    clock_speed=2.0,  # 60/min in - needs more than smelter provides
+                ),
+            },
+            belts={
+                "belt1": Belt(
+                    id="belt1",
+                    source_building_id="smelter1",
+                    source_port_index=0,
+                    dest_building_id="constructor1",
+                    dest_port_index=0,
+                )
+            },
+        )
+        result = build_flow_graph(doc)
+        solved = solve_flows(result.graph)
+
+        # Find constructor efficiency
+        constructor_eff = None
+        for eff in solved.efficiencies.values():
+            if "constructor" in eff.building_id:
+                constructor_eff = eff
+                break
+
+        assert constructor_eff is not None
+        assert constructor_eff.duty_cycle == 0.5
+        assert constructor_eff.limiting_factor == LimitingFactor.INPUT_STARVED
+
+    def test_duty_cycle_chains(self):
+        """Duty cycle propagates through chain."""
+        from models import LimitingFactor
+
+        # Smelter(30) -> Constructor(15) -> Assembler(needs Constructor output)
+        # Constructor only needs 15, so Smelter is at 50%
+        # Assembler gets whatever Constructor outputs
+        doc = Document(
+            buildings={
+                "smelter1": Building(
+                    id="smelter1",
+                    building_type=BuildingType.SMELTER,
+                    recipe_id="Iron Ingot",  # 30/min out
+                ),
+                "constructor1": Building(
+                    id="constructor1",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Rod",  # 15/min in, 15/min out
+                ),
+            },
+            belts={
+                "belt1": Belt(
+                    id="belt1",
+                    source_building_id="smelter1",
+                    source_port_index=0,
+                    dest_building_id="constructor1",
+                    dest_port_index=0,
+                )
+            },
+        )
+        result = build_flow_graph(doc)
+        solved = solve_flows(result.graph)
+
+        # Smelter at 50% (downstream limited)
+        smelter_eff = None
+        constructor_eff = None
+        for eff in solved.efficiencies.values():
+            if "smelter" in eff.building_id:
+                smelter_eff = eff
+            if "constructor" in eff.building_id:
+                constructor_eff = eff
+
+        assert smelter_eff is not None
+        assert smelter_eff.duty_cycle == 0.5
+        assert smelter_eff.limiting_factor == LimitingFactor.DOWNSTREAM
+
+        # Constructor at 100% (getting exactly what it needs)
+        assert constructor_eff is not None
+        assert constructor_eff.duty_cycle == 1.0
+        assert constructor_eff.limiting_factor == LimitingFactor.NONE

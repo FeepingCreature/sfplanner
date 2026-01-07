@@ -147,3 +147,30 @@ class Warning:
 
     # Causal chain for drill-down
     caused_by: list["Warning"] = field(default_factory=list)
+
+
+# =============================================================================
+# Duty Cycle / Efficiency
+# =============================================================================
+
+
+class LimitingFactor(Enum):
+    """Why a building isn't running at 100%."""
+
+    NONE = auto()  # Running at full capacity
+    DOWNSTREAM = auto()  # Downstream can't consume output
+    INPUT_STARVED = auto()  # Not enough input supply
+    BELT_CAPACITY = auto()  # Belt can't carry enough
+
+
+@dataclass
+class BuildingEfficiency:
+    """Efficiency state for a single building."""
+
+    building_id: str
+    node_id: str
+    intended_rate: float  # What user designed for (output rate * clock)
+    actual_rate: float  # What LP computed
+    duty_cycle: float  # actual / intended (0.0 - 1.0)
+    limiting_factor: LimitingFactor
+    limiting_details: str = ""  # Human-readable explanation

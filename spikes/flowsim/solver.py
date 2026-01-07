@@ -6,7 +6,7 @@ Solves for steady-state flow rates using linear programming.
 from dataclasses import dataclass, field
 
 import numpy as np
-from models import FlowGraph, FlowNode, NodeType
+from models import BuildingEfficiency, FlowGraph, FlowNode, LimitingFactor, NodeType
 from scipy.optimize import linprog
 
 
@@ -16,6 +16,9 @@ class SolvedModel:
 
     graph: FlowGraph
     flows: dict[str, float] = field(default_factory=dict)  # edge_id → flow rate
+    efficiencies: dict[str, BuildingEfficiency] = field(
+        default_factory=dict
+    )  # node_id → efficiency
     success: bool = True
     message: str = ""
 
@@ -78,30 +81,58 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
                     equality_rhs.append(node.outputs[i].rate)
 
         elif node.node_type == NodeType.PRODUCER:
-            # Producer: consumes inputs, produces outputs at recipe ratio
-            # If we have N inputs at rates r1, r2, ... and outputs at rates o1, o2, ...
-            # The building runs at efficiency = min(input_i / demand_i)
-            # This is non-linear, so we approximate:
-            # - Assume building runs at full speed if inputs are available
-            # - Set output flow = output rate (demand-driven)
+            # Producer: outputs are LIMITED by downstream demand (inequality)
+            # Inputs are proportional to outputs (recipe ratio)
+            #
+            # This lets the LP figure out the actual throughput based on:
+            # - What downstream can consume
+            # - What upstream can supply
+            # We then compute duty cycle = actual / intended
 
-            # For now: set each output to its rated capacity
-            # This is "demand-driven" - we want the building to run full speed
+            # Each output is limited by downstream demand
             for i, out_edge in enumerate(outgoing):
                 if i < len(node.outputs):
+                    dest_node = graph.nodes[out_edge.dest_node_id]
+                    demand = _get_downstream_demand(dest_node, out_edge.dest_port_index)
+                    if demand is not None:
+                        # Output can't exceed what downstream wants
+                        row = [0.0] * n_edges
+                        row[edge_to_idx[out_edge.id]] = 1.0
+                        inequality_rows.append(row)
+                        inequality_rhs.append(demand)
+
+                    # Output also can't exceed production capacity
                     row = [0.0] * n_edges
                     row[edge_to_idx[out_edge.id]] = 1.0
-                    equality_rows.append(row)
-                    equality_rhs.append(node.outputs[i].rate)
+                    inequality_rows.append(row)
+                    inequality_rhs.append(node.outputs[i].rate)
 
-            # Input consumption follows from output (recipe ratio)
-            # For each input, flow should equal input rate
+            # Inputs are limited by what upstream can provide
             for i, in_edge in enumerate(incoming):
                 if i < len(node.inputs):
+                    # Input can't exceed what we need at full speed
                     row = [0.0] * n_edges
                     row[edge_to_idx[in_edge.id]] = 1.0
+                    inequality_rows.append(row)
+                    inequality_rhs.append(node.inputs[i].rate)
+
+            # Recipe ratio constraint: inputs and outputs are proportional
+            # If we have input rate r_in and output rate r_out, then:
+            # actual_in / r_in = actual_out / r_out (same efficiency)
+            if incoming and outgoing and node.inputs and node.outputs:
+                # Use first input and first output as reference
+                ref_in_rate = node.inputs[0].rate
+                ref_out_rate = node.outputs[0].rate
+                if ref_in_rate > 0 and ref_out_rate > 0:
+                    ref_in_edge = incoming[0]
+                    ref_out_edge = outgoing[0]
+                    # actual_in / ref_in_rate = actual_out / ref_out_rate
+                    # actual_in * ref_out_rate = actual_out * ref_in_rate
+                    row = [0.0] * n_edges
+                    row[edge_to_idx[ref_in_edge.id]] = ref_out_rate
+                    row[edge_to_idx[ref_out_edge.id]] = -ref_in_rate
                     equality_rows.append(row)
-                    equality_rhs.append(node.inputs[i].rate)
+                    equality_rhs.append(0.0)
 
         elif node.node_type == NodeType.SPLITTER:
             # Splitter: sum of outputs <= input (conservation)
@@ -189,4 +220,99 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
     # Extract flows
     flows = {edge_ids[i]: max(0.0, result.x[i]) for i in range(n_edges)}
 
-    return SolvedModel(graph=graph, flows=flows, success=True)
+    # Compute duty cycles for all producer nodes
+    efficiencies = _compute_efficiencies(graph, flows)
+
+    return SolvedModel(graph=graph, flows=flows, efficiencies=efficiencies, success=True)
+
+
+def _compute_efficiencies(
+    graph: FlowGraph, flows: dict[str, float]
+) -> dict[str, BuildingEfficiency]:
+    """Compute duty cycle and limiting factor for each producer."""
+    efficiencies: dict[str, BuildingEfficiency] = {}
+
+    for node_id, node in graph.nodes.items():
+        if node.node_type != NodeType.PRODUCER:
+            continue
+
+        # Get intended output rate (first output as reference)
+        if not node.outputs:
+            continue
+        intended_rate = node.outputs[0].rate
+
+        # Get actual output rate from flows
+        outgoing = graph.get_outgoing_edges(node_id)
+        actual_rate = 0.0 if not outgoing else flows.get(outgoing[0].id, 0.0)
+
+        # Compute duty cycle
+        duty_cycle = actual_rate / intended_rate if intended_rate > 0 else 1.0
+
+        # Determine limiting factor
+        limiting_factor, limiting_details = _find_limiting_factor(graph, flows, node, duty_cycle)
+
+        efficiencies[node_id] = BuildingEfficiency(
+            building_id=node.building_id or node_id,
+            node_id=node_id,
+            intended_rate=intended_rate,
+            actual_rate=actual_rate,
+            duty_cycle=min(1.0, duty_cycle),  # Cap at 100%
+            limiting_factor=limiting_factor,
+            limiting_details=limiting_details,
+        )
+
+    return efficiencies
+
+
+def _find_limiting_factor(
+    graph: FlowGraph,
+    flows: dict[str, float],
+    node: FlowNode,
+    duty_cycle: float,
+) -> tuple[LimitingFactor, str]:
+    """Determine why a producer isn't at 100% duty cycle."""
+    if duty_cycle >= 0.999:
+        return LimitingFactor.NONE, "Running at full capacity"
+
+    incoming = graph.get_incoming_edges(node.id)
+    outgoing = graph.get_outgoing_edges(node.id)
+
+    # Check if input-starved: actual input < needed input
+    for i, in_edge in enumerate(incoming):
+        if i < len(node.inputs):
+            actual_input = flows.get(in_edge.id, 0.0)
+            # If we're getting less than we need at full speed,
+            # check if upstream is the bottleneck
+            if actual_input < node.inputs[i].rate - 0.01:
+                # Check if the belt itself is the limit
+                edge = graph.edges[in_edge.id]
+                if actual_input >= edge.capacity - 0.01:
+                    return (
+                        LimitingFactor.BELT_CAPACITY,
+                        f"Input belt {in_edge.id} at capacity ({edge.capacity}/min)",
+                    )
+                # Otherwise, upstream isn't producing enough
+                return (
+                    LimitingFactor.INPUT_STARVED,
+                    f"Input {node.inputs[i].item_id}: getting {actual_input:.1f}, need {node.inputs[i].rate:.1f}/min",
+                )
+
+    # Check if downstream-limited: output < capacity but we could produce more
+    for i, out_edge in enumerate(outgoing):
+        if i < len(node.outputs):
+            actual_output = flows.get(out_edge.id, 0.0)
+            if actual_output < node.outputs[i].rate - 0.01:
+                # Check if belt is the limit
+                edge = graph.edges[out_edge.id]
+                if actual_output >= edge.capacity - 0.01:
+                    return (
+                        LimitingFactor.BELT_CAPACITY,
+                        f"Output belt {out_edge.id} at capacity ({edge.capacity}/min)",
+                    )
+                # Otherwise, downstream doesn't need more
+                return (
+                    LimitingFactor.DOWNSTREAM,
+                    f"Downstream only consumes {actual_output:.1f}/min",
+                )
+
+    return LimitingFactor.NONE, "Unknown"
