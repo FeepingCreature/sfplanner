@@ -349,6 +349,38 @@ class CommandStack:
 
 **All state mutations must go through commands.** This is enforced architecturally.
 
+## Room System
+
+Rooms are groupings of buildings that act as a single movable unit while remaining transparent - you can see and interact with their contents directly.
+
+### Key Concepts
+
+**Rooms are windows into scenes**: A Room implements the Scene protocol (contains buildings, belts). When you interact with items inside a room, you're interacting with that scene. The room boundary is just a viewport.
+
+**Room vs RoomPlacement**: A `Room` is pure data (buildings, belts, size, name) with NO position. A `RoomPlacement` says "render Room X at position (x, y)". Multiple placements can reference the same Room - this is how linked instances work.
+
+**Linked rooms are ONE room rendered multiple times**: There's only one Room object. Each "instance" is a RoomPlacement. Edits happen once to the single Room; all placements see the change.
+
+**No "active scene" state**: Every UI action determines its target scene from the specific thing being acted upon (hit-test position, or ask the item for its scene). There's no global "current scene" - this is essential for transparent rooms.
+
+**Scene-local operations**: A building belongs to exactly one scene. Belts connect buildings in the same scene. You cannot select items across scenes or draw belts across room boundaries.
+
+### Ports (Future)
+
+Ports are buildings inside the room with `BuildingType.PORT`. From inside, connect belts to them like any building. From outside, ports appear on the room boundary. Belts cannot cross room boundaries - they must go through ports.
+
+### Blueprint Library
+
+Blueprints are rooms saved to `~/.local/share/satisfactory-planner/blueprints/`. When instantiating:
+- If room ID exists in document → creates linked placement
+- If room ID doesn't exist → adds room and creates placement
+
+This preserves linking when loading blueprints back into the same document.
+
+### Delink
+
+Delinking creates a shallow copy of the Room (new IDs for buildings/belts, but nested rooms stay linked) and points the placement at the copy. Uses "Copy of {name}" Windows-style naming.
+
 ## Future Considerations (Out of Scope v1)
 - Trains/trucks/drones (logistics)
 - 3D view
