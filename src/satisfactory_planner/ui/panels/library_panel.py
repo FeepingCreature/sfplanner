@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QStyledItemDelegate,
     QStyleOptionViewItem,
+    QStyle,
 )
 
 from satisfactory_planner.core import BuildingType, BUILDING_METADATA
@@ -84,9 +85,9 @@ class BuildingItemDelegate(QStyledItemDelegate):
         painter.save()
         
         # Draw selection/hover background
-        if option.state & option.State_Selected:
+        if option.state & QStyle.StateFlag.State_Selected:
             painter.fillRect(option.rect, QColor(80, 80, 100))
-        elif option.state & option.State_MouseOver:
+        elif option.state & QStyle.StateFlag.State_MouseOver:
             painter.fillRect(option.rect, QColor(60, 60, 70))
 
         rect = option.rect.adjusted(ITEM_PADDING, ITEM_PADDING, -ITEM_PADDING, -ITEM_PADDING)
