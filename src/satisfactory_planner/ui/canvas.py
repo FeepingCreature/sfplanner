@@ -139,6 +139,10 @@ class FactoryCanvas(QGraphicsView):
         # Selection outline (dashed rect around selected items)
         self._selection_outline: QGraphicsRectItem | None = None
 
+        # Scene-local selection: track which scene has the current selection
+        # None means root document, otherwise it's a Room
+        self._selection_scene: Scene | None = None
+
         # Enable drag-drop
         self.setAcceptDrops(True)
 
@@ -679,6 +683,50 @@ class FactoryCanvas(QGraphicsView):
             elif isinstance(item, BeltItem):
                 selected_ids.append(item.belt.id)
         self.selection_changed.emit(selected_ids)
+
+    def _get_scene_for_item(self, item: QGraphicsItem) -> Scene | None:
+        """Get the scene (Document or Room) that an item belongs to.
+
+        Returns None for items that don't belong to a scene (e.g., selection outline).
+        """
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        if isinstance(item, BuildingItem):
+            return item.building_scene
+        elif isinstance(item, BeltItem):
+            # Belt's scene is determined by its parent
+            parent = item.parentItem()
+            if isinstance(parent, RoomItem):
+                return parent.room
+            return self.document
+        elif isinstance(item, RoomItem):
+            # RoomItem itself belongs to its parent scene
+            return item.parent_scene
+        return None
+
+    def _clear_selection_in_other_scenes(self, current_scene: Scene) -> None:
+        """Clear selection for all items not in the given scene."""
+        for item in self._scene.selectedItems():
+            item_scene = self._get_scene_for_item(item)
+            if item_scene is not None and item_scene is not current_scene:
+                item.setSelected(False)
+
+    def on_item_clicked(self, item: QGraphicsItem) -> None:
+        """Handle an item being clicked - enforce scene-local selection.
+
+        Called by items (BuildingItem, RoomItem) when they're clicked.
+        Clears selection in other scenes before the item is selected.
+        """
+        item_scene = self._get_scene_for_item(item)
+        if item_scene is None:
+            return
+
+        # If clicking in a different scene, clear selection in all other scenes
+        if self._selection_scene is not None and item_scene is not self._selection_scene:
+            self._clear_selection_in_other_scenes(item_scene)
+
+        # Update active selection scene
+        self._selection_scene = item_scene
 
     def _update_selection_outline(self) -> None:
         """Update the dashed selection outline around selected buildings."""

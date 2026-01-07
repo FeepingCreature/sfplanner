@@ -9,6 +9,7 @@ from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsRectItem,
+    QGraphicsSceneMouseEvent,
     QStyleOptionGraphicsItem,
     QWidget,
 )
@@ -153,6 +154,12 @@ class RoomItem(QGraphicsRectItem):
         painter.drawText(
             name_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, self.room.name
         )
+
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """Handle mouse press - enforce scene-local selection."""
+        # Enforce scene-local selection before Qt handles selection
+        self.canvas.on_item_clicked(self)
+        super().mousePressEvent(event)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Handle item changes."""

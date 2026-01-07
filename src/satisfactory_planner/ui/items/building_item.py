@@ -323,6 +323,9 @@ class BuildingItem(QGraphicsRectItem):
         self._drag_start_rotation = self.building.rotation
         self._is_dragging = True
 
+        # Enforce scene-local selection before Qt handles selection
+        self.canvas.on_item_clicked(self)
+
         # Let Qt handle selection changes FIRST (e.g., clicking unselected item
         # clears old selection), then compute offsets based on new selection
         super().mousePressEvent(event)
