@@ -43,8 +43,10 @@ from satisfactory_planner.ui.commands import (
     BuildingMove,
     CommandStack,
     ConnectBeltCommand,
+    CreateRoomCommand,
     DeleteItemsCommand,
     MoveBuildingsCommand,
+    PlaceBlueprintCommand,
     PlaceBuildingCommand,
 )
 from satisfactory_planner.ui.items.belt_item import BeltItem
@@ -278,7 +280,6 @@ class FactoryCanvas(QGraphicsView):
         Creates a deep copy of the room with new IDs for all contents,
         then creates a placement for it.
         """
-        from satisfactory_planner.ui.commands import PlaceBlueprintCommand
 
         cmd = PlaceBlueprintCommand(
             source_room=room,
@@ -1098,7 +1099,6 @@ class FactoryCanvas(QGraphicsView):
 
     def _complete_room_create(self) -> None:
         """Complete room creation, validating and creating the room."""
-        from satisfactory_planner.ui.commands import CreateRoomCommand
 
         if not self._room_create_rect:
             self._cancel_room_create()
