@@ -891,6 +891,33 @@
       "streaming": true,
       "actual_cost": 0.12445575,
       "generation_id": "gen-1767796655-O9f5gR16OxsmPFklqe5d"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767796734451.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767796734451.json",
+      "timestamp": 1767796734.452748,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.52172625,
+      "generation_id": "gen-1767796734-ZTKiGzkuuW4j4z4jZfWC"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767796742523.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767796742523.json",
+      "timestamp": 1767796742.5254295,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1069925,
+      "generation_id": "gen-1767796742-xzI8dv2hsu86ghqAY7Ro"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767796756836.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767796756836.json",
+      "timestamp": 1767796756.8375952,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.11135325,
+      "generation_id": "gen-1767796757-flZRocqWr1Meq0dh0440"
     }
   ],
   "messages": [
@@ -3896,6 +3923,121 @@
     {
       "role": "assistant",
       "content": "Added Qt standard icons where available:\n\n- **File actions**: SP_FileIcon, SP_DialogOpenButton, SP_DialogSaveButton\n- **Undo/Redo**: SP_ArrowBack, SP_ArrowForward\n- **Zoom**: Using emoji (\ud83d\udd0d+, \ud83d\udd0d\u2212, \u22a1) since Qt doesn't have great zoom icons\n\nThe tool buttons (Select, Pan, Box Select) and creation tools (Room, Blueprint, Unlink) still use text - those would need custom icons to look good. The analysis toggles also use text since they're more descriptive that way."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: e3b82304",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Cheers. Okay, *totally* unrelated issue: when we drag a building from the library, it's dragged in the middle but placed with the top left corner on the cursor."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_01QktGQi2R6R27Kiva7BM1tg",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01QktGQi2R6R27Kiva7BM1tg",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue. In `dropEvent`, we place the building at the cursor position, but buildings are positioned by their top-left corner. We need to offset by half the building size:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"    def dropEvent(self, event: QDropEvent) -> None:\\n        \\\"\\\"\\\"Handle drop to place building.\\\"\\\"\\\"\\n        if event.mimeData().hasFormat(\\\"application/x-building-type\\\"):\\n            building_name = bytes(\\n                event.mimeData().data(\\\"application/x-building-type\\\").data()\\n            ).decode()\\n            # Find the BuildingType by value\\n            building_type = None\\n            for bt in BuildingType:\\n                if bt.value == building_name:\\n                    building_type = bt\\n                    break\\n\\n            if building_type:\\n                scene_pos = self.mapToScene(event.position().toPoint())\\n                snapped = self._snap_to_grid(scene_pos)\\n                self._place_building(building_type, snapped.x(), snapped.y())\\n                event.acceptProposedAction()\\n        else:\\n            super().dropEvent(event)\", \"replace\": \"    def dropEvent(self, event: QDropEvent) -> None:\\n        \\\"\\\"\\\"Handle drop to place building.\\\"\\\"\\\"\\n        if event.mimeData().hasFormat(\\\"application/x-building-type\\\"):\\n            building_name = bytes(\\n                event.mimeData().data(\\\"application/x-building-type\\\").data()\\n            ).decode()\\n            # Find the BuildingType by value\\n            building_type = None\\n            for bt in BuildingType:\\n                if bt.value == building_name:\\n                    building_type = bt\\n                    break\\n\\n            if building_type:\\n                from satisfactory_planner.core import BUILDING_METADATA\\n\\n                scene_pos = self.mapToScene(event.position().toPoint())\\n                # Center the building on the cursor (building pos is top-left)\\n                spec = BUILDING_METADATA.get(building_type)\\n                if spec:\\n                    scene_pos = QPointF(scene_pos.x() - spec.width / 2, scene_pos.y() - spec.height / 2)\\n                snapped = self._snap_to_grid(scene_pos)\\n                self._place_building(building_type, snapped.x(), snapped.y())\\n                event.acceptProposedAction()\\n        else:\\n            super().dropEvent(event)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_01GSFkaZE4kF22Jbmo1oovQC",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"verbose\": false}",
+            "name": "run_tests"
+          },
+          "id": "toolu_01EsMdaZzQ8erxNSvqqK8ur5",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01GSFkaZE4kF22Jbmo1oovQC",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01EsMdaZzQ8erxNSvqqK8ur5",
+      "content": "{\"output\": \"ruff check --fix src/ tests/\\nFound 2 errors (2 fixed, 0 remaining).\\nruff format src/ tests/\\n2 files reformatted, 28 files left unchanged\\nruff check src/ tests/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 21 source files\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fix building drop placement to center on cursor\\n\\nBuildings are positioned by top-left corner, but drag preview shows\\nthem centered. Now dropEvent offsets by half width/height so the\\nbuilding lands where the user expects.\"}",
+            "name": "commit"
+          },
+          "id": "toolu_01MHUp3AoyX1JZboCyH7SpUn",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"src/satisfactory_planner/ui/canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_01SuhtsFyEZ5WMF7ao1WgE1X",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fixed! The building now drops centered on the cursor instead of with its top-left corner there. The fix offsets by half the building's width and height before snapping to grid.\"}",
+            "name": "done"
+          },
+          "id": "toolu_01T7RJm4XPZYNPHHkE6UamD5",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01MHUp3AoyX1JZboCyH7SpUn",
+      "content": "{\"commit\": \"6a53051315f6\", \"message\": \"Committed: 1 file(s) modified/created\", \"side_effects\": [\"mid_turn_commit\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01SuhtsFyEZ5WMF7ao1WgE1X",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"src/satisfactory_planner/ui/canvas.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01T7RJm4XPZYNPHHkE6UamD5",
+      "content": "{\"done\": true, \"message\": \"Fixed! The building now drops centered on the cursor instead of with its top-left corner there. The fix offsets by half the building's width and height before snapping to grid.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Fixed! The building now drops centered on the cursor instead of with its top-left corner there. The fix offsets by half the building's width and height before snapping to grid."
     }
   ]
 }

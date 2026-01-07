@@ -435,7 +435,13 @@ class FactoryCanvas(QGraphicsView):
                     break
 
             if building_type:
+                from satisfactory_planner.core import BUILDING_METADATA
+
                 scene_pos = self.mapToScene(event.position().toPoint())
+                # Center the building on the cursor (building pos is top-left)
+                spec = BUILDING_METADATA.get(building_type)
+                if spec:
+                    scene_pos = QPointF(scene_pos.x() - spec.width / 2, scene_pos.y() - spec.height / 2)
                 snapped = self._snap_to_grid(scene_pos)
                 self._place_building(building_type, snapped.x(), snapped.y())
                 event.acceptProposedAction()
