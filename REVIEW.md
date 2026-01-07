@@ -132,8 +132,8 @@ No tests verify the full flow: place building → set recipe → connect belt �
 ### 26. Magic numbers
 - Port radius/arrow sizes hardcoded
 
-### 27. Type ignores could be reduced
-Several `# type: ignore` comments that could be fixed with proper typing.
+### ~~27. Type ignores could be reduced~~ ✓ FIXED
+Reduced type ignores in canvas.py by using proper type signatures.
 
 ### 28. Inconsistent import style
 Some files use `from PySide6.QtCore import Qt, Signal, ...` (preferred)
