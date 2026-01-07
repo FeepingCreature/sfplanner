@@ -10,26 +10,41 @@ The flow simulator computes actual item flow rates through a factory graph, dete
 - Belt overcapacity
 - Disconnected elements
 
-## Key Semantics
-
-Unlike the visual graph, the flow graph has specific semantics:
-
-1. **Every node has a defined item type** - A node carries exactly one item type
-2. **Belts are edges, not nodes** - Belts connect production to consumption
-3. **Splitters/Mergers have special flow rules**:
-   - Splitter: Divides flow equally (or by demand) across outputs
-   - Merger: Combines flows from all inputs
-4. **Production buildings are sources/sinks** based on recipe
-5. **Rooms/Ports act as flow boundaries**
-
 ## Running
 
 ```bash
+cd spikes/flowsim
 python main.py
 ```
 
 ## Files
 
-- `recipes.py` - Recipe and item definitions
-- `flow_graph.py` - Flow graph construction and analysis (TBD)
+- `DESIGN.md` - Flow semantics and algorithm design (extracted from SPEC.md)
+- `recipes.py` - Recipe and item definitions  
+- `models.py` - Flow graph models (FlowNode, FlowEdge, FlowGraph, Warning)
 - `main.py` - Entry point and examples
+- `solver.py` - Flow simulation solver (TBD)
+
+## Key Concepts
+
+See `DESIGN.md` for full details. Summary:
+
+### Flow Graph vs Visual Graph
+
+The visual graph (buildings, belts) is what the user sees. The flow graph is a derived
+computation model - it only cares about rates, connections, and item types.
+
+### Node Types
+
+- **MINER** / **PORT_IN**: Sources (produce items)
+- **PORT_OUT** / **SINK**: Sinks (consume items)  
+- **PRODUCER**: Production buildings with recipes (consume + produce)
+- **SPLITTER**: 1 input -> 3 outputs (divides flow)
+- **MERGER**: 3 inputs -> 1 output (combines flow)
+
+### Flow Simulation
+
+Forward propagation from sources to sinks, tracking:
+- Actual flow rate on each edge
+- Node efficiency (actual vs desired rate)
+- Constraint violations (underflow, overcapacity, etc.)
