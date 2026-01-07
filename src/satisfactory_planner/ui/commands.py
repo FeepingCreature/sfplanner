@@ -262,6 +262,10 @@ class ConnectBeltCommand(Command):
         self.canvas.notify_mutation()
 
 
+# NOTE: If more property-change commands are added (e.g., rotation, item_id),
+# consider refactoring to a generic ChangePropertyCommand pattern.
+
+
 @dataclass(frozen=True)
 class SetRecipeCommand(Command):
     """Command to set a building's recipe."""
