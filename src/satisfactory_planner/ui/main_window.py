@@ -24,7 +24,8 @@ from PySide6.QtWidgets import (
 
 import PySide6QtAds as ads
 
-from satisfactory_planner.core import Document, CommandStack, FlowSolver, load_document, save_document
+from satisfactory_planner.core import Document, FlowSolver, load_document, save_document
+from satisfactory_planner.ui.commands import CommandStack
 from satisfactory_planner.ui.canvas import FactoryCanvas
 from satisfactory_planner.ui.panels.library_panel import LibraryPanel
 from satisfactory_planner.ui.panels.properties_panel import PropertiesPanel
@@ -264,8 +265,9 @@ class MainWindow(QMainWindow):
 
         # Connect signals
         canvas.selection_changed.connect(self.properties_panel.set_selection)
-        canvas.document_changed.connect(self._update_warnings)
-        canvas.document_changed.connect(lambda: self._mark_dirty(tab))
+        
+        # Set mutation callback (replaces document_changed signal)
+        canvas._mutation_callback = lambda: self._on_document_mutated(tab)
 
         # Add tab
         index = self.tab_widget.addTab(canvas, tab.name)
@@ -367,7 +369,9 @@ class MainWindow(QMainWindow):
             
             # Connect signals
             canvas.selection_changed.connect(self.properties_panel.set_selection)
-            canvas.document_changed.connect(self._update_warnings)
+            
+            # Set mutation callback (replaces document_changed signal)
+            canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)
             
             # Add tab
             index = self.tab_widget.addTab(canvas, tab.name)
@@ -456,6 +460,15 @@ class MainWindow(QMainWindow):
             if self.current_tab.canvas:
                 self.current_tab.canvas.refresh()
             self._update_warnings()
+
+    def _on_document_mutated(self, tab: DocumentTab) -> None:
+        """Handle document mutation from commands.
+        
+        This is called directly by commands via the canvas mutation callback.
+        Centralizes all the effects of a document change.
+        """
+        self._mark_dirty(tab)
+        self._update_warnings()
 
     def _update_warnings(self) -> None:
         """Update the warnings panel."""

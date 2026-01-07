@@ -3,7 +3,7 @@
 import pytest
 
 from satisfactory_planner.core.models import Document, Building, Belt, BuildingType
-from satisfactory_planner.core.commands import (
+from satisfactory_planner.ui.commands import (
     CommandStack,
     PlaceBuildingCommand,
     DeleteItemsCommand,

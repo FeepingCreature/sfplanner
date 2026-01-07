@@ -1,4 +1,7 @@
-"""Core data models and logic."""
+"""Core data models and logic.
+
+Note: Commands have been moved to ui.commands as they are a UI concern (undo/redo).
+"""
 
 from satisfactory_planner.core.models import (
     Belt,
@@ -11,16 +14,6 @@ from satisfactory_planner.core.models import (
     Recipe,
     BELT_CAPACITIES,
     BUILDING_METADATA,
-)
-from satisfactory_planner.core.commands import (
-    Command,
-    CommandStack,
-    PlaceBuildingCommand,
-    DeleteItemsCommand,
-    MoveBuildingsCommand,
-    ConnectBeltCommand,
-    SetRecipeCommand,
-    SetClockSpeedCommand,
 )
 from satisfactory_planner.core.flow_solver import FlowSolver, Warning, WarningType
 from satisfactory_planner.core.persistence import (
@@ -38,20 +31,12 @@ __all__ = [
     "Building",
     "BuildingType",
     "BUILDING_METADATA",
-    "Command",
-    "CommandStack",
-    "ConnectBeltCommand",
     "Connector",
-    "DeleteItemsCommand",
     "Document",
     "FlowSolver",
     "ItemRate",
-    "MoveBuildingsCommand",
     "Outline",
-    "PlaceBuildingCommand",
     "Recipe",
-    "SetClockSpeedCommand",
-    "SetRecipeCommand",
     "Warning",
     "WarningType",
     "load_base_recipes",

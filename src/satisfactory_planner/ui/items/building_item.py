@@ -192,7 +192,7 @@ class BuildingItem(QGraphicsRectItem):
         recipe_text = ""
         if not is_small and self.building.recipe_id:
             # Look up recipe in document
-            doc = self.canvas._document
+            doc = self.canvas.document
             recipe = doc.recipes.get(self.building.recipe_id)
             recipe_text = recipe.name if recipe else "No Recipe"
         elif not is_small:

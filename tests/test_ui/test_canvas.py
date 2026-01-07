@@ -4,7 +4,7 @@ import pytest
 from PySide6.QtCore import Qt, QPointF
 
 from satisfactory_planner.core.models import Document, BuildingType
-from satisfactory_planner.core.commands import CommandStack
+from satisfactory_planner.ui.commands import CommandStack
 from satisfactory_planner.ui.canvas import FactoryCanvas
 
 

@@ -15,10 +15,12 @@ from PySide6.QtWidgets import (
 
 from satisfactory_planner.core import (
     Document,
-    CommandStack,
     BuildingType,
     Building,
     Belt,
+)
+from satisfactory_planner.ui.commands import (
+    CommandStack,
     PlaceBuildingCommand,
     DeleteItemsCommand,
     MoveBuildingsCommand,
@@ -44,11 +46,14 @@ class GhostBuildingItem(BuildingItem):
 
 
 class FactoryCanvas(QGraphicsView):
-    """The main factory canvas for placing buildings and belts."""
+    """The main factory canvas for placing buildings and belts.
+    
+    Implements CommandHandler protocol to receive UI updates from commands.
+    """
 
     # Signals
     selection_changed = Signal(list)  # List of selected item IDs
-    document_changed = Signal()  # Emitted when document is modified
+    # Note: document_changed signal removed - commands now call handler methods directly
 
     def __init__(
         self, document: Document, command_stack: CommandStack, parent: QGraphicsView | None = None
@@ -82,6 +87,9 @@ class FactoryCanvas(QGraphicsView):
         self._drag_start_pos: QPointF | None = None
         self._drag_start_dir: float = 0  # Direction belt leaves start port
         self._hover_target_port: object | None = None  # PortItem being hovered during drag
+
+        # Mutation callback (set by MainWindow to handle warnings, dirty flag, etc.)
+        self._mutation_callback: callable | None = None
 
         # Enable drag-drop
         self.setAcceptDrops(True)
@@ -163,15 +171,23 @@ class FactoryCanvas(QGraphicsView):
         for belt in self.document.belts.values():
             self._add_belt_item(belt)
 
-    def _add_building_item(self, building: Building) -> BuildingItem:
-        """Add a building item to the scene."""
+    # CommandHandler protocol implementation
+    
+    def add_building_item(self, building: Building) -> BuildingItem:
+        """Add a building item to the scene (CommandHandler protocol)."""
         item = BuildingItem(building, self)
         self._scene.addItem(item)
         self._building_items[building.id] = item
         return item
 
-    def _add_belt_item(self, belt: Belt) -> BeltItem | None:
-        """Add a belt item to the scene."""
+    def remove_building_item(self, building_id: str) -> None:
+        """Remove a building item from the scene (CommandHandler protocol)."""
+        item = self._building_items.pop(building_id, None)
+        if item:
+            self._scene.removeItem(item)
+
+    def add_belt_item(self, belt: Belt) -> BeltItem | None:
+        """Add a belt item to the scene (CommandHandler protocol)."""
         source = self.document.buildings.get(belt.source_building_id)
         dest = self.document.buildings.get(belt.dest_building_id)
         if source and dest:
@@ -180,6 +196,44 @@ class FactoryCanvas(QGraphicsView):
             self._belt_items[belt.id] = item
             return item
         return None
+
+    def remove_belt_item(self, belt_id: str) -> None:
+        """Remove a belt item from the scene (CommandHandler protocol)."""
+        item = self._belt_items.pop(belt_id, None)
+        if item:
+            self._scene.removeItem(item)
+
+    def refresh_building(self, building_id: str) -> None:
+        """Refresh a building's visual state (CommandHandler protocol)."""
+        item = self._building_items.get(building_id)
+        if item:
+            # Update position from model
+            building = self.document.buildings.get(building_id)
+            if building:
+                item.setPos(building.x, building.y)
+            item.update()
+
+    def refresh_belts_for_building(self, building_id: str) -> None:
+        """Refresh belts connected to a building (CommandHandler protocol)."""
+        self._update_belts_for_building(building_id)
+
+    def notify_mutation(self) -> None:
+        """Notify that the document was mutated (CommandHandler protocol).
+        
+        This is called by commands after they modify the document.
+        The MainWindow connects to this via a callback to update warnings, dirty flag, etc.
+        """
+        if self._mutation_callback:
+            self._mutation_callback()
+
+    # Legacy helper (used internally)
+    def _add_building_item(self, building: Building) -> BuildingItem:
+        """Internal helper - delegates to add_building_item."""
+        return self.add_building_item(building)
+
+    def _add_belt_item(self, belt: Belt) -> BeltItem | None:
+        """Internal helper - delegates to add_belt_item."""
+        return self.add_belt_item(belt)
 
     def _snap_to_grid(self, pos: QPointF) -> QPointF:
         """Snap a position to the grid if enabled."""
@@ -356,11 +410,12 @@ class FactoryCanvas(QGraphicsView):
             x=x,
             y=y,
         )
-        cmd = PlaceBuildingCommand(document=self.document, building=building)
+        cmd = PlaceBuildingCommand(document=self.document, building=building, handler=self)
         self.command_stack.execute(cmd)
-        item = self._add_building_item(building)
-        item.rotation_angle = self._placement_rotation
-        self.document_changed.emit()
+        # Command already added the item via handler, but we need to set rotation
+        item = self._building_items.get(building.id)
+        if item:
+            item.rotation_angle = self._placement_rotation
 
     def delete_selection(self) -> None:
         """Delete selected items."""
@@ -384,10 +439,10 @@ class FactoryCanvas(QGraphicsView):
                 document=self.document,
                 building_ids=selected_buildings,
                 belt_ids=selected_belts,
+                handler=self,
             )
             self.command_stack.execute(cmd)
-            self.refresh()
-            self.document_changed.emit()
+            # Command handles UI updates via handler
 
     def _emit_selection_changed(self) -> None:
         """Emit signal with current selection."""
@@ -505,10 +560,9 @@ class FactoryCanvas(QGraphicsView):
                 dest_building_id=building_id,
                 dest_port_index=port_index,
             )
-            cmd = ConnectBeltCommand(document=self.document, belt=belt)
+            cmd = ConnectBeltCommand(document=self.document, belt=belt, handler=self)
             self.command_stack.execute(cmd)
-            self._add_belt_item(belt)
-            self.document_changed.emit()
+            # Command handles UI updates via handler
 
         # Clean up drag state
         self._is_connecting = False
@@ -568,14 +622,16 @@ class FactoryCanvas(QGraphicsView):
             building_ids=[building_id],
             dx=dx,
             dy=dy,
+            handler=self,
             already_applied=True,  # Flag that model is already at new position
         )
         self.command_stack.execute(cmd)
 
         # Redraw all connected belts using absolute positions from model
         self._update_belts_for_building(building_id)
-
-        self.document_changed.emit()
+        
+        # Notify mutation (command doesn't call handler when already_applied)
+        self.notify_mutation()
 
     def _update_belts_for_building(self, building_id: str) -> None:
         """Redraw all belts connected to a building using current model positions."""

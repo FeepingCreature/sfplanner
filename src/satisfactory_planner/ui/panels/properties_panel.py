@@ -26,7 +26,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from satisfactory_planner.core import Document, CommandStack, SetClockSpeedCommand, SetRecipeCommand, BuildingType
+from satisfactory_planner.core import Document, BuildingType
+from satisfactory_planner.ui.commands import CommandStack, SetClockSpeedCommand, SetRecipeCommand
 from satisfactory_planner.core.models import get_building_power, get_building_io_counts
 from satisfactory_planner.core.persistence import load_all_recipes, save_user_recipes
 
