@@ -463,6 +463,42 @@
       "streaming": true,
       "actual_cost": 0.30464125,
       "generation_id": "gen-1767771859-9xME5qTlUz0tKUoFYF6C"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767771987280.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767771987280.json",
+      "timestamp": 1767771987.2818742,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.035006,
+      "generation_id": "gen-1767771987-xQ8G5V7aqZiX3Ao88U3F"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767771994804.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767771994804.json",
+      "timestamp": 1767771994.8057678,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0652105,
+      "generation_id": "gen-1767771994-UGDdxiJwDlrlVh0tJ6XY"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767772018156.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767772018156.json",
+      "timestamp": 1767772018.1576073,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.047433,
+      "generation_id": "gen-1767772018-qicPBPormipP4FdDUeQR"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767772024715.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767772024715.json",
+      "timestamp": 1767772024.7161958,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.04192675,
+      "generation_id": "gen-1767772024-UKEOcXSFHgTvvK1VCT8e"
     }
   ],
   "messages": [
@@ -2034,6 +2070,118 @@
     {
       "role": "assistant",
       "content": "That's really strange. The browser uses DDG's web interface while the library uses their API - they might have different behavior.\n\nA few theories:\n\n1. **IP/User-Agent detection** - DDG might see the library's requests as coming from a server in a different region, or flag it as automated and serve different results\n2. **API vs Web** - The `duckduckgo-search` library reverse-engineers DDG (it's not an official API) - maybe the endpoint it hits has different geo behavior\n3. **Proxy/VPN on the server** - If Forge is running on a server that routes through Asia\n\nCould you try running this directly in Python on your machine to see if you get the same results?\n\n```python\nfrom duckduckgo_search import DDGS\n\nwith DDGS() as ddgs:\n    results = list(ddgs.text(\"Satisfactory smelter power\", region=\"us-en\", backend=\"html\", max_results=5))\n    for r in results:\n        print(r[\"href\"])\n```\n\nIf that gives English results locally but the tool doesn't, it's something about the Forge server environment."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: e5702b49",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "<python-input-3>:3: RuntimeWarning: This package (`duckduckgo_search`) has been renamed to `ddgs`! Use `pip install ddgs` instead. \nhttps://www.zhihu.com/question/306064174 \nhttps://zhidao.baidu.com/question/1714419467028305500.html \nhttps://zhidao.baidu.com/question/211653317377787965.html \nhttps://zhidao.baidu.com/question/701368264499390884.html \nhttps://zhidao.baidu.com/question/2212087958554083188.html\n\nhttps://github.com/deedy5/ddgs I'm not sure I trust their backend selection. might have to pass duckduckgo manually"
+    },
+    {
+      "role": "assistant",
+      "content": "Wow, so it's broken locally too - same Chinese results. The library itself is the problem, not our tool wrapper.\n\nLooking at the ddgs repo, this seems like a known issue with their backend. Options:\n\n1. **Switch to a different search library** - maybe `googlesearch-python` or `serpapi`\n2. **Use DDG directly via requests** - hit `https://duckduckgo.com/html/?q=...` and parse it ourselves\n3. **Add a simple HTTP-based fallback**\n\nThe direct HTML approach is probably most reliable:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"tools/web_search.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01NScnUDeQfvuhGeGKkyFkpu",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01NScnUDeQfvuhGeGKkyFkpu",
+      "content": "{\"action\": \"update_context\", \"add\": [\"tools/web_search.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me rewrite it to use direct HTTP requests to DuckDuckGo's HTML interface:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"tools/web_search.py\", \"content\": \"\\\"\\\"\\\"Search the web using DuckDuckGo HTML interface directly.\\n\\nNo external dependencies beyond requests (which is standard).\\n\\\"\\\"\\\"\\n\\nimport re\\nimport urllib.parse\\nfrom typing import TYPE_CHECKING, Any\\n\\nif TYPE_CHECKING:\\n    from forge.vfs.work_in_progress import WorkInProgressVFS\\n\\n\\ndef get_schema() -> dict[str, Any]:\\n    return {\\n        \\\"type\\\": \\\"function\\\",\\n        \\\"function\\\": {\\n            \\\"name\\\": \\\"web_search\\\",\\n            \\\"description\\\": \\\"Search the web using DuckDuckGo. Returns a list of results with titles, URLs, and snippets. Use this to find documentation, package names, examples, etc. Compact results after use to save context.\\\",\\n            \\\"parameters\\\": {\\n                \\\"type\\\": \\\"object\\\",\\n                \\\"properties\\\": {\\n                    \\\"query\\\": {\\n                        \\\"type\\\": \\\"string\\\",\\n                        \\\"description\\\": \\\"The search query\\\",\\n                    },\\n                    \\\"max_results\\\": {\\n                        \\\"type\\\": \\\"integer\\\",\\n                        \\\"default\\\": 5,\\n                        \\\"description\\\": \\\"Maximum number of results to return (default: 5)\\\",\\n                    },\\n                },\\n                \\\"required\\\": [\\\"query\\\"],\\n            },\\n        },\\n    }\\n\\n\\ndef execute(vfs: \\\"WorkInProgressVFS\\\", args: dict[str, Any]) -> dict[str, Any]:\\n    query = args.get(\\\"query\\\", \\\"\\\")\\n    max_results = int(args.get(\\\"max_results\\\", 5))\\n    \\n    if not query:\\n        return {\\\"success\\\": False, \\\"error\\\": \\\"Query is required\\\"}\\n    \\n    try:\\n        import requests\\n        \\n        # Use DuckDuckGo's HTML interface directly\\n        url = \\\"https://html.duckduckgo.com/html/\\\"\\n        params = {\\\"q\\\": query}\\n        headers = {\\n            \\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\\\",\\n            \\\"Accept\\\": \\\"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\\\",\\n            \\\"Accept-Language\\\": \\\"en-US,en;q=0.9\\\",\\n        }\\n        \\n        response = requests.post(url, data=params, headers=headers, timeout=10)\\n        response.raise_for_status()\\n        html = response.text\\n        \\n        # Parse results using regex (avoiding BeautifulSoup dependency)\\n        results = []\\n        \\n        # Pattern for result blocks in DDG HTML\\n        # Each result has class=\\\"result\\\" with nested elements\\n        result_pattern = re.compile(\\n            r'<a rel=\\\"nofollow\\\" class=\\\"result__a\\\" href=\\\"([^\\\"]+)\\\"[^>]*>(.+?)</a>.*?'\\n            r'<a class=\\\"result__snippet\\\"[^>]*>(.+?)</a>',\\n            re.DOTALL\\n        )\\n        \\n        for match in result_pattern.finditer(html):\\n            if len(results) >= max_results:\\n                break\\n                \\n            url_encoded = match.group(1)\\n            title_html = match.group(2)\\n            snippet_html = match.group(3)\\n            \\n            # Decode DDG's URL redirect\\n            if \\\"uddg=\\\" in url_encoded:\\n                url_match = re.search(r'uddg=([^&]+)', url_encoded)\\n                if url_match:\\n                    url_decoded = urllib.parse.unquote(url_match.group(1))\\n                else:\\n                    url_decoded = url_encoded\\n            else:\\n                url_decoded = urllib.parse.unquote(url_encoded)\\n            \\n            # Strip HTML tags\\n            title = re.sub(r'<[^>]+>', '', title_html).strip()\\n            snippet = re.sub(r'<[^>]+>', '', snippet_html).strip()\\n            \\n            results.append({\\n                \\\"title\\\": title,\\n                \\\"url\\\": url_decoded,\\n                \\\"snippet\\\": snippet,\\n            })\\n        \\n        # Estimate tokens (rough: 1 token \u2248 4 chars)\\n        result_text = str(results)\\n        token_estimate = len(result_text) // 4\\n        \\n        return {\\n            \\\"success\\\": True,\\n            \\\"query\\\": query,\\n            \\\"results\\\": results,\\n            \\\"count\\\": len(results),\\n            \\\"_token_estimate\\\": token_estimate,\\n        }\\n        \\n    except ImportError:\\n        return {\\n            \\\"success\\\": False, \\n            \\\"error\\\": \\\"requests not installed. Run: pip install requests\\\"\\n        }\\n    except Exception as e:\\n        return {\\\"success\\\": False, \\\"error\\\": str(e)}\\n\"}",
+            "name": "write_file"
+          },
+          "id": "toolu_vrtx_01BpmyC1YB8KbzJKjCPDopFQ",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BpmyC1YB8KbzJKjCPDopFQ",
+      "content": "{\"message\": \"Wrote 4143 bytes to tools/web_search.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Rewrite web_search to use DDG HTML interface directly\\n\\nDrop duckduckgo-search library (broken region handling).\\nUse requests + regex to parse html.duckduckgo.com directly.\\nSet Accept-Language header for English results.\"}",
+            "name": "commit"
+          },
+          "id": "toolu_vrtx_01EawoR6ZRFPaghij4733goo",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"tools/web_search.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_013BZASD9mwNe7r44NmKWmKZ",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01EawoR6ZRFPaghij4733goo",
+      "content": "{\"commit\": \"491cba0edf27\", \"message\": \"Committed: 1 file(s) modified/created\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `commit`\n```json\n{\n  \"message\": \"Rewrite web_search to use DDG HTML interface directly\\n\\nDrop duckduckgo-search library (broken region handling).\\nUse requests + regex to parse html.duckduckgo.com directly.\\nSet Accept-Language header for English results.\"\n}\n```\n**Result:**\n```json\n{\n  \"commit\": \"491cba0edf27\",\n  \"message\": \"Committed: 1 file(s) modified/created\",\n  \"success\": true\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_013BZASD9mwNe7r44NmKWmKZ",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"tools/web_search.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Rewrote web_search to bypass the broken `duckduckgo-search` library entirely:\\n\\n- Uses `requests` to POST directly to `https://html.duckduckgo.com/html/`\\n- Sets `Accept-Language: en-US,en` header for English results\\n- Parses results with regex (no BeautifulSoup dependency)\\n- Decodes DDG's redirect URLs properly\\n\\nReload Forge and test it - should give proper English results now.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01NTwvcoBBv85RwKa5toXpH8",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01NTwvcoBBv85RwKa5toXpH8",
+      "content": "{\"done\": true, \"message\": \"Rewrote web_search to bypass the broken `duckduckgo-search` library entirely:\\n\\n- Uses `requests` to POST directly to `https://html.duckduckgo.com/html/`\\n- Sets `Accept-Language: en-US,en` header for English results\\n- Parses results with regex (no BeautifulSoup dependency)\\n- Decodes DDG's redirect URLs properly\\n\\nReload Forge and test it - should give proper English results now.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Rewrote web_search to bypass the broken `duckduckgo-search` library entirely:\n\n- Uses `requests` to POST directly to `https://html.duckduckgo.com/html/`\n- Sets `Accept-Language: en-US,en` header for English results\n- Parses results with regex (no BeautifulSoup dependency)\n- Decodes DDG's redirect URLs properly\n\nReload Forge and test it - should give proper English results now."
     }
   ]
 }
