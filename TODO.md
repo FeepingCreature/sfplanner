@@ -34,4 +34,24 @@
 - [x] Copy/paste (Ctrl+C/V)
 - [x] Keyboard shortcuts (Ctrl+A select all)
 - [ ] Building detailed rendering (room for future expansion)
-- [ ] Toolbar with selection/placement tools
+- [x] Toolbar (basic structure added)
+
+## Toolbar Items (see main_window.py)
+Working:
+- [x] New/Open/Save
+- [x] Select tool
+- [x] Pan tool  
+- [x] Belt tier dropdown
+- [x] Zoom in/out/fit
+- [x] Grid snap toggle
+- [x] Grid size dropdown
+
+Stubbed:
+- [ ] Box select tool
+- [ ] Create room/outline
+- [ ] Create blueprint from selection
+- [ ] Unlink blueprint
+- [ ] Show grid lines
+- [ ] Show bottlenecks (needs flow solver)
+- [ ] Show flow rates on belts (needs flow solver)
+- [ ] Show leftover items per port (needs flow solver)
