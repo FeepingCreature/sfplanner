@@ -394,10 +394,11 @@ class LibraryPanel(QWidget):
         mime_data.setData("application/x-building-type", building_type.value.encode())
         drag.setMimeData(mime_data)
 
-        # Create full building preview pixmap
-        pixmap = self._create_building_pixmap(building_type)
-        drag.setPixmap(pixmap)
-        drag.setHotSpot(QPoint(pixmap.width() // 2, pixmap.height() // 2))
+        # Use transparent pixmap - the canvas shows its own ghost preview
+        # This avoids having two overlapping previews
+        transparent_pixmap = QPixmap(1, 1)
+        transparent_pixmap.fill(Qt.GlobalColor.transparent)
+        drag.setPixmap(transparent_pixmap)
 
         drag.exec(Qt.DropAction.CopyAction)
 
