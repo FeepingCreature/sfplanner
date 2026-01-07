@@ -34,22 +34,33 @@ class BuildingType(Enum):
     MERGER = "Merger"
 
 
-# Building metadata: (width, height, num_inputs, num_outputs)
-BUILDING_METADATA: dict[BuildingType, tuple[int, int, int, int]] = {
-    BuildingType.SMELTER: (80, 60, 1, 1),
-    BuildingType.FOUNDRY: (100, 80, 2, 1),
-    BuildingType.CONSTRUCTOR: (80, 60, 1, 1),
-    BuildingType.ASSEMBLER: (100, 80, 2, 1),
-    BuildingType.MANUFACTURER: (120, 100, 4, 1),
-    BuildingType.REFINERY: (120, 100, 2, 2),
-    BuildingType.PACKAGER: (80, 80, 2, 2),
-    BuildingType.BLENDER: (120, 100, 4, 2),
-    BuildingType.MINER_MK1: (80, 80, 0, 1),
-    BuildingType.MINER_MK2: (80, 80, 0, 1),
-    BuildingType.MINER_MK3: (80, 80, 0, 1),
-    BuildingType.SPLITTER: (60, 60, 1, 3),
-    BuildingType.MERGER: (60, 60, 3, 1),
+# Building metadata: (width, height, num_inputs, num_outputs, power_mw)
+BUILDING_METADATA: dict[BuildingType, tuple[int, int, int, int, float]] = {
+    BuildingType.SMELTER: (80, 60, 1, 1, 4.0),
+    BuildingType.FOUNDRY: (100, 80, 2, 1, 16.0),
+    BuildingType.CONSTRUCTOR: (80, 60, 1, 1, 4.0),
+    BuildingType.ASSEMBLER: (100, 80, 2, 1, 15.0),
+    BuildingType.MANUFACTURER: (120, 100, 4, 1, 55.0),
+    BuildingType.REFINERY: (120, 100, 2, 2, 30.0),
+    BuildingType.PACKAGER: (80, 80, 2, 2, 10.0),
+    BuildingType.BLENDER: (120, 100, 4, 2, 75.0),
+    BuildingType.MINER_MK1: (80, 80, 0, 1, 5.0),
+    BuildingType.MINER_MK2: (80, 80, 0, 1, 12.0),
+    BuildingType.MINER_MK3: (80, 80, 0, 1, 30.0),
+    BuildingType.SPLITTER: (60, 60, 1, 3, 0.0),
+    BuildingType.MERGER: (60, 60, 3, 1, 0.0),
 }
+
+
+def get_building_power(building_type: BuildingType) -> float:
+    """Get base power consumption for a building type in MW."""
+    return BUILDING_METADATA[building_type][4]
+
+
+def get_building_io_counts(building_type: BuildingType) -> tuple[int, int]:
+    """Get (num_inputs, num_outputs) for a building type."""
+    meta = BUILDING_METADATA[building_type]
+    return (meta[2], meta[3])
 
 
 @dataclass

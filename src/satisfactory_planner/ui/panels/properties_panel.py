@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import Document, CommandStack, SetClockSpeedCommand, BuildingType
+from satisfactory_planner.core.models import get_building_power, get_building_io_counts
 
 if TYPE_CHECKING:
     pass
@@ -55,61 +56,67 @@ class RecipeEditorDialog(QDialog):
 
         # Recipe details form
         details_widget = QWidget()
-        details_layout = QFormLayout(details_widget)
+        self.details_layout = QFormLayout(details_widget)
 
         self.name_edit = QLineEdit()
-        details_layout.addRow("Name:", self.name_edit)
+        self.details_layout.addRow("Name:", self.name_edit)
 
         self.building_combo = QComboBox()
         for bt in BuildingType:
             if bt not in (BuildingType.SPLITTER, BuildingType.MERGER,
                           BuildingType.MINER_MK1, BuildingType.MINER_MK2, BuildingType.MINER_MK3):
                 self.building_combo.addItem(bt.value, bt)
-        details_layout.addRow("Building:", self.building_combo)
+        self.building_combo.currentIndexChanged.connect(self._on_building_changed)
+        self.details_layout.addRow("Building:", self.building_combo)
 
-        # Inputs section
-        details_layout.addRow(QLabel("<b>Inputs (per minute):</b>"))
-        self.input1_name = QLineEdit()
-        self.input1_rate = QDoubleSpinBox()
-        self.input1_rate.setRange(0, 10000)
-        input1_layout = QHBoxLayout()
-        input1_layout.addWidget(self.input1_name)
-        input1_layout.addWidget(self.input1_rate)
-        details_layout.addRow("Input 1:", input1_layout)
+        # Power display (read-only, determined by building)
+        self.power_label = QLabel("-")
+        self.details_layout.addRow("Power:", self.power_label)
 
-        self.input2_name = QLineEdit()
-        self.input2_rate = QDoubleSpinBox()
-        self.input2_rate.setRange(0, 10000)
-        input2_layout = QHBoxLayout()
-        input2_layout.addWidget(self.input2_name)
-        input2_layout.addWidget(self.input2_rate)
-        details_layout.addRow("Input 2:", input2_layout)
+        # Dynamic input/output sections (created based on building)
+        self.inputs_label = QLabel("<b>Inputs (per minute):</b>")
+        self.details_layout.addRow(self.inputs_label)
+        
+        # Input fields (up to 4 for Manufacturer/Blender)
+        self.input_rows: list[tuple[QLineEdit, QDoubleSpinBox, QWidget]] = []
+        for i in range(4):
+            name_edit = QLineEdit()
+            name_edit.setPlaceholderText("Item name")
+            rate_spin = QDoubleSpinBox()
+            rate_spin.setRange(0, 10000)
+            rate_spin.setDecimals(2)
+            row_widget = QWidget()
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.addWidget(name_edit)
+            row_layout.addWidget(rate_spin)
+            self.details_layout.addRow(f"Input {i+1}:", row_widget)
+            self.input_rows.append((name_edit, rate_spin, row_widget))
 
-        # Outputs section
-        details_layout.addRow(QLabel("<b>Outputs (per minute):</b>"))
-        self.output1_name = QLineEdit()
-        self.output1_rate = QDoubleSpinBox()
-        self.output1_rate.setRange(0, 10000)
-        output1_layout = QHBoxLayout()
-        output1_layout.addWidget(self.output1_name)
-        output1_layout.addWidget(self.output1_rate)
-        details_layout.addRow("Output 1:", output1_layout)
+        self.outputs_label = QLabel("<b>Outputs (per minute):</b>")
+        self.details_layout.addRow(self.outputs_label)
 
-        self.output2_name = QLineEdit()
-        self.output2_rate = QDoubleSpinBox()
-        self.output2_rate.setRange(0, 10000)
-        output2_layout = QHBoxLayout()
-        output2_layout.addWidget(self.output2_name)
-        output2_layout.addWidget(self.output2_rate)
-        details_layout.addRow("Output 2:", output2_layout)
-
-        self.power_spin = QDoubleSpinBox()
-        self.power_spin.setRange(0, 1000)
-        self.power_spin.setSuffix(" MW")
-        details_layout.addRow("Power:", self.power_spin)
+        # Output fields (up to 2 for Refinery/Packager/Blender)
+        self.output_rows: list[tuple[QLineEdit, QDoubleSpinBox, QWidget]] = []
+        for i in range(2):
+            name_edit = QLineEdit()
+            name_edit.setPlaceholderText("Item name")
+            rate_spin = QDoubleSpinBox()
+            rate_spin.setRange(0, 10000)
+            rate_spin.setDecimals(2)
+            row_widget = QWidget()
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.addWidget(name_edit)
+            row_layout.addWidget(rate_spin)
+            self.details_layout.addRow(f"Output {i+1}:", row_widget)
+            self.output_rows.append((name_edit, rate_spin, row_widget))
 
         list_layout.addWidget(details_widget, 2)
         layout.addLayout(list_layout)
+        
+        # Initialize visibility based on default building
+        self._update_io_visibility()
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -133,6 +140,43 @@ class RecipeEditorDialog(QDialog):
         # Load existing recipes
         self._load_recipes()
 
+    def _on_building_changed(self, index: int) -> None:
+        """Handle building type change - update IO fields visibility."""
+        self._update_io_visibility()
+
+    def _update_io_visibility(self) -> None:
+        """Show/hide input/output rows based on selected building type."""
+        building_type = self.building_combo.currentData()
+        if not building_type:
+            return
+        
+        num_inputs, num_outputs = get_building_io_counts(building_type)
+        power = get_building_power(building_type)
+        
+        # Update power display
+        self.power_label.setText(f"{power} MW")
+        
+        # Show/hide input rows
+        for i, (name_edit, rate_spin, row_widget) in enumerate(self.input_rows):
+            visible = i < num_inputs
+            row_widget.setVisible(visible)
+            # Find and hide the label too
+            label_index = self.details_layout.indexOf(row_widget)
+            if label_index >= 0:
+                label_item = self.details_layout.itemAt(label_index - 1)
+                if label_item and label_item.widget():
+                    label_item.widget().setVisible(visible)
+        
+        # Show/hide output rows
+        for i, (name_edit, rate_spin, row_widget) in enumerate(self.output_rows):
+            visible = i < num_outputs
+            row_widget.setVisible(visible)
+            label_index = self.details_layout.indexOf(row_widget)
+            if label_index >= 0:
+                label_item = self.details_layout.itemAt(label_index - 1)
+                if label_item and label_item.widget():
+                    label_item.widget().setVisible(visible)
+
     def _load_recipes(self) -> None:
         """Load recipes into list."""
         self.recipe_list.clear()
@@ -153,43 +197,31 @@ class RecipeEditorDialog(QDialog):
 
         self.name_edit.setText(recipe.name)
 
-        # Set building type
+        # Set building type (this will trigger _update_io_visibility)
         for i in range(self.building_combo.count()):
             if self.building_combo.itemData(i) == recipe.building_type:
                 self.building_combo.setCurrentIndex(i)
                 break
 
-        # Set inputs
-        if len(recipe.inputs) >= 1:
-            self.input1_name.setText(recipe.inputs[0].item_id)
-            self.input1_rate.setValue(recipe.inputs[0].rate)
-        else:
-            self.input1_name.clear()
-            self.input1_rate.setValue(0)
+        # Clear all input/output fields first
+        for name_edit, rate_spin, _ in self.input_rows:
+            name_edit.clear()
+            rate_spin.setValue(0)
+        for name_edit, rate_spin, _ in self.output_rows:
+            name_edit.clear()
+            rate_spin.setValue(0)
 
-        if len(recipe.inputs) >= 2:
-            self.input2_name.setText(recipe.inputs[1].item_id)
-            self.input2_rate.setValue(recipe.inputs[1].rate)
-        else:
-            self.input2_name.clear()
-            self.input2_rate.setValue(0)
+        # Set inputs
+        for i, item_rate in enumerate(recipe.inputs):
+            if i < len(self.input_rows):
+                self.input_rows[i][0].setText(item_rate.item_id)
+                self.input_rows[i][1].setValue(item_rate.rate)
 
         # Set outputs
-        if len(recipe.outputs) >= 1:
-            self.output1_name.setText(recipe.outputs[0].item_id)
-            self.output1_rate.setValue(recipe.outputs[0].rate)
-        else:
-            self.output1_name.clear()
-            self.output1_rate.setValue(0)
-
-        if len(recipe.outputs) >= 2:
-            self.output2_name.setText(recipe.outputs[1].item_id)
-            self.output2_rate.setValue(recipe.outputs[1].rate)
-        else:
-            self.output2_name.clear()
-            self.output2_rate.setValue(0)
-
-        self.power_spin.setValue(recipe.power_mw)
+        for i, item_rate in enumerate(recipe.outputs):
+            if i < len(self.output_rows):
+                self.output_rows[i][0].setText(item_rate.item_id)
+                self.output_rows[i][1].setValue(item_rate.rate)
 
     def _add_recipe(self) -> None:
         """Add a new recipe."""
@@ -217,26 +249,35 @@ class RecipeEditorDialog(QDialog):
         from satisfactory_planner.core.models import Recipe, ItemRate
 
         recipe_id = current.data(Qt.UserRole)
+        building_type = self.building_combo.currentData()
+        num_inputs, num_outputs = get_building_io_counts(building_type)
 
+        # Gather inputs based on building's input count
         inputs = []
-        if self.input1_name.text() and self.input1_rate.value() > 0:
-            inputs.append(ItemRate(self.input1_name.text(), self.input1_rate.value()))
-        if self.input2_name.text() and self.input2_rate.value() > 0:
-            inputs.append(ItemRate(self.input2_name.text(), self.input2_rate.value()))
+        for i in range(num_inputs):
+            name = self.input_rows[i][0].text()
+            rate = self.input_rows[i][1].value()
+            if name and rate > 0:
+                inputs.append(ItemRate(name, rate))
 
+        # Gather outputs based on building's output count
         outputs = []
-        if self.output1_name.text() and self.output1_rate.value() > 0:
-            outputs.append(ItemRate(self.output1_name.text(), self.output1_rate.value()))
-        if self.output2_name.text() and self.output2_rate.value() > 0:
-            outputs.append(ItemRate(self.output2_name.text(), self.output2_rate.value()))
+        for i in range(num_outputs):
+            name = self.output_rows[i][0].text()
+            rate = self.output_rows[i][1].value()
+            if name and rate > 0:
+                outputs.append(ItemRate(name, rate))
+
+        # Power is determined by building type
+        power = get_building_power(building_type)
 
         recipe = Recipe(
             id=recipe_id,
             name=self.name_edit.text(),
-            building_type=self.building_combo.currentData(),
+            building_type=building_type,
             inputs=inputs,
             outputs=outputs,
-            power_mw=self.power_spin.value(),
+            power_mw=power,
             crafting_time=1.0,
         )
         self.document.recipes[recipe_id] = recipe
