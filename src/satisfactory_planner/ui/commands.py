@@ -87,12 +87,6 @@ class CommandStack:
         self.undo_stack: list[Command] = []
         self.redo_stack: list[Command] = []
 
-    def set_document(self, document: Document) -> None:
-        """Set a new document (e.g., when switching tabs)."""
-        self.document = document
-        self.undo_stack.clear()
-        self.redo_stack.clear()
-
     def execute(self, cmd: Command) -> None:
         """Execute a command and add to undo stack."""
         cmd.execute(self.document)
