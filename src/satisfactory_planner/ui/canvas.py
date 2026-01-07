@@ -875,12 +875,16 @@ class FactoryCanvas(QGraphicsView):
 
     def _emit_selection_changed(self) -> None:
         """Emit signal with current selection."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
         selected_ids = []
         for item in self._scene.selectedItems():
             if isinstance(item, BuildingItem):
                 selected_ids.append(item.building.id)
             elif isinstance(item, BeltItem):
                 selected_ids.append(item.belt.id)
+            elif isinstance(item, RoomItem):
+                selected_ids.append(item.placement.id)
         self.selection_changed.emit(selected_ids)
 
     def _get_scene_for_item(self, item: QGraphicsItem) -> Scene | None:
