@@ -631,7 +631,9 @@ class FactoryCanvas(QGraphicsView):
             y=y,
             rotation=rotation,
         )
-        cmd = PlaceBuildingCommand(scene_room_id=None, building=building, canvas=self)
+        cmd = PlaceBuildingCommand(
+            scene_room_id=self._get_active_scene_room_id(), building=building, canvas=self
+        )
         self.command_stack.execute(cmd)
         # Command already added the item via handler, but we need to set visual rotation
         item = self._building_items.get(building.id)
@@ -666,7 +668,7 @@ class FactoryCanvas(QGraphicsView):
                 self.document.belts[bid] for bid in selected_belts if bid in self.document.belts
             )
             cmd = DeleteItemsCommand(
-                scene_room_id=None,
+                scene_room_id=self._get_active_scene_room_id(),
                 buildings=buildings_to_delete,
                 belts=belts_to_delete,
                 canvas=self,
@@ -727,6 +729,20 @@ class FactoryCanvas(QGraphicsView):
 
         # Update active selection scene
         self._selection_scene = item_scene
+
+    def _get_scene_room_id(self, scene: Scene | None) -> str | None:
+        """Get the room_id for a scene, or None if it's the root document."""
+        if scene is None or scene is self.document:
+            return None
+        # It's a Room - find its ID
+        for room_id, room in self.document.rooms.items():
+            if room is scene:
+                return room_id
+        return None
+
+    def _get_active_scene_room_id(self) -> str | None:
+        """Get the room_id for the currently active selection scene."""
+        return self._get_scene_room_id(self._selection_scene)
 
     def _update_selection_outline(self) -> None:
         """Update the dashed selection outline around selected buildings."""
@@ -907,7 +923,9 @@ class FactoryCanvas(QGraphicsView):
                 dest_building_id=building_id,
                 dest_port_index=port_index,
             )
-            cmd = ConnectBeltCommand(scene_room_id=None, belt=belt, canvas=self)
+            cmd = ConnectBeltCommand(
+                scene_room_id=self._get_active_scene_room_id(), belt=belt, canvas=self
+            )
             self.command_stack.execute(cmd)
             # Command handles UI updates via handler
 
@@ -1018,7 +1036,9 @@ class FactoryCanvas(QGraphicsView):
                 clock_speed=old_building.clock_speed,
                 rotation=old_building.rotation,
             )
-            cmd = PlaceBuildingCommand(scene_room_id=None, building=new_building, canvas=self)
+            cmd = PlaceBuildingCommand(
+                scene_room_id=self._get_active_scene_room_id(), building=new_building, canvas=self
+            )
             self.command_stack.execute(cmd)
 
         # Create new belts with updated building references
@@ -1035,7 +1055,9 @@ class FactoryCanvas(QGraphicsView):
                     dest_port_index=old_belt.dest_port_index,
                     item_id=old_belt.item_id,
                 )
-                belt_cmd = ConnectBeltCommand(scene_room_id=None, belt=new_belt, canvas=self)
+                belt_cmd = ConnectBeltCommand(
+                    scene_room_id=self._get_active_scene_room_id(), belt=new_belt, canvas=self
+                )
                 self.command_stack.execute(belt_cmd)
 
         # Select the newly pasted buildings
@@ -1088,7 +1110,7 @@ class FactoryCanvas(QGraphicsView):
             new_rotation=new_rot,
         )
         cmd = MoveBuildingsCommand(
-            scene_room_id=None,
+            scene_room_id=self._get_active_scene_room_id(),
             canvas=self,
             moves=(move,),
         )

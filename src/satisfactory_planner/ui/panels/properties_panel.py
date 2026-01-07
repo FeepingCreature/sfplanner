@@ -662,7 +662,7 @@ class PropertiesPanel(QWidget):
             building = self.document.buildings.get(building_id)
             if building:
                 cmd = SetClockSpeedCommand(
-                    scene_room_id=None,
+                    scene_room_id=self.canvas._get_active_scene_room_id(),
                     building_id=building_id,
                     old_clock_speed=building.clock_speed,
                     new_clock_speed=value / 100.0,
@@ -681,7 +681,7 @@ class PropertiesPanel(QWidget):
             if building:
                 recipe_id = self.recipe_combo.currentData()
                 cmd = SetRecipeCommand(
-                    scene_room_id=None,
+                    scene_room_id=self.canvas._get_active_scene_room_id(),
                     building_id=building_id,
                     old_recipe_id=building.recipe_id,
                     new_recipe_id=recipe_id,
@@ -701,7 +701,7 @@ class PropertiesPanel(QWidget):
                 new_tier = self.tier_combo.currentData()
                 if new_tier and new_tier != belt.tier:
                     cmd = SetBeltTierCommand(
-                        scene_room_id=None,
+                        scene_room_id=self.canvas._get_active_scene_room_id(),
                         belt_id=belt_id,
                         old_tier=belt.tier,
                         new_tier=new_tier,
