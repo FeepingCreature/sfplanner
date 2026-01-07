@@ -9,16 +9,20 @@ import PySide6QtAds as ads
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
+    QButtonGroup,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
     QFontComboBox,
     QFormLayout,
+    QLabel,
     QMainWindow,
     QMessageBox,
     QSpinBox,
     QTabWidget,
     QToolBar,
+    QToolButton,
     QWidget,
 )
 
@@ -254,17 +258,149 @@ class MainWindow(QMainWindow):
         view_menu.addAction(load_layout_action)
 
     def _setup_toolbar(self) -> None:
-        """Create toolbar."""
+        """Create toolbar with tools, view controls, and quick actions."""
         toolbar = QToolBar("Main Toolbar")
         toolbar.setMovable(False)
         self.addToolBar(toolbar)
 
-        # Grid snap toggle
+        # === File Actions ===
+        new_action = QAction("New", self)
+        new_action.setToolTip("New document (Ctrl+N)")
+        new_action.triggered.connect(self._new_document)
+        toolbar.addAction(new_action)
+
+        open_action = QAction("Open", self)
+        open_action.setToolTip("Open document (Ctrl+O)")
+        open_action.triggered.connect(self._open_document)
+        toolbar.addAction(open_action)
+
+        save_action = QAction("Save", self)
+        save_action.setToolTip("Save document (Ctrl+S)")
+        save_action.triggered.connect(self._save_document)
+        toolbar.addAction(save_action)
+
+        toolbar.addSeparator()
+
+        # === Selection/Editing Tools ===
+        # These are mutually exclusive tool modes
+        self.tool_group = QButtonGroup(self)
+        self.tool_group.setExclusive(True)
+
+        self.select_tool = QToolButton()
+        self.select_tool.setText("Select")
+        self.select_tool.setToolTip("Select tool (V)")
+        self.select_tool.setCheckable(True)
+        self.select_tool.setChecked(True)
+        self.tool_group.addButton(self.select_tool)
+        toolbar.addWidget(self.select_tool)
+
+        self.pan_tool = QToolButton()
+        self.pan_tool.setText("Pan")
+        self.pan_tool.setToolTip("Pan tool (H) - also: middle-drag or space+drag")
+        self.pan_tool.setCheckable(True)
+        self.tool_group.addButton(self.pan_tool)
+        toolbar.addWidget(self.pan_tool)
+
+        self.box_select_tool = QToolButton()
+        self.box_select_tool.setText("Box Select")
+        self.box_select_tool.setToolTip("Box select tool (B)")
+        self.box_select_tool.setCheckable(True)
+        self.box_select_tool.setEnabled(False)  # TODO: Implement box select mode
+        self.tool_group.addButton(self.box_select_tool)
+        toolbar.addWidget(self.box_select_tool)
+
+        toolbar.addSeparator()
+
+        # === Room/Blueprint Tools ===
+        self.create_room_action = QAction("Create Room", self)
+        self.create_room_action.setToolTip("Create a room/outline boundary")
+        self.create_room_action.setEnabled(False)  # TODO: Implement rooms/outlines
+        toolbar.addAction(self.create_room_action)
+
+        self.create_blueprint_action = QAction("Create Blueprint", self)
+        self.create_blueprint_action.setToolTip("Create blueprint from selection")
+        self.create_blueprint_action.setEnabled(False)  # TODO: Implement blueprints
+        toolbar.addAction(self.create_blueprint_action)
+
+        self.unlink_blueprint_action = QAction("Unlink Blueprint", self)
+        self.unlink_blueprint_action.setToolTip("Unlink selected blueprint instance")
+        self.unlink_blueprint_action.setEnabled(False)  # TODO: Implement blueprints
+        toolbar.addAction(self.unlink_blueprint_action)
+
+        toolbar.addSeparator()
+
+        # === Belt Tier ===
+        toolbar.addWidget(QLabel(" Belt Tier: "))
+        self.belt_tier_combo = QComboBox()
+        self.belt_tier_combo.addItems(["Mk.1", "Mk.2", "Mk.3", "Mk.4", "Mk.5", "Mk.6"])
+        self.belt_tier_combo.setToolTip("Default belt tier for new connections")
+        self.belt_tier_combo.setCurrentIndex(0)
+        # TODO: Wire up to canvas default belt tier
+        toolbar.addWidget(self.belt_tier_combo)
+
+        toolbar.addSeparator()
+
+        # === Zoom Controls ===
+        zoom_in_action = QAction("Zoom In", self)
+        zoom_in_action.setToolTip("Zoom in (+)")
+        zoom_in_action.triggered.connect(self._zoom_in)
+        toolbar.addAction(zoom_in_action)
+
+        zoom_out_action = QAction("Zoom Out", self)
+        zoom_out_action.setToolTip("Zoom out (-)")
+        zoom_out_action.triggered.connect(self._zoom_out)
+        toolbar.addAction(zoom_out_action)
+
+        zoom_fit_action = QAction("Fit", self)
+        zoom_fit_action.setToolTip("Fit all in view (0)")
+        zoom_fit_action.triggered.connect(self._zoom_fit)
+        toolbar.addAction(zoom_fit_action)
+
+        toolbar.addSeparator()
+
+        # === Grid Controls ===
         self.grid_snap_action = QAction("Grid Snap", self)
         self.grid_snap_action.setCheckable(True)
         self.grid_snap_action.setChecked(True)
+        self.grid_snap_action.setToolTip("Toggle grid snapping (G)")
         self.grid_snap_action.toggled.connect(self._toggle_grid_snap)
         toolbar.addAction(self.grid_snap_action)
+
+        toolbar.addWidget(QLabel(" Grid: "))
+        self.grid_size_combo = QComboBox()
+        self.grid_size_combo.addItems(["10", "20", "25", "50", "100"])
+        self.grid_size_combo.setCurrentText(str(DEFAULT_GRID_SIZE))
+        self.grid_size_combo.setToolTip("Grid size")
+        self.grid_size_combo.currentTextChanged.connect(self._on_grid_size_changed)
+        toolbar.addWidget(self.grid_size_combo)
+
+        self.show_grid_action = QAction("Show Grid", self)
+        self.show_grid_action.setCheckable(True)
+        self.show_grid_action.setChecked(False)
+        self.show_grid_action.setToolTip("Show grid lines")
+        self.show_grid_action.setEnabled(False)  # TODO: Implement grid drawing
+        toolbar.addAction(self.show_grid_action)
+
+        toolbar.addSeparator()
+
+        # === Visualization Toggles ===
+        self.show_bottlenecks_action = QAction("Bottlenecks", self)
+        self.show_bottlenecks_action.setCheckable(True)
+        self.show_bottlenecks_action.setToolTip("Highlight bottlenecks")
+        self.show_bottlenecks_action.setEnabled(False)  # TODO: Implement after flow solver
+        toolbar.addAction(self.show_bottlenecks_action)
+
+        self.show_flow_rates_action = QAction("Flow Rates", self)
+        self.show_flow_rates_action.setCheckable(True)
+        self.show_flow_rates_action.setToolTip("Show flow rates on belts")
+        self.show_flow_rates_action.setEnabled(False)  # TODO: Implement after flow solver
+        toolbar.addAction(self.show_flow_rates_action)
+
+        self.show_leftovers_action = QAction("Leftovers", self)
+        self.show_leftovers_action.setCheckable(True)
+        self.show_leftovers_action.setToolTip("Show leftover items per port")
+        self.show_leftovers_action.setEnabled(False)  # TODO: Implement after flow solver
+        toolbar.addAction(self.show_leftovers_action)
 
     def _new_document(self) -> None:
         """Create a new document tab."""
@@ -538,6 +674,36 @@ class MainWindow(QMainWindow):
         if path:
             state = Path(path).read_bytes()
             self.dock_manager.restoreState(state)
+
+    def _zoom_in(self) -> None:
+        """Zoom in on current canvas."""
+        if self.current_tab and self.current_tab.canvas:
+            self.current_tab.canvas.scale(1.2, 1.2)
+
+    def _zoom_out(self) -> None:
+        """Zoom out on current canvas."""
+        if self.current_tab and self.current_tab.canvas:
+            self.current_tab.canvas.scale(1 / 1.2, 1 / 1.2)
+
+    def _zoom_fit(self) -> None:
+        """Fit all items in view on current canvas."""
+        if self.current_tab and self.current_tab.canvas:
+            canvas = self.current_tab.canvas
+            scene_rect = canvas.scene().itemsBoundingRect()
+            if not scene_rect.isEmpty():
+                # Add some padding
+                scene_rect.adjust(-50, -50, 50, 50)
+                canvas.fitInView(scene_rect, Qt.AspectRatioMode.KeepAspectRatio)
+
+    def _on_grid_size_changed(self, text: str) -> None:
+        """Handle grid size dropdown change."""
+        try:
+            size = int(text)
+            for tab in self.tabs:
+                if tab.canvas:
+                    tab.canvas._grid_size = size
+        except ValueError:
+            pass
 
     def _mark_dirty(self, tab: DocumentTab) -> None:
         """Mark a tab as having unsaved changes."""
