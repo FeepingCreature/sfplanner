@@ -3,13 +3,22 @@
 Commands are a UI concern - they exist for undo/redo which is a user interaction concept.
 Commands can directly update both the data model and the UI.
 
-Commands are immutable - all state needed for execute/undo is captured at construction.
-Execute and undo are idempotent - calling them multiple times logs a warning but doesn't break.
+=== CRITICAL INVARIANT ===
+Undo/redo must perfectly restore the exact same state every time. This means:
 
-Commands receive the Document at execute/undo time, not at construction. They store a
-scene_room_id to identify which scene (Document or Room) they operate on, and look up
-the scene from the document at execute time. This keeps commands serializable and avoids
-stale references.
+1. Commands are IMMUTABLE - all state (including generated IDs) is captured at construction
+2. Execute and undo are DETERMINISTIC - same command always produces same result
+3. No external state - commands don't read from the document during construction
+4. Pre-generate all IDs - use caller-supplied UUIDs so redo recreates identical objects
+
+This allows treating undo/redo as sliding along a timeline - users can undo/redo
+as many times as they want and always return to the exact same state. A building
+undone and redone has the same ID, same position, same everything.
+
+=== Implementation Notes ===
+- Commands receive Document at execute/undo time, not construction (avoids stale refs)
+- Store scene_room_id to identify which Scene (Document or Room) to operate on
+- Execute/undo log warnings if state is unexpected but remain idempotent
 """
 
 from __future__ import annotations
