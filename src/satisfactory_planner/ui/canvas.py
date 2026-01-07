@@ -999,24 +999,24 @@ class FactoryCanvas(QGraphicsView):
             if rect.contains(self._get_building_rect(building)):
                 contained_building_ids.append(building.id)
 
-        # Collect belts where BOTH endpoints are inside
+        # Collect belts where BOTH endpoints are inside, and crossing belts
         contained_belt_ids: list[str] = []
-        crossing_belt_ids: list[str] = []
+        crossing_belts: list[Belt] = []
         for belt in parent_scene.belts.values():
             source_inside = belt.source_building_id in contained_building_ids
             dest_inside = belt.dest_building_id in contained_building_ids
             if source_inside and dest_inside:
                 contained_belt_ids.append(belt.id)
             elif source_inside or dest_inside:
-                crossing_belt_ids.append(belt.id)
+                crossing_belts.append(belt)
 
-        # Create the room command
+        # Create the room command (crossing belts captured as objects, not just IDs)
         cmd = CreateRoomCommand(
             parent_scene_room_id=parent_scene_room_id,
             rect=(rect.x(), rect.y(), rect.width(), rect.height()),
             building_ids=tuple(contained_building_ids),
             belt_ids=tuple(contained_belt_ids),
-            crossing_belt_ids=tuple(crossing_belt_ids),
+            original_crossing_belts=tuple(crossing_belts),
             canvas=self,
         )
         self.command_stack.execute(cmd)
