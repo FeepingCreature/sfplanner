@@ -466,6 +466,33 @@
       "streaming": true,
       "actual_cost": 0.08328575,
       "generation_id": "gen-1767807381-jO6jRuxXboWHMvFoeOqY"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767807468105.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767807468105.json",
+      "timestamp": 1767807468.1067011,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.33211875,
+      "generation_id": "gen-1767807468-EVNIjB9W1ZKuIKh5bVUz"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767807474172.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767807474172.json",
+      "timestamp": 1767807474.173779,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.07203275,
+      "generation_id": "gen-1767807474-R2hK7PIPixcTxn6MFwZl"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767807490334.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767807490334.json",
+      "timestamp": 1767807490.3356223,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.111882,
+      "generation_id": "gen-1767807490-xSCPiPXMO4QJaNr6xPo3"
     }
   ],
   "messages": [
@@ -1909,6 +1936,135 @@
     {
       "role": "assistant",
       "content": "Fixed! The bug was that `_multi_drag_offsets` was persisting between drags:\n\n1. You box-select 3 buildings \u2192 `_multi_drag_offsets` gets populated with offsets for the other 2 buildings\n2. You click a different building \u2192 Qt changes the selection, but `_multi_drag_offsets` still has stale data from step 1\n3. When you drag, `itemChange` sees the stale offsets and moves those old buildings too\n\n**The fix:**\n- Initialize `_multi_drag_offsets = {}` in `__init__` so it always exists\n- Clear it in `mouseReleaseEvent` after each drag ends  \n- Use `.clear()` in `mousePressEvent` to reset before computing new offsets\n\nNow the offsets are always fresh and based on the current selection."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 19d0f596",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Now it happens differently :) Select building and belt, click and drag other building (selecting only it)- all three drag."
+    },
+    {
+      "role": "assistant",
+      "content": "Hmm, the issue is more subtle. Let me look at this more carefully - the problem must be that when you click to start a drag, the selection change happens *after* `mousePressEvent` captures the old selection.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/items/building_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01J36ZtYKUjrQ8b3GXWPajta",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01J36ZtYKUjrQ8b3GXWPajta",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/items/building_item.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue now. The problem is that `mousePressEvent` runs *before* Qt updates the selection. So when you click on a new building:\n\n1. `mousePressEvent` fires on the new building\n2. At this point, the OLD selection is still active (the 2 buildings + belt)\n3. `_multi_drag_offsets` captures the old selected buildings\n4. THEN Qt changes the selection to just the clicked building\n5. But `_multi_drag_offsets` already has the stale data\n\nThe fix is to call `super().mousePressEvent(event)` FIRST to let Qt update the selection, then compute the offsets:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/building_item.py\", \"search\": \"    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n        \\\"\\\"\\\"Track drag start.\\\"\\\"\\\"\\n        self._drag_start_pos = self.pos()\\n        self._drag_start_rotation = self.building.rotation\\n        self._is_dragging = True\\n\\n        # For multi-select drag: compute offset from this item's position\\n        # All other selected items will move by the same delta (not snap individually)\\n        self._multi_drag_offsets.clear()\\n        for item in self.scene().selectedItems():\\n            if isinstance(item, BuildingItem) and item is not self:\\n                # Store offset from this building's current position\\n                self._multi_drag_offsets[item.building.id] = item.pos() - self.pos()\\n\\n        super().mousePressEvent(event)\", \"replace\": \"    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n        \\\"\\\"\\\"Track drag start.\\\"\\\"\\\"\\n        self._drag_start_pos = self.pos()\\n        self._drag_start_rotation = self.building.rotation\\n        self._is_dragging = True\\n\\n        # Let Qt handle selection changes FIRST (e.g., clicking unselected item\\n        # clears old selection), then compute offsets based on new selection\\n        super().mousePressEvent(event)\\n\\n        # For multi-select drag: compute offset from this item's position\\n        # All other selected items will move by the same delta (not snap individually)\\n        self._multi_drag_offsets.clear()\\n        for item in self.scene().selectedItems():\\n            if isinstance(item, BuildingItem) and item is not self:\\n                # Store offset from this building's current position\\n                self._multi_drag_offsets[item.building.id] = item.pos() - self.pos()\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01MqYoUqZGYXxgikCmPofdv9",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_019Jz99DAN7YnMuavxdWJZGM",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01MqYoUqZGYXxgikCmPofdv9",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/building_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_019Jz99DAN7YnMuavxdWJZGM",
+      "content": "{\"output\": \"ruff check --fix src/ tests/\\nAll checks passed!\\nruff format src/ tests/\\n30 files left unchanged\\nruff check src/ tests/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 21 source files\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Tests pass. Let me verify my fix is correct by thinking through the sequence again:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"scratchpad\": \"Let me trace through the sequence again with my fix:\\n\\n1. User box-selects building A, B, and a belt\\n2. User clicks on building C (not in selection) and starts dragging\\n\\nWith my fix:\\n- `mousePressEvent` fires on building C\\n- We set `_drag_start_pos`, `_is_dragging = True`\\n- We call `super().mousePressEvent(event)` - this should update selection to just C\\n- THEN we compute `_multi_drag_offsets` from `self.scene().selectedItems()`\\n\\nBut wait - does `super().mousePressEvent(event)` actually change the selection immediately? Let me think...\\n\\nIn Qt, when you click on an unselected item:\\n- If it's not selected and you don't hold Shift, Qt should clear the selection and select just this item\\n- This happens in the base class's mousePressEvent\\n\\nSo after `super().mousePressEvent(event)`:\\n- `self.scene().selectedItems()` should return just [self] (building C)\\n- `_multi_drag_offsets` would be empty since we skip `self`\\n\\nThat should work... unless Qt's selection change is deferred somehow?\\n\\nActually, I wonder if the issue is that Qt's internal drag handling is also moving the other items. When Qt sees multiple selected items and you drag one, it moves ALL selected items. But my code is computing offsets AFTER super() which should have already changed the selection...\\n\\nLet me check if there's something else going on. Maybe the issue is that Qt's ItemIsMovable flag causes Qt itself to move all selected items, regardless of my code?\\n\\nActually wait - I think I see it now. When you click on a NEW item that wasn't selected:\\n1. Qt's mousePressEvent first updates selection (selects just the clicked item)\\n2. BUT if you were holding the mouse down and moving, Qt's internal drag mechanism might have already started with the OLD selection?\\n\\nHmm, or maybe the issue is different. Let me re-read the user's bug report:\\n\\n\\\"Select building and belt, click and drag other building (selecting only it)- all three drag.\\\"\\n\\nSo:\\n- Building A and belt are selected\\n- Click on building B (which selects ONLY B, as confirmed by properties panel)\\n- Drag B -> A and B and belt all move\\n\\nWait, if the properties panel shows only B is selected, then `self.scene().selectedItems()` should only return B...\\n\\nUnless... the issue is that Qt's ItemIsMovable on A is somehow still active? No, that doesn't make sense.\\n\\nOR - is the issue that when I move B via itemChange, my code in `_multi_drag_offsets` is moving A? But `_multi_drag_offsets` should be empty if only B is selected...\\n\\nLet me look at itemChange more carefully:\\n```python\\nif isinstance(new_pos, QPointF) and hasattr(self, \\\"_multi_drag_offsets\\\"):\\n    for building_id, offset in self._multi_drag_offsets.items():\\n```\\n\\nThe `hasattr` check is now redundant since we initialize in `__init__`. And we `.clear()` in mousePressEvent after super().\\n\\nSo if the user clicks B (which wasn't selected), super().mousePressEvent should:\\n1. Clear old selection (A and belt)\\n2. Select B\\n\\nThen we call `_multi_drag_offsets.clear()` and iterate over `self.scene().selectedItems()` which should just be [B].\\n\\nSince we skip `self`, `_multi_drag_offsets` should be empty.\\n\\nSo when itemChange fires, the loop over `_multi_drag_offsets.items()` should do nothing.\\n\\nBut the user says all three move... \\n\\nOH WAIT. I think I finally see it. Qt's default behavior for ItemIsMovable is that when you drag ANY selected item, Qt moves ALL selected items together. This is built into Qt's graphics view framework!\\n\\nSo when you click on B:\\n1. mousePressEvent runs on B\\n2. super().mousePressEvent(event) is called\\n3. Qt changes selection to just B\\n4. We compute empty _multi_drag_offsets\\n\\nBut then when you DRAG:\\n- Qt's internal mechanism sees B is being dragged\\n- Qt checks selectedItems() at DRAG TIME, not at press time\\n- If A is still somehow selected, Qt would move both\\n\\nBut user said properties shows only B selected... so A shouldn't be selected.\\n\\nUnless the selection change signal fires AFTER the properties panel update but BEFORE Qt's drag mechanism gets the selection?\\n\\nActually, I wonder if the issue is race condition-like. Let me think about the order of events:\\n\\n1. Mouse press on B\\n2. B.mousePressEvent runs\\n   - super().mousePressEvent(event) \\n   - This triggers selectionChanged signal\\n   - Properties panel updates to show \\\"1 building selected\\\"\\n3. Then we compute _multi_drag_offsets (should be empty)\\n4. Mouse move happens\\n5. Qt's drag mechanism kicks in\\n6. ???\\n\\nHmm, I'm not 100% sure. Let me just commit what I have and see if the user reports it's fixed or not.\\n\\nActually wait - maybe the issue is that I'm calling `other_item.setPos()` in itemChange, which is moving other buildings even though they shouldn't be moved. Let me check:\\n\\nThe loop only iterates over `_multi_drag_offsets.items()`. If `_multi_drag_offsets` is empty, the loop does nothing.\\n\\nSo either:\\n1. `_multi_drag_offsets` is not empty when it should be, OR\\n2. Something else is moving the buildings\\n\\nGiven the user's description, I suspect Qt's default multi-select drag behavior might be interfering. When you have ItemIsMovable and ItemIsSelectable, Qt automatically moves all selected items when you drag any of them.\\n\\nBut if the user clicks on an unselected item, it should become the only selected item, and only it should move...\\n\\nI'm going to commit this fix and ask the user to test. If it still doesn't work, we may need to investigate Qt's selection timing more carefully.\\n\", \"conclusion\": \"My fix (calling super() before computing offsets) should theoretically work. If the bug persists, it might be due to Qt's internal multi-select drag behavior or timing issues with selection updates. Let's commit and test.\"}",
+            "name": "think"
+          },
+          "id": "toolu_vrtx_01Gab3x6QhLamP8VQx1ibQ9m",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fix multi-drag offset computation to use updated selection\\n\\nCall super().mousePressEvent() BEFORE computing _multi_drag_offsets\\nso that Qt has already updated the selection. Previously, offsets were\\ncomputed based on the old selection state.\"}",
+            "name": "commit"
+          },
+          "id": "toolu_vrtx_01JEGT7mz41j65gMWRiK3mAc",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"src/satisfactory_planner/ui/items/building_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_011pGeY7trRt3MWXMk8gWmhD",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"I've moved `super().mousePressEvent(event)` to run BEFORE computing `_multi_drag_offsets`. This should let Qt update the selection first, so when we compute offsets, we're working with the new selection (just the clicked building) rather than the old one.\\n\\nCan you test this? If the bug persists, it might be Qt's built-in multi-select drag behavior interfering - Qt automatically moves all selected items when any one is dragged. If that's the case, we may need to dig deeper into Qt's selection timing.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_011Smzo7g3oTCUzjm7csG3r3",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Gab3x6QhLamP8VQx1ibQ9m",
+      "content": "{\"conclusion\": \"My fix (calling super() before computing offsets) should theoretically work. If the bug persists, it might be due to Qt's internal multi-select drag behavior or timing issues with selection updates. Let's commit and test.\", \"message\": \"Thought through 1107 tokens, concluded.\", \"success\": true, \"think\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01JEGT7mz41j65gMWRiK3mAc",
+      "content": "{\"commit\": \"8fb88b43931f\", \"message\": \"Committed: 47 file(s) modified/created\", \"side_effects\": [\"mid_turn_commit\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_011pGeY7trRt3MWXMk8gWmhD",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"src/satisfactory_planner/ui/items/building_item.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_011Smzo7g3oTCUzjm7csG3r3",
+      "content": "{\"done\": true, \"message\": \"I've moved `super().mousePressEvent(event)` to run BEFORE computing `_multi_drag_offsets`. This should let Qt update the selection first, so when we compute offsets, we're working with the new selection (just the clicked building) rather than the old one.\\n\\nCan you test this? If the bug persists, it might be Qt's built-in multi-select drag behavior interfering - Qt automatically moves all selected items when any one is dragged. If that's the case, we may need to dig deeper into Qt's selection timing.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I've moved `super().mousePressEvent(event)` to run BEFORE computing `_multi_drag_offsets`. This should let Qt update the selection first, so when we compute offsets, we're working with the new selection (just the clicked building) rather than the old one.\n\nCan you test this? If the bug persists, it might be Qt's built-in multi-select drag behavior interfering - Qt automatically moves all selected items when any one is dragged. If that's the case, we may need to dig deeper into Qt's selection timing."
     }
   ]
 }
