@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
 
 from satisfactory_planner.core import Document, CommandStack, SetClockSpeedCommand, SetRecipeCommand, BuildingType
 from satisfactory_planner.core.models import get_building_power, get_building_io_counts
-from satisfactory_planner.core.persistence import load_user_recipes, save_user_recipes
+from satisfactory_planner.core.persistence import load_all_recipes, save_user_recipes
 
 if TYPE_CHECKING:
     pass
@@ -535,19 +535,19 @@ class PropertiesPanel(QWidget):
 
     def _open_recipe_editor(self) -> None:
         """Open the recipe editor dialog."""
-        # Load user recipes into document before editing
-        user_recipes = load_user_recipes()
-        for recipe_id, recipe in user_recipes.items():
-            if recipe_id not in self.document.recipes:
-                self.document.recipes[recipe_id] = recipe
-        
         dialog = RecipeEditorDialog(self.document, self)
         dialog.exec()
         # Refresh recipe combo
         self._update_recipe_combo()
 
     def _update_recipe_combo(self) -> None:
-        """Update recipe combo with available recipes."""
+        """Update recipe combo with available recipes (base + user)."""
+        # Load all recipes (base game + user) into the document
+        all_recipes = load_all_recipes()
+        for recipe_id, recipe in all_recipes.items():
+            if recipe_id not in self.document.recipes:
+                self.document.recipes[recipe_id] = recipe
+        
         self.recipe_combo.clear()
         self.recipe_combo.addItem("(No recipe)", None)
         for recipe_id, recipe in self.document.recipes.items():

@@ -70,6 +70,25 @@ def dict_to_recipe(data: dict[str, Any]) -> Recipe:
     )
 
 
+def load_base_recipes() -> dict[str, Recipe]:
+    """Load base game recipes from recipes.json."""
+    import importlib.resources
+    
+    try:
+        # Load from package data
+        files = importlib.resources.files("satisfactory_planner.data")
+        recipes_file = files.joinpath("recipes.json")
+        data = json.loads(recipes_file.read_text())
+        
+        recipes = {}
+        for recipe_data in data.get("recipes", []):
+            recipe = dict_to_recipe(recipe_data)
+            recipes[recipe.id] = recipe
+        return recipes
+    except (json.JSONDecodeError, KeyError, TypeError, FileNotFoundError):
+        return {}
+
+
 def load_user_recipes() -> dict[str, Recipe]:
     """Load user recipes from XDG data directory."""
     path = get_user_recipes_path()
@@ -85,6 +104,16 @@ def load_user_recipes() -> dict[str, Recipe]:
         return recipes
     except (json.JSONDecodeError, KeyError, TypeError):
         return {}
+
+
+def load_all_recipes() -> dict[str, Recipe]:
+    """Load all recipes (base game + user recipes).
+    
+    User recipes override base recipes with the same ID.
+    """
+    recipes = load_base_recipes()
+    recipes.update(load_user_recipes())
+    return recipes
 
 
 def save_user_recipes(recipes: dict[str, Recipe]) -> None:

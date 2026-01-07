@@ -24,7 +24,9 @@ from satisfactory_planner.core.commands import (
 )
 from satisfactory_planner.core.flow_solver import FlowSolver, Warning, WarningType
 from satisfactory_planner.core.persistence import (
+    load_base_recipes,
     load_user_recipes,
+    load_all_recipes,
     save_user_recipes,
     load_document,
     save_document,
@@ -52,7 +54,9 @@ __all__ = [
     "SetRecipeCommand",
     "Warning",
     "WarningType",
+    "load_base_recipes",
     "load_user_recipes",
+    "load_all_recipes",
     "save_user_recipes",
     "load_document",
     "save_document",
