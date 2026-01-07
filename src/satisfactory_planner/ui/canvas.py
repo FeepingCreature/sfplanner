@@ -35,6 +35,7 @@ from satisfactory_planner.core import (
     Building,
     BuildingType,
     Document,
+    Room,
 )
 from satisfactory_planner.core.models import Scene, generate_id
 from satisfactory_planner.core.routing import Point, compute_belt_path
@@ -135,6 +136,10 @@ class FactoryCanvas(QGraphicsView):
         # Tool mode
         self._tool_mode: ToolMode = ToolMode.SELECT
 
+        # Blueprint placement mode
+        self._blueprint_placement_room: Room | None = None
+        self._blueprint_ghost: QGraphicsRectItem | None = None
+
         # Box select state
         self._box_select_start: QPointF | None = None
         self._box_select_rect: QGraphicsRectItem | None = None
@@ -213,6 +218,9 @@ class FactoryCanvas(QGraphicsView):
             self._scene.removeItem(self._ghost_item)
             self._ghost_item = None
 
+        # Also clear blueprint placement mode
+        self._clear_blueprint_placement()
+
         self._placement_mode = building_type
         self._placement_rotation = 0
 
@@ -230,6 +238,55 @@ class FactoryCanvas(QGraphicsView):
             self._scene.addItem(self._ghost_item)
         else:
             self.setCursor(Qt.CursorShape.ArrowCursor)
+
+    def set_blueprint_placement_mode(self, room: Room) -> None:
+        """Enter placement mode for a blueprint (room from library).
+
+        Creates a deep copy of the room with new IDs when placed.
+        """
+        # Clear building placement mode
+        if self._ghost_item:
+            self._scene.removeItem(self._ghost_item)
+            self._ghost_item = None
+        self._placement_mode = None
+
+        # Clear any previous blueprint placement
+        self._clear_blueprint_placement()
+
+        self._blueprint_placement_room = room
+        self.setCursor(Qt.CursorShape.CrossCursor)
+
+        # Create ghost rectangle for preview
+        self._blueprint_ghost = QGraphicsRectItem(0, 0, room.width, room.height)
+        self._blueprint_ghost.setPen(QPen(QColor(100, 200, 100), 2, Qt.PenStyle.DashLine))
+        self._blueprint_ghost.setBrush(QBrush(QColor(100, 200, 100, 50)))
+        self._blueprint_ghost.setOpacity(0.7)
+        self._blueprint_ghost.setVisible(False)
+        self._blueprint_ghost.setZValue(1000)
+        self._scene.addItem(self._blueprint_ghost)
+
+    def _clear_blueprint_placement(self) -> None:
+        """Clear blueprint placement mode."""
+        self._blueprint_placement_room = None
+        if self._blueprint_ghost:
+            self._scene.removeItem(self._blueprint_ghost)
+            self._blueprint_ghost = None
+
+    def _place_blueprint(self, room: Room, x: float, y: float) -> None:
+        """Place a blueprint (room from library) at the given position.
+
+        Creates a deep copy of the room with new IDs for all contents,
+        then creates a placement for it.
+        """
+        from satisfactory_planner.ui.commands import PlaceBlueprintCommand
+
+        cmd = PlaceBlueprintCommand(
+            source_room=room,
+            x=x,
+            y=y,
+            canvas=self,
+        )
+        self.command_stack.execute(cmd)
 
     def refresh(self) -> None:
         """Refresh all items from the document."""
@@ -432,6 +489,10 @@ class FactoryCanvas(QGraphicsView):
             if self._placement_mode:
                 self.set_placement_mode(None)
                 return
+            if self._blueprint_placement_room:
+                self._clear_blueprint_placement()
+                self.setCursor(Qt.CursorShape.ArrowCursor)
+                return
             if self._box_select_start:
                 self._cancel_box_select()
                 return
@@ -441,6 +502,15 @@ class FactoryCanvas(QGraphicsView):
             snapped = self._snap_to_grid(scene_pos)
             self._place_building(self._placement_mode, snapped.x(), snapped.y())
             # Stay in placement mode for rapid placement
+            return
+
+        # Left click - blueprint placement mode
+        if event.button() == Qt.MouseButton.LeftButton and self._blueprint_placement_room:
+            snapped = self._snap_to_grid(scene_pos)
+            self._place_blueprint(self._blueprint_placement_room, snapped.x(), snapped.y())
+            # Exit placement mode after placing (unlike buildings)
+            self._clear_blueprint_placement()
+            self.setCursor(Qt.CursorShape.ArrowCursor)
             return
 
         # Left click - box select mode (explicit tool or empty canvas in SELECT mode)
@@ -513,6 +583,13 @@ class FactoryCanvas(QGraphicsView):
             snapped = self._snap_to_grid(scene_pos)
             self._ghost_item.setPos(snapped)
             self._ghost_item.setVisible(True)
+
+        # Update blueprint ghost position
+        if self._blueprint_placement_room and self._blueprint_ghost:
+            scene_pos = self.mapToScene(event.pos())
+            snapped = self._snap_to_grid(scene_pos)
+            self._blueprint_ghost.setPos(snapped)
+            self._blueprint_ghost.setVisible(True)
 
         super().mouseMoveEvent(event)
 

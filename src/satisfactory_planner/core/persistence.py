@@ -314,3 +314,102 @@ def dict_to_placement(data: dict[str, Any]) -> RoomPlacement:
         y=data["y"],
         parent_room_id=data.get("parent_room_id"),
     )
+
+
+# --- Blueprint Library ---
+
+
+def get_blueprints_dir() -> Path:
+    """Get directory for blueprint files."""
+    blueprints_dir = get_user_data_dir() / "blueprints"
+    blueprints_dir.mkdir(parents=True, exist_ok=True)
+    return blueprints_dir
+
+
+def _sanitize_filename(name: str) -> str:
+    """Sanitize a name for use as a filename."""
+    # Replace problematic characters with underscores
+    invalid_chars = '<>:"/\\|?*'
+    result = name
+    for char in invalid_chars:
+        result = result.replace(char, "_")
+    # Collapse multiple underscores and strip
+    while "__" in result:
+        result = result.replace("__", "_")
+    return result.strip("_") or "blueprint"
+
+
+def save_blueprint(room: Room, name: str | None = None) -> Path:
+    """Save a room as a blueprint to user library.
+
+    Args:
+        room: The room to save as a blueprint
+        name: Optional name override (defaults to room.name)
+
+    Returns:
+        Path to the saved blueprint file
+    """
+    blueprint_name = name or room.name
+    filename = _sanitize_filename(blueprint_name) + ".json"
+    path = get_blueprints_dir() / filename
+
+    # Handle name collisions by appending number
+    counter = 1
+    while path.exists():
+        filename = f"{_sanitize_filename(blueprint_name)}_{counter}.json"
+        path = get_blueprints_dir() / filename
+        counter += 1
+
+    data = {
+        "version": "1.0.0",
+        "name": blueprint_name,
+        "room": room_to_dict(room),
+    }
+    path.write_text(json.dumps(data, indent=2))
+    return path
+
+
+def load_blueprint(path: Path) -> tuple[Room, str]:
+    """Load a single blueprint from a file.
+
+    Returns:
+        Tuple of (room, display_name)
+    """
+    data = json.loads(path.read_text())
+    room = dict_to_room(data["room"])
+    name = data.get("name", room.name)
+    return room, name
+
+
+def load_blueprints() -> list[tuple[Room, str, Path]]:
+    """Load all blueprints from user library.
+
+    Returns:
+        List of (room, display_name, file_path) tuples
+    """
+    blueprints_dir = get_blueprints_dir()
+    blueprints: list[tuple[Room, str, Path]] = []
+
+    for path in sorted(blueprints_dir.glob("*.json")):
+        try:
+            room, name = load_blueprint(path)
+            blueprints.append((room, name, path))
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            # Skip invalid blueprint files
+            import logging
+
+            logging.getLogger(__name__).warning(f"Failed to load blueprint {path}: {e}")
+
+    return blueprints
+
+
+def delete_blueprint(path: Path) -> bool:
+    """Delete a blueprint file.
+
+    Returns:
+        True if deleted, False if file didn't exist
+    """
+    if path.exists():
+        path.unlink()
+        return True
+    return False

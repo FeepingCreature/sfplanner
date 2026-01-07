@@ -168,6 +168,7 @@ class MainWindow(QMainWindow):
 
         # Connect library to current canvas for placement
         self.library_panel.building_selected.connect(self._on_building_selected)
+        self.library_panel.blueprint_selected.connect(self._on_blueprint_selected)
 
         # Properties panel - right (larger)
         dummy_doc = Document()
@@ -343,8 +344,9 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self.create_room_action)
 
         self.create_blueprint_action = QAction("Blueprint", self)
-        self.create_blueprint_action.setToolTip("Create blueprint from selection")
-        self.create_blueprint_action.setEnabled(False)  # TODO: Implement blueprints
+        self.create_blueprint_action.setToolTip("Save selected room as blueprint")
+        self.create_blueprint_action.setEnabled(False)
+        self.create_blueprint_action.triggered.connect(self._save_blueprint)
         toolbar.addAction(self.create_blueprint_action)
 
         self.unlink_blueprint_action = QAction("Unlink", self)
@@ -797,10 +799,50 @@ class MainWindow(QMainWindow):
         )
         self.current_tab.command_stack.execute(cmd)
 
+    def _save_blueprint(self) -> None:
+        """Save the selected room as a blueprint."""
+        if not self.current_tab or not self.current_tab.canvas:
+            return
+
+        from satisfactory_planner.core import save_blueprint
+        from satisfactory_planner.ui.items import RoomItem
+
+        canvas = self.current_tab.canvas
+        selected = canvas.scene().selectedItems()
+
+        # Find selected room item
+        room_item = None
+        for item in selected:
+            if isinstance(item, RoomItem):
+                room_item = item
+                break
+
+        if not room_item:
+            return
+
+        # Save to blueprint library
+        save_blueprint(room_item.room)
+
+        # Refresh the library panel
+        self.library_panel.refresh_blueprints()
+
+        # Notify user
+        QMessageBox.information(
+            self,
+            "Blueprint Saved",
+            f"Blueprint '{room_item.room.name}' saved to library.",
+        )
+
+    def _on_blueprint_selected(self, room: object) -> None:
+        """Handle blueprint selection from library - enter placement mode."""
+        if self.current_tab and self.current_tab.canvas:
+            self.current_tab.canvas.set_blueprint_placement_mode(room)  # type: ignore[arg-type]
+
     def _update_selection_actions(self) -> None:
         """Update toolbar actions based on current selection."""
         if not self.current_tab or not self.current_tab.canvas:
             self.unlink_blueprint_action.setEnabled(False)
+            self.create_blueprint_action.setEnabled(False)
             return
 
         from satisfactory_planner.ui.items import RoomItem
@@ -808,16 +850,20 @@ class MainWindow(QMainWindow):
         canvas = self.current_tab.canvas
         selected = canvas.scene().selectedItems()
 
-        # Check if a room with multiple placements is selected
+        # Check selection for room-related actions
         can_unlink = False
+        can_save_blueprint = False
+
         for item in selected:
             if isinstance(item, RoomItem):
+                can_save_blueprint = True
                 placements = self.current_tab.document.get_placements_for_room(item.room.id)
                 if len(placements) > 1:
                     can_unlink = True
-                    break
+                break
 
         self.unlink_blueprint_action.setEnabled(can_unlink)
+        self.create_blueprint_action.setEnabled(can_save_blueprint)
 
     def _mark_dirty(self, tab: DocumentTab) -> None:
         """Mark a tab as having unsaved changes."""

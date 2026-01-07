@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from PySide6.QtCore import QMimeData, QRect, QSize, Qt, Signal
+from PySide6.QtCore import QMimeData, QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QDrag, QFont, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -23,7 +23,10 @@ from satisfactory_planner.core import (
     LOGISTICS_DISPLAY_SIZE,
     BuildingSpec,
     BuildingType,
+    Room,
+    load_blueprints,
 )
+from satisfactory_planner.core.persistence import delete_blueprint
 
 
 class BuildingInfo(NamedTuple):
@@ -274,15 +277,44 @@ class BuildingTreeItem(QTreeWidgetItem):
         self.setSizeHint(0, QSize(200, ITEM_HEIGHT))
 
 
+class BlueprintTreeItem(QTreeWidgetItem):
+    """Tree item for a blueprint in the library."""
+
+    def __init__(self, room: Room, display_name: str, file_path: object) -> None:
+        super().__init__()
+        self.room = room
+        self.display_name = display_name
+        self.file_path = file_path
+
+        self.setText(0, display_name)
+        self.setToolTip(
+            0,
+            f"Blueprint: {display_name}\n"
+            f"Size: {room.width}x{room.height}\n"
+            f"Buildings: {len(room.buildings)}\n"
+            f"Click to place, right-click to delete",
+        )
+        # Store room in UserRole for drag/click handling
+        self.setData(
+            0, Qt.ItemDataRole.UserRole + 1, room
+        )  # Use +1 to distinguish from BuildingType
+        self.setSizeHint(0, QSize(200, 28))  # Smaller than building items
+
+
 class LibraryPanel(QWidget):
     """Panel for selecting buildings to place on the canvas."""
 
     # Emitted when a building type is selected for placement
     building_selected = Signal(object)  # BuildingType or None
+    # Emitted when a blueprint is selected for placement
+    blueprint_selected = Signal(object)  # Room
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._blueprints_category: QTreeWidgetItem | None = None
+        self._dragging_blueprint: Room | None = None
         self._setup_ui()
+        self._load_blueprints()
 
     def _setup_ui(self) -> None:
         """Create the panel UI."""
@@ -347,19 +379,14 @@ class LibraryPanel(QWidget):
         self.tree.addTopLevelItem(logistics_item)
         logistics_item.setExpanded(True)
 
-        # Blueprints category (placeholder)
-        blueprints_item = QTreeWidgetItem(["Blueprints"])
-        blueprints_item.setFlags(blueprints_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
-        blueprints_item.setFont(0, font)
-
-        placeholder = QTreeWidgetItem(["(No saved blueprints)"])
-        placeholder.setFlags(
-            placeholder.flags() & ~Qt.ItemFlag.ItemIsEnabled & ~Qt.ItemFlag.ItemIsDragEnabled
+        # Blueprints category
+        self._blueprints_category = QTreeWidgetItem(["Blueprints"])
+        self._blueprints_category.setFlags(
+            self._blueprints_category.flags() & ~Qt.ItemFlag.ItemIsDragEnabled
         )
-        blueprints_item.addChild(placeholder)
-
-        self.tree.addTopLevelItem(blueprints_item)
-        blueprints_item.setExpanded(True)
+        self._blueprints_category.setFont(0, font)
+        self.tree.addTopLevelItem(self._blueprints_category)
+        self._blueprints_category.setExpanded(True)
 
         # Set custom delegate for rich item rendering
         self.tree.setItemDelegate(BuildingItemDelegate(self.tree))
@@ -368,39 +395,110 @@ class LibraryPanel(QWidget):
         # Connect signals
         self.tree.itemClicked.connect(self._on_item_clicked)
         self.tree.startDrag = self._start_drag  # type: ignore[method-assign]
+        self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self._on_context_menu)
 
         layout.addWidget(self.tree)
 
+    def _load_blueprints(self) -> None:
+        """Load blueprints from disk and populate the Blueprints category."""
+        if not self._blueprints_category:
+            return
+
+        # Clear existing items
+        self._blueprints_category.takeChildren()
+
+        # Load blueprints
+        blueprints = load_blueprints()
+
+        if not blueprints:
+            placeholder = QTreeWidgetItem(["(No saved blueprints)"])
+            placeholder.setFlags(
+                placeholder.flags() & ~Qt.ItemFlag.ItemIsEnabled & ~Qt.ItemFlag.ItemIsDragEnabled
+            )
+            self._blueprints_category.addChild(placeholder)
+        else:
+            for room, name, path in blueprints:
+                item = BlueprintTreeItem(room, name, path)
+                self._blueprints_category.addChild(item)
+
+    def refresh_blueprints(self) -> None:
+        """Refresh the blueprints list from disk."""
+        self._load_blueprints()
+
+    def _on_context_menu(self, pos: QPoint) -> None:
+        """Show context menu for blueprint items."""
+        from PySide6.QtWidgets import QMenu
+
+        item = self.tree.itemAt(pos)
+        if not isinstance(item, BlueprintTreeItem):
+            return
+
+        menu = QMenu(self)
+        delete_action = menu.addAction("Delete Blueprint")
+
+        action = menu.exec(self.tree.mapToGlobal(pos))
+        if action == delete_action:
+            # Confirm deletion
+            from PySide6.QtWidgets import QMessageBox
+
+            result = QMessageBox.question(
+                self,
+                "Delete Blueprint",
+                f"Delete blueprint '{item.display_name}'?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if result == QMessageBox.StandardButton.Yes:
+                delete_blueprint(item.file_path)  # type: ignore[arg-type]
+                self._load_blueprints()
+
     def _on_item_clicked(self, item: QTreeWidgetItem, column: int) -> None:
-        """Handle building selection - attach to cursor."""
+        """Handle item selection - attach to cursor."""
+        # Check for building type
         building_type = item.data(0, Qt.ItemDataRole.UserRole)
         if building_type:
             self.building_selected.emit(building_type)
+            return
+
+        # Check for blueprint
+        if isinstance(item, BlueprintTreeItem):
+            self.blueprint_selected.emit(item.room)
 
     def _start_drag(self, supported_actions: Qt.DropAction) -> None:
-        """Start drag operation with building type."""
+        """Start drag operation with building type or blueprint."""
         item = self.tree.currentItem()
         if not item:
             return
 
-        building_type = item.data(0, Qt.ItemDataRole.UserRole)
-        if not building_type:
-            return
-
-        # Create drag with building type data
+        # Create drag with appropriate data
         drag = QDrag(self.tree)
         mime_data = QMimeData()
-        mime_data.setText(building_type.value)
-        mime_data.setData("application/x-building-type", building_type.value.encode())
+
+        # Check for building type
+        building_type = item.data(0, Qt.ItemDataRole.UserRole)
+        if building_type:
+            mime_data.setText(building_type.value)
+            mime_data.setData("application/x-building-type", building_type.value.encode())
+        elif isinstance(item, BlueprintTreeItem):
+            # Blueprint - store room ID for lookup
+            mime_data.setText(f"blueprint:{item.room.id}")
+            mime_data.setData("application/x-blueprint-room-id", item.room.id.encode())
+            # Store the room object in the item for retrieval
+            self._dragging_blueprint = item.room
+        else:
+            return
+
         drag.setMimeData(mime_data)
 
         # Use transparent pixmap - the canvas shows its own ghost preview
-        # This avoids having two overlapping previews
         transparent_pixmap = QPixmap(1, 1)
         transparent_pixmap.fill(Qt.GlobalColor.transparent)
         drag.setPixmap(transparent_pixmap)
 
         drag.exec(Qt.DropAction.CopyAction)
+
+        # Clear temp reference
+        self._dragging_blueprint = None
 
     def _create_building_pixmap(self, building_type: BuildingType) -> QPixmap:
         """Create a pixmap showing the full building with ports."""

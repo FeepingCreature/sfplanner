@@ -794,6 +794,107 @@ class DelinkRoomCommand(Command):
 
 
 @dataclass(frozen=True)
+class PlaceBlueprintCommand(Command):
+    """Command to place a blueprint (room from library) on the canvas.
+
+    Creates a deep copy of the source room with new IDs for all contents,
+    then creates a placement for it. Each blueprint placement is independent.
+    """
+
+    source_room: Room  # The blueprint room to copy
+    x: float
+    y: float
+    canvas: FactoryCanvas
+
+    # Pre-generated IDs for deterministic undo/redo
+    created_room_id: str = ""
+    created_placement_id: str = ""
+    # Mapping of source building ID -> new building ID (for belt rewiring)
+    building_id_map: tuple[tuple[str, str], ...] = ()
+    belt_id_map: tuple[tuple[str, str], ...] = ()
+
+    def __post_init__(self) -> None:
+        """Pre-generate all IDs for deterministic redo."""
+        from satisfactory_planner.core.models import generate_id
+
+        if not self.created_room_id:
+            object.__setattr__(self, "created_room_id", generate_id())
+        if not self.created_placement_id:
+            object.__setattr__(self, "created_placement_id", generate_id())
+
+        # Pre-generate IDs for all buildings and belts
+        if not self.building_id_map:
+            building_map = tuple((old_id, generate_id()) for old_id in self.source_room.buildings)
+            object.__setattr__(self, "building_id_map", building_map)
+
+        if not self.belt_id_map:
+            belt_map = tuple((old_id, generate_id()) for old_id in self.source_room.belts)
+            object.__setattr__(self, "belt_id_map", belt_map)
+
+    def execute(self, document: Document) -> None:
+        import copy
+
+        from satisfactory_planner.core.models import Room as RoomModel
+        from satisfactory_planner.core.models import RoomPlacement
+
+        # Build ID mappings from tuples
+        building_map = dict(self.building_id_map)
+        belt_map = dict(self.belt_id_map)
+
+        # Create new room with pre-generated ID
+        new_room = RoomModel(
+            id=self.created_room_id,
+            name=self.source_room.name,
+            width=self.source_room.width,
+            height=self.source_room.height,
+        )
+
+        # Copy buildings with new IDs
+        for old_id, building in self.source_room.buildings.items():
+            new_building = copy.deepcopy(building)
+            new_building.id = building_map[old_id]
+            new_room.buildings[new_building.id] = new_building
+
+        # Copy belts with new IDs and updated building references
+        for old_id, belt in self.source_room.belts.items():
+            new_belt = copy.deepcopy(belt)
+            new_belt.id = belt_map[old_id]
+            # Update building references
+            if new_belt.source_building_id in building_map:
+                new_belt.source_building_id = building_map[new_belt.source_building_id]
+            if new_belt.dest_building_id in building_map:
+                new_belt.dest_building_id = building_map[new_belt.dest_building_id]
+            new_room.belts[new_belt.id] = new_belt
+
+        # Add room to document
+        document.rooms[new_room.id] = new_room
+
+        # Create placement
+        placement = RoomPlacement(
+            id=self.created_placement_id,
+            room_id=new_room.id,
+            x=self.x,
+            y=self.y,
+            parent_room_id=None,  # Blueprint placement always at root for now
+        )
+        document.room_placements[placement.id] = placement
+
+        # Add to canvas
+        self.canvas.add_room_item(placement, new_room)
+        self.canvas.notify_mutation()
+
+    def undo(self, document: Document) -> None:
+        # Remove room item from canvas
+        self.canvas.remove_room_item(self.created_placement_id)
+
+        # Remove from document
+        document.rooms.pop(self.created_room_id, None)
+        document.room_placements.pop(self.created_placement_id, None)
+
+        self.canvas.notify_mutation()
+
+
+@dataclass(frozen=True)
 class SetBeltTierCommand(Command):
     """Command to set a belt's tier."""
 
