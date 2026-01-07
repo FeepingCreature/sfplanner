@@ -42,10 +42,8 @@ This is reasonable for read operations but could use accessor methods for cleane
 
 ## Missing Dataflow Links
 
-### 9. Recipe changes don't update building display
-When a recipe is changed via `SetRecipeCommand`, the `BuildingItem` visual isn't updated. The flow is:
-- `PropertiesPanel` → `SetRecipeCommand` → `Document` 
-- Missing: → `BuildingItem.update()` or `canvas.refresh()`
+### ~~9. Recipe changes don't update building display~~ ✓ FIXED
+`SetRecipeCommand.execute()` calls `canvas.refresh_building()` which updates the visual.
 
 ### 10. Clock speed changes don't propagate to flow solver
 The `FlowSolver` is called on `document_changed` signal, but it doesn't actually use clock speed in its calculations yet (TODOs in flow_solver.py).

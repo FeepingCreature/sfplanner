@@ -11,6 +11,7 @@ from PySide6.QtGui import (
     QColor,
     QDragEnterEvent,
     QDropEvent,
+    QKeyEvent,
     QMouseEvent,
     QPainter,
     QPen,
@@ -602,30 +603,29 @@ class FactoryCanvas(QGraphicsView):
             self._hover_target_port = None
         self.setCursor(Qt.CursorShape.ArrowCursor)
 
-    def keyPressEvent(self, event: object) -> None:
+    def keyPressEvent(self, event: QKeyEvent | None) -> None:
         """Handle key presses."""
-        from PySide6.QtGui import QKeyEvent
-
-        if isinstance(event, QKeyEvent):
-            if event.key() == Qt.Key.Key_Delete:
-                self.delete_selection()
-                return
-            elif event.key() == Qt.Key.Key_Escape:
-                if self._placement_mode:
-                    self.set_placement_mode(None)
-                elif self._is_connecting:
-                    self.cancel_belt_connection()
-                return
-            elif event.key() == Qt.Key.Key_C and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-                self.copy_selection()
-                return
-            elif event.key() == Qt.Key.Key_V and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-                self.paste()
-                return
-            elif event.key() == Qt.Key.Key_A and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-                self.select_all()
-                return
-        super().keyPressEvent(event)  # type: ignore[arg-type]
+        if event is None:
+            return
+        if event.key() == Qt.Key.Key_Delete:
+            self.delete_selection()
+            return
+        elif event.key() == Qt.Key.Key_Escape:
+            if self._placement_mode:
+                self.set_placement_mode(None)
+            elif self._is_connecting:
+                self.cancel_belt_connection()
+            return
+        elif event.key() == Qt.Key.Key_C and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            self.copy_selection()
+            return
+        elif event.key() == Qt.Key.Key_V and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            self.paste()
+            return
+        elif event.key() == Qt.Key.Key_A and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            self.select_all()
+            return
+        super().keyPressEvent(event)
 
     def select_all(self) -> None:
         """Select all buildings and belts."""
