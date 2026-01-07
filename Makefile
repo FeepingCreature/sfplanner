@@ -7,17 +7,17 @@ all: fix lint typecheck
 test: all
 
 lint:
-	ruff check src/ tests/
+	ruff check src/ tests/ spikes/
 
 format:
-	ruff format src/ tests/
+	ruff format src/ tests/ spikes/
 
 fix:
-	ruff check --fix src/ tests/
-	ruff format src/ tests/
+	ruff check --fix src/ tests/ spikes/
+	ruff format src/ tests/ spikes/
 
 typecheck:
-	mypy src/
+	mypy src/ spikes/
 
 check: lint typecheck test
 	@echo "All checks passed!"
