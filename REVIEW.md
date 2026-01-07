@@ -8,35 +8,11 @@ The codebase is well-structured with clear separation between core logic and UI.
 
 ## Bugs & Errors
 
-### 1. Wrong attribute access in `building_item.py`
-**File**: `src/satisfactory_planner/ui/items/building_item.py:132`
-```python
-doc = self.canvas._document  # WRONG - should be self.canvas.document
-```
-The canvas has `self.document`, not `self._document`. This will crash when trying to display recipe names.
-
-### 2. `math` import inside methods
-**Files**: `models.py` (lines 99, 117, 132, 150)
-The `math` module is imported inside methods (`input_port_direction`, `output_port_direction`). While it works, it's unconventional and slightly slower. Should be at module top.
+(None currently)
 
 ---
 
 ## DRY Violations
-
-### 3. Duplicate `BUILDING_COLORS` definition
-**Files**: 
-- `building_item.py` (lines 19-32)
-- `library_panel.py` (lines 36-49)
-
-Same color mapping defined twice. Should be in `core/models.py` or a shared `ui/constants.py`.
-
-### 4. Duplicate building display size logic
-**Files**:
-- `Building._get_display_size()` in `models.py`
-- `BuildingItem._get_display_size()` in `building_item.py`
-- Inline checks in `library_panel.py`
-
-The "splitter/merger use 40x40" logic is repeated. The model should be the single source of truth.
 
 ### 5. Duplicate Dubins path drawing code
 **Files**:
@@ -48,15 +24,6 @@ Nearly identical code for converting `BeltPath` to `QPainterPath`. Should be a s
 ---
 
 ## Coupling Issues
-
-### 6. BuildingItem accesses canvas internals
-**File**: `building_item.py`
-```python
-self.canvas._grid_snap
-self.canvas._grid_size
-self.canvas._update_belts_for_building(...)
-```
-BuildingItem reaches into canvas private members. Should use public methods.
 
 ### 7. PortItem directly calls canvas methods
 **File**: `port_item.py`
@@ -93,8 +60,7 @@ The `FlowSolver` is called on `document_changed` signal, but it doesn't actually
 ### 12. Belt tier changes have no command
 The `PropertiesPanel` has a tier combo for belts but no handler connected to create a command. Tier changes aren't undoable.
 
-### 13. Warnings panel click → canvas navigation not connected
-`WarningsPanel.warning_clicked` signal is defined but never connected. Clicking a warning should navigate to the element.
+
 
 ---
 
@@ -128,8 +94,7 @@ Listed in TODO.md, no code exists.
 ### 18. No keyboard shortcuts beyond delete/undo/redo
 The SPEC mentions Ctrl+C/V, but they're not implemented.
 
-### 19. Building rotation is visual-only
-`rotation_angle` is stored on `BuildingItem`, not `Building`. Rotation is lost on refresh.
+
 
 ---
 
@@ -171,8 +136,6 @@ No tests verify the full flow: place building → set recipe → connect belt �
 ## Minor Issues
 
 ### 26. Magic numbers
-- `40` for logistics size (defined as `LOGISTICS_SIZE` in building_item.py but hardcoded in models.py)
-- `20` for default grid size (hardcoded in multiple places)
 - Port radius/arrow sizes hardcoded
 
 ### 27. Type ignores could be reduced
@@ -186,8 +149,5 @@ Others import whole modules like `from PySide6 import QtCore`
 
 ## Priority Fixes
 
-1. **BUG**: Fix `self.canvas._document` → `self.canvas.document` (crashes app)
-2. **DRY**: Consolidate `BUILDING_COLORS` 
-3. **MISSING**: Connect `warning_clicked` signal
-4. **MISSING**: Add belt tier change command
-5. **ARCH**: Move `rotation_angle` to Building model
+1. **MISSING**: Add belt tier change command
+

@@ -6,30 +6,28 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QLabel,
-    QFormLayout,
     QComboBox,
-    QDoubleSpinBox,
-    QGroupBox,
-    QPushButton,
-    QToolButton,
     QDialog,
-    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
-    QHBoxLayout,
-    QSpinBox,
-    QSizePolicy,
     QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
 )
 
-from satisfactory_planner.core import Document, BuildingType
-from satisfactory_planner.ui.commands import CommandStack, SetClockSpeedCommand, SetRecipeCommand
-from satisfactory_planner.core.models import get_building_power, get_building_io_counts
+from satisfactory_planner.core import BuildingType, Document
+from satisfactory_planner.core.models import get_building_io_counts, get_building_power
 from satisfactory_planner.core.persistence import load_all_recipes, save_user_recipes
+from satisfactory_planner.ui.commands import CommandStack, SetClockSpeedCommand, SetRecipeCommand
 
 if TYPE_CHECKING:
     from satisfactory_planner.ui.canvas import FactoryCanvas
@@ -116,7 +114,7 @@ class RecipeEditorDialog(QDialog):
         # Dynamic input/output sections (created based on building)
         self.inputs_label = QLabel("<b>Inputs (per minute):</b>")
         self.details_layout.addRow(self.inputs_label)
-        
+
         # Input fields (up to 4 for Manufacturer/Blender)
         self.input_rows: list[tuple[QLineEdit, QDoubleSpinBox, QWidget]] = []
         for i in range(4):
@@ -158,7 +156,7 @@ class RecipeEditorDialog(QDialog):
 
         content_layout.addWidget(details_widget, 2)
         layout.addLayout(content_layout)
-        
+
         # Initialize visibility based on default building
         self._update_io_visibility()
 
@@ -174,7 +172,7 @@ class RecipeEditorDialog(QDialog):
 
         # Load existing recipes
         self._load_recipes()
-        
+
         # Update button states
         self._update_button_states()
 
@@ -197,18 +195,18 @@ class RecipeEditorDialog(QDialog):
         """Auto-save current recipe if we're not in the middle of loading."""
         if self._updating:
             return
-        
+
         current = self.recipe_list.currentItem()
         if not current:
             return
 
-        from satisfactory_planner.core.models import Recipe, ItemRate
+        from satisfactory_planner.core.models import ItemRate, Recipe
 
         recipe_id = current.data(Qt.UserRole)
         building_type = self.building_combo.currentData()
         if not building_type:
             return
-            
+
         num_inputs, num_outputs = get_building_io_counts(building_type)
 
         # Gather inputs based on building's input count
@@ -249,13 +247,13 @@ class RecipeEditorDialog(QDialog):
         building_type = self.building_combo.currentData()
         if not building_type:
             return
-        
+
         num_inputs, num_outputs = get_building_io_counts(building_type)
         power = get_building_power(building_type)
-        
+
         # Update power display
         self.power_label.setText(f"{power} MW")
-        
+
         # Show/hide input rows
         for i, (name_edit, rate_spin, row_widget) in enumerate(self.input_rows):
             visible = i < num_inputs
@@ -266,7 +264,7 @@ class RecipeEditorDialog(QDialog):
                 label_item = self.details_layout.itemAt(label_index - 1)
                 if label_item and label_item.widget():
                     label_item.widget().setVisible(visible)
-        
+
         # Show/hide output rows
         for i, (name_edit, rate_spin, row_widget) in enumerate(self.output_rows):
             visible = i < num_outputs
@@ -288,7 +286,7 @@ class RecipeEditorDialog(QDialog):
     def _on_recipe_selected(self, current: QListWidgetItem | None, previous: QListWidgetItem | None) -> None:
         """Handle recipe selection."""
         self._update_button_states()
-        
+
         if not current:
             return
 
@@ -332,7 +330,7 @@ class RecipeEditorDialog(QDialog):
 
     def _add_recipe(self) -> None:
         """Add a new recipe."""
-        from satisfactory_planner.core.models import generate_id, Recipe
+        from satisfactory_planner.core.models import Recipe, generate_id
 
         recipe_id = generate_id()
         recipe = Recipe(
@@ -345,7 +343,7 @@ class RecipeEditorDialog(QDialog):
             crafting_time=1.0,
         )
         self.document.recipes[recipe_id] = recipe
-        
+
         # Add to list and select it
         item = QListWidgetItem(recipe.name)
         item.setData(Qt.UserRole, recipe_id)
@@ -358,7 +356,7 @@ class RecipeEditorDialog(QDialog):
         if not current:
             return
 
-        from satisfactory_planner.core.models import generate_id, Recipe, ItemRate
+        from satisfactory_planner.core.models import ItemRate, Recipe, generate_id
 
         source_id = current.data(Qt.UserRole)
         source = self.document.recipes.get(source_id)
@@ -436,7 +434,7 @@ class PropertiesPanel(QWidget):
 
         self.document = document
         self.command_stack = command_stack
-        self.canvas: "FactoryCanvas | None" = None  # Set by MainWindow
+        self.canvas: FactoryCanvas | None = None  # Set by MainWindow
         self._selected_ids: list[str] = []
         self._updating = False  # Prevent signal loops
 
@@ -446,7 +444,7 @@ class PropertiesPanel(QWidget):
         """Create the panel UI."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
-        
+
         # Set minimum width for the panel
         self.setMinimumWidth(220)
 
@@ -549,13 +547,13 @@ class PropertiesPanel(QWidget):
         for recipe_id, recipe in all_recipes.items():
             if recipe_id not in self.document.recipes:
                 self.document.recipes[recipe_id] = recipe
-        
+
         self.recipe_combo.clear()
         self.recipe_combo.addItem("(No recipe)", None)
         for recipe_id, recipe in self.document.recipes.items():
             self.recipe_combo.addItem(recipe.name, recipe_id)
 
-    def set_document(self, document: Document, command_stack: CommandStack, canvas: "FactoryCanvas") -> None:
+    def set_document(self, document: Document, command_stack: CommandStack, canvas: FactoryCanvas) -> None:
         """Set a new document."""
         self.document = document
         self.command_stack = command_stack

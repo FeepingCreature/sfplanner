@@ -3,12 +3,12 @@
 from satisfactory_planner.ui.commands import (
     Command,
     CommandStack,
-    PlaceBuildingCommand,
+    ConnectBeltCommand,
     DeleteItemsCommand,
     MoveBuildingsCommand,
-    ConnectBeltCommand,
-    SetRecipeCommand,
+    PlaceBuildingCommand,
     SetClockSpeedCommand,
+    SetRecipeCommand,
 )
 
 __all__ = [

@@ -1,9 +1,8 @@
 """Tests for flow solver."""
 
-import pytest
 
-from satisfactory_planner.core.models import Document, Building, Belt, BuildingType
 from satisfactory_planner.core.flow_solver import FlowSolver, WarningType
+from satisfactory_planner.core.models import Belt, Building, BuildingType, Document
 
 
 class TestFlowSolver:

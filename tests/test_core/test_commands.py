@@ -1,15 +1,13 @@
 """Tests for command pattern and undo/redo."""
 
-import pytest
 from unittest.mock import Mock
 
-from satisfactory_planner.core.models import Document, Building, Belt, BuildingType
+from satisfactory_planner.core.models import Belt, Building, BuildingType, Document
 from satisfactory_planner.ui.commands import (
     CommandStack,
-    PlaceBuildingCommand,
     DeleteItemsCommand,
     MoveBuildingsCommand,
-    ConnectBeltCommand,
+    PlaceBuildingCommand,
     SetClockSpeedCommand,
 )
 

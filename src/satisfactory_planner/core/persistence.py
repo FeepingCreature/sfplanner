@@ -8,12 +8,12 @@ from pathlib import Path
 from typing import Any
 
 from satisfactory_planner.core.models import (
-    Document,
-    Building,
     Belt,
-    Recipe,
-    ItemRate,
+    Building,
     BuildingType,
+    Document,
+    ItemRate,
+    Recipe,
 )
 
 
@@ -24,7 +24,7 @@ def get_user_data_dir() -> Path:
         base = Path(xdg_data_home)
     else:
         base = Path.home() / ".local" / "share"
-    
+
     app_dir = base / "satisfactory-planner"
     app_dir.mkdir(parents=True, exist_ok=True)
     return app_dir
@@ -58,7 +58,7 @@ def dict_to_recipe(data: dict[str, Any]) -> Recipe:
         if bt.value == data["building_type"]:
             building_type = bt
             break
-    
+
     return Recipe(
         id=data["id"],
         name=data["name"],
@@ -73,13 +73,13 @@ def dict_to_recipe(data: dict[str, Any]) -> Recipe:
 def load_base_recipes() -> dict[str, Recipe]:
     """Load base game recipes from recipes.json."""
     import importlib.resources
-    
+
     try:
         # Load from package data
         files = importlib.resources.files("satisfactory_planner.data")
         recipes_file = files.joinpath("recipes.json")
         data = json.loads(recipes_file.read_text())
-        
+
         recipes = {}
         for recipe_data in data.get("recipes", []):
             recipe = dict_to_recipe(recipe_data)
@@ -94,7 +94,7 @@ def load_user_recipes() -> dict[str, Recipe]:
     path = get_user_recipes_path()
     if not path.exists():
         return {}
-    
+
     try:
         data = json.loads(path.read_text())
         recipes = {}
@@ -147,7 +147,7 @@ def dict_to_building(data: dict[str, Any]) -> Building:
         if bt.value == data["building_type"]:
             building_type = bt
             break
-    
+
     return Building(
         id=data["id"],
         building_type=building_type,
@@ -208,19 +208,19 @@ def dict_to_document(data: dict[str, Any]) -> tuple[Document, dict[str, Any] | N
         Tuple of (document, view_state) where view_state may be None.
     """
     doc = Document()
-    
+
     for building_data in data.get("buildings", []):
         building = dict_to_building(building_data)
         doc.buildings[building.id] = building
-    
+
     for belt_data in data.get("belts", []):
         belt = dict_to_belt(belt_data)
         doc.belts[belt.id] = belt
-    
+
     for recipe_data in data.get("recipes", []):
         recipe = dict_to_recipe(recipe_data)
         doc.recipes[recipe.id] = recipe
-    
+
     view_state = data.get("view")
     return doc, view_state
 

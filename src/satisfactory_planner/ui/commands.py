@@ -86,7 +86,7 @@ class PlaceBuildingCommand(Command):
 
     document: Document
     building: Building
-    canvas: "FactoryCanvas"
+    canvas: FactoryCanvas
 
     def execute(self) -> None:
         if self.building.id in self.document.buildings:
@@ -113,9 +113,9 @@ class DeleteItemsCommand(Command):
     """
 
     document: Document
-    buildings: tuple["Building", ...]
-    belts: tuple["Belt", ...]
-    canvas: "FactoryCanvas"
+    buildings: tuple[Building, ...]
+    belts: tuple[Belt, ...]
+    canvas: FactoryCanvas
 
     def execute(self) -> None:
         any_deleted = False
@@ -168,7 +168,7 @@ class MoveBuildingsCommand(Command):
     """
 
     document: Document
-    canvas: "FactoryCanvas"
+    canvas: FactoryCanvas
     # Maps building_id -> (old_x, old_y, new_x, new_y)
     positions: tuple[tuple[str, float, float, float, float], ...]
 
@@ -212,12 +212,12 @@ class MoveBuildingsCommand(Command):
         """Merge consecutive move commands for same buildings."""
         if not isinstance(other, MoveBuildingsCommand):
             return None
-        
+
         self_ids = {p[0] for p in self.positions}
         other_ids = {p[0] for p in other.positions}
         if self_ids != other_ids:
             return None
-        
+
         # Merge: keep our old positions, use their new positions
         other_new = {p[0]: (p[3], p[4]) for p in other.positions}
         merged_positions = tuple(
@@ -236,8 +236,8 @@ class ConnectBeltCommand(Command):
     """Command to connect a belt between buildings."""
 
     document: Document
-    belt: "Belt"
-    canvas: "FactoryCanvas"
+    belt: Belt
+    canvas: FactoryCanvas
 
     def execute(self) -> None:
         if self.belt.id in self.document.belts:
@@ -264,7 +264,7 @@ class SetRecipeCommand(Command):
     building_id: str
     old_recipe_id: str | None
     new_recipe_id: str | None
-    canvas: "FactoryCanvas"
+    canvas: FactoryCanvas
 
     def execute(self) -> None:
         building = self.document.buildings.get(self.building_id)
@@ -299,7 +299,7 @@ class SetClockSpeedCommand(Command):
     building_id: str
     old_clock_speed: float
     new_clock_speed: float
-    canvas: "FactoryCanvas"
+    canvas: FactoryCanvas
 
     def execute(self) -> None:
         building = self.document.buildings.get(self.building_id)

@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QPainterPath
+from PySide6.QtCore import QPointF, Qt
+from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
-    QGraphicsPathItem,
     QGraphicsItem,
+    QGraphicsPathItem,
     QStyleOptionGraphicsItem,
     QWidget,
 )
 
-from satisfactory_planner.core import Belt, Building, BELT_CAPACITIES
-from satisfactory_planner.core.routing import compute_belt_path, get_arc_points, Point
+from satisfactory_planner.core import Belt, Building
+from satisfactory_planner.core.routing import Point, compute_belt_path, get_arc_points
 
 if TYPE_CHECKING:
     pass
@@ -81,12 +80,12 @@ class BeltItem(QGraphicsPathItem):
 
         path = QPainterPath()
         path.moveTo(start.x, start.y)
-        
+
         if belt_path:
             # Determine arc directions from path type
             ccw1 = belt_path.path_type[0] == 'L'
             ccw2 = belt_path.path_type[1] == 'L'
-            
+
             # Draw start arc
             arc1_points = get_arc_points(
                 belt_path.start_center,
@@ -97,10 +96,10 @@ class BeltItem(QGraphicsPathItem):
             )
             for p in arc1_points[1:]:
                 path.lineTo(p.x, p.y)
-            
+
             # Draw line segment
             path.lineTo(belt_path.line_end.x, belt_path.line_end.y)
-            
+
             # Draw end arc
             arc2_points = get_arc_points(
                 belt_path.end_center,

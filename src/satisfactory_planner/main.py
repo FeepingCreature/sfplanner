@@ -15,14 +15,14 @@ def main() -> None:
     app.setApplicationVersion("0.1.0")
 
     window = MainWindow()
-    
+
     # Open file from command line argument if provided
     args = app.arguments()
     if len(args) > 1:
         file_path = args[1]
         if Path(file_path).exists() and file_path.endswith(".sfp"):
             window._open_file(file_path)
-    
+
     window.show()
 
     sys.exit(app.exec())

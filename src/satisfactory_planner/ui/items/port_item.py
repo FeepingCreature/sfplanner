@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, QRectF, QPointF
-from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QPolygonF
+from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtGui import QBrush, QColor, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QGraphicsItem,
+    QGraphicsSceneMouseEvent,
     QStyleOptionGraphicsItem,
     QWidget,
-    QGraphicsSceneMouseEvent,
 )
 
 if TYPE_CHECKING:

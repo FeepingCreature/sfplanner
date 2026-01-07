@@ -5,28 +5,26 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, QSettings
-from PySide6.QtGui import QAction, QKeySequence, QCloseEvent
+import PySide6QtAds as ads
+from PySide6.QtCore import QSettings, Qt
+from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
-    QMainWindow,
-    QFileDialog,
-    QMessageBox,
-    QToolBar,
-    QTabWidget,
-    QWidget,
-    QVBoxLayout,
     QDialog,
-    QFormLayout,
-    QSpinBox,
-    QFontComboBox,
     QDialogButtonBox,
+    QFileDialog,
+    QFontComboBox,
+    QFormLayout,
+    QMainWindow,
+    QMessageBox,
+    QSpinBox,
+    QTabWidget,
+    QToolBar,
+    QWidget,
 )
 
-import PySide6QtAds as ads
-
 from satisfactory_planner.core import Document, FlowSolver, load_document, save_document
-from satisfactory_planner.ui.commands import CommandStack
 from satisfactory_planner.ui.canvas import FactoryCanvas
+from satisfactory_planner.ui.commands import CommandStack
 from satisfactory_planner.ui.panels.library_panel import LibraryPanel
 from satisfactory_planner.ui.panels.properties_panel import PropertiesPanel
 from satisfactory_planner.ui.panels.warnings_panel import WarningsPanel
@@ -71,7 +69,7 @@ class SettingsDialog(QDialog):
         # Grid size
         self.grid_size_spin = QSpinBox()
         self.grid_size_spin.setRange(5, 100)
-        self.grid_size_spin.setValue(20)
+        self.grid_size_spin.setValue(DEFAULT_GRID_SIZE)
         layout.addRow("Grid Size:", self.grid_size_spin)
 
         # Buttons
@@ -88,7 +86,7 @@ class SettingsDialog(QDialog):
         if font_family:
             self.font_combo.setCurrentFont(font_family)
         self.font_size_spin.setValue(int(settings.value("font_size", 10)))
-        self.grid_size_spin.setValue(int(settings.value("grid_size", 20)))
+        self.grid_size_spin.setValue(int(settings.value("grid_size", DEFAULT_GRID_SIZE)))
 
     def save_settings(self, settings: QSettings) -> None:
         """Save dialog values to settings."""
@@ -166,6 +164,7 @@ class MainWindow(QMainWindow):
 
         # Warnings panel - below properties panel
         self.warnings_panel = WarningsPanel(Document(), FlowSolver(Document()))
+        self.warnings_panel.warning_clicked.connect(self._on_warning_clicked)
         warnings_dock = ads.CDockWidget("Warnings")
         warnings_dock.setWidget(self.warnings_panel)
         self.dock_manager.addDockWidget(ads.DockWidgetArea.BottomDockWidgetArea, warnings_dock, props_dock.dockAreaWidget())
@@ -265,7 +264,7 @@ class MainWindow(QMainWindow):
 
         # Connect signals
         canvas.selection_changed.connect(self.properties_panel.set_selection)
-        
+
         # Set mutation callback (replaces document_changed signal)
         canvas._mutation_callback = lambda: self._on_document_mutated(tab)
 
@@ -273,7 +272,7 @@ class MainWindow(QMainWindow):
         index = self.tab_widget.addTab(canvas, tab.name)
         self.tabs.append(tab)
         self.tab_widget.setCurrentIndex(index)
-        
+
         # Ensure current_tab is set (signal might not fire on first tab)
         self.current_tab = tab
         self._on_tab_changed(index)
@@ -285,7 +284,7 @@ class MainWindow(QMainWindow):
             return
 
         tab = self.tabs[index]
-        
+
         # Check for unsaved changes
         if tab.dirty:
             result = QMessageBox.question(
@@ -345,20 +344,20 @@ class MainWindow(QMainWindow):
         """Open a file by path. Returns True on success."""
         try:
             document, view_state = load_document(path)
-            
+
             # Create new tab with loaded document
             tab = DocumentTab(Path(path).stem)
             tab.document = document
             tab.command_stack = CommandStack()
             tab.flow_solver = FlowSolver(document)
             tab.file_path = path
-            
+
             canvas = FactoryCanvas(tab.document, tab.command_stack)
             tab.canvas = canvas
-            
+
             # Refresh canvas to show loaded buildings/belts
             canvas.refresh()
-            
+
             # Restore view state (zoom, pan)
             if view_state:
                 if "scale" in view_state:
@@ -367,20 +366,20 @@ class MainWindow(QMainWindow):
                     canvas.scale(scale, scale)
                 if "center_x" in view_state and "center_y" in view_state:
                     canvas.centerOn(view_state["center_x"], view_state["center_y"])
-            
+
             # Connect signals
             canvas.selection_changed.connect(self.properties_panel.set_selection)
-            
+
             # Set mutation callback (replaces document_changed signal)
             canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)
-            
+
             # Add tab
             index = self.tab_widget.addTab(canvas, tab.name)
             self.tabs.append(tab)
             self.tab_widget.setCurrentIndex(index)
-            
+
             return True
-            
+
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to open file:\n{e}")
             return False
@@ -389,7 +388,7 @@ class MainWindow(QMainWindow):
         """Save the document to file."""
         if not self.current_tab:
             return
-        
+
         # If already has a path, save directly; otherwise prompt
         if self.current_tab.file_path:
             path = self.current_tab.file_path
@@ -397,13 +396,13 @@ class MainWindow(QMainWindow):
             path, _ = QFileDialog.getSaveFileName(
                 self, "Save Project", "", "Satisfactory Planner (*.sfp)"
             )
-        
+
         if path:
             try:
                 # Ensure .sfp extension
                 if not path.endswith(".sfp"):
                     path += ".sfp"
-                
+
                 # Capture view state from canvas
                 view_state = None
                 if self.current_tab.canvas:
@@ -415,16 +414,16 @@ class MainWindow(QMainWindow):
                         "center_x": center.x(),
                         "center_y": center.y(),
                     }
-                
+
                 save_document(self.current_tab.document, path, view_state)
                 self.current_tab.file_path = path
                 self.current_tab.name = Path(path).stem
                 self.current_tab.dirty = False
-                
+
                 # Update tab title (remove dirty indicator)
                 current_index = self.tab_widget.currentIndex()
                 self.tab_widget.setTabText(current_index, self.current_tab.name)
-                
+
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to save file:\n{e}")
 
@@ -440,7 +439,7 @@ class MainWindow(QMainWindow):
     def _apply_settings(self) -> None:
         """Apply current settings."""
         # Apply grid size to all canvases
-        grid_size = int(self.settings.value("grid_size", 20))
+        grid_size = int(self.settings.value("grid_size", DEFAULT_GRID_SIZE))
         for tab in self.tabs:
             if tab.canvas:
                 tab.canvas._grid_size = grid_size
@@ -475,6 +474,36 @@ class MainWindow(QMainWindow):
         """Update the warnings panel."""
         self.warnings_panel.refresh()
         self._update_undo_redo_state()
+
+    def _on_warning_clicked(self, element_id: str) -> None:
+        """Navigate to and select the element referenced by a warning."""
+        if not self.current_tab or not self.current_tab.canvas:
+            return
+
+        canvas = self.current_tab.canvas
+        doc = self.current_tab.document
+
+        # Find the element (could be building or belt)
+        if element_id in doc.buildings:
+            building = doc.buildings[element_id]
+            # Select and center on the building
+            canvas.scene().clearSelection()
+            for item in canvas.scene().items():
+                from satisfactory_planner.ui.items import BuildingItem
+                if isinstance(item, BuildingItem) and item.building.id == element_id:
+                    item.setSelected(True)
+                    canvas.centerOn(item)
+                    break
+        elif element_id in doc.belts:
+            belt = doc.belts[element_id]
+            # Select and center on the belt
+            canvas.scene().clearSelection()
+            for item in canvas.scene().items():
+                from satisfactory_planner.ui.items import BeltItem
+                if isinstance(item, BeltItem) and item.belt.id == element_id:
+                    item.setSelected(True)
+                    canvas.centerOn(item)
+                    break
 
     def _update_undo_redo_state(self) -> None:
         """Update undo/redo action enabled state."""

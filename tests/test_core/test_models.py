@@ -3,14 +3,14 @@
 import pytest
 
 from satisfactory_planner.core.models import (
+    BELT_CAPACITIES,
+    Belt,
     Building,
     BuildingType,
-    Belt,
     Document,
-    Recipe,
     ItemRate,
+    Recipe,
     generate_id,
-    BELT_CAPACITIES,
 )
 
 

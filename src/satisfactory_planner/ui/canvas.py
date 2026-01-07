@@ -4,32 +4,42 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, Signal, QPointF, QRectF
-from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QWheelEvent, QMouseEvent, QDragEnterEvent, QDropEvent
+from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QDragEnterEvent,
+    QDropEvent,
+    QMouseEvent,
+    QPainter,
+    QPen,
+    QWheelEvent,
+)
 from PySide6.QtWidgets import (
-    QGraphicsView,
-    QGraphicsScene,
     QGraphicsItem,
     QGraphicsPathItem,
+    QGraphicsScene,
+    QGraphicsView,
 )
 
 from satisfactory_planner.core import (
-    Document,
-    BuildingType,
-    Building,
     Belt,
-)
-from satisfactory_planner.ui.commands import (
-    CommandStack,
-    PlaceBuildingCommand,
-    DeleteItemsCommand,
-    MoveBuildingsCommand,
-    ConnectBeltCommand,
+    Building,
+    BuildingType,
+    Document,
 )
 from satisfactory_planner.core.models import generate_id
-from satisfactory_planner.ui.items.building_item import BuildingItem
+from satisfactory_planner.core.routing import Point, compute_belt_path, get_arc_points
+from satisfactory_planner.ui.commands import (
+    DEFAULT_GRID_SIZE,
+    CommandStack,
+    ConnectBeltCommand,
+    DeleteItemsCommand,
+    MoveBuildingsCommand,
+    PlaceBuildingCommand,
+)
 from satisfactory_planner.ui.items.belt_item import BeltItem
-from satisfactory_planner.core.routing import compute_belt_path, get_arc_points, Point
+from satisfactory_planner.ui.items.building_item import BuildingItem
 
 if TYPE_CHECKING:
     pass
@@ -38,7 +48,7 @@ if TYPE_CHECKING:
 class GhostBuildingItem(BuildingItem):
     """Semi-transparent preview of building being placed."""
 
-    def __init__(self, building: Building, canvas: "FactoryCanvas") -> None:
+    def __init__(self, building: Building, canvas: FactoryCanvas) -> None:
         super().__init__(building, canvas)
         self.setOpacity(0.6)
         self.setFlag(QGraphicsItem.ItemIsSelectable, False)
@@ -76,7 +86,7 @@ class FactoryCanvas(QGraphicsView):
         self._connect_start_building: str | None = None
         self._connect_start_port: int = 0
         self._grid_snap = True
-        self._grid_size = 20
+        self._grid_size = DEFAULT_GRID_SIZE
 
         # Item tracking
         self._building_items: dict[str, BuildingItem] = {}
@@ -110,7 +120,7 @@ class FactoryCanvas(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
         self.setDragMode(QGraphicsView.NoDrag)
-        
+
         # Make canvas focusable for keyboard events
         self.setFocusPolicy(Qt.StrongFocus)
 
@@ -127,6 +137,20 @@ class FactoryCanvas(QGraphicsView):
         """Enable or disable grid snapping."""
         self._grid_snap = enabled
         self.viewport().update()
+
+    @property
+    def grid_snap(self) -> bool:
+        """Return whether grid snapping is enabled."""
+        return self._grid_snap
+
+    @property
+    def grid_size(self) -> int:
+        """Return the grid size."""
+        return self._grid_size
+
+    def update_belts_for_building(self, building_id: str) -> None:
+        """Redraw all belts connected to a building."""
+        self._update_belts_for_building(building_id)
 
     def set_placement_mode(self, building_type: BuildingType | None) -> None:
         """Enter placement mode for a building type."""
@@ -172,7 +196,7 @@ class FactoryCanvas(QGraphicsView):
             self._add_belt_item(belt)
 
     # CommandHandler protocol implementation
-    
+
     def add_building_item(self, building: Building) -> BuildingItem:
         """Add a building item to the scene (CommandHandler protocol)."""
         item = BuildingItem(building, self)
@@ -309,7 +333,7 @@ class FactoryCanvas(QGraphicsView):
         if self._drag_preview and self._drag_start_pos:
             scene_pos = self.mapToScene(event.pos())
             self._update_drag_preview(scene_pos)
-            
+
             # Check if hovering over a valid input port
             from satisfactory_planner.ui.items.port_item import PortItem
             new_target = None
@@ -317,7 +341,7 @@ class FactoryCanvas(QGraphicsView):
                 if isinstance(item, PortItem) and not item.is_output:
                     new_target = item
                     break
-            
+
             # Update hover state if target changed
             if new_target != self._hover_target_port:
                 if self._hover_target_port:
@@ -350,7 +374,7 @@ class FactoryCanvas(QGraphicsView):
             # Check if we're over an input port - if not, cancel
             scene_pos = self.mapToScene(event.pos())
             from satisfactory_planner.ui.items.port_item import PortItem
-            
+
             # Find all items at this point and look for an input port
             for item in self._scene.items(scene_pos):
                 if isinstance(item, PortItem) and not item.is_output:
@@ -363,7 +387,7 @@ class FactoryCanvas(QGraphicsView):
                     self.complete_belt_connection(item.building_id, item.port_index)
                     super().mouseReleaseEvent(event)
                     return
-            
+
             # No input port found - cancel
             self.cancel_belt_connection()
 
@@ -468,13 +492,13 @@ class FactoryCanvas(QGraphicsView):
         # Check if output port is already connected
         if self.document.is_port_connected(building_id, port_index, True):
             return  # Don't allow starting a new connection from an already-connected output
-        
+
         self._is_connecting = True
         self._connect_start_building = building_id
         self._connect_start_port = port_index
         self._drag_start_pos = start_pos
         self.setCursor(Qt.CrossCursor)
-        
+
         # Get start direction from the source building
         building = self.document.buildings.get(building_id)
         if building:
@@ -493,34 +517,35 @@ class FactoryCanvas(QGraphicsView):
     def is_dragging_belt(self) -> bool:
         """Return True if currently dragging a belt connection."""
         return self._is_connecting and self._drag_preview is not None
-    
+
     def _update_drag_preview(self, end_pos: QPointF) -> None:
         """Update the drag preview path to the given end position."""
         import math
+
         from PySide6.QtGui import QPainterPath
-        
+
         if not self._drag_preview or not self._drag_start_pos:
             return
-        
+
         start = Point(self._drag_start_pos.x(), self._drag_start_pos.y())
         end = Point(end_pos.x(), end_pos.y())
-        
+
         # Default end direction: direction of travel toward end point
         dx = end_pos.x() - self._drag_start_pos.x()
         dy = end_pos.y() - self._drag_start_pos.y()
         end_dir = math.atan2(dy, dx)
-        
+
         # Compute Dubins path
         belt_path = compute_belt_path(start, self._drag_start_dir, end, end_dir)
-        
+
         path = QPainterPath()
         path.moveTo(start.x, start.y)
-        
+
         if belt_path:
             # Determine arc directions from path type
             ccw1 = belt_path.path_type[0] == 'L'
             ccw2 = belt_path.path_type[1] == 'L'
-            
+
             # Draw start arc
             arc1_points = get_arc_points(
                 belt_path.start_center,
@@ -531,10 +556,10 @@ class FactoryCanvas(QGraphicsView):
             )
             for p in arc1_points[1:]:
                 path.lineTo(p.x, p.y)
-            
+
             # Draw line segment
             path.lineTo(belt_path.line_end.x, belt_path.line_end.y)
-            
+
             # Draw end arc
             arc2_points = get_arc_points(
                 belt_path.end_center,
@@ -548,7 +573,7 @@ class FactoryCanvas(QGraphicsView):
         else:
             # Fallback to straight line
             path.lineTo(end.x, end.y)
-        
+
         self._drag_preview.setPath(path)
 
     def start_belt_connection(self, building_id: str, port_index: int) -> None:
@@ -624,19 +649,19 @@ class FactoryCanvas(QGraphicsView):
         building = self.document.buildings.get(building_id)
         if not building:
             return
-            
+
         item = self._building_items.get(building_id)
         if not item:
             return
-        
+
         # Get the new position from the visual item (may have grid snap applied)
         new_x = item.pos().x()
         new_y = item.pos().y()
-        
+
         # Sync model to visual position
         building.x = new_x
         building.y = new_y
-        
+
         # Create immutable command with captured positions
         cmd = MoveBuildingsCommand(
             document=self.document,

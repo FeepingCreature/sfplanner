@@ -1,11 +1,10 @@
 """Tests for the factory canvas."""
 
-import pytest
-from PySide6.QtCore import Qt, QPointF
+from PySide6.QtCore import QPointF
 
-from satisfactory_planner.core.models import Document, BuildingType
-from satisfactory_planner.ui.commands import CommandStack
+from satisfactory_planner.core.models import BuildingType, Document
 from satisfactory_planner.ui.canvas import FactoryCanvas
+from satisfactory_planner.ui.commands import CommandStack
 
 
 class TestFactoryCanvas:
