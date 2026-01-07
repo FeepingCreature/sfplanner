@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal, QMimeData, QPoint
-from PySide6.QtGui import QDrag, QPixmap, QPainter, QColor
+from PySide6.QtCore import Qt, Signal, QMimeData, QPoint, QSize, QRect
+from PySide6.QtGui import QDrag, QPixmap, QPainter, QColor, QFont, QPen, QBrush
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QTreeWidget,
     QTreeWidgetItem,
     QAbstractItemView,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
 )
 
 from satisfactory_planner.core import BuildingType, BUILDING_METADATA
@@ -17,20 +19,188 @@ from satisfactory_planner.core import BuildingType, BUILDING_METADATA
 
 # Building info: (description, extra_info)
 BUILDING_INFO: dict[BuildingType, tuple[str, str]] = {
-    BuildingType.SMELTER: ("Smelts ore into ingots", "1 input → 1 output"),
-    BuildingType.FOUNDRY: ("Alloy smelting", "2 inputs → 1 output"),
-    BuildingType.CONSTRUCTOR: ("Basic crafting", "1 input → 1 output"),
-    BuildingType.ASSEMBLER: ("Two-part assembly", "2 inputs → 1 output"),
-    BuildingType.MANUFACTURER: ("Complex crafting", "4 inputs → 1 output"),
-    BuildingType.REFINERY: ("Fluid processing", "2 inputs → 2 outputs"),
-    BuildingType.PACKAGER: ("Fluid packaging", "2 inputs → 2 outputs"),
-    BuildingType.BLENDER: ("Fluid blending", "4 inputs → 2 outputs"),
+    BuildingType.SMELTER: ("Smelts ore into ingots", "1 in → 1 out"),
+    BuildingType.FOUNDRY: ("Alloy smelting", "2 in → 1 out"),
+    BuildingType.CONSTRUCTOR: ("Basic crafting", "1 in → 1 out"),
+    BuildingType.ASSEMBLER: ("Two-part assembly", "2 in → 1 out"),
+    BuildingType.MANUFACTURER: ("Complex crafting", "4 in → 1 out"),
+    BuildingType.REFINERY: ("Fluid processing", "2 in → 2 out"),
+    BuildingType.PACKAGER: ("Fluid packaging", "2 in → 2 out"),
+    BuildingType.BLENDER: ("Fluid blending", "4 in → 2 out"),
     BuildingType.MINER_MK1: ("60/min base rate", "Extracts ore"),
     BuildingType.MINER_MK2: ("120/min base rate", "Extracts ore"),
     BuildingType.MINER_MK3: ("240/min base rate", "Extracts ore"),
     BuildingType.SPLITTER: ("1 → 3 split", "Divides belt"),
     BuildingType.MERGER: ("3 → 1 merge", "Combines belts"),
 }
+
+# Building colors (matching building_item.py)
+BUILDING_COLORS: dict[BuildingType, QColor] = {
+    BuildingType.SMELTER: QColor(200, 100, 50),
+    BuildingType.FOUNDRY: QColor(180, 80, 40),
+    BuildingType.CONSTRUCTOR: QColor(80, 150, 200),
+    BuildingType.ASSEMBLER: QColor(100, 180, 100),
+    BuildingType.MANUFACTURER: QColor(150, 100, 180),
+    BuildingType.REFINERY: QColor(120, 120, 180),
+    BuildingType.PACKAGER: QColor(100, 150, 150),
+    BuildingType.BLENDER: QColor(180, 150, 100),
+    BuildingType.MINER_MK1: QColor(150, 120, 80),
+    BuildingType.MINER_MK2: QColor(160, 130, 90),
+    BuildingType.MINER_MK3: QColor(170, 140, 100),
+    BuildingType.SPLITTER: QColor(200, 200, 100),
+    BuildingType.MERGER: QColor(100, 200, 200),
+}
+
+# Item dimensions
+ICON_SIZE = 36
+ITEM_HEIGHT = 52
+ITEM_PADDING = 4
+
+
+class BuildingItemDelegate(QStyledItemDelegate):
+    """Custom delegate for 3-line building items with icon."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+
+    def sizeHint(self, option: QStyleOptionViewItem, index) -> QSize:
+        """Return appropriate size for building items."""
+        # Check if this is a building item (has UserRole data)
+        building_type = index.data(Qt.UserRole)
+        if building_type:
+            return QSize(option.rect.width(), ITEM_HEIGHT)
+        # Category headers use default size
+        return super().sizeHint(option, index)
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index) -> None:
+        """Paint the building item with icon, name, and info."""
+        building_type = index.data(Qt.UserRole)
+        
+        if not building_type:
+            # Category header - use default painting
+            super().paint(painter, option, index)
+            return
+
+        painter.save()
+        
+        # Draw selection/hover background
+        if option.state & option.State_Selected:
+            painter.fillRect(option.rect, QColor(80, 80, 100))
+        elif option.state & option.State_MouseOver:
+            painter.fillRect(option.rect, QColor(60, 60, 70))
+
+        rect = option.rect.adjusted(ITEM_PADDING, ITEM_PADDING, -ITEM_PADDING, -ITEM_PADDING)
+        
+        # Draw building icon (colored square with mini building preview)
+        icon_rect = QRect(rect.left(), rect.top(), ICON_SIZE, ICON_SIZE)
+        self._draw_building_icon(painter, icon_rect, building_type)
+        
+        # Text area to the right of icon
+        text_left = icon_rect.right() + ITEM_PADDING * 2
+        text_rect = QRect(text_left, rect.top(), rect.right() - text_left, rect.height())
+        
+        # Line 1: Building name (bold)
+        font = painter.font()
+        font.setBold(True)
+        font.setPointSize(9)
+        painter.setFont(font)
+        painter.setPen(QColor(255, 255, 255))
+        
+        name_rect = QRect(text_rect.left(), text_rect.top(), text_rect.width(), 16)
+        painter.drawText(name_rect, Qt.AlignLeft | Qt.AlignVCenter, building_type.value)
+        
+        # Line 2: Description (smaller, gray)
+        info = BUILDING_INFO.get(building_type, ("", ""))
+        font.setBold(False)
+        font.setPointSize(8)
+        painter.setFont(font)
+        painter.setPen(QColor(180, 180, 180))
+        
+        desc_rect = QRect(text_rect.left(), text_rect.top() + 16, text_rect.width(), 14)
+        painter.drawText(desc_rect, Qt.AlignLeft | Qt.AlignVCenter, info[0])
+        
+        # Line 3: Port info (even smaller, dimmer)
+        font.setPointSize(7)
+        painter.setFont(font)
+        painter.setPen(QColor(140, 140, 140))
+        
+        port_rect = QRect(text_rect.left(), text_rect.top() + 30, text_rect.width(), 12)
+        painter.drawText(port_rect, Qt.AlignLeft | Qt.AlignVCenter, info[1])
+        
+        painter.restore()
+
+    def _draw_building_icon(self, painter: QPainter, rect: QRect, building_type: BuildingType) -> None:
+        """Draw a mini building preview as the icon."""
+        color = BUILDING_COLORS.get(building_type, QColor(150, 150, 150))
+        
+        # Draw building body
+        painter.setBrush(QBrush(color))
+        painter.setPen(QPen(QColor(255, 255, 255), 1))
+        
+        # Use full icon rect for the building shape
+        building_rect = rect.adjusted(2, 2, -2, -2)
+        painter.drawRect(building_rect)
+        
+        # Draw ports
+        meta = BUILDING_METADATA.get(building_type, (80, 60, 1, 1))
+        num_inputs = meta[2]
+        num_outputs = meta[3]
+        
+        port_radius = 3
+        
+        # Input ports (left side, yellow)
+        painter.setBrush(QBrush(QColor(230, 180, 50)))
+        painter.setPen(QPen(QColor(200, 150, 30), 1))
+        
+        if building_type == BuildingType.SPLITTER:
+            # Single input on left
+            py = building_rect.center().y()
+            painter.drawEllipse(building_rect.left() - port_radius, int(py) - port_radius, 
+                              port_radius * 2, port_radius * 2)
+        elif building_type == BuildingType.MERGER:
+            # 3 inputs: top, left, bottom
+            positions = [
+                (building_rect.center().x(), building_rect.top()),
+                (building_rect.left(), building_rect.center().y()),
+                (building_rect.center().x(), building_rect.bottom()),
+            ]
+            for px, py in positions:
+                painter.drawEllipse(int(px) - port_radius, int(py) - port_radius,
+                                  port_radius * 2, port_radius * 2)
+        else:
+            # Standard inputs on left
+            for i in range(num_inputs):
+                spacing = building_rect.height() / (num_inputs + 1)
+                py = building_rect.top() + spacing * (i + 1)
+                painter.drawEllipse(building_rect.left() - port_radius, int(py) - port_radius,
+                                  port_radius * 2, port_radius * 2)
+        
+        # Output ports (right side, green)
+        painter.setBrush(QBrush(QColor(100, 200, 100)))
+        painter.setPen(QPen(QColor(70, 170, 70), 1))
+        
+        if building_type == BuildingType.MERGER:
+            # Single output on right
+            py = building_rect.center().y()
+            painter.drawEllipse(building_rect.right() - port_radius, int(py) - port_radius,
+                              port_radius * 2, port_radius * 2)
+        elif building_type == BuildingType.SPLITTER:
+            # 3 outputs: top, right, bottom
+            positions = [
+                (building_rect.center().x(), building_rect.top()),
+                (building_rect.right(), building_rect.center().y()),
+                (building_rect.center().x(), building_rect.bottom()),
+            ]
+            for px, py in positions:
+                painter.drawEllipse(int(px) - port_radius, int(py) - port_radius,
+                                  port_radius * 2, port_radius * 2)
+        else:
+            # Standard outputs on right
+            for i in range(num_outputs):
+                spacing = building_rect.height() / (num_outputs + 1)
+                py = building_rect.top() + spacing * (i + 1)
+                painter.drawEllipse(building_rect.right() - port_radius, int(py) - port_radius,
+                                  port_radius * 2, port_radius * 2)
 
 
 class BuildingTreeItem(QTreeWidgetItem):
@@ -43,11 +213,13 @@ class BuildingTreeItem(QTreeWidgetItem):
         info = BUILDING_INFO.get(building_type, ("", ""))
         meta = BUILDING_METADATA.get(building_type, (80, 60, 1, 1))
 
-        # Main text is the building name
+        # Main text is the building name (used by delegate)
         self.setText(0, building_type.value)
         # Store extra info for tooltip
         self.setToolTip(0, f"{info[0]}\n{info[1]}\nSize: {meta[0]}x{meta[1]}")
         self.setData(0, Qt.UserRole, building_type)
+        # Set size hint for this item
+        self.setSizeHint(0, QSize(200, ITEM_HEIGHT))
 
 
 class LibraryPanel(QWidget):
@@ -135,6 +307,10 @@ class LibraryPanel(QWidget):
         self.tree.addTopLevelItem(blueprints_item)
         blueprints_item.setExpanded(True)
 
+        # Set custom delegate for rich item rendering
+        self.tree.setItemDelegate(BuildingItemDelegate(self.tree))
+        self.tree.setMouseTracking(True)  # Enable hover effects
+
         # Connect signals
         self.tree.itemClicked.connect(self._on_item_clicked)
         self.tree.startDrag = self._start_drag  # type: ignore[method-assign]
@@ -164,14 +340,122 @@ class LibraryPanel(QWidget):
         mime_data.setData("application/x-building-type", building_type.value.encode())
         drag.setMimeData(mime_data)
 
-        # Create a simple pixmap for drag preview
-        pixmap = QPixmap(60, 40)
-        pixmap.fill(QColor(100, 100, 100, 180))
-        painter = QPainter(pixmap)
-        painter.setPen(QColor(255, 255, 255))
-        painter.drawText(pixmap.rect(), Qt.AlignCenter, building_type.value[:8])
-        painter.end()
+        # Create full building preview pixmap
+        pixmap = self._create_building_pixmap(building_type)
         drag.setPixmap(pixmap)
-        drag.setHotSpot(QPoint(30, 20))
+        drag.setHotSpot(QPoint(pixmap.width() // 2, pixmap.height() // 2))
 
         drag.exec(Qt.CopyAction)
+
+    def _create_building_pixmap(self, building_type: BuildingType) -> QPixmap:
+        """Create a pixmap showing the full building with ports."""
+        meta = BUILDING_METADATA.get(building_type, (80, 60, 1, 1))
+        
+        # Use display size (smaller for logistics)
+        if building_type in (BuildingType.SPLITTER, BuildingType.MERGER):
+            w, h = 40, 40
+        else:
+            w, h = meta[0], meta[1]
+        
+        num_inputs = meta[2]
+        num_outputs = meta[3]
+        
+        # Add padding for ports
+        padding = 12
+        pixmap = QPixmap(w + padding * 2, h + padding * 2)
+        pixmap.fill(Qt.transparent)
+        
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Building rect (centered in pixmap)
+        bx, by = padding, padding
+        
+        # Draw building body
+        color = BUILDING_COLORS.get(building_type, QColor(150, 150, 150))
+        painter.setBrush(QBrush(color))
+        painter.setPen(QPen(QColor(255, 255, 255), 2))
+        painter.drawRect(bx, by, w, h)
+        
+        # Draw building name
+        painter.setPen(QPen(QColor(255, 255, 255)))
+        font = QFont()
+        font.setPointSize(7 if building_type in (BuildingType.SPLITTER, BuildingType.MERGER) else 8)
+        painter.setFont(font)
+        
+        name = building_type.value
+        if building_type == BuildingType.SPLITTER:
+            name = "SPL"
+        elif building_type == BuildingType.MERGER:
+            name = "MRG"
+        
+        painter.drawText(QRect(bx, by, w, h), Qt.AlignCenter, name)
+        
+        # Port styling
+        port_radius = 6
+        arrow_size = 4
+        
+        # Helper to draw port with arrow
+        def draw_port(px: int, py: int, is_output: bool, angle: float) -> None:
+            # Port circle
+            if is_output:
+                painter.setBrush(QBrush(QColor(100, 200, 100)))
+                painter.setPen(QPen(QColor(70, 170, 70), 1))
+            else:
+                painter.setBrush(QBrush(QColor(230, 180, 50)))
+                painter.setPen(QPen(QColor(200, 150, 30), 1))
+            
+            painter.drawEllipse(px - port_radius, py - port_radius, 
+                              port_radius * 2, port_radius * 2)
+            
+            # Arrow
+            import math
+            painter.setPen(QPen(QColor(255, 255, 255), 1.5))
+            rad = math.radians(angle)
+            
+            # Arrow points in direction of flow
+            tip_x = px + math.cos(rad) * (port_radius - 2)
+            tip_y = py + math.sin(rad) * (port_radius - 2)
+            base_x = px - math.cos(rad) * (port_radius - 3)
+            base_y = py - math.sin(rad) * (port_radius - 3)
+            
+            # Draw arrow line
+            painter.drawLine(int(base_x), int(base_y), int(tip_x), int(tip_y))
+            
+            # Arrow head
+            head_angle1 = rad + math.radians(140)
+            head_angle2 = rad - math.radians(140)
+            h1x = tip_x + math.cos(head_angle1) * arrow_size
+            h1y = tip_y + math.sin(head_angle1) * arrow_size
+            h2x = tip_x + math.cos(head_angle2) * arrow_size
+            h2y = tip_y + math.sin(head_angle2) * arrow_size
+            painter.drawLine(int(tip_x), int(tip_y), int(h1x), int(h1y))
+            painter.drawLine(int(tip_x), int(tip_y), int(h2x), int(h2y))
+        
+        # Draw ports based on building type
+        if building_type == BuildingType.SPLITTER:
+            # 1 input left, 3 outputs (top, right, bottom)
+            draw_port(bx, by + h // 2, False, 180)
+            draw_port(bx + w // 2, by, True, 270)
+            draw_port(bx + w, by + h // 2, True, 0)
+            draw_port(bx + w // 2, by + h, True, 90)
+        elif building_type == BuildingType.MERGER:
+            # 3 inputs (top, left, bottom), 1 output right
+            draw_port(bx + w // 2, by, False, 270)
+            draw_port(bx, by + h // 2, False, 180)
+            draw_port(bx + w // 2, by + h, False, 90)
+            draw_port(bx + w, by + h // 2, True, 0)
+        else:
+            # Standard: inputs left, outputs right
+            for i in range(num_inputs):
+                spacing = h / (num_inputs + 1)
+                py = by + int(spacing * (i + 1))
+                draw_port(bx, py, False, 180)
+            
+            for i in range(num_outputs):
+                spacing = h / (num_outputs + 1)
+                py = by + int(spacing * (i + 1))
+                draw_port(bx + w, py, True, 0)
+        
+        painter.end()
+        return pixmap

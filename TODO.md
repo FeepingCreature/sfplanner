@@ -30,7 +30,7 @@
 - [x] Recipe editor dialog
 
 ## Polish Items
-- [ ] Library panel: 3-line entries with icon spacer, info on second line
+- [x] Library panel: 3-line entries with icon spacer, info on second line
 - [ ] Copy/paste
 - [ ] Keyboard shortcuts
 - [ ] Building detailed rendering (room for future expansion)

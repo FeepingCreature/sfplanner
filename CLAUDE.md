@@ -2,6 +2,9 @@
 
 A PCB-style factory floor planner for Satisfactory with manual building/belt placement.
 
+## Tool Framework Feedback
+The Forge tool framework is malleable - please suggest improvements and wishes for better tooling!
+
 ## Tech Stack
 - Python 3.11+, PySide6, PySide6-QtAds for docking
 - pytest + pytest-qt for testing
