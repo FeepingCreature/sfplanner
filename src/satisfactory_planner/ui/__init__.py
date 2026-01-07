@@ -2,7 +2,6 @@
 
 from satisfactory_planner.ui.commands import (
     Command,
-    CommandHandler,
     CommandStack,
     PlaceBuildingCommand,
     DeleteItemsCommand,
@@ -14,7 +13,6 @@ from satisfactory_planner.ui.commands import (
 
 __all__ = [
     "Command",
-    "CommandHandler",
     "CommandStack",
     "ConnectBeltCommand",
     "DeleteItemsCommand",

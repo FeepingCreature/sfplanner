@@ -1,6 +1,7 @@
 """Tests for command pattern and undo/redo."""
 
 import pytest
+from unittest.mock import Mock
 
 from satisfactory_planner.core.models import Document, Building, Belt, BuildingType
 from satisfactory_planner.ui.commands import (
@@ -13,6 +14,19 @@ from satisfactory_planner.ui.commands import (
 )
 
 
+def make_mock_canvas() -> Mock:
+    """Create a mock canvas for testing commands."""
+    canvas = Mock()
+    canvas.add_building_item = Mock()
+    canvas.remove_building_item = Mock()
+    canvas.add_belt_item = Mock()
+    canvas.remove_belt_item = Mock()
+    canvas.refresh_building = Mock()
+    canvas.refresh_belts_for_building = Mock()
+    canvas.notify_mutation = Mock()
+    return canvas
+
+
 class TestCommandStack:
     """Tests for the command stack."""
 
@@ -20,9 +34,10 @@ class TestCommandStack:
         """Commands can be executed and undone."""
         doc = Document()
         stack = CommandStack()
+        canvas = make_mock_canvas()
 
         building = Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0)
-        cmd = PlaceBuildingCommand(document=doc, building=building)
+        cmd = PlaceBuildingCommand(document=doc, building=building, canvas=canvas)
 
         stack.execute(cmd)
         assert "b1" in doc.buildings
@@ -34,9 +49,10 @@ class TestCommandStack:
         """Undone commands can be redone."""
         doc = Document()
         stack = CommandStack()
+        canvas = make_mock_canvas()
 
         building = Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0)
-        cmd = PlaceBuildingCommand(document=doc, building=building)
+        cmd = PlaceBuildingCommand(document=doc, building=building, canvas=canvas)
 
         stack.execute(cmd)
         stack.undo()
@@ -49,15 +65,16 @@ class TestCommandStack:
         """Executing a new command clears the redo stack."""
         doc = Document()
         stack = CommandStack()
+        canvas = make_mock_canvas()
 
         b1 = Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0)
         b2 = Building(id="b2", building_type=BuildingType.CONSTRUCTOR, x=100, y=0)
 
-        stack.execute(PlaceBuildingCommand(document=doc, building=b1))
+        stack.execute(PlaceBuildingCommand(document=doc, building=b1, canvas=canvas))
         stack.undo()
 
         # Execute a new command
-        stack.execute(PlaceBuildingCommand(document=doc, building=b2))
+        stack.execute(PlaceBuildingCommand(document=doc, building=b2, canvas=canvas))
 
         # Redo should not bring back b1
         assert not stack.can_redo()
@@ -71,9 +88,14 @@ class TestMoveBuildingsCommand:
         doc = Document()
         building = Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0)
         doc.add_building(building)
+        canvas = make_mock_canvas()
 
         stack = CommandStack()
-        cmd = MoveBuildingsCommand(document=doc, building_ids=["b1"], dx=50, dy=30)
+        cmd = MoveBuildingsCommand(
+            document=doc,
+            canvas=canvas,
+            positions=(("b1", 0, 0, 50, 30),),
+        )
 
         stack.execute(cmd)
         assert doc.buildings["b1"].x == 50
@@ -88,13 +110,14 @@ class TestMoveBuildingsCommand:
         doc = Document()
         building = Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0)
         doc.add_building(building)
+        canvas = make_mock_canvas()
 
         stack = CommandStack()
 
-        # Simulate dragging in small increments
-        stack.execute(MoveBuildingsCommand(document=doc, building_ids=["b1"], dx=10, dy=0))
-        stack.execute(MoveBuildingsCommand(document=doc, building_ids=["b1"], dx=10, dy=0))
-        stack.execute(MoveBuildingsCommand(document=doc, building_ids=["b1"], dx=10, dy=0))
+        # Simulate dragging in small increments (old_x, old_y, new_x, new_y)
+        stack.execute(MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 0, 0, 10, 0),)))
+        stack.execute(MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 10, 0, 20, 0),)))
+        stack.execute(MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 20, 0, 30, 0),)))
 
         # Should have merged into one command
         assert len(stack.undo_stack) == 1
@@ -113,9 +136,10 @@ class TestDeleteItemsCommand:
         doc = Document()
         building = Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0)
         doc.add_building(building)
+        canvas = make_mock_canvas()
 
         stack = CommandStack()
-        cmd = DeleteItemsCommand(document=doc, building_ids=["b1"], belt_ids=[])
+        cmd = DeleteItemsCommand(document=doc, buildings=(building,), belts=(), canvas=canvas)
 
         stack.execute(cmd)
         assert "b1" not in doc.buildings
@@ -131,9 +155,10 @@ class TestDeleteItemsCommand:
             dest_building_id="b", dest_port_index=0
         )
         doc.add_belt(belt)
+        canvas = make_mock_canvas()
 
         stack = CommandStack()
-        cmd = DeleteItemsCommand(document=doc, building_ids=[], belt_ids=["belt1"])
+        cmd = DeleteItemsCommand(document=doc, buildings=(), belts=(belt,), canvas=canvas)
 
         stack.execute(cmd)
         assert "belt1" not in doc.belts
@@ -150,9 +175,16 @@ class TestSetClockSpeedCommand:
         doc = Document()
         building = Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0)
         doc.add_building(building)
+        canvas = make_mock_canvas()
 
         stack = CommandStack()
-        cmd = SetClockSpeedCommand(document=doc, building_id="b1", new_clock_speed=1.5)
+        cmd = SetClockSpeedCommand(
+            document=doc,
+            building_id="b1",
+            old_clock_speed=1.0,
+            new_clock_speed=1.5,
+            canvas=canvas,
+        )
 
         stack.execute(cmd)
         assert doc.buildings["b1"].clock_speed == 1.5

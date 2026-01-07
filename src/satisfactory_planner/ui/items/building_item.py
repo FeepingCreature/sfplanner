@@ -230,13 +230,15 @@ class BuildingItem(QGraphicsRectItem):
 
         if self._drag_start_pos is not None:
             new_pos = self.pos()
-            dx = new_pos.x() - self._drag_start_pos.x()
-            dy = new_pos.y() - self._drag_start_pos.y()
-
-            if dx != 0 or dy != 0:
-                # DON'T update building.x/y here - the command will do it
-                # Just notify canvas to create the command
-                self.canvas.on_building_moved(self.building.id, dx, dy)
+            
+            # Only create command if actually moved
+            if new_pos != self._drag_start_pos:
+                # Pass original position to canvas for immutable command
+                self.canvas.on_building_moved(
+                    self.building.id,
+                    self._drag_start_pos.x(),
+                    self._drag_start_pos.y(),
+                )
 
             self._drag_start_pos = None
 

@@ -410,7 +410,7 @@ class FactoryCanvas(QGraphicsView):
             x=x,
             y=y,
         )
-        cmd = PlaceBuildingCommand(document=self.document, building=building, handler=self)
+        cmd = PlaceBuildingCommand(document=self.document, building=building, canvas=self)
         self.command_stack.execute(cmd)
         # Command already added the item via handler, but we need to set rotation
         item = self._building_items.get(building.id)
@@ -435,11 +435,20 @@ class FactoryCanvas(QGraphicsView):
                     if belt.id not in selected_belts:
                         selected_belts.append(belt.id)
 
+            # Collect the actual objects to delete (for immutable command)
+            buildings_to_delete = tuple(
+                self.document.buildings[bid] for bid in selected_buildings
+                if bid in self.document.buildings
+            )
+            belts_to_delete = tuple(
+                self.document.belts[bid] for bid in selected_belts
+                if bid in self.document.belts
+            )
             cmd = DeleteItemsCommand(
                 document=self.document,
-                building_ids=selected_buildings,
-                belt_ids=selected_belts,
-                handler=self,
+                buildings=buildings_to_delete,
+                belts=belts_to_delete,
+                canvas=self,
             )
             self.command_stack.execute(cmd)
             # Command handles UI updates via handler
@@ -560,7 +569,7 @@ class FactoryCanvas(QGraphicsView):
                 dest_building_id=building_id,
                 dest_port_index=port_index,
             )
-            cmd = ConnectBeltCommand(document=self.document, belt=belt, handler=self)
+            cmd = ConnectBeltCommand(document=self.document, belt=belt, canvas=self)
             self.command_stack.execute(cmd)
             # Command handles UI updates via handler
 
@@ -604,34 +613,42 @@ class FactoryCanvas(QGraphicsView):
                 return
         super().keyPressEvent(event)  # type: ignore[arg-type]
 
-    def on_building_moved(self, building_id: str, dx: float, dy: float) -> None:
-        """Handle a building being moved."""
-        # First update the model position to match visual
-        building = self.document.buildings.get(building_id)
-        if building:
-            item = self._building_items.get(building_id)
-            if item:
-                # Sync model to visual position (in case of grid snap adjustments)
-                building.x = item.pos().x()
-                building.y = item.pos().y()
+    def on_building_moved(self, building_id: str, old_x: float, old_y: float) -> None:
+        """Handle a building being moved.
         
-        # Create command for undo (but don't double-apply - model already updated)
-        # We need to track the delta for undo purposes
+        Args:
+            building_id: The building that was moved
+            old_x: Original x position before the move
+            old_y: Original y position before the move
+        """
+        building = self.document.buildings.get(building_id)
+        if not building:
+            return
+            
+        item = self._building_items.get(building_id)
+        if not item:
+            return
+        
+        # Get the new position from the visual item (may have grid snap applied)
+        new_x = item.pos().x()
+        new_y = item.pos().y()
+        
+        # Sync model to visual position
+        building.x = new_x
+        building.y = new_y
+        
+        # Create immutable command with captured positions
         cmd = MoveBuildingsCommand(
             document=self.document,
-            building_ids=[building_id],
-            dx=dx,
-            dy=dy,
-            handler=self,
-            already_applied=True,  # Flag that model is already at new position
+            canvas=self,
+            positions=((building_id, old_x, old_y, new_x, new_y),),
         )
+        # Command will see model already at new position and log warning, which is fine
+        # The important thing is the command captures old/new for undo/redo
         self.command_stack.execute(cmd)
 
         # Redraw all connected belts using absolute positions from model
         self._update_belts_for_building(building_id)
-        
-        # Notify mutation (command doesn't call handler when already_applied)
-        self.notify_mutation()
 
     def _update_belts_for_building(self, building_id: str) -> None:
         """Redraw all belts connected to a building using current model positions."""

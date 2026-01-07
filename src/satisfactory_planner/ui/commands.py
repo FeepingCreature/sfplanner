@@ -2,51 +2,23 @@
 
 Commands are a UI concern - they exist for undo/redo which is a user interaction concept.
 Commands can directly update both the data model and the UI.
+
+Commands are immutable - all state needed for execute/undo is captured at construction.
+Execute and undo are idempotent - calling them multiple times logs a warning but doesn't break.
 """
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Protocol
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from satisfactory_planner.core.models import Belt, Building, Document
+    from satisfactory_planner.ui.canvas import FactoryCanvas
 
-
-class CommandHandler(Protocol):
-    """Interface for handling command side effects.
-    
-    Implemented by FactoryCanvas to receive UI update calls from commands.
-    """
-    
-    def add_building_item(self, building: "Building") -> None:
-        """Add a building item to the scene."""
-        ...
-    
-    def remove_building_item(self, building_id: str) -> None:
-        """Remove a building item from the scene."""
-        ...
-    
-    def add_belt_item(self, belt: "Belt") -> None:
-        """Add a belt item to the scene."""
-        ...
-    
-    def remove_belt_item(self, belt_id: str) -> None:
-        """Remove a belt item from the scene."""
-        ...
-    
-    def refresh_building(self, building_id: str) -> None:
-        """Refresh a building's visual state."""
-        ...
-    
-    def refresh_belts_for_building(self, building_id: str) -> None:
-        """Refresh belts connected to a building."""
-        ...
-    
-    def notify_mutation(self) -> None:
-        """Notify that the document was mutated (for warnings, dirty flag, etc)."""
-        ...
+logger = logging.getLogger(__name__)
 
 
 class Command(ABC):
@@ -108,200 +80,247 @@ class CommandStack:
         return len(self.redo_stack) > 0
 
 
-@dataclass
+@dataclass(frozen=True)
 class PlaceBuildingCommand(Command):
     """Command to place a building."""
 
     document: Document
     building: Building
-    handler: CommandHandler | None = None
+    canvas: "FactoryCanvas"
 
     def execute(self) -> None:
-        self.document.add_building(self.building)
-        if self.handler:
-            self.handler.add_building_item(self.building)
-            self.handler.notify_mutation()
-
-    def undo(self) -> None:
-        self.document.remove_building(self.building.id)
-        if self.handler:
-            self.handler.remove_building_item(self.building.id)
-            self.handler.notify_mutation()
-
-
-@dataclass
-class DeleteItemsCommand(Command):
-    """Command to delete buildings and belts."""
-
-    document: Document
-    building_ids: list[str]
-    belt_ids: list[str]
-    handler: CommandHandler | None = None
-    _deleted_buildings: list[Building] | None = field(default=None, repr=False)
-    _deleted_belts: list[Belt] | None = field(default=None, repr=False)
-
-    def execute(self) -> None:
-        from satisfactory_planner.core.models import Belt, Building
-
-        self._deleted_buildings = []
-        self._deleted_belts = []
-
-        for bid in self.building_ids:
-            building = self.document.remove_building(bid)
-            if building:
-                self._deleted_buildings.append(building)
-                if self.handler:
-                    self.handler.remove_building_item(bid)
-
-        for bid in self.belt_ids:
-            belt = self.document.remove_belt(bid)
-            if belt:
-                self._deleted_belts.append(belt)
-                if self.handler:
-                    self.handler.remove_belt_item(bid)
-
-        if self.handler:
-            self.handler.notify_mutation()
-
-    def undo(self) -> None:
-        if self._deleted_buildings:
-            for building in self._deleted_buildings:
-                self.document.add_building(building)
-                if self.handler:
-                    self.handler.add_building_item(building)
-        if self._deleted_belts:
-            for belt in self._deleted_belts:
-                self.document.add_belt(belt)
-                if self.handler:
-                    self.handler.add_belt_item(belt)
-        if self.handler:
-            self.handler.notify_mutation()
-
-
-@dataclass
-class MoveBuildingsCommand(Command):
-    """Command to move buildings."""
-
-    document: Document
-    building_ids: list[str]
-    dx: float
-    dy: float
-    handler: CommandHandler | None = None
-    already_applied: bool = False  # If True, execute() won't apply the delta again
-
-    def execute(self) -> None:
-        if self.already_applied:
-            # Model already updated by UI - just mark as not already applied for redo
-            self.already_applied = False
+        if self.building.id in self.document.buildings:
+            logger.warning(f"PlaceBuildingCommand.execute: building {self.building.id} already exists")
             return
-        for bid in self.building_ids:
-            if bid in self.document.buildings:
-                self.document.buildings[bid].x += self.dx
-                self.document.buildings[bid].y += self.dy
-                if self.handler:
-                    self.handler.refresh_building(bid)
-                    self.handler.refresh_belts_for_building(bid)
-        if self.handler:
-            self.handler.notify_mutation()
+        self.document.add_building(self.building)
+        self.canvas.add_building_item(self.building)
+        self.canvas.notify_mutation()
 
     def undo(self) -> None:
-        for bid in self.building_ids:
-            if bid in self.document.buildings:
-                self.document.buildings[bid].x -= self.dx
-                self.document.buildings[bid].y -= self.dy
-                if self.handler:
-                    self.handler.refresh_building(bid)
-                    self.handler.refresh_belts_for_building(bid)
-        if self.handler:
-            self.handler.notify_mutation()
+        if self.building.id not in self.document.buildings:
+            logger.warning(f"PlaceBuildingCommand.undo: building {self.building.id} not found")
+            return
+        self.document.remove_building(self.building.id)
+        self.canvas.remove_building_item(self.building.id)
+        self.canvas.notify_mutation()
+
+
+@dataclass(frozen=True)
+class DeleteItemsCommand(Command):
+    """Command to delete buildings and belts.
+    
+    Buildings and belts to delete are captured at construction time.
+    """
+
+    document: Document
+    buildings: tuple["Building", ...]
+    belts: tuple["Belt", ...]
+    canvas: "FactoryCanvas"
+
+    def execute(self) -> None:
+        any_deleted = False
+        for building in self.buildings:
+            if building.id not in self.document.buildings:
+                logger.warning(f"DeleteItemsCommand.execute: building {building.id} not found")
+                continue
+            self.document.remove_building(building.id)
+            self.canvas.remove_building_item(building.id)
+            any_deleted = True
+
+        for belt in self.belts:
+            if belt.id not in self.document.belts:
+                logger.warning(f"DeleteItemsCommand.execute: belt {belt.id} not found")
+                continue
+            self.document.remove_belt(belt.id)
+            self.canvas.remove_belt_item(belt.id)
+            any_deleted = True
+
+        if any_deleted:
+            self.canvas.notify_mutation()
+
+    def undo(self) -> None:
+        any_restored = False
+        for building in self.buildings:
+            if building.id in self.document.buildings:
+                logger.warning(f"DeleteItemsCommand.undo: building {building.id} already exists")
+                continue
+            self.document.add_building(building)
+            self.canvas.add_building_item(building)
+            any_restored = True
+
+        for belt in self.belts:
+            if belt.id in self.document.belts:
+                logger.warning(f"DeleteItemsCommand.undo: belt {belt.id} already exists")
+                continue
+            self.document.add_belt(belt)
+            self.canvas.add_belt_item(belt)
+            any_restored = True
+
+        if any_restored:
+            self.canvas.notify_mutation()
+
+
+@dataclass(frozen=True)
+class MoveBuildingsCommand(Command):
+    """Command to move buildings.
+    
+    Stores original and new positions for idempotent execute/undo.
+    """
+
+    document: Document
+    canvas: "FactoryCanvas"
+    # Maps building_id -> (old_x, old_y, new_x, new_y)
+    positions: tuple[tuple[str, float, float, float, float], ...]
+
+    def execute(self) -> None:
+        any_moved = False
+        for building_id, old_x, old_y, new_x, new_y in self.positions:
+            building = self.document.buildings.get(building_id)
+            if not building:
+                logger.warning(f"MoveBuildingsCommand.execute: building {building_id} not found")
+                continue
+            if building.x == new_x and building.y == new_y:
+                logger.warning(f"MoveBuildingsCommand.execute: building {building_id} already at target")
+                continue
+            building.x = new_x
+            building.y = new_y
+            self.canvas.refresh_building(building_id)
+            self.canvas.refresh_belts_for_building(building_id)
+            any_moved = True
+        if any_moved:
+            self.canvas.notify_mutation()
+
+    def undo(self) -> None:
+        any_moved = False
+        for building_id, old_x, old_y, new_x, new_y in self.positions:
+            building = self.document.buildings.get(building_id)
+            if not building:
+                logger.warning(f"MoveBuildingsCommand.undo: building {building_id} not found")
+                continue
+            if building.x == old_x and building.y == old_y:
+                logger.warning(f"MoveBuildingsCommand.undo: building {building_id} already at original")
+                continue
+            building.x = old_x
+            building.y = old_y
+            self.canvas.refresh_building(building_id)
+            self.canvas.refresh_belts_for_building(building_id)
+            any_moved = True
+        if any_moved:
+            self.canvas.notify_mutation()
 
     def merge_with(self, other: Command) -> Command | None:
         """Merge consecutive move commands for same buildings."""
-        if isinstance(other, MoveBuildingsCommand):
-            if set(self.building_ids) == set(other.building_ids):
-                return MoveBuildingsCommand(
-                    document=self.document,
-                    building_ids=self.building_ids,
-                    dx=self.dx + other.dx,
-                    dy=self.dy + other.dy,
-                    handler=self.handler,
-                    already_applied=False,  # Merged command hasn't been applied
-                )
-        return None
+        if not isinstance(other, MoveBuildingsCommand):
+            return None
+        
+        self_ids = {p[0] for p in self.positions}
+        other_ids = {p[0] for p in other.positions}
+        if self_ids != other_ids:
+            return None
+        
+        # Merge: keep our old positions, use their new positions
+        other_new = {p[0]: (p[3], p[4]) for p in other.positions}
+        merged_positions = tuple(
+            (bid, old_x, old_y, other_new[bid][0], other_new[bid][1])
+            for bid, old_x, old_y, new_x, new_y in self.positions
+        )
+        return MoveBuildingsCommand(
+            document=self.document,
+            canvas=self.canvas,
+            positions=merged_positions,
+        )
 
 
-@dataclass
+@dataclass(frozen=True)
 class ConnectBeltCommand(Command):
     """Command to connect a belt between buildings."""
 
     document: Document
-    belt: Belt
-    handler: CommandHandler | None = None
+    belt: "Belt"
+    canvas: "FactoryCanvas"
 
     def execute(self) -> None:
+        if self.belt.id in self.document.belts:
+            logger.warning(f"ConnectBeltCommand.execute: belt {self.belt.id} already exists")
+            return
         self.document.add_belt(self.belt)
-        if self.handler:
-            self.handler.add_belt_item(self.belt)
-            self.handler.notify_mutation()
+        self.canvas.add_belt_item(self.belt)
+        self.canvas.notify_mutation()
 
     def undo(self) -> None:
+        if self.belt.id not in self.document.belts:
+            logger.warning(f"ConnectBeltCommand.undo: belt {self.belt.id} not found")
+            return
         self.document.remove_belt(self.belt.id)
-        if self.handler:
-            self.handler.remove_belt_item(self.belt.id)
-            self.handler.notify_mutation()
+        self.canvas.remove_belt_item(self.belt.id)
+        self.canvas.notify_mutation()
 
 
-@dataclass
+@dataclass(frozen=True)
 class SetRecipeCommand(Command):
     """Command to set a building's recipe."""
 
     document: Document
     building_id: str
+    old_recipe_id: str | None
     new_recipe_id: str | None
-    handler: CommandHandler | None = None
-    _old_recipe_id: str | None = field(default=None, repr=False)
+    canvas: "FactoryCanvas"
 
     def execute(self) -> None:
         building = self.document.buildings.get(self.building_id)
-        if building:
-            self._old_recipe_id = building.recipe_id
-            building.recipe_id = self.new_recipe_id
-            if self.handler:
-                self.handler.refresh_building(self.building_id)
-                self.handler.notify_mutation()
+        if not building:
+            logger.warning(f"SetRecipeCommand.execute: building {self.building_id} not found")
+            return
+        if building.recipe_id == self.new_recipe_id:
+            logger.warning(f"SetRecipeCommand.execute: recipe already set to {self.new_recipe_id}")
+            return
+        building.recipe_id = self.new_recipe_id
+        self.canvas.refresh_building(self.building_id)
+        self.canvas.notify_mutation()
 
     def undo(self) -> None:
         building = self.document.buildings.get(self.building_id)
-        if building:
-            building.recipe_id = self._old_recipe_id
-            if self.handler:
-                self.handler.refresh_building(self.building_id)
-                self.handler.notify_mutation()
+        if not building:
+            logger.warning(f"SetRecipeCommand.undo: building {self.building_id} not found")
+            return
+        if building.recipe_id == self.old_recipe_id:
+            logger.warning(f"SetRecipeCommand.undo: recipe already set to {self.old_recipe_id}")
+            return
+        building.recipe_id = self.old_recipe_id
+        self.canvas.refresh_building(self.building_id)
+        self.canvas.notify_mutation()
 
 
-@dataclass
+@dataclass(frozen=True)
 class SetClockSpeedCommand(Command):
     """Command to set a building's clock speed."""
 
     document: Document
     building_id: str
+    old_clock_speed: float
     new_clock_speed: float
-    handler: CommandHandler | None = None
-    _old_clock_speed: float = field(default=1.0, repr=False)
+    canvas: "FactoryCanvas"
 
     def execute(self) -> None:
         building = self.document.buildings.get(self.building_id)
-        if building:
-            self._old_clock_speed = building.clock_speed
-            building.clock_speed = self.new_clock_speed
-            if self.handler:
-                self.handler.refresh_building(self.building_id)
-                self.handler.notify_mutation()
+        if not building:
+            logger.warning(f"SetClockSpeedCommand.execute: building {self.building_id} not found")
+            return
+        if building.clock_speed == self.new_clock_speed:
+            logger.warning(f"SetClockSpeedCommand.execute: clock speed already set to {self.new_clock_speed}")
+            return
+        building.clock_speed = self.new_clock_speed
+        self.canvas.refresh_building(self.building_id)
+        self.canvas.notify_mutation()
 
     def undo(self) -> None:
         building = self.document.buildings.get(self.building_id)
-        if building:
-            building.clock_speed = self._old_clock_speed
-            if self.handler:
-                self.handler.refresh_building(self.building_id)
-                self.handler.notify_mutation()
+        if not building:
+            logger.warning(f"SetClockSpeedCommand.undo: building {self.building_id} not found")
+            return
+        if building.clock_speed == self.old_clock_speed:
+            logger.warning(f"SetClockSpeedCommand.undo: clock speed already set to {self.old_clock_speed}")
+            return
+        building.clock_speed = self.old_clock_speed
+        self.canvas.refresh_building(self.building_id)
+        self.canvas.notify_mutation()

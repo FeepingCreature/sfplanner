@@ -308,7 +308,8 @@ class MainWindow(QMainWindow):
             # Update panels to use current document
             self.properties_panel.set_document(
                 self.current_tab.document,
-                self.current_tab.command_stack
+                self.current_tab.command_stack,
+                self.current_tab.canvas,
             )
             self.warnings_panel.set_document(
                 self.current_tab.document,

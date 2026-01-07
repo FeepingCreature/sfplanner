@@ -32,7 +32,7 @@ from satisfactory_planner.core.models import get_building_power, get_building_io
 from satisfactory_planner.core.persistence import load_all_recipes, save_user_recipes
 
 if TYPE_CHECKING:
-    pass
+    from satisfactory_planner.ui.canvas import FactoryCanvas
 
 
 class RecipeEditorDialog(QDialog):
@@ -436,6 +436,7 @@ class PropertiesPanel(QWidget):
 
         self.document = document
         self.command_stack = command_stack
+        self.canvas: "FactoryCanvas | None" = None  # Set by MainWindow
         self._selected_ids: list[str] = []
         self._updating = False  # Prevent signal loops
 
@@ -554,10 +555,11 @@ class PropertiesPanel(QWidget):
         for recipe_id, recipe in self.document.recipes.items():
             self.recipe_combo.addItem(recipe.name, recipe_id)
 
-    def set_document(self, document: Document, command_stack: CommandStack) -> None:
+    def set_document(self, document: Document, command_stack: CommandStack, canvas: "FactoryCanvas") -> None:
         """Set a new document."""
         self.document = document
         self.command_stack = command_stack
+        self.canvas = canvas
         self._selected_ids = []
         self._update_recipe_combo()
         self._update_display()
@@ -621,31 +623,37 @@ class PropertiesPanel(QWidget):
 
     def _on_clock_speed_changed(self, value: float) -> None:
         """Handle clock speed change."""
-        if self._updating:
+        if self._updating or not self.canvas:
             return
 
         if len(self._selected_ids) == 1:
             building_id = self._selected_ids[0]
-            if building_id in self.document.buildings:
+            building = self.document.buildings.get(building_id)
+            if building:
                 cmd = SetClockSpeedCommand(
                     document=self.document,
                     building_id=building_id,
+                    old_clock_speed=building.clock_speed,
                     new_clock_speed=value / 100.0,
+                    canvas=self.canvas,
                 )
                 self.command_stack.execute(cmd)
 
     def _on_recipe_changed(self, index: int) -> None:
         """Handle recipe selection change."""
-        if self._updating:
+        if self._updating or not self.canvas:
             return
 
         if len(self._selected_ids) == 1:
             building_id = self._selected_ids[0]
-            if building_id in self.document.buildings:
+            building = self.document.buildings.get(building_id)
+            if building:
                 recipe_id = self.recipe_combo.currentData()
                 cmd = SetRecipeCommand(
                     document=self.document,
                     building_id=building_id,
+                    old_recipe_id=building.recipe_id,
                     new_recipe_id=recipe_id,
+                    canvas=self.canvas,
                 )
                 self.command_stack.execute(cmd)
