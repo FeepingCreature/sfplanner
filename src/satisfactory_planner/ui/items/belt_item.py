@@ -14,7 +14,8 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import Belt, Building
-from satisfactory_planner.core.routing import Point, compute_belt_path, get_arc_points
+from satisfactory_planner.core.routing import Point, compute_belt_path
+from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 
 if TYPE_CHECKING:
     pass
@@ -75,45 +76,9 @@ class BeltItem(QGraphicsPathItem):
         start = Point(start_pos[0], start_pos[1])
         end = Point(end_pos[0], end_pos[1])
 
-        # Compute Dubins path
+        # Compute Dubins path and convert to QPainterPath
         belt_path = compute_belt_path(start, start_dir, end, end_dir)
-
-        path = QPainterPath()
-        path.moveTo(start.x, start.y)
-
-        if belt_path:
-            # Determine arc directions from path type
-            ccw1 = belt_path.path_type[0] == "L"
-            ccw2 = belt_path.path_type[1] == "L"
-
-            # Draw start arc
-            arc1_points = get_arc_points(
-                belt_path.start_center,
-                belt_path.start_angle_begin,
-                belt_path.start_angle_end,
-                ccw1,
-                belt_path.start_radius,
-            )
-            for p in arc1_points[1:]:
-                path.lineTo(p.x, p.y)
-
-            # Draw line segment
-            path.lineTo(belt_path.line_end.x, belt_path.line_end.y)
-
-            # Draw end arc
-            arc2_points = get_arc_points(
-                belt_path.end_center,
-                belt_path.end_angle_begin,
-                belt_path.end_angle_end,
-                ccw2,
-                belt_path.end_radius,
-            )
-            for p in arc2_points[1:]:
-                path.lineTo(p.x, p.y)
-        else:
-            # Fallback to straight line
-            path.lineTo(end.x, end.y)
-
+        path = belt_path_to_painter_path(start, end, belt_path)
         self.setPath(path)
 
     def paint(

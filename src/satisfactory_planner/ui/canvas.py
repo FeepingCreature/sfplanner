@@ -31,7 +31,8 @@ from satisfactory_planner.core import (
     Document,
 )
 from satisfactory_planner.core.models import generate_id
-from satisfactory_planner.core.routing import Point, compute_belt_path, get_arc_points
+from satisfactory_planner.core.routing import Point, compute_belt_path
+from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 from satisfactory_planner.ui.commands import (
     BuildingMove,
     CommandStack,
@@ -533,8 +534,6 @@ class FactoryCanvas(QGraphicsView):
         """Update the drag preview path to the given end position."""
         import math
 
-        from PySide6.QtGui import QPainterPath
-
         if not self._drag_preview or not self._drag_start_pos:
             return
 
@@ -546,45 +545,9 @@ class FactoryCanvas(QGraphicsView):
         dy = end_pos.y() - self._drag_start_pos.y()
         end_dir = math.atan2(dy, dx)
 
-        # Compute Dubins path
+        # Compute Dubins path and convert to QPainterPath
         belt_path = compute_belt_path(start, self._drag_start_dir, end, end_dir)
-
-        path = QPainterPath()
-        path.moveTo(start.x, start.y)
-
-        if belt_path:
-            # Determine arc directions from path type
-            ccw1 = belt_path.path_type[0] == "L"
-            ccw2 = belt_path.path_type[1] == "L"
-
-            # Draw start arc
-            arc1_points = get_arc_points(
-                belt_path.start_center,
-                belt_path.start_angle_begin,
-                belt_path.start_angle_end,
-                ccw1,
-                belt_path.start_radius,
-            )
-            for p in arc1_points[1:]:
-                path.lineTo(p.x, p.y)
-
-            # Draw line segment
-            path.lineTo(belt_path.line_end.x, belt_path.line_end.y)
-
-            # Draw end arc
-            arc2_points = get_arc_points(
-                belt_path.end_center,
-                belt_path.end_angle_begin,
-                belt_path.end_angle_end,
-                ccw2,
-                belt_path.end_radius,
-            )
-            for p in arc2_points[1:]:
-                path.lineTo(p.x, p.y)
-        else:
-            # Fallback to straight line
-            path.lineTo(end.x, end.y)
-
+        path = belt_path_to_painter_path(start, end, belt_path)
         self._drag_preview.setPath(path)
 
     def start_belt_connection(self, building_id: str, port_index: int) -> None:
