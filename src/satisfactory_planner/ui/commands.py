@@ -411,14 +411,14 @@ class SetClockSpeedCommand(Command):
         self.canvas.notify_mutation()
 
 
-@dataclass
+@dataclass(frozen=True)
 class CreateRoomCommand(Command):
     """Command to create a room from selected buildings.
 
     Moves buildings and belts into the new room, creating ports for crossing belts.
 
-    NOTE: Not frozen because we need mutable state for tracking created objects.
-    All tracking state is initialized in __post_init__ and persists across undo/redo.
+    NOTE: Frozen but has mutable container fields (lists/dicts) for tracking.
+    Frozen means fields can't be reassigned, but container contents can be mutated.
     """
 
     parent_scene_room_id: str | None  # None = root document
