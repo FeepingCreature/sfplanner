@@ -91,9 +91,6 @@ class FactoryCanvas(QGraphicsView):
         self.document = document
         self.command_stack = command_stack
 
-        self._setup_scene()
-        self._setup_view()
-
         # Core state
         self._is_panning = False
         self._pan_start = QPointF()
@@ -114,7 +111,7 @@ class FactoryCanvas(QGraphicsView):
         self._clipboard_belts: list[Belt] = []
         self._clipboard_room_ids: list[str] = []
 
-        # Initialize managers
+        # Initialize managers BEFORE _setup_scene (which uses _selection)
         from satisfactory_planner.ui.canvas.belt_connector import BeltConnector
         from satisfactory_planner.ui.canvas.drawing_tools import DrawingTools
         from satisfactory_planner.ui.canvas.placement_manager import PlacementManager
@@ -124,6 +121,9 @@ class FactoryCanvas(QGraphicsView):
         self._placement = PlacementManager(self)
         self._drawing = DrawingTools(self)
         self._selection = SelectionManager(self)
+
+        self._setup_scene()
+        self._setup_view()
 
         self.setAcceptDrops(True)
 
