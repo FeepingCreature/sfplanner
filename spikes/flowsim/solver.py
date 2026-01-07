@@ -6,7 +6,7 @@ Solves for steady-state flow rates using linear programming.
 from dataclasses import dataclass, field
 
 import numpy as np
-from models import FlowGraph, NodeType
+from models import FlowGraph, FlowNode, NodeType
 from scipy.optimize import linprog
 
 
@@ -18,6 +18,22 @@ class SolvedModel:
     flows: dict[str, float] = field(default_factory=dict)  # edge_id → flow rate
     success: bool = True
     message: str = ""
+
+
+def _get_downstream_demand(node: "FlowNode", port_index: int) -> float | None:
+    """Get the demand of a node's input port.
+
+    For producers, this is the recipe input rate.
+    For splitters/mergers, we return None (no fixed demand).
+    """
+    if node.node_type == NodeType.PRODUCER:
+        if port_index < len(node.inputs):
+            return node.inputs[port_index].rate
+    elif node.node_type == NodeType.SINK:
+        # Sinks consume everything, no limit
+        return None
+    # Splitters/mergers don't have fixed demand
+    return None
 
 
 def solve_flows(graph: FlowGraph) -> SolvedModel:
@@ -41,9 +57,11 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
     n_edges = len(edge_ids)
 
     # We'll build equality constraints: A_eq @ x = b_eq
-    # Each constraint is flow conservation at a node
+    # And inequality constraints: A_ub @ x <= b_ub
     equality_rows: list[list[float]] = []
     equality_rhs: list[float] = []
+    inequality_rows: list[list[float]] = []
+    inequality_rhs: list[float] = []
 
     for node_id, node in graph.nodes.items():
         incoming = graph.get_incoming_edges(node_id)
@@ -86,28 +104,30 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
                     equality_rhs.append(node.inputs[i].rate)
 
         elif node.node_type == NodeType.SPLITTER:
-            # Splitter: sum of outputs = input
-            # For equal split: each output = input / num_connected_outputs
+            # Splitter: sum of outputs <= input (conservation)
+            # Each output is limited by downstream demand (handled via inequalities)
+            # LP maximizes flow, so it naturally fills hungry outputs first
             if incoming and outgoing:
-                # Conservation: input = sum(outputs)
+                # Conservation: sum(outputs) <= sum(inputs)
+                # We use inequality here because outputs might not consume all input
                 row = [0.0] * n_edges
-                for in_edge in incoming:
-                    row[edge_to_idx[in_edge.id]] = 1.0
                 for out_edge in outgoing:
-                    row[edge_to_idx[out_edge.id]] = -1.0
-                equality_rows.append(row)
-                equality_rhs.append(0.0)
+                    row[edge_to_idx[out_edge.id]] = 1.0
+                for in_edge in incoming:
+                    row[edge_to_idx[in_edge.id]] = -1.0
+                inequality_rows.append(row)
+                inequality_rhs.append(0.0)
 
-                # Equal split: each output = input / n
-                n_outputs = len(outgoing)
-                if n_outputs > 1:
-                    # All outputs equal to each other
-                    for i in range(1, n_outputs):
+                # Each output is limited by what downstream can consume
+                # This is computed by following the edge to its dest node
+                for out_edge in outgoing:
+                    dest_node = graph.nodes[out_edge.dest_node_id]
+                    demand = _get_downstream_demand(dest_node, out_edge.dest_port_index)
+                    if demand is not None:
                         row = [0.0] * n_edges
-                        row[edge_to_idx[outgoing[0].id]] = 1.0
-                        row[edge_to_idx[outgoing[i].id]] = -1.0
-                        equality_rows.append(row)
-                        equality_rhs.append(0.0)
+                        row[edge_to_idx[out_edge.id]] = 1.0
+                        inequality_rows.append(row)
+                        inequality_rhs.append(demand)
 
         elif node.node_type == NodeType.MERGER:
             # Merger: output = sum of inputs
@@ -141,6 +161,13 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
         A_eq = None
         b_eq = None
 
+    if inequality_rows:
+        A_ub = np.array(inequality_rows)
+        b_ub = np.array(inequality_rhs)
+    else:
+        A_ub = None
+        b_ub = None
+
     # Objective: maximize total flow (minimize negative flow)
     # c @ x is minimized, so use -1 for each flow
     c = np.array([-1.0] * n_edges)
@@ -149,7 +176,7 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
     bounds = [(0, None) for _ in range(n_edges)]
 
     # Solve
-    result = linprog(c, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method="highs")
+    result = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method="highs")
 
     if not result.success:
         return SolvedModel(

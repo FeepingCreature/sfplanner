@@ -384,6 +384,124 @@ class TestClockSpeed:
         assert node.outputs[0].rate == 60.0
 
 
+class TestLogisticsLoop:
+    """Tests for pure logistics loop detection."""
+
+    def test_splitter_merger_loop_fatal(self):
+        """Pure splitter->merger loop with no producer is fatal."""
+        doc = Document(
+            buildings={
+                "splitter1": Building(
+                    id="splitter1",
+                    building_type=BuildingType.SPLITTER,
+                ),
+                "merger1": Building(
+                    id="merger1",
+                    building_type=BuildingType.MERGER,
+                ),
+            },
+            belts={
+                "belt1": Belt(
+                    id="belt1",
+                    source_building_id="splitter1",
+                    source_port_index=0,
+                    dest_building_id="merger1",
+                    dest_port_index=0,
+                ),
+                "belt2": Belt(
+                    id="belt2",
+                    source_building_id="merger1",
+                    source_port_index=0,
+                    dest_building_id="splitter1",
+                    dest_port_index=0,
+                ),
+            },
+        )
+        result = build_flow_graph(doc)
+
+        assert not result.success
+        assert len(result.errors) == 1
+        assert result.errors[0].error_type == FatalErrorType.SOURCELESS_CYCLE
+        assert "loop" in result.errors[0].message.lower()
+
+    def test_splitter_chain_loop_fatal(self):
+        """Splitter -> splitter loop is fatal."""
+        doc = Document(
+            buildings={
+                "splitter1": Building(
+                    id="splitter1",
+                    building_type=BuildingType.SPLITTER,
+                ),
+                "splitter2": Building(
+                    id="splitter2",
+                    building_type=BuildingType.SPLITTER,
+                ),
+            },
+            belts={
+                "belt1": Belt(
+                    id="belt1",
+                    source_building_id="splitter1",
+                    source_port_index=0,
+                    dest_building_id="splitter2",
+                    dest_port_index=0,
+                ),
+                "belt2": Belt(
+                    id="belt2",
+                    source_building_id="splitter2",
+                    source_port_index=0,
+                    dest_building_id="splitter1",
+                    dest_port_index=0,
+                ),
+            },
+        )
+        result = build_flow_graph(doc)
+
+        assert not result.success
+        assert result.errors[0].error_type == FatalErrorType.SOURCELESS_CYCLE
+
+    def test_loop_with_producer_ok(self):
+        """Loop that includes a producer is allowed (item recycling)."""
+        doc = Document(
+            buildings={
+                "smelter1": Building(
+                    id="smelter1",
+                    building_type=BuildingType.SMELTER,
+                    recipe_id="Iron Ingot",
+                ),
+                "splitter1": Building(
+                    id="splitter1",
+                    building_type=BuildingType.SPLITTER,
+                ),
+                "constructor1": Building(
+                    id="constructor1",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Plate",
+                ),
+            },
+            belts={
+                # Smelter -> splitter -> constructor -> (loop back would go to producer)
+                "belt1": Belt(
+                    id="belt1",
+                    source_building_id="smelter1",
+                    source_port_index=0,
+                    dest_building_id="splitter1",
+                    dest_port_index=0,
+                ),
+                "belt2": Belt(
+                    id="belt2",
+                    source_building_id="splitter1",
+                    source_port_index=0,
+                    dest_building_id="constructor1",
+                    dest_port_index=0,
+                ),
+            },
+        )
+        result = build_flow_graph(doc)
+
+        # No loop here, just verifying producers break loops
+        assert result.success
+
+
 class TestNodeTypes:
     """Tests for correct node type assignment."""
 

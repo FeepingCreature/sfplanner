@@ -76,8 +76,8 @@ class TestSolveFlows:
         # Smelter outputs 30/min, Constructor needs 30/min
         assert solved.flows["belt1"] == 30.0
 
-    def test_splitter_equal_split(self):
-        """Splitter should divide flow equally among outputs."""
+    def test_splitter_demand_driven(self):
+        """Splitter should route flow based on downstream demand."""
         doc = Document(
             buildings={
                 "smelter1": Building(
@@ -131,10 +131,71 @@ class TestSolveFlows:
         assert solved.success
 
         # Input should be 30 (from smelter)
-        # Each output should be 15 (equal split)
+        # Each output should be 15 (both demand 15)
         assert solved.flows["belt_in"] == 30.0
         assert solved.flows["belt_out1"] == 15.0
         assert solved.flows["belt_out2"] == 15.0
+
+    def test_splitter_unequal_demand(self):
+        """Splitter routes more to higher-demand output."""
+        doc = Document(
+            buildings={
+                "smelter1": Building(
+                    id="smelter1",
+                    building_type=BuildingType.SMELTER,
+                    recipe_id="Iron Ingot",
+                    clock_speed=2.0,  # 60/min out
+                ),
+                "splitter1": Building(
+                    id="splitter1",
+                    building_type=BuildingType.SPLITTER,
+                ),
+                "constructor1": Building(
+                    id="constructor1",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Rod",  # 15/min in (small demand)
+                ),
+                "constructor2": Building(
+                    id="constructor2",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Plate",  # 30/min in (larger demand)
+                ),
+            },
+            belts={
+                "belt_in": Belt(
+                    id="belt_in",
+                    source_building_id="smelter1",
+                    source_port_index=0,
+                    dest_building_id="splitter1",
+                    dest_port_index=0,
+                ),
+                "belt_out1": Belt(
+                    id="belt_out1",
+                    source_building_id="splitter1",
+                    source_port_index=0,
+                    dest_building_id="constructor1",
+                    dest_port_index=0,
+                ),
+                "belt_out2": Belt(
+                    id="belt_out2",
+                    source_building_id="splitter1",
+                    source_port_index=1,
+                    dest_building_id="constructor2",
+                    dest_port_index=0,
+                ),
+            },
+        )
+        result = build_flow_graph(doc)
+        assert result.success
+
+        solved = solve_flows(result.graph)
+        assert solved.success
+
+        # Input is 60, outputs demand 15 and 30
+        # Splitter routes based on demand: 15 to first, 30 to second
+        assert solved.flows["belt_in"] == 60.0
+        assert solved.flows["belt_out1"] == 15.0
+        assert solved.flows["belt_out2"] == 30.0
 
     def test_merger_combines_flows(self):
         """Merger should combine input flows."""

@@ -165,6 +165,50 @@ def _has_connections(building_id: str, belts: dict[str, Belt]) -> bool:
     return False
 
 
+def _find_logistics_loop(graph: FlowGraph) -> list[str] | None:
+    """Find a pure logistics loop (splitters/mergers only, no producers).
+
+    Returns the cycle as a list of node IDs, or None if no such loop exists.
+    We only care about loops that have NO producer nodes - these would have
+    no steady-state solution.
+    """
+    # Only check splitters and mergers as starting points
+    logistics_types = {NodeType.SPLITTER, NodeType.MERGER}
+
+    def dfs(node_id: str, path: list[str], visited: set[str]) -> list[str] | None:
+        """DFS to find cycle, only following logistics nodes."""
+        if node_id in path:
+            # Found a cycle - return it
+            cycle_start = path.index(node_id)
+            return path[cycle_start:] + [node_id]
+
+        node = graph.nodes.get(node_id)
+        if node is None or node.node_type not in logistics_types:
+            # Hit a producer/miner/sink - this path is fine
+            return None
+
+        if node_id in visited:
+            return None
+        visited.add(node_id)
+
+        path.append(node_id)
+        for edge in graph.get_outgoing_edges(node_id):
+            result = dfs(edge.dest_node_id, path, visited)
+            if result:
+                return result
+        path.pop()
+        return None
+
+    visited: set[str] = set()
+    for node_id, node in graph.nodes.items():
+        if node.node_type in logistics_types and node_id not in visited:
+            result = dfs(node_id, [], visited)
+            if result:
+                return result
+
+    return None
+
+
 def build_flow_graph(document: Document) -> BuildResult:
     """Build a FlowGraph from a Document.
 
@@ -283,7 +327,18 @@ def build_flow_graph(document: Document) -> BuildResult:
         )
         graph.add_edge(edge)
 
-    # Phase 5: Check merger type conflicts
+    # Phase 5: Check for pure logistics loops (splitter/merger only, no producers)
+    logistics_loop = _find_logistics_loop(graph)
+    if logistics_loop:
+        errors.append(
+            FatalError(
+                error_type=FatalErrorType.SOURCELESS_CYCLE,
+                message=f"Pure logistics loop detected: {' -> '.join(logistics_loop)}",
+                element_id=logistics_loop[0],
+            )
+        )
+
+    # Phase 6: Check merger type conflicts
     for node in graph.nodes.values():
         if node.node_type == NodeType.MERGER:
             incoming_edges = graph.get_incoming_edges(node.id)
