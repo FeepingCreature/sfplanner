@@ -639,6 +639,160 @@ class CreateRoomCommand(Command):
             self.canvas.add_belt_item(belt)
 
 
+def _shallow_copy_room_with_new_ids(room: Room) -> tuple[Room, dict[str, str]]:
+    """Shallow copy a Room, regenerating IDs for buildings and belts only.
+
+    This is a SHALLOW copy - nested room placements keep their original room_id,
+    so linked rooms inside this room stay linked after delink.
+
+    Returns the new room and a mapping of old_id -> new_id for buildings/belts.
+    Belt references are updated to use new building IDs.
+    """
+    import copy
+
+    from satisfactory_planner.core.models import Room as RoomModel
+    from satisfactory_planner.core.models import generate_id
+
+    # Create ID mapping for buildings
+    building_id_map: dict[str, str] = {}
+    for old_id in room.buildings:
+        building_id_map[old_id] = generate_id()
+
+    # Create ID mapping for belts
+    belt_id_map: dict[str, str] = {}
+    for old_id in room.belts:
+        belt_id_map[old_id] = generate_id()
+
+    # Create new room (not deepcopy - we'll copy contents selectively)
+    new_room = RoomModel(
+        id=generate_id(),
+        name=room.name,
+        width=room.width,
+        height=room.height,
+    )
+
+    # Copy buildings with new IDs
+    for old_id, building in room.buildings.items():
+        new_building = copy.deepcopy(building)
+        new_id = building_id_map[old_id]
+        new_building.id = new_id
+        new_room.buildings[new_id] = new_building
+
+    # Copy belts with new IDs and updated building references
+    for old_id, belt in room.belts.items():
+        new_belt = copy.deepcopy(belt)
+        new_id = belt_id_map[old_id]
+        new_belt.id = new_id
+        # Update building references
+        if new_belt.source_building_id in building_id_map:
+            new_belt.source_building_id = building_id_map[new_belt.source_building_id]
+        if new_belt.dest_building_id in building_id_map:
+            new_belt.dest_building_id = building_id_map[new_belt.dest_building_id]
+        new_room.belts[new_id] = new_belt
+
+    # Nested rooms dict is NOT copied - stays empty
+    # Nested room *placements* would be in parent document's room_placements
+    # and they reference rooms by ID, so they stay linked automatically
+
+    # Combine all ID mappings
+    all_id_map = {**building_id_map, **belt_id_map}
+
+    return new_room, all_id_map
+
+
+@dataclass(frozen=True)
+class DelinkRoomCommand(Command):
+    """Command to delink a room placement from its linked instances.
+
+    Creates a deep copy of the Room with new IDs for all contents,
+    and points the placement at the new independent room.
+    """
+
+    placement_id: str  # The placement being delinked
+    canvas: FactoryCanvas
+
+    # Captured at construction for undo
+    old_room_id: str = ""
+    # Generated at construction for deterministic redo
+    new_room_id: str = ""
+
+    def __post_init__(self) -> None:
+        """Capture old room ID and pre-generate new room ID."""
+        from satisfactory_planner.core.models import generate_id
+
+        # Note: We can't look up placement here (no document access)
+        # old_room_id must be set by caller or we set it in execute
+        if not self.new_room_id:
+            object.__setattr__(self, "new_room_id", generate_id())
+
+    def execute(self, document: Document) -> None:
+        placement = document.room_placements.get(self.placement_id)
+        if not placement:
+            logger.warning(f"DelinkRoomCommand.execute: placement {self.placement_id} not found")
+            return
+
+        old_room = document.rooms.get(placement.room_id)
+        if not old_room:
+            logger.warning(f"DelinkRoomCommand.execute: room {placement.room_id} not found")
+            return
+
+        # Capture old_room_id if not already set
+        if not self.old_room_id:
+            object.__setattr__(self, "old_room_id", placement.room_id)
+
+        # Check if this is the only placement - nothing to delink
+        placements = document.get_placements_for_room(placement.room_id)
+        if len(placements) <= 1:
+            logger.info("DelinkRoomCommand.execute: room has only one placement, nothing to delink")
+            return
+
+        # Shallow copy the room with new IDs (nested rooms stay linked)
+        new_room, _id_map = _shallow_copy_room_with_new_ids(old_room)
+
+        # Override the generated ID with our pre-generated one (for deterministic redo)
+        new_room.id = self.new_room_id
+
+        # Windows-style naming: "Copy of X"
+        new_room.name = f"Copy of {old_room.name}"
+
+        # Add new room to document
+        document.rooms[new_room.id] = new_room
+
+        # Point this placement at the new room
+        placement.room_id = new_room.id
+
+        # Refresh the canvas
+        self.canvas.remove_room_item(self.placement_id)
+        self.canvas.add_room_item(placement, new_room)
+        self.canvas.notify_mutation()
+
+    def undo(self, document: Document) -> None:
+        placement = document.room_placements.get(self.placement_id)
+        if not placement:
+            logger.warning(f"DelinkRoomCommand.undo: placement {self.placement_id} not found")
+            return
+
+        if not self.old_room_id:
+            logger.warning("DelinkRoomCommand.undo: old_room_id not captured")
+            return
+
+        old_room = document.rooms.get(self.old_room_id)
+        if not old_room:
+            logger.warning(f"DelinkRoomCommand.undo: old room {self.old_room_id} not found")
+            return
+
+        # Remove the copied room
+        document.rooms.pop(self.new_room_id, None)
+
+        # Point placement back at original room
+        placement.room_id = self.old_room_id
+
+        # Refresh the canvas
+        self.canvas.remove_room_item(self.placement_id)
+        self.canvas.add_room_item(placement, old_room)
+        self.canvas.notify_mutation()
+
+
 @dataclass(frozen=True)
 class SetBeltTierCommand(Command):
     """Command to set a belt's tier."""

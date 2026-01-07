@@ -8,7 +8,7 @@
 - [ ] Prevent/intercept belts crossing room boundary (auto-create port or reject)
 - [ ] Fix redo of room creation (buildings not restored - command captures IDs but buildings were moved)
 - [ ] Undo stack is per-canvas, not per-scene (actions inside rooms should undo)
-- [ ] Room unlinking ("Copy of <name>" pattern - deep-copy Room so placement becomes independent)
+- [ ] Create Room toolbar button should show active state while in CREATE_ROOM mode
 
 ## Room System - Known Bugs (low priority)
 - [ ] Mid-drag doesn't update other linked room instances (only syncs on release)
