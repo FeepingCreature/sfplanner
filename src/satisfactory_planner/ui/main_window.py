@@ -348,8 +348,11 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self.create_blueprint_action)
 
         self.unlink_blueprint_action = QAction("Unlink", self)
-        self.unlink_blueprint_action.setToolTip("Unlink selected blueprint instance")
-        self.unlink_blueprint_action.setEnabled(False)  # TODO: Implement blueprints
+        self.unlink_blueprint_action.setToolTip(
+            "Unlink selected room instance (make independent copy)"
+        )
+        self.unlink_blueprint_action.setEnabled(False)
+        self.unlink_blueprint_action.triggered.connect(self._unlink_room)
         toolbar.addAction(self.unlink_blueprint_action)
 
         toolbar.addSeparator()
@@ -435,6 +438,7 @@ class MainWindow(QMainWindow):
 
         # Connect signals
         canvas.selection_changed.connect(self.properties_panel.set_selection)
+        canvas.selection_changed.connect(self._update_selection_actions)
 
         # Set mutation callback (replaces document_changed signal)
         canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
@@ -555,6 +559,7 @@ class MainWindow(QMainWindow):
 
             # Connect signals
             canvas.selection_changed.connect(self.properties_panel.set_selection)
+            canvas.selection_changed.connect(self._update_selection_actions)
 
             # Set mutation callback (replaces document_changed signal)
             canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
@@ -752,6 +757,67 @@ class MainWindow(QMainWindow):
 
             self.current_tab.canvas.set_tool_mode(ToolMode.CREATE_ROOM)
             self.current_tab.canvas.setCursor(Qt.CursorShape.CrossCursor)
+
+    def _unlink_room(self) -> None:
+        """Unlink the selected room placement (make it an independent copy)."""
+        if not self.current_tab or not self.current_tab.canvas:
+            return
+
+        from satisfactory_planner.ui.commands import DelinkRoomCommand
+        from satisfactory_planner.ui.items import RoomItem
+
+        canvas = self.current_tab.canvas
+        selected = canvas.scene().selectedItems()
+
+        # Find selected room item
+        room_item = None
+        for item in selected:
+            if isinstance(item, RoomItem):
+                room_item = item
+                break
+
+        if not room_item:
+            return
+
+        # Check if room has multiple placements (otherwise nothing to unlink)
+        placements = self.current_tab.document.get_placements_for_room(room_item.room.id)
+        if len(placements) <= 1:
+            QMessageBox.information(
+                self,
+                "Cannot Unlink",
+                "This room has only one instance. Nothing to unlink.",
+            )
+            return
+
+        # Create and execute delink command
+        cmd = DelinkRoomCommand(
+            placement_id=room_item.placement.id,
+            canvas=canvas,
+            old_room_id=room_item.room.id,
+        )
+        self.current_tab.command_stack.execute(cmd)
+
+    def _update_selection_actions(self) -> None:
+        """Update toolbar actions based on current selection."""
+        if not self.current_tab or not self.current_tab.canvas:
+            self.unlink_blueprint_action.setEnabled(False)
+            return
+
+        from satisfactory_planner.ui.items import RoomItem
+
+        canvas = self.current_tab.canvas
+        selected = canvas.scene().selectedItems()
+
+        # Check if a room with multiple placements is selected
+        can_unlink = False
+        for item in selected:
+            if isinstance(item, RoomItem):
+                placements = self.current_tab.document.get_placements_for_room(item.room.id)
+                if len(placements) > 1:
+                    can_unlink = True
+                    break
+
+        self.unlink_blueprint_action.setEnabled(can_unlink)
 
     def _mark_dirty(self, tab: DocumentTab) -> None:
         """Mark a tab as having unsaved changes."""
