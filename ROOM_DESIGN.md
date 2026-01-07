@@ -6,6 +6,16 @@ Rooms are groupings of buildings that act as a single movable unit while remaini
 
 **Key insight**: A room is a "window into a different scene." When you interact with items inside a room, you're interacting with that scene. Belts cannot cross room boundaries - they must go through Ports.
 
+## Key Design Principles
+
+1. **Ports are buildings inside the room** - From inside, a port is a building you connect belts to. From outside, ports are properties of the RoomItem that appear on its boundary.
+
+2. **Commands receive document at execute time** - Commands don't store `document` as a field. They store a `scene_room_id` and receive `document` as an argument to `execute(document)`/`undo(document)`. This keeps commands serializable and avoids stale references. Commands close over the canvas (for UI updates) but look up data through the document.
+
+3. **Linked rooms are ONE room rendered multiple times** - There's only one Room object in the data model. Each "instance" is a `RoomPlacement` that says where to render that room. Edits happen once to the single Room. Flow analysis later disaggregates for solving (that's why flow results are shown as an overlay - flow analysis ignores room structure).
+
+4. **Room names are just the name** - No instance numbers in the data model. Delinking creates "Copy of {name}" Windows-style.
+
 ## Core Concepts
 
 ### Scene Protocol
@@ -78,8 +88,6 @@ class Room:
     """A room is both a positionable item and a container (scene) for buildings."""
     id: str
     name: str
-    x: float  # Position in parent scene
-    y: float
     width: float
     height: float
     
@@ -87,11 +95,9 @@ class Room:
     buildings: dict[str, Building] = field(default_factory=dict)
     belts: dict[str, Belt] = field(default_factory=dict)
     rooms: dict[str, Room] = field(default_factory=dict)  # Nested rooms
-    ports: dict[str, Port] = field(default_factory=dict)
     
-    # Linking
-    blueprint_id: str | None = None  # Source blueprint if linked
-    instance_number: int = 1  # Display as "Name #1"
+    # Ports are buildings inside the room, stored in buildings dict
+    # They have a special BuildingType.PORT type
     
     # Scene protocol methods
     def add_building(self, building: Building) -> None:
@@ -113,30 +119,40 @@ class Room:
         ]
 ```
 
-### Port
+### Port (as Building)
 
-Ports are the boundary interface between a room and its parent scene. They act as belt endpoints.
+Ports are buildings with `BuildingType.PORT`. They live inside the room's `buildings` dict like any other building, but have special behavior:
+
+```python
+# In BuildingType enum:
+PORT_IN = "Port (In)"    # Flow enters room
+PORT_OUT = "Port (Out)"  # Flow exits room
+
+# Port buildings have these properties:
+# - Constrained to room boundary (edge + position along edge)
+# - One input port, one output port (opposite sides)
+# - From inside: connect belt to port like any building
+# - From outside: RoomItem exposes ports on its boundary
+```
+
+Port position is stored in the Building's x,y but constrained to the boundary. The `edge` and `position` can be computed from x,y given the room dimensions, or stored as extra fields.
+
+### RoomPlacement
+
+Since linked rooms are ONE room rendered multiple times, we separate the Room (content) from its placements:
 
 ```python
 @dataclass
-class Port:
-    """A port on a room boundary - acts as belt endpoint."""
+class RoomPlacement:
+    """A placement of a room in a scene. Multiple placements can reference the same Room."""
     id: str
-    room_id: str
-    edge: str  # "top", "bottom", "left", "right"  
-    position: float  # 0.0-1.0 along edge
-    is_output: bool  # Direction: True = flow out of room, False = flow into room
+    room_id: str  # References a Room in document.rooms
+    x: float      # Position in parent scene
+    y: float
     
-    # Connections (exactly one belt each side)
-    inside_belt_id: str | None = None   # Belt in room.belts connecting to this port
-    outside_belt_id: str | None = None  # Belt in parent scene connecting to this port
+    # The parent scene - None means root document
+    parent_scene_id: str | None = None
 ```
-
-A port appears as:
-- An **input port** from inside the room (if `is_output=True` - items flow out)
-- An **output port** from outside the room (items exit the port into parent scene)
-
-Or vice versa for `is_output=False`.
 
 ### Document Updates
 
@@ -146,8 +162,11 @@ class Document:
     """Root document - implements Scene protocol."""
     buildings: dict[str, Building] = field(default_factory=dict)
     belts: dict[str, Belt] = field(default_factory=dict)
-    rooms: dict[str, Room] = field(default_factory=dict)
     recipes: dict[str, Recipe] = field(default_factory=dict)
+    
+    # Rooms are stored separately from their placements
+    rooms: dict[str, Room] = field(default_factory=dict)  # Room definitions
+    room_placements: dict[str, RoomPlacement] = field(default_factory=dict)  # Where rooms appear
     
     # Scene protocol methods (same as Room)
     def add_building(self, building: Building) -> None: ...
@@ -156,44 +175,31 @@ class Document:
     def remove_belt(self, belt_id: str) -> Belt | None: ...
     def get_belts_for_building(self, building_id: str) -> list[Belt]: ...
     
-    # Linked room helpers
-    def get_all_rooms(self) -> list[Room]:
-        """Get all rooms recursively (for finding linked instances)."""
-        result = []
-        def collect(scene: Scene):
-            for room in scene.rooms.values():
-                result.append(room)
-                collect(room)
-        collect(self)
-        return result
-    
-    def get_linked_rooms(self, blueprint_id: str) -> list[Room]:
-        """Find all rooms that share a blueprint_id."""
-        return [r for r in self.get_all_rooms() if r.blueprint_id == blueprint_id]
+    def get_placements_for_room(self, room_id: str) -> list[RoomPlacement]:
+        """Get all placements of a room."""
+        return [p for p in self.room_placements.values() if p.room_id == room_id]
 ```
 
 ## UI Architecture
 
 ### RoomItem
 
-A `RoomItem` is a `QGraphicsRectItem` that:
-1. Renders the room boundary
-2. Contains child `BuildingItem`s, `BeltItem`s, and nested `RoomItem`s
-3. Is selectable/movable as a unit in its parent scene
+A `RoomItem` renders a `RoomPlacement`. It displays the Room's contents at the placement's position.
 
 ```python
 class RoomItem(QGraphicsRectItem):
-    """A room on the canvas - contains child items for its contents."""
+    """A room placement on the canvas - contains child items for its contents."""
     
-    def __init__(self, room: Room, parent_scene: Scene, canvas: FactoryCanvas):
+    def __init__(self, placement: RoomPlacement, room: Room, parent_scene: Scene, canvas: FactoryCanvas):
         super().__init__()
-        self.room = room
-        self.parent_scene = parent_scene  # The scene this room lives IN
+        self.placement = placement  # Where this instance is positioned
+        self.room = room            # The room content (may be shared by multiple RoomItems)
+        self.parent_scene = parent_scene
         self.canvas = canvas
         
         # Visual setup - rect is in local coords (0,0 to width,height)
         self.setRect(0, 0, room.width, room.height)
-        self.setPos(room.x, room.y)  # Position in parent scene
+        self.setPos(placement.x, placement.y)  # Position from placement, not room
         
         # Flags for selection/movement in parent scene
         self.setFlag(ItemIsSelectable)
@@ -224,17 +230,16 @@ class RoomItem(QGraphicsRectItem):
                 item.setParentItem(self)
                 self._belt_items[belt.id] = item
         
-        # Nested rooms (recursive)
-        for nested_room in self.room.rooms.values():
-            item = RoomItem(nested_room, parent_scene=self.room, canvas=self.canvas)
+        # Nested room placements (recursive)
+        # Note: nested placements reference rooms in document.rooms
+        for placement in self._get_nested_placements():
+            nested_room = self.canvas.document.rooms[placement.room_id]
+            item = RoomItem(placement, nested_room, parent_scene=self.room, canvas=self.canvas)
             item.setParentItem(self)
-            self._room_items[nested_room.id] = item
+            self._room_items[placement.id] = item
         
-        # Ports
-        for port in self.room.ports.values():
-            item = RoomPortItem(port, self.room, self.canvas)
-            item.setParentItem(self)
-            self._port_items[port.id] = item
+        # Ports are just buildings with PORT type - already handled above
+        # They render specially via BuildingItem/PortItem
 ```
 
 ### Event Routing (Transparent Rooms)
@@ -312,68 +317,91 @@ def add_room_item(self, room: Room, parent_scene: Scene) -> RoomItem:
 
 ## Commands
 
+### Command Signature Change
+
+Commands receive `document` as an argument to `execute()`/`undo()`, not as a stored field. This keeps commands serializable and avoids stale references:
+
+```python
+class Command(ABC):
+    """Base class for undoable commands."""
+    
+    @abstractmethod
+    def execute(self, document: Document) -> None:
+        """Execute the command."""
+        ...
+    
+    @abstractmethod
+    def undo(self, document: Document) -> None:
+        """Undo the command."""
+        ...
+
+class CommandStack:
+    def __init__(self, document: Document):
+        self.document = document  # Stack owns the document reference
+        self.undo_stack: list[Command] = []
+        self.redo_stack: list[Command] = []
+    
+    def execute(self, cmd: Command) -> None:
+        cmd.execute(self.document)
+        # ... merge logic, stack management
+    
+    def undo(self) -> None:
+        if self.undo_stack:
+            cmd = self.undo_stack.pop()
+            cmd.undo(self.document)
+            self.redo_stack.append(cmd)
+```
+
 ### Scene-Aware Commands
 
-Commands operate on a specific scene. They store the scene reference (or room_id for serialization):
+Commands store `scene_room_id` and look up the scene from the document at execute time:
 
 ```python
 @dataclass(frozen=True)
 class PlaceBuildingCommand(Command):
     """Command to place a building in a scene."""
-    document: Document  # Root, for navigation
     scene_room_id: str | None  # None = root document, else room ID
     building: Building
     canvas: FactoryCanvas
     
-    def _get_scene(self) -> Scene:
+    def _get_scene(self, document: Document) -> Scene:
         if self.scene_room_id is None:
-            return self.document
-        # Find room by ID (could be nested)
-        for room in self.document.get_all_rooms():
-            if room.id == self.scene_room_id:
-                return room
-        raise ValueError(f"Room {self.scene_room_id} not found")
+            return document
+        return document.rooms[self.scene_room_id]
     
-    def execute(self) -> None:
-        scene = self._get_scene()
+    def execute(self, document: Document) -> None:
+        scene = self._get_scene(document)
         scene.add_building(self.building)
         # ... add to canvas
+
+    def undo(self, document: Document) -> None:
+        scene = self._get_scene(document)
+        scene.remove_building(self.building.id)
+        # ... remove from canvas
 ```
 
-### Linked Room Commands
+### Linked Room Commands (Not Needed!)
 
-When modifying a building inside a linked room, the change applies to all linked instances:
+Since linked rooms are ONE Room object rendered multiple times, there's no "propagation" needed. When you modify a building in a Room, you're modifying the single Room object. All RoomItems that render that Room will see the change automatically on their next paint.
 
 ```python
 @dataclass(frozen=True)
 class SetRecipeCommand(Command):
-    document: Document
-    room_id: str | None  # Room containing the building (None = root)
+    scene_room_id: str | None
     building_id: str
     old_recipe_id: str | None
     new_recipe_id: str | None
     canvas: FactoryCanvas
     
-    def execute(self) -> None:
-        if self.room_id:
-            room = self._find_room(self.room_id)
-            if room.blueprint_id:
-                # Apply to ALL linked instances
-                for linked in self.document.get_linked_rooms(room.blueprint_id):
-                    building = linked.buildings.get(self.building_id)
-                    if building:
-                        building.recipe_id = self.new_recipe_id
-                        self.canvas.refresh_building(building.id)
-                self.canvas.notify_mutation()
-                return
+    def execute(self, document: Document) -> None:
+        scene = self._get_scene(document)
+        building = scene.buildings[self.building_id]
+        building.recipe_id = self.new_recipe_id
         
-        # Normal case: single building
-        scene = self._get_scene()
-        building = scene.buildings.get(self.building_id)
-        if building:
-            building.recipe_id = self.new_recipe_id
-            self.canvas.refresh_building(self.building_id)
-            self.canvas.notify_mutation()
+        # Refresh ALL RoomItems that display this room
+        # (canvas tracks which placements exist)
+        self.canvas.refresh_building_in_room(self.building_id, self.scene_room_id)
+        self.canvas.notify_mutation()
 ```
 
 ### Move Bounds Checking
@@ -549,57 +577,79 @@ def complete_belt_connection(self, dest_building_id: str, dest_port_index: int):
 
 ## Linked Instances
 
-### Creating from Library
+### How Linking Works
+
+Linking is simple: multiple `RoomPlacement`s reference the same `Room`. There's no special "link" field - the link IS the shared reference.
 
 ```python
-def instantiate_blueprint(self, blueprint_id: str, position: QPointF) -> Room:
-    source = self.blueprint_library.get(blueprint_id)
+# Two placements of the same room = "linked instances"
+room = Room(id="room-1", name="Iron Smeltery", ...)
+document.rooms["room-1"] = room
+
+placement1 = RoomPlacement(id="p1", room_id="room-1", x=100, y=100)
+placement2 = RoomPlacement(id="p2", room_id="room-1", x=500, y=100)
+document.room_placements["p1"] = placement1
+document.room_placements["p2"] = placement2
+
+# Both render the same room - edits to the room affect both
+```
+
+### Creating from Library
+
+When instantiating from the blueprint library, we add the Room to the document (if not already there) and create a placement:
+
+```python
+def instantiate_blueprint(self, room: Room, position: QPointF) -> RoomPlacement:
+    # Add room to document if not already present
+    if room.id not in self.document.rooms:
+        self.document.rooms[room.id] = room
     
-    # Deep copy
-    room = copy.deepcopy(source.room)
-    room.id = generate_id()
-    room.x = position.x()
-    room.y = position.y()
-    room.blueprint_id = blueprint_id
-    
-    # Regenerate IDs for all contents (buildings, belts, ports, nested rooms)
-    self._regenerate_ids(room)
-    
-    # Assign instance number
-    existing = self.document.get_linked_rooms(blueprint_id)
-    room.instance_number = len(existing) + 1
-    
-    return room
+    # Create a placement
+    placement = RoomPlacement(
+        id=generate_id(),
+        room_id=room.id,
+        x=position.x(),
+        y=position.y(),
+    )
+    self.document.room_placements[placement.id] = placement
+    return placement
 ```
 
 ### Delink
 
+Delinking creates a deep copy of the Room and assigns a new name:
+
 ```python
 @dataclass(frozen=True)
 class DelinkRoomCommand(Command):
-    document: Document
-    room_id: str
+    placement_id: str  # The placement being delinked
     canvas: FactoryCanvas
     
-    # For undo
-    old_blueprint_id: str | None = None
-    old_name: str = ""
+    # Captured at construction for undo
+    old_room_id: str = ""
+    new_room_id: str = field(default_factory=generate_id)
     
-    def execute(self) -> None:
-        room = self._find_room(self.room_id)
+    def execute(self, document: Document) -> None:
+        placement = document.room_placements[self.placement_id]
+        old_room = document.rooms[placement.room_id]
         
-        # Clear link
-        room.blueprint_id = None
+        # Deep copy the room
+        new_room = copy.deepcopy(old_room)
+        new_room.id = self.new_room_id
         
-        # Generate unique name
-        base_name = room.name.split(" #")[0]
-        existing_names = {r.name for r in self.document.get_all_rooms()}
-        num = 1
-        while f"{base_name} #{num}" in existing_names:
-            num += 1
-        room.name = f"{base_name} #{num}"
+        # Windows-style naming: "Copy of X", "Copy of Copy of X", etc.
+        new_room.name = f"Copy of {old_room.name}"
         
-        self.canvas.refresh_room(room.id)
+        # Regenerate all internal IDs (buildings, belts, nested rooms)
+        self._regenerate_ids(new_room)
+        
+        # Add new room to document
+        document.rooms[new_room.id] = new_room
+        
+        # Point this placement at the new room
+        placement.room_id = new_room.id
+        
+        self.canvas.refresh_placement(self.placement_id)
         self.canvas.notify_mutation()
 ```
 
@@ -610,10 +660,11 @@ class DelinkRoomCommand(Command):
 ```python
 class RoomItem(QGraphicsRectItem):
     def paint(self, painter, option, widget):
-        # Room boundary
-        if self.room.blueprint_id:
-            # Linked: color based on blueprint_id
-            color = self._color_for_blueprint(self.room.blueprint_id)
+        # Room boundary - color indicates if room has multiple placements
+        placements = self.canvas.document.get_placements_for_room(self.room.id)
+        if len(placements) > 1:
+            # Multiple placements = "linked" - use distinct color
+            color = self._color_for_room(self.room.id)
             pen = QPen(color, 2, Qt.SolidLine)
         else:
             pen = QPen(QColor(100, 100, 100), 2, Qt.DashLine)
@@ -622,11 +673,8 @@ class RoomItem(QGraphicsRectItem):
         painter.setBrush(QBrush(QColor(50, 50, 55, 100)))
         painter.drawRect(self.rect())
         
-        # Room name
-        name = self.room.name
-        if self.room.blueprint_id:
-            name = f"{name} #{self.room.instance_number}"
-        painter.drawText(self.rect(), Qt.AlignTop | Qt.AlignHCenter, name)
+        # Room name (just the name, no instance numbers)
+        painter.drawText(self.rect(), Qt.AlignTop | Qt.AlignHCenter, self.room.name)
         
         # Children render themselves (Qt handles this)
 ```
@@ -688,11 +736,12 @@ Each phase is independently testable:
 34. `MoveRoomCommand` for undo/redo
 35. **Test**: Move room, verify children follow, undo
 
-### Phase 9: Linked Instances
-36. Add `blueprint_id` and `instance_number` to Room
-37. Linked room rendering (color, instance number)  
-38. Command propagation to linked instances
-39. **Test**: Create linked rooms, modify one, verify sync
+### Phase 9: Linked Instances (via RoomPlacement)
+36. Add `RoomPlacement` dataclass
+37. Update Document to have `room_placements` dict
+38. Canvas tracks RoomItems by placement_id, not room_id
+39. Linked room rendering (color for rooms with multiple placements)
+40. **Test**: Create two placements of same room, modify room, verify both update
 
 ### Phase 10: Delink
 40. `DelinkRoomCommand`
@@ -706,7 +755,176 @@ Each phase is independently testable:
 46. **Test**: Save blueprint, reload app, instantiate
 
 ### Phase 12: Properties Panel
-47. Room properties: name, link status, instance count
+47. Room properties: name, link status, placement count
 48. "Save to Library" button
 49. "Delink" button
 50. **Test**: Select room, verify properties display
+
+---
+
+## Document Save/Load
+
+### File Format Changes
+
+The `.sfp` file format (JSON) needs to accommodate rooms and placements:
+
+```json
+{
+  "version": "0.2.0",
+  "buildings": { ... },
+  "belts": { ... },
+  "recipes": { ... },
+  "rooms": {
+    "room-id-1": {
+      "id": "room-id-1",
+      "name": "Iron Smeltery",
+      "width": 400,
+      "height": 300,
+      "buildings": { ... },
+      "belts": { ... },
+      "rooms": { ... }
+    }
+  },
+  "room_placements": {
+    "placement-1": {
+      "id": "placement-1",
+      "room_id": "room-id-1",
+      "x": 100,
+      "y": 200,
+      "parent_scene_id": null
+    },
+    "placement-2": {
+      "id": "placement-2", 
+      "room_id": "room-id-1",
+      "x": 600,
+      "y": 200,
+      "parent_scene_id": null
+    }
+  },
+  "view_state": { ... }
+}
+```
+
+### Persistence Functions
+
+```python
+def room_to_dict(room: Room) -> dict:
+    """Serialize a Room to dictionary (recursive for nested rooms)."""
+    return {
+        "id": room.id,
+        "name": room.name,
+        "width": room.width,
+        "height": room.height,
+        "buildings": {bid: building_to_dict(b) for bid, b in room.buildings.items()},
+        "belts": {bid: belt_to_dict(b) for bid, b in room.belts.items()},
+        "rooms": {rid: room_to_dict(r) for rid, r in room.rooms.items()},
+    }
+
+def dict_to_room(data: dict) -> Room:
+    """Deserialize a Room from dictionary."""
+    room = Room(
+        id=data["id"],
+        name=data["name"],
+        width=data["width"],
+        height=data["height"],
+    )
+    for bid, bdata in data.get("buildings", {}).items():
+        room.buildings[bid] = dict_to_building(bdata)
+    for bid, bdata in data.get("belts", {}).items():
+        room.belts[bid] = dict_to_belt(bdata)
+    for rid, rdata in data.get("rooms", {}).items():
+        room.rooms[rid] = dict_to_room(rdata)
+    return room
+
+def placement_to_dict(placement: RoomPlacement) -> dict:
+    return {
+        "id": placement.id,
+        "room_id": placement.room_id,
+        "x": placement.x,
+        "y": placement.y,
+        "parent_scene_id": placement.parent_scene_id,
+    }
+
+def dict_to_placement(data: dict) -> RoomPlacement:
+    return RoomPlacement(
+        id=data["id"],
+        room_id=data["room_id"],
+        x=data["x"],
+        y=data["y"],
+        parent_scene_id=data.get("parent_scene_id"),
+    )
+```
+
+### Blueprint Library Storage
+
+Blueprints are saved to XDG user data directory:
+
+```
+~/.local/share/satisfactory-planner/blueprints/
+├── iron-smeltery.json
+├── steel-production.json
+└── ...
+```
+
+Each blueprint file contains a single Room (not a placement):
+
+```json
+{
+  "version": "1.0.0",
+  "room": { ... }
+}
+```
+
+```python
+def save_blueprint(room: Room, name: str) -> Path:
+    """Save a room as a blueprint to user library."""
+    blueprints_dir = get_user_data_dir() / "blueprints"
+    blueprints_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Sanitize filename
+    filename = sanitize_filename(name) + ".json"
+    path = blueprints_dir / filename
+    
+    data = {
+        "version": "1.0.0",
+        "room": room_to_dict(room),
+    }
+    path.write_text(json.dumps(data, indent=2))
+    return path
+
+def load_blueprints() -> dict[str, Room]:
+    """Load all blueprints from user library."""
+    blueprints_dir = get_user_data_dir() / "blueprints"
+    if not blueprints_dir.exists():
+        return {}
+    
+    blueprints = {}
+    for path in blueprints_dir.glob("*.json"):
+        data = json.loads(path.read_text())
+        room = dict_to_room(data["room"])
+        blueprints[room.id] = room
+    return blueprints
+```
+
+### Migration
+
+When loading older documents (version < 0.2.0), we need to handle missing fields:
+
+```python
+def dict_to_document(data: dict) -> tuple[Document, dict | None]:
+    version = data.get("version", "0.1.0")
+    
+    doc = Document()
+    # ... load buildings, belts, recipes as before
+    
+    # v0.2.0+: load rooms and placements
+    if "rooms" in data:
+        for rid, rdata in data["rooms"].items():
+            doc.rooms[rid] = dict_to_room(rdata)
+    if "room_placements" in data:
+        for pid, pdata in data["room_placements"].items():
+            doc.room_placements[pid] = dict_to_placement(pdata)
+    
+    view_state = data.get("view_state")
+    return doc, view_state
+```
