@@ -1,9 +1,7 @@
 {
   "active_files": [
-    "ROOM_DESIGN.md",
-    "TODO.md",
     "src/satisfactory_planner/ui/canvas.py",
-    "src/satisfactory_planner/core/models.py",
+    "src/satisfactory_planner/ui/items/room_item.py",
     "src/satisfactory_planner/ui/commands.py"
   ],
   "request_log_entries": [
@@ -1644,6 +1642,51 @@
       "streaming": true,
       "actual_cost": 0.5270375,
       "generation_id": "gen-1767819447-z069cTWIm7AbNOQvpTBe"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767819554011.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767819554011.json",
+      "timestamp": 1767819554.0128386,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1200335,
+      "generation_id": "gen-1767819554-xXLfokbAzdM6TVvR4CIu"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767819564133.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767819564133.json",
+      "timestamp": 1767819564.1354408,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.50728875,
+      "generation_id": "gen-1767819564-YKsW9rvXqHrySYZAgJQc"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767819590461.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767819590461.json",
+      "timestamp": 1767819590.4625216,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.23121825,
+      "generation_id": "gen-1767819591-SsvMyihYAhPaIjkwxhFg"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767819611265.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767819611265.json",
+      "timestamp": 1767819611.266585,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.218437,
+      "generation_id": "gen-1767819612-fyuDGNGynYGQCej2sJqS"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767819621632.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767819621632.json",
+      "timestamp": 1767819621.6338165,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.22837825,
+      "generation_id": "gen-1767819622-t3XsOHtrwkU16K79NB1M"
     }
   ],
   "messages": [
@@ -6994,6 +7037,222 @@
     {
       "role": "assistant",
       "content": "You're right - clarified the design. The model is already correct:\n\n- **Room**: Pure data (buildings, belts, ports, size). No position. Lives in `document.rooms`.\n- **RoomPlacement**: Positioned view. All placements are equal peers - no \"original\" vs \"copy\".\n\nWhen you edit inside *any* RoomPlacement, you edit the underlying Room, and all placements see the change. Deleting a placement just removes that view; the Room persists if other placements exist.\n\nThis is already how the code works! The copy/paste I just added creates a new RoomPlacement pointing to the same Room, which is correct. The only thing that might need adjustment is delete behavior - currently untested whether deleting a RoomPlacement properly handles the case where other placements still reference the Room."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: cf30942c",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Nice! It all works! The other rooms don't refresh when you do move actions in the first room- in fact you can get into a funny state where you move items in room 1 and belts in room 2 move along with it, can you look that over?"
+    },
+    {
+      "role": "assistant",
+      "content": "Let me look at the issue - when you move a building in one RoomPlacement, the belts in other placements of the same Room are moving but the buildings aren't refreshing. This is because `MoveBuildingsCommand` only refreshes the building in the specific RoomItem where the move happened, but since all placements share the same Room data, the belts in other placements see the updated building positions.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/commands.py\",\"src/satisfactory_planner/ui/items/room_item.py\"], \"remove\": [\"ROOM_DESIGN.md\",\"src/satisfactory_planner/core/models.py\",\"SPEC.md\",\"TODO.md\",\"CLAUDE.md\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_bdrk_01BsmHbaXzjRvGpzTTRp5G5t",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01BsmHbaXzjRvGpzTTRp5G5t",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/commands.py\", \"src/satisfactory_planner/ui/items/room_item.py\"], \"message\": \"Added 2 files, removed 5 files from context\", \"remove\": [\"ROOM_DESIGN.md\", \"src/satisfactory_planner/core/models.py\", \"SPEC.md\", \"TODO.md\", \"CLAUDE.md\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at the code, I see the issue. When you move a building in one RoomItem, the underlying Room data is updated, but only the belts in *that* RoomItem are refreshed. The other RoomItems showing the same Room don't get their belts refreshed.\n\nThe fix is: when a building in a Room is moved, we need to refresh belts in **all** RoomItems that display that Room.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"    def refresh_belts_for_building(self, building_id: str) -> None:\\n        \\\"\\\"\\\"Refresh belts connected to a building (CommandHandler protocol).\\\"\\\"\\\"\\n        self._update_belts_for_building(building_id)\", \"replace\": \"    def refresh_belts_for_building(self, building_id: str) -> None:\\n        \\\"\\\"\\\"Refresh belts connected to a building (CommandHandler protocol).\\n\\n        If the building is in a Room, refreshes belts in ALL RoomItems that\\n        display that Room (linked instances all need updating).\\n        \\\"\\\"\\\"\\n        # First, check if this building is in a room\\n        for room_id, room in self.document.rooms.items():\\n            if building_id in room.buildings:\\n                # Building is in a room - refresh all RoomItems that display this room\\n                self._refresh_room_belts_for_building(room_id, building_id)\\n                return\\n\\n        # Building is in root document\\n        self._update_belts_for_building(building_id)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_012BM4vffJQ1sA4HiBjboyJy",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"    def _update_belts_for_building(self, building_id: str, scene: Scene | None = None) -> None:\\n        \\\"\\\"\\\"Redraw all belts connected to a building using current model positions.\\n\\n        Args:\\n            building_id: The building whose belts need updating\\n            scene: The scene containing the building (defaults to document)\\n        \\\"\\\"\\\"\\n        target_scene: Scene = scene if scene is not None else self.document\\n        for belt in target_scene.get_belts_for_building(building_id):\\n            belt_item = self._belt_items.get(belt.id)\\n            if belt_item:\\n                source = target_scene.buildings.get(belt.source_building_id)\\n                dest = target_scene.buildings.get(belt.dest_building_id)\\n                if source and dest:\\n                    belt_item.update_path(source, dest)\", \"replace\": \"    def _update_belts_for_building(self, building_id: str, scene: Scene | None = None) -> None:\\n        \\\"\\\"\\\"Redraw all belts connected to a building using current model positions.\\n\\n        Args:\\n            building_id: The building whose belts need updating\\n            scene: The scene containing the building (defaults to document)\\n        \\\"\\\"\\\"\\n        target_scene: Scene = scene if scene is not None else self.document\\n        for belt in target_scene.get_belts_for_building(building_id):\\n            belt_item = self._belt_items.get(belt.id)\\n            if belt_item:\\n                source = target_scene.buildings.get(belt.source_building_id)\\n                dest = target_scene.buildings.get(belt.dest_building_id)\\n                if source and dest:\\n                    belt_item.update_path(source, dest)\\n\\n    def _refresh_room_belts_for_building(self, room_id: str, building_id: str) -> None:\\n        \\\"\\\"\\\"Refresh belts for a building in ALL RoomItems that display the given room.\\n\\n        This ensures linked room instances all update when a building moves.\\n        \\\"\\\"\\\"\\n        from satisfactory_planner.ui.items.room_item import RoomItem\\n\\n        room = self.document.rooms.get(room_id)\\n        if not room:\\n            return\\n\\n        # Find all RoomItems that display this room and update their belt items\\n        for placement_id, room_item in self._room_items.items():\\n            if isinstance(room_item, RoomItem) and room_item.room.id == room_id:\\n                # Update belts in this room item\\n                for belt in room.get_belts_for_building(building_id):\\n                    belt_item = room_item._belt_items.get(belt.id)\\n                    if belt_item:\\n                        source = room.buildings.get(belt.source_building_id)\\n                        dest = room.buildings.get(belt.dest_building_id)\\n                        if source and dest:\\n                            belt_item.update_path(source, dest)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01VSvbRrf58dJArzPR4s5rYX",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Now I also need to refresh building positions in all RoomItems when a building moves - the building visuals also need updating, not just belts.\"}",
+            "name": "say"
+          },
+          "id": "toolu_vrtx_01LyK6dmjJ37wC3sMoToMzVi",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_012BM4vffJQ1sA4HiBjboyJy",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01VSvbRrf58dJArzPR4s5rYX",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01LyK6dmjJ37wC3sMoToMzVi",
+      "content": "{\"message\": \"Now I also need to refresh building positions in all RoomItems when a building moves - the building visuals also need updating, not just belts.\", \"say\": true, \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I also need to refresh building positions in all RoomItems when a building moves - the building visuals also need updating, not just belts.",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue - belts update in all RoomItems, but the building positions themselves don't. Let me also refresh building positions in all linked RoomItems:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"    def _refresh_room_belts_for_building(self, room_id: str, building_id: str) -> None:\\n        \\\"\\\"\\\"Refresh belts for a building in ALL RoomItems that display the given room.\\n\\n        This ensures linked room instances all update when a building moves.\\n        \\\"\\\"\\\"\\n        from satisfactory_planner.ui.items.room_item import RoomItem\\n\\n        room = self.document.rooms.get(room_id)\\n        if not room:\\n            return\\n\\n        # Find all RoomItems that display this room and update their belt items\\n        for placement_id, room_item in self._room_items.items():\\n            if isinstance(room_item, RoomItem) and room_item.room.id == room_id:\\n                # Update belts in this room item\\n                for belt in room.get_belts_for_building(building_id):\\n                    belt_item = room_item._belt_items.get(belt.id)\\n                    if belt_item:\\n                        source = room.buildings.get(belt.source_building_id)\\n                        dest = room.buildings.get(belt.dest_building_id)\\n                        if source and dest:\\n                            belt_item.update_path(source, dest)\", \"replace\": \"    def _refresh_room_building_and_belts(self, room_id: str, building_id: str) -> None:\\n        \\\"\\\"\\\"Refresh a building and its belts in ALL RoomItems that display the given room.\\n\\n        This ensures linked room instances all update when a building moves.\\n        Both the building position AND connected belts are refreshed.\\n        \\\"\\\"\\\"\\n        from satisfactory_planner.ui.items.room_item import RoomItem\\n\\n        room = self.document.rooms.get(room_id)\\n        if not room:\\n            return\\n\\n        building = room.buildings.get(building_id)\\n        if not building:\\n            return\\n\\n        # Find all RoomItems that display this room\\n        for placement_id, room_item in self._room_items.items():\\n            if isinstance(room_item, RoomItem) and room_item.room.id == room_id:\\n                # Update building position in this room item\\n                building_item = room_item._building_items.get(building_id)\\n                if building_item:\\n                    building_item.setPos(building.x, building.y)\\n                    building_item.update()\\n\\n                # Update belts connected to this building\\n                for belt in room.get_belts_for_building(building_id):\\n                    belt_item = room_item._belt_items.get(belt.id)\\n                    if belt_item:\\n                        source = room.buildings.get(belt.source_building_id)\\n                        dest = room.buildings.get(belt.dest_building_id)\\n                        if source and dest:\\n                            belt_item.update_path(source, dest)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01PTzH7q6qRFaKXR2mN82N2Y",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"        # First, check if this building is in a room\\n        for room_id, room in self.document.rooms.items():\\n            if building_id in room.buildings:\\n                # Building is in a room - refresh all RoomItems that display this room\\n                self._refresh_room_belts_for_building(room_id, building_id)\\n                return\", \"replace\": \"        # First, check if this building is in a room\\n        for room_id, room in self.document.rooms.items():\\n            if building_id in room.buildings:\\n                # Building is in a room - refresh all RoomItems that display this room\\n                self._refresh_room_building_and_belts(room_id, building_id)\\n                return\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01BpsPHmGYPDbfYcVVJQs1LD",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"verbose\": false}",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_01UfREnys8c8GKuN8dhu2hAX",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01PTzH7q6qRFaKXR2mN82N2Y",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BpsPHmGYPDbfYcVVJQs1LD",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01UfREnys8c8GKuN8dhu2hAX",
+      "content": "{\"output\": \"ruff check --fix src/ tests/\\nB007 Loop control variable `placement_id` not used within loop body\\n    --> src/satisfactory_planner/ui/canvas.py:1417:13\\n     |\\n1416 |         # Find all RoomItems that display this room\\n1417 |         for placement_id, room_item in self._room_items.items():\\n     |             ^^^^^^^^^^^^\\n1418 |             if isinstance(room_item, RoomItem) and room_item.room.id == room_id:\\n1419 |                 # Update building position in this room item\\n     |\\nhelp: Rename unused `placement_id` to `_placement_id`\\n\\nFound 1 error.\\nNo fixes available (1 hidden fix can be enabled with the `--unsafe-fixes` option).\\n\\n--- stderr ---\\nmake: *** [Makefile:16: fix] Error 1\\n\", \"passed\": false, \"success\": true, \"summary\": \"\\u2717 Tests failed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"        for placement_id, room_item in self._room_items.items():\", \"replace\": \"        for _placement_id, room_item in self._room_items.items():\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01CiZvb8zU7HeMmL8UZjJwAu",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"verbose\": false}",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_01TwbYJ75btk2hZDDPNq5YKe",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01CiZvb8zU7HeMmL8UZjJwAu",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01TwbYJ75btk2hZDDPNq5YKe",
+      "content": "{\"output\": \"ruff check --fix src/ tests/\\nAll checks passed!\\nruff format src/ tests/\\n31 files left unchanged\\nruff check src/ tests/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 22 source files\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fix linked room refresh - update building positions AND belts in all RoomItems\\n\\nWhen a building in a Room moves, all RoomItems displaying that room now\\nrefresh both the building position and connected belts, not just belts.\"}",
+            "name": "commit"
+          },
+          "id": "toolu_vrtx_01LVy3Mm2ZhpZjXCpUMYP3Rz",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"from_id\": \"285\", \"to_id\": \"296\", \"summary\": \"**Fixed linked room refresh for building moves**\\n\\nProblem: Moving a building in one RoomPlacement updated belts in other placements but not building positions, causing visual desync.\\n\\nSolution: Renamed `_refresh_room_belts_for_building` to `_refresh_room_building_and_belts` which now:\\n1. Finds ALL RoomItems displaying the same Room\\n2. Updates building position (`setPos` + `update()`) \\n3. Updates connected belts (`update_path`)\\n\\nThe method is called from `refresh_belts_for_building()` when it detects the building is in a room (vs root document).\"}",
+            "name": "compact"
+          },
+          "id": "toolu_vrtx_01UhqiCLPChVCtcYtKySRmdM",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"**Fixed linked room refresh!**\\n\\nThe issue was that when a building moved in one RoomPlacement, only the belts were updating in other placements - not the building positions. Now `_refresh_room_building_and_belts()` updates BOTH:\\n\\n1. Building position (`setPos` + `update()`)\\n2. Connected belts (`update_path`)\\n\\nFor ALL RoomItems that display the same Room. So now when you move a building in room 1, room 2 (and any other linked instances) show both the building AND belts in sync.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01XffJTvuu8tUJjoWAunxzTt",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01LVy3Mm2ZhpZjXCpUMYP3Rz",
+      "content": "{\"commit\": \"37425fe64e00\", \"message\": \"Committed: 48 file(s) modified/created\", \"side_effects\": [\"mid_turn_commit\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01UhqiCLPChVCtcYtKySRmdM",
+      "content": "{\"compact\": true, \"from_id\": \"285\", \"success\": true, \"summary\": \"**Fixed linked room refresh for building moves**\\n\\nProblem: Moving a building in one RoomPlacement updated belts in other placements but not building positions, causing visual desync.\\n\\nSolution: Renamed `_refresh_room_belts_for_building` to `_refresh_room_building_and_belts` which now:\\n1. Finds ALL RoomItems displaying the same Room\\n2. Updates building position (`setPos` + `update()`) \\n3. Updates connected belts (`update_path`)\\n\\nThe method is called from `refresh_belts_for_building()` when it detects the building is in a room (vs root document).\", \"to_id\": \"296\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01XffJTvuu8tUJjoWAunxzTt",
+      "content": "{\"done\": true, \"message\": \"**Fixed linked room refresh!**\\n\\nThe issue was that when a building moved in one RoomPlacement, only the belts were updating in other placements - not the building positions. Now `_refresh_room_building_and_belts()` updates BOTH:\\n\\n1. Building position (`setPos` + `update()`)\\n2. Connected belts (`update_path`)\\n\\nFor ALL RoomItems that display the same Room. So now when you move a building in room 1, room 2 (and any other linked instances) show both the building AND belts in sync.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "**Fixed linked room refresh!**\n\nThe issue was that when a building moved in one RoomPlacement, only the belts were updating in other placements - not the building positions. Now `_refresh_room_building_and_belts()` updates BOTH:\n\n1. Building position (`setPos` + `update()`)\n2. Connected belts (`update_path`)\n\nFor ALL RoomItems that display the same Room. So now when you move a building in room 1, room 2 (and any other linked instances) show both the building AND belts in sync."
     }
   ]
 }

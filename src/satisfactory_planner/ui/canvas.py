@@ -292,7 +292,19 @@ class FactoryCanvas(QGraphicsView):
             item.update()
 
     def refresh_belts_for_building(self, building_id: str) -> None:
-        """Refresh belts connected to a building (CommandHandler protocol)."""
+        """Refresh belts connected to a building (CommandHandler protocol).
+
+        If the building is in a Room, refreshes belts in ALL RoomItems that
+        display that Room (linked instances all need updating).
+        """
+        # First, check if this building is in a room
+        for room_id, room in self.document.rooms.items():
+            if building_id in room.buildings:
+                # Building is in a room - refresh all RoomItems that display this room
+                self._refresh_room_building_and_belts(room_id, building_id)
+                return
+
+        # Building is in root document
         self._update_belts_for_building(building_id)
 
     def refresh_belt(self, belt_id: str) -> None:
@@ -1384,6 +1396,40 @@ class FactoryCanvas(QGraphicsView):
                 dest = target_scene.buildings.get(belt.dest_building_id)
                 if source and dest:
                     belt_item.update_path(source, dest)
+
+    def _refresh_room_building_and_belts(self, room_id: str, building_id: str) -> None:
+        """Refresh a building and its belts in ALL RoomItems that display the given room.
+
+        This ensures linked room instances all update when a building moves.
+        Both the building position AND connected belts are refreshed.
+        """
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        room = self.document.rooms.get(room_id)
+        if not room:
+            return
+
+        building = room.buildings.get(building_id)
+        if not building:
+            return
+
+        # Find all RoomItems that display this room
+        for _placement_id, room_item in self._room_items.items():
+            if isinstance(room_item, RoomItem) and room_item.room.id == room_id:
+                # Update building position in this room item
+                building_item = room_item._building_items.get(building_id)
+                if building_item:
+                    building_item.setPos(building.x, building.y)
+                    building_item.update()
+
+                # Update belts connected to this building
+                for belt in room.get_belts_for_building(building_id):
+                    belt_item = room_item._belt_items.get(belt.id)
+                    if belt_item:
+                        source = room.buildings.get(belt.source_building_id)
+                        dest = room.buildings.get(belt.dest_building_id)
+                        if source and dest:
+                            belt_item.update_path(source, dest)
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]
         """Draw the grid background."""
