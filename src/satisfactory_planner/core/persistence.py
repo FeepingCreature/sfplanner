@@ -34,6 +34,7 @@ def get_user_recipes_path() -> Path:
 
 # --- Recipe Serialization ---
 
+
 def recipe_to_dict(recipe: Recipe) -> dict[str, Any]:
     """Serialize a Recipe to a dictionary."""
     return {
@@ -125,6 +126,7 @@ def save_user_recipes(recipes: dict[str, Recipe]) -> None:
 
 # --- Building Serialization ---
 
+
 def building_to_dict(building: Building) -> dict[str, Any]:
     """Serialize a Building to a dictionary."""
     return {
@@ -157,6 +159,7 @@ def dict_to_building(data: dict[str, Any]) -> Building:
 
 # --- Belt Serialization ---
 
+
 def belt_to_dict(belt: Belt) -> dict[str, Any]:
     """Serialize a Belt to a dictionary."""
     return {
@@ -185,7 +188,10 @@ def dict_to_belt(data: dict[str, Any]) -> Belt:
 
 # --- Document Serialization ---
 
-def document_to_dict(document: Document, view_state: dict[str, Any] | None = None) -> dict[str, Any]:
+
+def document_to_dict(
+    document: Document, view_state: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Serialize a Document to a dictionary."""
     data: dict[str, Any] = {
         "version": 1,
@@ -222,7 +228,9 @@ def dict_to_document(data: dict[str, Any]) -> tuple[Document, dict[str, Any] | N
     return doc, view_state
 
 
-def save_document(document: Document, path: Path | str, view_state: dict[str, Any] | None = None) -> None:
+def save_document(
+    document: Document, path: Path | str, view_state: dict[str, Any] | None = None
+) -> None:
     """Save a document to a .sfp file."""
     path = Path(path)
     data = document_to_dict(document, view_state)

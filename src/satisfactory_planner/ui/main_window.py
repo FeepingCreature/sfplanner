@@ -80,7 +80,7 @@ class SettingsDialog(QDialog):
 
         # Buttons
         buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -88,11 +88,13 @@ class SettingsDialog(QDialog):
 
     def load_settings(self, settings: QSettings) -> None:
         """Load settings into dialog."""
-        font_family = settings.value("font_family", "")
+        font_family = str(settings.value("font_family", ""))
         if font_family:
             self.font_combo.setCurrentFont(font_family)
-        self.font_size_spin.setValue(int(settings.value("font_size", 10)))
-        self.grid_size_spin.setValue(int(settings.value("grid_size", DEFAULT_GRID_SIZE)))
+        font_size = settings.value("font_size", 10)
+        self.font_size_spin.setValue(int(str(font_size)) if font_size else 10)
+        grid_size = settings.value("grid_size", DEFAULT_GRID_SIZE)
+        self.grid_size_spin.setValue(int(str(grid_size)) if grid_size else DEFAULT_GRID_SIZE)
 
     def save_settings(self, settings: QSettings) -> None:
         """Save dialog values to settings."""
@@ -173,7 +175,9 @@ class MainWindow(QMainWindow):
         self.warnings_panel.warning_clicked.connect(self._on_warning_clicked)
         warnings_dock = ads.CDockWidget("Warnings")
         warnings_dock.setWidget(self.warnings_panel)
-        self.dock_manager.addDockWidget(ads.DockWidgetArea.BottomDockWidgetArea, warnings_dock, props_dock.dockAreaWidget())
+        self.dock_manager.addDockWidget(
+            ads.DockWidgetArea.BottomDockWidgetArea, warnings_dock, props_dock.dockAreaWidget()
+        )
 
         # Store dock widgets for view menu
         self._dock_widgets = [library_dock, props_dock, warnings_dock]
@@ -184,17 +188,17 @@ class MainWindow(QMainWindow):
         file_menu = self.menuBar().addMenu("File")
 
         new_action = QAction("New", self)
-        new_action.setShortcut(QKeySequence.New)
+        new_action.setShortcut(QKeySequence.StandardKey.New)
         new_action.triggered.connect(self._new_document)
         file_menu.addAction(new_action)
 
         open_action = QAction("Open...", self)
-        open_action.setShortcut(QKeySequence.Open)
+        open_action.setShortcut(QKeySequence.StandardKey.Open)
         open_action.triggered.connect(self._open_document)
         file_menu.addAction(open_action)
 
         save_action = QAction("Save...", self)
-        save_action.setShortcut(QKeySequence.Save)
+        save_action.setShortcut(QKeySequence.StandardKey.Save)
         save_action.triggered.connect(self._save_document)
         file_menu.addAction(save_action)
 
@@ -207,7 +211,7 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
 
         quit_action = QAction("Quit", self)
-        quit_action.setShortcut(QKeySequence.Quit)
+        quit_action.setShortcut(QKeySequence.StandardKey.Quit)
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
 
@@ -215,19 +219,19 @@ class MainWindow(QMainWindow):
         edit_menu = self.menuBar().addMenu("Edit")
 
         self.undo_action = QAction("Undo", self)
-        self.undo_action.setShortcut(QKeySequence.Undo)
+        self.undo_action.setShortcut(QKeySequence.StandardKey.Undo)
         self.undo_action.triggered.connect(self._undo)
         edit_menu.addAction(self.undo_action)
 
         self.redo_action = QAction("Redo", self)
-        self.redo_action.setShortcut(QKeySequence.Redo)
+        self.redo_action.setShortcut(QKeySequence.StandardKey.Redo)
         self.redo_action.triggered.connect(self._redo)
         edit_menu.addAction(self.redo_action)
 
         edit_menu.addSeparator()
 
         self.delete_action = QAction("Delete", self)
-        self.delete_action.setShortcut(Qt.Key_Delete)
+        self.delete_action.setShortcut(Qt.Key.Key_Delete)
         self.delete_action.triggered.connect(self._delete_selection)
         edit_menu.addAction(self.delete_action)
 
@@ -272,7 +276,7 @@ class MainWindow(QMainWindow):
         canvas.selection_changed.connect(self.properties_panel.set_selection)
 
         # Set mutation callback (replaces document_changed signal)
-        canvas._mutation_callback = lambda: self._on_document_mutated(tab)
+        canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
 
         # Add tab
         index = self.tab_widget.addTab(canvas, tab.name)
@@ -297,10 +301,10 @@ class MainWindow(QMainWindow):
                 self,
                 "Unsaved Changes",
                 f"'{tab.name}' has unsaved changes. Close anyway?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
             )
-            if result != QMessageBox.Yes:
+            if result != QMessageBox.StandardButton.Yes:
                 return
 
         self.tab_widget.removeTab(index)
@@ -311,14 +315,14 @@ class MainWindow(QMainWindow):
         if 0 <= index < len(self.tabs):
             self.current_tab = self.tabs[index]
             # Update panels to use current document
-            self.properties_panel.set_document(
-                self.current_tab.document,
-                self.current_tab.command_stack,
-                self.current_tab.canvas,
-            )
+            if self.current_tab.canvas:
+                self.properties_panel.set_document(
+                    self.current_tab.document,
+                    self.current_tab.command_stack,
+                    self.current_tab.canvas,
+                )
             self.warnings_panel.set_document(
-                self.current_tab.document,
-                self.current_tab.flow_solver
+                self.current_tab.document, self.current_tab.flow_solver
             )
             self._update_warnings()
             self._update_undo_redo_state()
@@ -377,7 +381,7 @@ class MainWindow(QMainWindow):
             canvas.selection_changed.connect(self.properties_panel.set_selection)
 
             # Set mutation callback (replaces document_changed signal)
-            canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)
+            canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
 
             # Add tab
             index = self.tab_widget.addTab(canvas, tab.name)
@@ -438,14 +442,15 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(self)
         dialog.load_settings(self.settings)
 
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             dialog.save_settings(self.settings)
             self._apply_settings()
 
     def _apply_settings(self) -> None:
         """Apply current settings."""
         # Apply grid size to all canvases
-        grid_size = int(self.settings.value("grid_size", DEFAULT_GRID_SIZE))
+        grid_size_val = self.settings.value("grid_size", DEFAULT_GRID_SIZE)
+        grid_size = int(str(grid_size_val)) if grid_size_val else DEFAULT_GRID_SIZE
         for tab in self.tabs:
             if tab.canvas:
                 tab.canvas._grid_size = grid_size
@@ -495,6 +500,7 @@ class MainWindow(QMainWindow):
             canvas.scene().clearSelection()
             for item in canvas.scene().items():
                 from satisfactory_planner.ui.items import BuildingItem
+
                 if isinstance(item, BuildingItem) and item.building.id == element_id:
                     item.setSelected(True)
                     canvas.centerOn(item)
@@ -504,6 +510,7 @@ class MainWindow(QMainWindow):
             canvas.scene().clearSelection()
             for item in canvas.scene().items():
                 from satisfactory_planner.ui.items import BeltItem
+
                 if isinstance(item, BeltItem) and item.belt.id == element_id:
                     item.setSelected(True)
                     canvas.centerOn(item)
@@ -520,18 +527,14 @@ class MainWindow(QMainWindow):
 
     def _save_layout(self) -> None:
         """Save the current panel layout."""
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Save Layout", "", "Layout Files (*.layout)"
-        )
+        path, _ = QFileDialog.getSaveFileName(self, "Save Layout", "", "Layout Files (*.layout)")
         if path:
             state = self.dock_manager.saveState()
             Path(path).write_bytes(state.data())
 
     def _load_layout(self) -> None:
         """Load a panel layout."""
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Load Layout", "", "Layout Files (*.layout)"
-        )
+        path, _ = QFileDialog.getOpenFileName(self, "Load Layout", "", "Layout Files (*.layout)")
         if path:
             state = Path(path).read_bytes()
             self.dock_manager.restoreState(state)
@@ -556,10 +559,10 @@ class MainWindow(QMainWindow):
                 self,
                 "Unsaved Changes",
                 "You have unsaved changes. Quit anyway?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
             )
-            if result != QMessageBox.Yes:
+            if result != QMessageBox.StandardButton.Yes:
                 event.ignore()
                 return
         event.accept()

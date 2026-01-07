@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 # Port colors (matching Satisfactory)
-INPUT_COLOR = QColor(255, 200, 50)   # Yellow for inputs
+INPUT_COLOR = QColor(255, 200, 50)  # Yellow for inputs
 OUTPUT_COLOR = QColor(50, 200, 100)  # Green for outputs
 
 PORT_RADIUS = 10
@@ -51,7 +51,7 @@ class PortItem(QGraphicsItem):
     def _setup_flags(self) -> None:
         """Configure flags."""
         self.setAcceptHoverEvents(True)
-        self.setCursor(Qt.PointingHandCursor)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def boundingRect(self) -> QRectF:
         """Return bounding rectangle."""
@@ -82,16 +82,16 @@ class PortItem(QGraphicsItem):
 
         if self.is_output:
             # Arrow pointing outward (right): tip at right
-            arrow.append(QPointF(ARROW_SIZE, 0))       # tip
+            arrow.append(QPointF(ARROW_SIZE, 0))  # tip
             arrow.append(QPointF(-ARROW_SIZE, -ARROW_SIZE))  # top left
             arrow.append(QPointF(-ARROW_SIZE / 2, 0))  # indent
-            arrow.append(QPointF(-ARROW_SIZE, ARROW_SIZE))   # bottom left
+            arrow.append(QPointF(-ARROW_SIZE, ARROW_SIZE))  # bottom left
         else:
             # Arrow pointing inward (left): tip at left
-            arrow.append(QPointF(-ARROW_SIZE, 0))      # tip
-            arrow.append(QPointF(ARROW_SIZE, -ARROW_SIZE))   # top right
-            arrow.append(QPointF(ARROW_SIZE / 2, 0))   # indent
-            arrow.append(QPointF(ARROW_SIZE, ARROW_SIZE))    # bottom right
+            arrow.append(QPointF(-ARROW_SIZE, 0))  # tip
+            arrow.append(QPointF(ARROW_SIZE, -ARROW_SIZE))  # top right
+            arrow.append(QPointF(ARROW_SIZE / 2, 0))  # indent
+            arrow.append(QPointF(ARROW_SIZE, ARROW_SIZE))  # bottom right
 
         painter.setBrush(QBrush(color))
         pen_width = 2 if self._hovered else 1.5
@@ -112,7 +112,7 @@ class PortItem(QGraphicsItem):
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle press to start belt drag from output port."""
-        if event.button() == Qt.LeftButton and self.is_output:
+        if event.button() == Qt.MouseButton.LeftButton and self.is_output:
             # Start dragging a connection from output
             self.canvas.start_belt_drag(self.building_id, self.port_index, self.scenePos())
             event.accept()
@@ -121,7 +121,11 @@ class PortItem(QGraphicsItem):
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle release to complete belt connection on input port."""
-        if event.button() == Qt.LeftButton and not self.is_output and self.canvas.is_dragging_belt():
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and not self.is_output
+            and self.canvas.is_dragging_belt()
+        ):
             self.canvas.complete_belt_connection(self.building_id, self.port_index)
             event.accept()
             return

@@ -64,9 +64,9 @@ class BuildingItem(QGraphicsRectItem):
 
     def _setup_flags(self) -> None:
         """Configure item flags."""
-        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
-        self.setFlag(QGraphicsItem.ItemIsMovable, True)
-        self.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
 
     def _setup_ports(self) -> None:
         """Create port items based on building type and rotation."""
@@ -197,21 +197,25 @@ class BuildingItem(QGraphicsRectItem):
             # Draw building type at top, recipe at bottom
             top_rect = QRectF(0, 2, w, h / 2 - 2)
             bottom_rect = QRectF(0, h / 2, w, h / 2 - 2)
-            painter.drawText(top_rect, Qt.AlignHCenter | Qt.AlignBottom, name)
+            painter.drawText(
+                top_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom, name
+            )
 
             # Recipe in smaller, slightly dimmer text
             painter.setPen(QPen(QColor(200, 200, 200)))
             small_font = QFont()
             small_font.setPointSize(7)
             painter.setFont(small_font)
-            painter.drawText(bottom_rect, Qt.AlignHCenter | Qt.AlignTop, recipe_text)
+            painter.drawText(
+                bottom_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, recipe_text
+            )
         else:
-            painter.drawText(rect, Qt.AlignCenter, name)
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, name)
 
         # Draw selection highlight
         if self.isSelected():
             painter.setPen(QPen(QColor(255, 255, 0), 3))
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRect(rect.adjusted(-2, -2, 2, 2))
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
@@ -237,11 +241,9 @@ class BuildingItem(QGraphicsRectItem):
 
             self._drag_start_pos = None
 
-    def itemChange(
-        self, change: QGraphicsItem.GraphicsItemChange, value: object
-    ) -> object:
+    def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Handle item changes."""
-        if change == QGraphicsItem.ItemPositionChange and self.scene():
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():
             # Snap to grid
             new_pos = value
             if isinstance(new_pos, QPointF) and self.canvas.grid_snap:
@@ -250,7 +252,7 @@ class BuildingItem(QGraphicsRectItem):
                 y = round(new_pos.y() / grid) * grid
                 new_pos = QPointF(x, y)
             return new_pos
-        elif change == QGraphicsItem.ItemPositionHasChanged and self.scene():
+        elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged and self.scene():
             # Update model position and redraw belts during drag
             new_pos = self.pos()
             self.building.x = new_pos.x()

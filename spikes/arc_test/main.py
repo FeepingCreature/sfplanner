@@ -170,7 +170,7 @@ class ArcTestView(QGraphicsView):
         self.scene = QGraphicsScene(self)
         self.scene.setSceneRect(-400, -400, 800, 800)
         self.setScene(self.scene)
-        self.setRenderHint(QPainter.Antialiasing)
+        self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setMouseTracking(True)
         
         # Fixed start point and direction
@@ -180,7 +180,7 @@ class ArcTestView(QGraphicsView):
         self.radius = 40
         
         # Draw origin marker
-        self.start_marker = self.scene.addEllipse(-5, -5, 10, 10, QPen(Qt.red), QColor(255, 0, 0))
+        self.start_marker = self.scene.addEllipse(-5, -5, 10, 10, QPen(Qt.GlobalColor.red), QColor(255, 0, 0))
         self.start_marker.setPos(self.start)
         
         # Draw start direction arrow
@@ -203,8 +203,8 @@ class ArcTestView(QGraphicsView):
                                               QPen(QColor(0, 0, 255, 100)))
         
         # Tangent point markers
-        self.t1_marker = self.scene.addEllipse(-4, -4, 8, 8, QPen(Qt.black), QBrush(Qt.yellow))
-        self.t2_marker = self.scene.addEllipse(-4, -4, 8, 8, QPen(Qt.black), QBrush(Qt.cyan))
+        self.t1_marker = self.scene.addEllipse(-4, -4, 8, 8, QPen(Qt.GlobalColor.black), QBrush(Qt.GlobalColor.yellow))
+        self.t2_marker = self.scene.addEllipse(-4, -4, 8, 8, QPen(Qt.GlobalColor.black), QBrush(Qt.cyan))
         
         # End point marker
         self.end_marker = self.scene.addEllipse(-5, -5, 10, 10, QPen(Qt.blue), QColor(0, 0, 255))
@@ -225,10 +225,10 @@ class ArcTestView(QGraphicsView):
         self.scene.setBackgroundBrush(QBrush(QColor(40, 40, 40)))
         
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.start_dir += math.pi / 4
             self._update_arrow()
-        elif event.button() == Qt.RightButton:
+        elif event.button() == Qt.MouseButton.RightButton:
             self.end_dir += math.pi / 4
         super().mousePressEvent(event)
         

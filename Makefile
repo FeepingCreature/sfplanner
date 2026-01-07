@@ -1,8 +1,9 @@
 .PHONY: test lint format typecheck check all fix
 
-all: check
+all: fix lint typecheck
 
-# test target runs all checks (lint/format/typecheck) so CI catches issues
+# test target runs all fixes and checks because `make test` is the
+# `run_tests` builtin entrypoint, and this way we prettyprint our commits.
 test: all
 
 lint:

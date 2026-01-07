@@ -52,8 +52,8 @@ class GhostBuildingItem(BuildingItem):
     def __init__(self, building: Building, canvas: FactoryCanvas) -> None:
         super().__init__(building, canvas)
         self.setOpacity(0.6)
-        self.setFlag(QGraphicsItem.ItemIsSelectable, False)
-        self.setFlag(QGraphicsItem.ItemIsMovable, False)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
 
 
 class FactoryCanvas(QGraphicsView):
@@ -113,17 +113,17 @@ class FactoryCanvas(QGraphicsView):
 
     def _setup_view(self) -> None:
         """Configure view settings."""
-        self.setRenderHint(QPainter.Antialiasing)
-        self.setRenderHint(QPainter.SmoothPixmapTransform)
-        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
-        self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
-        self.setDragMode(QGraphicsView.NoDrag)
+        self.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
+        self.setDragMode(QGraphicsView.DragMode.NoDrag)
 
         # Make canvas focusable for keyboard events
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         # Background
         self.setBackgroundBrush(QBrush(QColor(40, 40, 45)))
@@ -164,7 +164,7 @@ class FactoryCanvas(QGraphicsView):
         self._placement_rotation = 0
 
         if building_type:
-            self.setCursor(Qt.CrossCursor)
+            self.setCursor(Qt.CursorShape.CrossCursor)
             # Create ghost building for preview
             ghost_building = Building(
                 id="ghost",
@@ -176,15 +176,15 @@ class FactoryCanvas(QGraphicsView):
             self._ghost_item.setVisible(False)
             self._scene.addItem(self._ghost_item)
         else:
-            self.setCursor(Qt.ArrowCursor)
+            self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def refresh(self) -> None:
         """Refresh all items from the document."""
         # Clear existing items
-        for item in list(self._building_items.values()):
-            self._scene.removeItem(item)
-        for item in list(self._belt_items.values()):
-            self._scene.removeItem(item)
+        for building_item in list(self._building_items.values()):
+            self._scene.removeItem(building_item)
+        for belt_item in list(self._belt_items.values()):
+            self._scene.removeItem(belt_item)
         self._building_items.clear()
         self._belt_items.clear()
 
@@ -294,19 +294,19 @@ class FactoryCanvas(QGraphicsView):
         scene_pos = self.mapToScene(event.pos())
 
         # Middle mouse for panning
-        if event.button() == Qt.MiddleButton:
+        if event.button() == Qt.MouseButton.MiddleButton:
             self._is_panning = True
-            self._pan_start = event.pos()
-            self.setCursor(Qt.ClosedHandCursor)
+            self._pan_start = QPointF(float(event.pos().x()), float(event.pos().y()))
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
             return
 
         # Right click to cancel placement
-        if event.button() == Qt.RightButton and self._placement_mode:
+        if event.button() == Qt.MouseButton.RightButton and self._placement_mode:
             self.set_placement_mode(None)
             return
 
         # Left click - placement mode
-        if event.button() == Qt.LeftButton and self._placement_mode:
+        if event.button() == Qt.MouseButton.LeftButton and self._placement_mode:
             snapped = self._snap_to_grid(scene_pos)
             self._place_building(self._placement_mode, snapped.x(), snapped.y())
             # Stay in placement mode for rapid placement
@@ -318,14 +318,10 @@ class FactoryCanvas(QGraphicsView):
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         """Handle mouse move."""
         if self._is_panning:
-            delta = event.pos() - self._pan_start
-            self._pan_start = event.pos()
-            self.horizontalScrollBar().setValue(
-                self.horizontalScrollBar().value() - int(delta.x())
-            )
-            self.verticalScrollBar().setValue(
-                self.verticalScrollBar().value() - int(delta.y())
-            )
+            delta = event.pos() - self._pan_start.toPoint()
+            self._pan_start = QPointF(float(event.pos().x()), float(event.pos().y()))
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - int(delta.x()))
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - int(delta.y()))
             return
 
         # Update belt drag preview and check for target port
@@ -335,6 +331,7 @@ class FactoryCanvas(QGraphicsView):
 
             # Check if hovering over a valid input port
             from satisfactory_planner.ui.items.port_item import PortItem
+
             new_target = None
             for item in self._scene.items(scene_pos):
                 if isinstance(item, PortItem) and not item.is_output:
@@ -344,7 +341,7 @@ class FactoryCanvas(QGraphicsView):
             # Update hover state if target changed
             if new_target != self._hover_target_port:
                 if self._hover_target_port:
-                    self._hover_target_port.set_drag_target(False)
+                    self._hover_target_port.set_drag_target(False)  # type: ignore[attr-defined]
                 if new_target:
                     new_target.set_drag_target(True)
                 self._hover_target_port = new_target
@@ -360,16 +357,16 @@ class FactoryCanvas(QGraphicsView):
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         """Handle mouse release."""
-        if event.button() == Qt.MiddleButton and self._is_panning:
+        if event.button() == Qt.MouseButton.MiddleButton and self._is_panning:
             self._is_panning = False
             if self._placement_mode:
-                self.setCursor(Qt.CrossCursor)
+                self.setCursor(Qt.CursorShape.CrossCursor)
             else:
-                self.setCursor(Qt.ArrowCursor)
+                self.setCursor(Qt.CursorShape.ArrowCursor)
             return
 
         # Cancel belt drag if released not on an input port
-        if event.button() == Qt.LeftButton and self._is_connecting:
+        if event.button() == Qt.MouseButton.LeftButton and self._is_connecting:
             # Check if we're over an input port - if not, cancel
             scene_pos = self.mapToScene(event.pos())
             from satisfactory_planner.ui.items.port_item import PortItem
@@ -399,7 +396,7 @@ class FactoryCanvas(QGraphicsView):
         else:
             super().dragEnterEvent(event)
 
-    def dragMoveEvent(self, event: QDragEnterEvent) -> None:
+    def dragMoveEvent(self, event: QDragEnterEvent) -> None:  # type: ignore[override]
         """Handle drag move."""
         if event.mimeData().hasFormat("application/x-building-type"):
             event.acceptProposedAction()
@@ -409,7 +406,9 @@ class FactoryCanvas(QGraphicsView):
     def dropEvent(self, event: QDropEvent) -> None:
         """Handle drop to place building."""
         if event.mimeData().hasFormat("application/x-building-type"):
-            building_name = event.mimeData().data("application/x-building-type").data().decode()
+            building_name = bytes(
+                event.mimeData().data("application/x-building-type").data()
+            ).decode()
             # Find the BuildingType by value
             building_type = None
             for bt in BuildingType:
@@ -460,12 +459,12 @@ class FactoryCanvas(QGraphicsView):
 
             # Collect the actual objects to delete (for immutable command)
             buildings_to_delete = tuple(
-                self.document.buildings[bid] for bid in selected_buildings
+                self.document.buildings[bid]
+                for bid in selected_buildings
                 if bid in self.document.buildings
             )
             belts_to_delete = tuple(
-                self.document.belts[bid] for bid in selected_belts
-                if bid in self.document.belts
+                self.document.belts[bid] for bid in selected_belts if bid in self.document.belts
             )
             cmd = DeleteItemsCommand(
                 document=self.document,
@@ -496,7 +495,7 @@ class FactoryCanvas(QGraphicsView):
         self._connect_start_building = building_id
         self._connect_start_port = port_index
         self._drag_start_pos = start_pos
-        self.setCursor(Qt.CrossCursor)
+        self.setCursor(Qt.CursorShape.CrossCursor)
 
         # Get start direction from the source building
         building = self.document.buildings.get(building_id)
@@ -507,10 +506,12 @@ class FactoryCanvas(QGraphicsView):
 
         # Create preview path (not pickable so it doesn't block mouse events)
         self._drag_preview = QGraphicsPathItem()
-        self._drag_preview.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.DashLine))
+        self._drag_preview.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.PenStyle.DashLine))
         self._drag_preview.setZValue(1000)  # On top
-        self._drag_preview.setFlag(QGraphicsItem.ItemIsSelectable, False)
-        self._drag_preview.setAcceptedMouseButtons(Qt.NoButton)  # Ignore all mouse events
+        self._drag_preview.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
+        self._drag_preview.setAcceptedMouseButtons(
+            Qt.MouseButton.NoButton
+        )  # Ignore all mouse events
         self._scene.addItem(self._drag_preview)
 
     def is_dragging_belt(self) -> bool:
@@ -542,8 +543,8 @@ class FactoryCanvas(QGraphicsView):
 
         if belt_path:
             # Determine arc directions from path type
-            ccw1 = belt_path.path_type[0] == 'L'
-            ccw2 = belt_path.path_type[1] == 'L'
+            ccw1 = belt_path.path_type[0] == "L"
+            ccw2 = belt_path.path_type[1] == "L"
 
             # Draw start arc
             arc1_points = get_arc_points(
@@ -551,7 +552,7 @@ class FactoryCanvas(QGraphicsView):
                 belt_path.start_angle_begin,
                 belt_path.start_angle_end,
                 ccw1,
-                belt_path.start_radius
+                belt_path.start_radius,
             )
             for p in arc1_points[1:]:
                 path.lineTo(p.x, p.y)
@@ -565,7 +566,7 @@ class FactoryCanvas(QGraphicsView):
                 belt_path.end_angle_begin,
                 belt_path.end_angle_end,
                 ccw2,
-                belt_path.end_radius
+                belt_path.end_radius,
             )
             for p in arc2_points[1:]:
                 path.lineTo(p.x, p.y)
@@ -580,7 +581,7 @@ class FactoryCanvas(QGraphicsView):
         self._is_connecting = True
         self._connect_start_building = building_id
         self._connect_start_port = port_index
-        self.setCursor(Qt.CrossCursor)
+        self.setCursor(Qt.CursorShape.CrossCursor)
 
     def complete_belt_connection(self, building_id: str, port_index: int) -> None:
         """Complete a belt connection to an input port."""
@@ -605,9 +606,9 @@ class FactoryCanvas(QGraphicsView):
             self._scene.removeItem(self._drag_preview)
             self._drag_preview = None
         if self._hover_target_port:
-            self._hover_target_port.set_drag_target(False)
+            self._hover_target_port.set_drag_target(False)  # type: ignore[attr-defined]
             self._hover_target_port = None
-        self.setCursor(Qt.ArrowCursor)
+        self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def cancel_belt_connection(self) -> None:
         """Cancel the current belt connection."""
@@ -618,18 +619,19 @@ class FactoryCanvas(QGraphicsView):
             self._scene.removeItem(self._drag_preview)
             self._drag_preview = None
         if self._hover_target_port:
-            self._hover_target_port.set_drag_target(False)
+            self._hover_target_port.set_drag_target(False)  # type: ignore[attr-defined]
             self._hover_target_port = None
-        self.setCursor(Qt.ArrowCursor)
+        self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def keyPressEvent(self, event: object) -> None:
         """Handle key presses."""
         from PySide6.QtGui import QKeyEvent
+
         if isinstance(event, QKeyEvent):
-            if event.key() == Qt.Key_Delete:
+            if event.key() == Qt.Key.Key_Delete:
                 self.delete_selection()
                 return
-            elif event.key() == Qt.Key_Escape:
+            elif event.key() == Qt.Key.Key_Escape:
                 if self._placement_mode:
                     self.set_placement_mode(None)
                 elif self._is_connecting:
@@ -684,7 +686,7 @@ class FactoryCanvas(QGraphicsView):
                 if source and dest:
                     belt_item.update_path(source, dest)
 
-    def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
+    def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]
         """Draw the grid background."""
         super().drawBackground(painter, rect)
 
@@ -695,7 +697,7 @@ class FactoryCanvas(QGraphicsView):
         left = int(rect.left()) - (int(rect.left()) % self._grid_size)
         top = int(rect.top()) - (int(rect.top()) % self._grid_size)
 
-        lines = []
+        lines: list[tuple[int, float, int, float]] = []
         x = left
         while x < rect.right():
             lines.append((x, rect.top(), x, rect.bottom()))
@@ -703,7 +705,7 @@ class FactoryCanvas(QGraphicsView):
 
         y = top
         while y < rect.bottom():
-            lines.append((rect.left(), y, rect.right(), y))
+            lines.append((int(rect.left()), float(y), int(rect.right()), float(y)))
             y += self._grid_size
 
         pen = QPen(QColor(60, 60, 65), 0.5)

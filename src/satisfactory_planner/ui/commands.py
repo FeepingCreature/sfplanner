@@ -90,7 +90,9 @@ class PlaceBuildingCommand(Command):
 
     def execute(self) -> None:
         if self.building.id in self.document.buildings:
-            logger.warning(f"PlaceBuildingCommand.execute: building {self.building.id} already exists")
+            logger.warning(
+                f"PlaceBuildingCommand.execute: building {self.building.id} already exists"
+            )
             return
         self.document.add_building(self.building)
         self.canvas.add_building_item(self.building)
@@ -180,7 +182,9 @@ class MoveBuildingsCommand(Command):
                 logger.warning(f"MoveBuildingsCommand.execute: building {building_id} not found")
                 continue
             if building.x == new_x and building.y == new_y:
-                logger.warning(f"MoveBuildingsCommand.execute: building {building_id} already at target")
+                logger.warning(
+                    f"MoveBuildingsCommand.execute: building {building_id} already at target"
+                )
                 continue
             building.x = new_x
             building.y = new_y
@@ -198,7 +202,9 @@ class MoveBuildingsCommand(Command):
                 logger.warning(f"MoveBuildingsCommand.undo: building {building_id} not found")
                 continue
             if building.x == old_x and building.y == old_y:
-                logger.warning(f"MoveBuildingsCommand.undo: building {building_id} already at original")
+                logger.warning(
+                    f"MoveBuildingsCommand.undo: building {building_id} already at original"
+                )
                 continue
             building.x = old_x
             building.y = old_y
@@ -307,7 +313,9 @@ class SetClockSpeedCommand(Command):
             logger.warning(f"SetClockSpeedCommand.execute: building {self.building_id} not found")
             return
         if building.clock_speed == self.new_clock_speed:
-            logger.warning(f"SetClockSpeedCommand.execute: clock speed already set to {self.new_clock_speed}")
+            logger.warning(
+                f"SetClockSpeedCommand.execute: clock speed already set to {self.new_clock_speed}"
+            )
             return
         building.clock_speed = self.new_clock_speed
         self.canvas.refresh_building(self.building_id)
@@ -319,7 +327,9 @@ class SetClockSpeedCommand(Command):
             logger.warning(f"SetClockSpeedCommand.undo: building {self.building_id} not found")
             return
         if building.clock_speed == self.old_clock_speed:
-            logger.warning(f"SetClockSpeedCommand.undo: clock speed already set to {self.old_clock_speed}")
+            logger.warning(
+                f"SetClockSpeedCommand.undo: clock speed already set to {self.old_clock_speed}"
+            )
             return
         building.clock_speed = self.old_clock_speed
         self.canvas.refresh_building(self.building_id)

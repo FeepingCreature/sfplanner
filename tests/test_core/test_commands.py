@@ -113,9 +113,15 @@ class TestMoveBuildingsCommand:
         stack = CommandStack()
 
         # Simulate dragging in small increments (old_x, old_y, new_x, new_y)
-        stack.execute(MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 0, 0, 10, 0),)))
-        stack.execute(MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 10, 0, 20, 0),)))
-        stack.execute(MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 20, 0, 30, 0),)))
+        stack.execute(
+            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 0, 0, 10, 0),))
+        )
+        stack.execute(
+            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 10, 0, 20, 0),))
+        )
+        stack.execute(
+            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 20, 0, 30, 0),))
+        )
 
         # Should have merged into one command
         assert len(stack.undo_stack) == 1
@@ -149,8 +155,12 @@ class TestDeleteItemsCommand:
         """Can delete belts."""
         doc = Document()
         belt = Belt(
-            id="belt1", tier=1, source_building_id="a", source_port_index=0,
-            dest_building_id="b", dest_port_index=0
+            id="belt1",
+            tier=1,
+            source_building_id="a",
+            source_port_index=0,
+            dest_building_id="b",
+            dest_port_index=0,
         )
         doc.add_belt(belt)
         canvas = make_mock_canvas()

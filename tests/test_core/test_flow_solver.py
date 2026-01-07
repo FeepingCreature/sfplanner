@@ -1,6 +1,5 @@
 """Tests for flow solver."""
 
-
 from satisfactory_planner.core.flow_solver import FlowSolver, WarningType
 from satisfactory_planner.core.models import Belt, Building, BuildingType, Document
 

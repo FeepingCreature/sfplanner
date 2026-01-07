@@ -146,10 +146,22 @@ class TestDocument:
         doc.add_building(b2)
         doc.add_building(b3)
 
-        belt1 = Belt(id="belt1", tier=1, source_building_id="b1", source_port_index=0,
-                     dest_building_id="b2", dest_port_index=0)
-        belt2 = Belt(id="belt2", tier=1, source_building_id="b2", source_port_index=0,
-                     dest_building_id="b3", dest_port_index=0)
+        belt1 = Belt(
+            id="belt1",
+            tier=1,
+            source_building_id="b1",
+            source_port_index=0,
+            dest_building_id="b2",
+            dest_port_index=0,
+        )
+        belt2 = Belt(
+            id="belt2",
+            tier=1,
+            source_building_id="b2",
+            source_port_index=0,
+            dest_building_id="b3",
+            dest_port_index=0,
+        )
 
         doc.add_belt(belt1)
         doc.add_belt(belt2)
@@ -185,7 +197,7 @@ class TestRecipe:
         assert scaled.outputs[0].rate == 40
         assert scaled.crafting_time == 3.0
         # Power scales with clock_speed^1.6
-        assert scaled.power_mw == pytest.approx(4.0 * (2.0 ** 1.6), rel=0.01)
+        assert scaled.power_mw == pytest.approx(4.0 * (2.0**1.6), rel=0.01)
 
 
 class TestGenerateId:

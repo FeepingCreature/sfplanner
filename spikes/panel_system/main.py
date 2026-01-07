@@ -71,7 +71,7 @@ class CanvasPanel(QWidget):
         super().__init__()
         layout = QVBoxLayout(self)
         label = QLabel("<center><h2>Canvas Area</h2><p>(QGraphicsView goes here)</p></center>")
-        label.setAlignment(Qt.AlignCenter)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(label)
         self.setMinimumSize(400, 300)
 

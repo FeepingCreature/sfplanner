@@ -55,14 +55,14 @@ class BeltItem(QGraphicsPathItem):
 
     def _setup_flags(self) -> None:
         """Configure item flags."""
-        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
         self.setZValue(-1)  # Draw behind buildings
 
     def _setup_appearance(self) -> None:
         """Configure appearance based on tier."""
         color = BELT_COLORS.get(self.belt.tier, BELT_COLORS[1])
         width = BELT_WIDTHS.get(self.belt.tier, BELT_WIDTHS[1])
-        self.setPen(QPen(color, width, Qt.SolidLine, Qt.RoundCap))
+        self.setPen(QPen(color, width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
 
     def update_path(self, source: Building, dest: Building) -> None:
         """Update the belt path between source and dest buildings."""
@@ -83,8 +83,8 @@ class BeltItem(QGraphicsPathItem):
 
         if belt_path:
             # Determine arc directions from path type
-            ccw1 = belt_path.path_type[0] == 'L'
-            ccw2 = belt_path.path_type[1] == 'L'
+            ccw1 = belt_path.path_type[0] == "L"
+            ccw2 = belt_path.path_type[1] == "L"
 
             # Draw start arc
             arc1_points = get_arc_points(
@@ -92,7 +92,7 @@ class BeltItem(QGraphicsPathItem):
                 belt_path.start_angle_begin,
                 belt_path.start_angle_end,
                 ccw1,
-                belt_path.start_radius
+                belt_path.start_radius,
             )
             for p in arc1_points[1:]:
                 path.lineTo(p.x, p.y)
@@ -106,7 +106,7 @@ class BeltItem(QGraphicsPathItem):
                 belt_path.end_angle_begin,
                 belt_path.end_angle_end,
                 ccw2,
-                belt_path.end_radius
+                belt_path.end_radius,
             )
             for p in arc2_points[1:]:
                 path.lineTo(p.x, p.y)

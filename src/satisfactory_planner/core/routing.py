@@ -96,13 +96,13 @@ def compute_belt_path(
 
         if external:
             # External tangent (LL or RR)
-            if type1 == 'L' and type2 == 'L':
+            if type1 == "L" and type2 == "L":
                 # Rotate unit_v 90° CW
                 n_x, n_y = unit_v_y, -unit_v_x
                 P = Point(C1.x + radius * n_x, C1.y + radius * n_y)
                 Q = Point(C2.x + radius * n_x, C2.y + radius * n_y)
                 L_str = d
-            elif type1 == 'R' and type2 == 'R':
+            elif type1 == "R" and type2 == "R":
                 # Rotate unit_v 90° CCW
                 n_x, n_y = -unit_v_y, unit_v_x
                 P = Point(C1.x + radius * n_x, C1.y + radius * n_y)
@@ -119,9 +119,9 @@ def compute_belt_path(
 
             # Use complex number math for the tangent direction
             Vc = complex(V_x, V_y)
-            if type1 == 'L' and type2 == 'R':
+            if type1 == "L" and type2 == "R":
                 denom = complex(2 * radius, L_str)
-            elif type1 == 'R' and type2 == 'L':
+            elif type1 == "R" and type2 == "L":
                 denom = complex(2 * radius, -L_str)
             else:
                 return None
@@ -140,7 +140,7 @@ def compute_belt_path(
         phi_s = _get_angle(C1, start)
         phi_p = _get_angle(C1, P)
 
-        if type1 == 'L':
+        if type1 == "L":
             delta1 = (phi_p - phi_s + 2 * math.pi) % (2 * math.pi)
         else:
             delta1 = (phi_s - phi_p + 2 * math.pi) % (2 * math.pi)
@@ -149,7 +149,7 @@ def compute_belt_path(
         phi_q = _get_angle(C2, Q)
         phi_e = _get_angle(C2, end)
 
-        if type2 == 'L':
+        if type2 == "L":
             delta2 = (phi_e - phi_q + 2 * math.pi) % (2 * math.pi)
         else:
             delta2 = (phi_q - phi_e + 2 * math.pi) % (2 * math.pi)
@@ -178,10 +178,10 @@ def compute_belt_path(
 
     # Try all 4 combinations
     candidates = [
-        compute_candidate(C1L, C2L, 'L', 'L', True),   # External LL
-        compute_candidate(C1R, C2R, 'R', 'R', True),   # External RR
-        compute_candidate(C1L, C2R, 'L', 'R', False),  # Internal LR
-        compute_candidate(C1R, C2L, 'R', 'L', False),  # Internal RL
+        compute_candidate(C1L, C2L, "L", "L", True),  # External LL
+        compute_candidate(C1R, C2R, "R", "R", True),  # External RR
+        compute_candidate(C1L, C2R, "L", "R", False),  # Internal LR
+        compute_candidate(C1R, C2L, "R", "L", False),  # Internal RL
     ]
 
     valid = [c for c in candidates if c is not None]
@@ -192,12 +192,7 @@ def compute_belt_path(
 
 
 def get_arc_points(
-    center: Point,
-    phi_start: float,
-    phi_end: float,
-    ccw: bool,
-    radius: float,
-    num_points: int = 20
+    center: Point, phi_start: float, phi_end: float, ccw: bool, radius: float, num_points: int = 20
 ) -> list[Point]:
     """Get points along an arc."""
     points = []
@@ -206,15 +201,17 @@ def get_arc_points(
         for i in range(num_points + 1):
             t = i / num_points * delta
             phi = phi_start + t
-            points.append(Point(center.x + radius * math.cos(phi),
-                               center.y + radius * math.sin(phi)))
+            points.append(
+                Point(center.x + radius * math.cos(phi), center.y + radius * math.sin(phi))
+            )
     else:
         delta = (phi_start - phi_end + 2 * math.pi) % (2 * math.pi)
         for i in range(num_points + 1):
             t = i / num_points * delta
             phi = phi_start - t
-            points.append(Point(center.x + radius * math.cos(phi),
-                               center.y + radius * math.sin(phi)))
+            points.append(
+                Point(center.x + radius * math.cos(phi), center.y + radius * math.sin(phi))
+            )
     return points
 
 
@@ -223,13 +220,17 @@ def path_to_points(path: BeltPath, segments_per_arc: int = 20) -> list[Point]:
     points: list[Point] = []
 
     # Determine if arcs are CCW based on path type
-    ccw1 = path.path_type[0] == 'L'
-    ccw2 = path.path_type[1] == 'L'
+    ccw1 = path.path_type[0] == "L"
+    ccw2 = path.path_type[1] == "L"
 
     # Start arc
     arc1 = get_arc_points(
-        path.start_center, path.start_angle_begin, path.start_angle_end,
-        ccw1, path.start_radius, segments_per_arc
+        path.start_center,
+        path.start_angle_begin,
+        path.start_angle_end,
+        ccw1,
+        path.start_radius,
+        segments_per_arc,
     )
     points.extend(arc1)
 
@@ -238,8 +239,12 @@ def path_to_points(path: BeltPath, segments_per_arc: int = 20) -> list[Point]:
 
     # End arc
     arc2 = get_arc_points(
-        path.end_center, path.end_angle_begin, path.end_angle_end,
-        ccw2, path.end_radius, segments_per_arc
+        path.end_center,
+        path.end_angle_begin,
+        path.end_angle_end,
+        ccw2,
+        path.end_radius,
+        segments_per_arc,
     )
     points.extend(arc2)
 

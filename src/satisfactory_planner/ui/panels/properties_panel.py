@@ -101,8 +101,13 @@ class RecipeEditorDialog(QDialog):
 
         self.building_combo = QComboBox()
         for bt in BuildingType:
-            if bt not in (BuildingType.SPLITTER, BuildingType.MERGER,
-                          BuildingType.MINER_MK1, BuildingType.MINER_MK2, BuildingType.MINER_MK3):
+            if bt not in (
+                BuildingType.SPLITTER,
+                BuildingType.MERGER,
+                BuildingType.MINER_MK1,
+                BuildingType.MINER_MK2,
+                BuildingType.MINER_MK3,
+            ):
                 self.building_combo.addItem(bt.value, bt)
         self.building_combo.currentIndexChanged.connect(self._on_building_changed)
         self.details_layout.addRow("Building:", self.building_combo)
@@ -130,7 +135,7 @@ class RecipeEditorDialog(QDialog):
             row_layout.setContentsMargins(0, 0, 0, 0)
             row_layout.addWidget(name_edit)
             row_layout.addWidget(rate_spin)
-            self.details_layout.addRow(f"Input {i+1}:", row_widget)
+            self.details_layout.addRow(f"Input {i + 1}:", row_widget)
             self.input_rows.append((name_edit, rate_spin, row_widget))
 
         self.outputs_label = QLabel("<b>Outputs (per minute):</b>")
@@ -151,7 +156,7 @@ class RecipeEditorDialog(QDialog):
             row_layout.setContentsMargins(0, 0, 0, 0)
             row_layout.addWidget(name_edit)
             row_layout.addWidget(rate_spin)
-            self.details_layout.addRow(f"Output {i+1}:", row_widget)
+            self.details_layout.addRow(f"Output {i + 1}:", row_widget)
             self.output_rows.append((name_edit, rate_spin, row_widget))
 
         content_layout.addWidget(details_widget, 2)
@@ -202,7 +207,7 @@ class RecipeEditorDialog(QDialog):
 
         from satisfactory_planner.core.models import ItemRate, Recipe
 
-        recipe_id = current.data(Qt.UserRole)
+        recipe_id = current.data(Qt.ItemDataRole.UserRole)
         building_type = self.building_combo.currentData()
         if not building_type:
             return
@@ -262,8 +267,10 @@ class RecipeEditorDialog(QDialog):
             label_index = self.details_layout.indexOf(row_widget)
             if label_index >= 0:
                 label_item = self.details_layout.itemAt(label_index - 1)
-                if label_item and label_item.widget():
-                    label_item.widget().setVisible(visible)
+                if label_item:
+                    widget = label_item.widget()
+                    if widget:
+                        widget.setVisible(visible)
 
         # Show/hide output rows
         for i, (_name_edit, _rate_spin, row_widget) in enumerate(self.output_rows):
@@ -272,25 +279,29 @@ class RecipeEditorDialog(QDialog):
             label_index = self.details_layout.indexOf(row_widget)
             if label_index >= 0:
                 label_item = self.details_layout.itemAt(label_index - 1)
-                if label_item and label_item.widget():
-                    label_item.widget().setVisible(visible)
+                if label_item:
+                    widget = label_item.widget()
+                    if widget:
+                        widget.setVisible(visible)
 
     def _load_recipes(self) -> None:
         """Load recipes into list."""
         self.recipe_list.clear()
         for recipe_id, recipe in self.document.recipes.items():
             item = QListWidgetItem(recipe.name)
-            item.setData(Qt.UserRole, recipe_id)
+            item.setData(Qt.ItemDataRole.UserRole, recipe_id)
             self.recipe_list.addItem(item)
 
-    def _on_recipe_selected(self, current: QListWidgetItem | None, previous: QListWidgetItem | None) -> None:
+    def _on_recipe_selected(
+        self, current: QListWidgetItem | None, previous: QListWidgetItem | None
+    ) -> None:
         """Handle recipe selection."""
         self._update_button_states()
 
         if not current:
             return
 
-        recipe_id = current.data(Qt.UserRole)
+        recipe_id = current.data(Qt.ItemDataRole.UserRole)
         recipe = self.document.recipes.get(recipe_id)
         if not recipe:
             return
@@ -346,7 +357,7 @@ class RecipeEditorDialog(QDialog):
 
         # Add to list and select it
         item = QListWidgetItem(recipe.name)
-        item.setData(Qt.UserRole, recipe_id)
+        item.setData(Qt.ItemDataRole.UserRole, recipe_id)
         self.recipe_list.addItem(item)
         self.recipe_list.setCurrentItem(item)
 
@@ -358,7 +369,7 @@ class RecipeEditorDialog(QDialog):
 
         from satisfactory_planner.core.models import ItemRate, Recipe, generate_id
 
-        source_id = current.data(Qt.UserRole)
+        source_id = current.data(Qt.ItemDataRole.UserRole)
         source = self.document.recipes.get(source_id)
         if not source:
             return
@@ -378,7 +389,7 @@ class RecipeEditorDialog(QDialog):
 
         # Add to list and select it
         item = QListWidgetItem(new_recipe.name)
-        item.setData(Qt.UserRole, new_id)
+        item.setData(Qt.ItemDataRole.UserRole, new_id)
         self.recipe_list.addItem(item)
         self.recipe_list.setCurrentItem(item)
 
@@ -388,7 +399,7 @@ class RecipeEditorDialog(QDialog):
         if not current:
             return
 
-        recipe_id = current.data(Qt.UserRole)
+        recipe_id = current.data(Qt.ItemDataRole.UserRole)
         recipe = self.document.recipes.get(recipe_id)
         if not recipe:
             return
@@ -398,11 +409,11 @@ class RecipeEditorDialog(QDialog):
             self,
             "Delete Recipe",
             f"Are you sure you want to delete '{recipe.name}'?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
 
-        if result != QMessageBox.Yes:
+        if result != QMessageBox.StandardButton.Yes:
             return
 
         # Remove from document and list
@@ -473,7 +484,7 @@ class PropertiesPanel(QWidget):
 
         self.recipe_combo = QComboBox()
         self.recipe_combo.addItem("(No recipe)", None)
-        self.recipe_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.recipe_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.recipe_combo.currentIndexChanged.connect(self._on_recipe_changed)
         recipe_layout.addWidget(self.recipe_combo, 1)
 
@@ -553,7 +564,9 @@ class PropertiesPanel(QWidget):
         for recipe_id, recipe in self.document.recipes.items():
             self.recipe_combo.addItem(recipe.name, recipe_id)
 
-    def set_document(self, document: Document, command_stack: CommandStack, canvas: FactoryCanvas) -> None:
+    def set_document(
+        self, document: Document, command_stack: CommandStack, canvas: FactoryCanvas
+    ) -> None:
         """Set a new document."""
         self.document = document
         self.command_stack = command_stack

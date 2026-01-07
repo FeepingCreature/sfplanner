@@ -94,9 +94,9 @@ class WarningsPanel(QWidget):
             icon = WARNING_ICONS.get(warning_type, "⚠️")
             type_item = QTreeWidgetItem([f"{icon} {warning_type.value} ({len(type_warnings)})"])
 
-            for warning in type_warnings:
-                warning_item = QTreeWidgetItem([warning.message])
-                warning_item.setData(0, Qt.UserRole, warning.element_id)
+            for w in type_warnings:
+                warning_item = QTreeWidgetItem([w.message])  # type: ignore[attr-defined]
+                warning_item.setData(0, Qt.ItemDataRole.UserRole, w.element_id)  # type: ignore[attr-defined]
                 type_item.addChild(warning_item)
 
                 # TODO: Add causal chain as nested items
@@ -109,6 +109,6 @@ class WarningsPanel(QWidget):
 
     def _on_item_clicked(self, item: QTreeWidgetItem, column: int) -> None:
         """Handle clicking on a warning."""
-        element_id = item.data(0, Qt.UserRole)
+        element_id = item.data(0, Qt.ItemDataRole.UserRole)
         if element_id:
             self.warning_clicked.emit(element_id)

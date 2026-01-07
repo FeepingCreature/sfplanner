@@ -165,9 +165,9 @@ class Building:
         elif self.building_type == BuildingType.MERGER:
             # Merger: 3 inputs on top, left, bottom
             positions = [
-                (self.x + w / 2, self.y),      # top
-                (self.x, self.y + h / 2),       # left
-                (self.x + w / 2, self.y + h),   # bottom
+                (self.x + w / 2, self.y),  # top
+                (self.x, self.y + h / 2),  # left
+                (self.x + w / 2, self.y + h),  # bottom
             ]
             return positions[index] if index < len(positions) else positions[0]
         else:
@@ -193,9 +193,9 @@ class Building:
         if self.building_type == BuildingType.SPLITTER:
             # Splitter: 3 outputs on top, right, bottom
             positions = [
-                (self.x + w / 2, self.y),      # top
-                (self.x + w, self.y + h / 2),   # right
-                (self.x + w / 2, self.y + h),   # bottom
+                (self.x + w / 2, self.y),  # top
+                (self.x + w, self.y + h / 2),  # right
+                (self.x + w / 2, self.y + h),  # bottom
             ]
             return positions[index] if index < len(positions) else positions[0]
         elif self.building_type == BuildingType.MERGER:
@@ -305,22 +305,14 @@ class Document:
             if b.source_building_id == building_id or b.dest_building_id == building_id
         ]
 
-    def is_port_connected(
-        self, building_id: str, port_index: int, is_output: bool
-    ) -> bool:
+    def is_port_connected(self, building_id: str, port_index: int, is_output: bool) -> bool:
         """Check if a port already has a belt connected."""
         for belt in self.belts.values():
             if is_output:
-                if (
-                    belt.source_building_id == building_id
-                    and belt.source_port_index == port_index
-                ):
+                if belt.source_building_id == building_id and belt.source_port_index == port_index:
                     return True
             else:
-                if (
-                    belt.dest_building_id == building_id
-                    and belt.dest_port_index == port_index
-                ):
+                if belt.dest_building_id == building_id and belt.dest_port_index == port_index:
                     return True
         return False
 
