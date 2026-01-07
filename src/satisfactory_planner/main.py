@@ -1,11 +1,18 @@
 """Main entry point for Satisfactory Planner."""
 
+import logging
 import sys
 from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
 
 from satisfactory_planner.ui.main_window import MainWindow
+
+# Configure logging for debugging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(name)s: %(message)s",
+)
 
 
 def main() -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -48,6 +49,8 @@ from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger(__name__)
 
 
 class GhostBuildingItem(BuildingItem):
@@ -294,6 +297,7 @@ class FactoryCanvas(QGraphicsView):
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         """Handle zoom with mouse wheel, rotation in placement mode."""
+        logger.info(f"wheelEvent: placement_mode={self._placement_mode}, drag_building={self._drag_building_type}")
         if self._placement_mode and self._ghost_item:
             # Rotate building in placement mode
             if event.angleDelta().y() > 0:
@@ -426,6 +430,7 @@ class FactoryCanvas(QGraphicsView):
             # Install event filter to capture wheel events during drag
             from PySide6.QtWidgets import QApplication
             app = QApplication.instance()
+            logger.info(f"dragEnterEvent: building={self._drag_building_type}, installing filter on {app}")
             if app:
                 app.installEventFilter(self)
             event.acceptProposedAction()
@@ -452,12 +457,15 @@ class FactoryCanvas(QGraphicsView):
 
     def eventFilter(self, obj: object, event: QEvent) -> bool:
         """Capture wheel events during drag-drop for building rotation."""
-        if event.type() == QEvent.Type.Wheel and self._drag_building_type is not None:
+        # Log all events during drag for debugging
+        if self._drag_building_type is not None and event.type() == QEvent.Type.Wheel:
+            logger.info(f"eventFilter: WHEEL event! drag_building={self._drag_building_type}")
             wheel_event: QWheelEvent = event  # type: ignore[assignment]
             if wheel_event.angleDelta().y() > 0:
                 self._drag_rotation = (self._drag_rotation + 90) % 360
             else:
                 self._drag_rotation = (self._drag_rotation - 90) % 360
+            logger.info(f"eventFilter: rotation now {self._drag_rotation}")
             return True  # Consume the event
         return super().eventFilter(obj, event)  # type: ignore[arg-type]
 
@@ -487,6 +495,7 @@ class FactoryCanvas(QGraphicsView):
                 snapped = self._snap_to_grid(scene_pos)
                 # Use rotation accumulated during drag
                 rotation = self._drag_rotation
+                logger.info(f"dropEvent: placing {building_type} with rotation={rotation}")
                 self._place_building_with_rotation(building_type, snapped.x(), snapped.y(), rotation)
                 event.acceptProposedAction()
 
