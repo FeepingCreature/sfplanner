@@ -29,8 +29,13 @@ def get_schema() -> dict[str, Any]:
                     },
                     "region": {
                         "type": "string",
-                        "default": "wt-wt",
-                        "description": "Region for results (default: 'wt-wt' for no region). Examples: 'us-en', 'uk-en', 'de-de'",
+                        "default": "us-en",
+                        "description": "Region for results. Examples: 'us-en', 'uk-en', 'de-de', 'wt-wt' (worldwide)",
+                    },
+                    "backend": {
+                        "type": "string",
+                        "default": "html",
+                        "description": "Search backend: 'auto', 'html', 'lite'. Try 'html' or 'lite' if results are wrong.",
                     },
                 },
                 "required": ["query"],
@@ -42,7 +47,8 @@ def get_schema() -> dict[str, Any]:
 def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
     query = args.get("query", "")
     max_results = int(args.get("max_results", 5))
-    region = args.get("region", "wt-wt")  # wt-wt = no region, worldwide
+    region = args.get("region", "us-en")  # Default to US English
+    backend = args.get("backend", "html")  # html backend more reliable for region
     
     if not query:
         return {"success": False, "error": "Query is required"}
@@ -53,7 +59,7 @@ def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
         results = []
         ddgs = DDGS()
         # API changed: text() returns list directly, use 'max_results' param
-        search_results = ddgs.text(query, region=region, max_results=max_results)
+        search_results = ddgs.text(query, region=region, backend=backend, max_results=max_results)
         if search_results:
             for r in search_results:
                 results.append({
