@@ -315,6 +315,15 @@ class BuildingItem(QGraphicsRectItem):
         self._drag_start_pos = self.pos()
         self._drag_start_rotation = self.building.rotation
         self._is_dragging = True
+
+        # For multi-select drag: compute offset from this item's position
+        # All other selected items will move by the same delta (not snap individually)
+        self._multi_drag_offsets: dict[str, QPointF] = {}
+        for item in self.scene().selectedItems():
+            if isinstance(item, BuildingItem) and item is not self:
+                # Store offset from this building's current position
+                self._multi_drag_offsets[item.building.id] = item.pos() - self.pos()
+
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
@@ -349,6 +358,25 @@ class BuildingItem(QGraphicsRectItem):
                 x = round(new_pos.x() / grid) * grid
                 y = round(new_pos.y() / grid) * grid
                 new_pos = QPointF(x, y)
+
+            # Multi-select: move other selected buildings by same delta
+            # Only the "lead" building snaps; others maintain relative positions
+            if isinstance(new_pos, QPointF) and hasattr(self, "_multi_drag_offsets"):
+                for building_id, offset in self._multi_drag_offsets.items():
+                    other_item = self.canvas._building_items.get(building_id)
+                    if other_item and other_item is not self:
+                        # Temporarily disable the other item's individual snapping
+                        other_item.setFlag(
+                            QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, False
+                        )
+                        other_item.setPos(new_pos + offset)
+                        other_item.building.x = other_item.pos().x()
+                        other_item.building.y = other_item.pos().y()
+                        other_item.setFlag(
+                            QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True
+                        )
+                        self.canvas.update_belts_for_building(building_id)
+
             return new_pos
         elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged and self.scene():
             # Update model position and redraw belts during drag
@@ -356,6 +384,8 @@ class BuildingItem(QGraphicsRectItem):
             self.building.x = new_pos.x()
             self.building.y = new_pos.y()
             self.canvas.update_belts_for_building(self.building.id)
+            # Update selection outline during drag
+            self.canvas._update_selection_outline()
         return super().itemChange(change, value)
 
     def wheelEvent(self, event: object) -> None:

@@ -379,10 +379,18 @@ class FactoryCanvas(QGraphicsView):
             # Stay in placement mode for rapid placement
             return
 
-        # Left click - box select mode
+        # Left click - box select mode (explicit tool or empty canvas in SELECT mode)
         if event.button() == Qt.MouseButton.LeftButton and self._tool_mode == ToolMode.BOX_SELECT:
             self._start_box_select(scene_pos)
             return
+
+        # Left click on empty canvas in SELECT mode - start box select
+        if event.button() == Qt.MouseButton.LeftButton and self._tool_mode == ToolMode.SELECT:
+            item_at_pos = self.itemAt(event.pos())
+            # Check if clicking on empty space (no item or just the selection outline)
+            if item_at_pos is None or item_at_pos is self._selection_outline:
+                self._start_box_select(scene_pos)
+                return
 
         super().mousePressEvent(event)
         self._emit_selection_changed()

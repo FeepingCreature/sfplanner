@@ -3,6 +3,7 @@
     "CLAUDE.md",
     "TODO.md",
     "REVIEW.md",
+    "IMPROVEMENT_IDEAS.md",
     "src/satisfactory_planner/ui/__init__.py",
     "SPEC.md"
   ],
@@ -249,6 +250,60 @@
       "streaming": true,
       "actual_cost": 0.43186,
       "generation_id": "gen-1767803271-y2O1Px6oNh1pBSjoBLP0"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767806885540.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767806885540.json",
+      "timestamp": 1767806885.5413547,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.26656875,
+      "generation_id": "gen-1767806885-mHM4cT31aNsFH1QvPSKQ"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767806892032.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767806892032.json",
+      "timestamp": 1767806892.033434,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.34069125,
+      "generation_id": "gen-1767806892-y8zjgeeMC3pECDGp9QgP"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767806909814.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767806909814.json",
+      "timestamp": 1767806909.8147063,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.10194,
+      "generation_id": "gen-1767806909-nCslcL2zLAKHwXrkJYYs"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767806914604.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767806914604.json",
+      "timestamp": 1767806914.60512,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1100055,
+      "generation_id": "gen-1767806914-zWld3dxJY6f39qn1Utyx"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767806955314.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767806955314.json",
+      "timestamp": 1767806955.3153017,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1634625,
+      "generation_id": "gen-1767806955-iuiDK81bctwQaBsrSvH3"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767806969990.json",
+      "response_file": "/tmp/forge_debug/response_1767806969990.json",
+      "timestamp": 1767806969.9904637,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000675,
+      "generation_id": "gen-1767806970-cFFBHvBfwRetFmS8K7jS"
     }
   ],
   "messages": [
@@ -1163,6 +1218,217 @@
     {
       "role": "assistant",
       "content": "Done! I've implemented the selection features:\n\n**New Features:**\n1. **Box Select Tool** - Click the \"Box Select\" button in the toolbar (or press B), then drag on the canvas to draw a selection rectangle. All buildings and belts inside the rectangle get selected.\n\n2. **Selection Outline** - When you select one or more buildings, a dashed blue outline appears around them with a 15px margin. This outline will become the basis for room/outline creation later.\n\n**Implementation Details:**\n- Added `SELECTION_MARGIN = 15` constant in `models.py` for consistent spacing\n- Added `ToolMode` enum with SELECT, BOX_SELECT, and PAN modes\n- The selection outline updates automatically when selection changes via the scene's `selectionChanged` signal\n- Toolbar buttons (Select, Pan, Box Select) now correctly toggle the canvas tool mode\n- The Box Select button is now enabled (was previously stubbed)"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 2ff85454",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Cheers, it all works well! -In the default mouse mode, we should trigger a box select if we start dragging at an empty part of the canvas. -The selection box doesn't update in mid-drag. -There's a slight issue with snap- multiple buildings in a drag can snap to different locations. -This is *optional*, but we should at least note a IMPROVEMENT_IDEAS.md (start this as a new file for features that are currently out of scope but might be interesting later) that multiselect rotation should rotate the whole selection."
+    },
+    {
+      "role": "assistant",
+      "content": "Great feedback! Let me address these issues:\n\n1. **Box select on empty canvas drag in SELECT mode**\n2. **Selection outline updates mid-drag**\n3. **Snap fix for multi-building drag**\n4. **Create IMPROVEMENT_IDEAS.md with rotation note**",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_bdrk_01L64kjcWVp5a8yxn7sbocm7",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01L64kjcWVp5a8yxn7sbocm7",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"scratchpad\": \"Let me understand the issues:\\n\\n1. **Box select on empty canvas drag in SELECT mode**: Currently box select only happens in BOX_SELECT mode. In SELECT mode, if you click on empty space and drag, it should start a box select. Need to modify mousePressEvent to check if clicked on empty space.\\n\\n2. **Selection outline doesn't update mid-drag**: The selection outline is updated via `_update_selection_outline()` which is connected to `selectionChanged`. But when buildings are being dragged, their positions change but `selectionChanged` doesn't fire. Need to update the outline during drag. Looking at BuildingItem, it has `itemChange` that calls `canvas.on_building_moved`. I could also hook into movement there, or I could update the outline in mouseMoveEvent when items are being dragged.\\n\\nActually, looking at BuildingItem (not in context), it probably handles dragging. The outline should update as buildings move. The simplest fix is to call `_update_selection_outline()` when buildings move. The `itemChange` in BuildingItem is probably when to do this, or I could just update on every mouse move when there's a selection.\\n\\n3. **Snap issue with multiple buildings**: When dragging multiple buildings, each one snaps independently, which can cause them to snap to different grid points. The fix is to compute the snap offset once (based on one building, typically the first one or the drag origin), then apply that same offset to all buildings.\\n\\nLooking at the code, `_snap_to_grid` is called in various places. For multi-drag, I need to look at how BuildingItem handles movement. I don't have BuildingItem in context, so I should load it.\\n\\n4. **IMPROVEMENT_IDEAS.md**: Create a new file with the rotation idea.\\n\\nLet me plan:\\n1. First, load BuildingItem to understand the drag mechanics\\n2. Fix the empty-canvas box select in SELECT mode\\n3. Fix selection outline update during drag\\n4. Fix multi-building snap\\n5. Create IMPROVEMENT_IDEAS.md\\n\", \"conclusion\": \"Need to: 1) Check itemAt() on mouse press in SELECT mode to start box select on empty space, 2) Update selection outline during drag (hook into building movement), 3) Fix multi-building snap by computing offset once and applying to all, 4) Create IMPROVEMENT_IDEAS.md. Need to load BuildingItem to see drag mechanics.\"}",
+            "name": "think"
+          },
+          "id": "toolu_vrtx_019jdf4JKb2pL7mJACVFu7Lp",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_019jdf4JKb2pL7mJACVFu7Lp",
+      "content": "{\"conclusion\": \"Need to: 1) Check itemAt() on mouse press in SELECT mode to start box select on empty space, 2) Update selection outline during drag (hook into building movement), 3) Fix multi-building snap by computing offset once and applying to all, 4) Create IMPROVEMENT_IDEAS.md. Need to load BuildingItem to see drag mechanics.\", \"message\": \"Thought through 388 tokens, concluded.\", \"success\": true, \"think\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me first look at the BuildingItem to understand how dragging works, then I'll make all the fixes:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/items/building_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_011tPGq5aBZTHcXZjDaPLWPm",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_011tPGq5aBZTHcXZjDaPLWPm",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/items/building_item.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I understand the code. Let me implement all the fixes:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"        # Left click - box select mode\\n        if event.button() == Qt.MouseButton.LeftButton and self._tool_mode == ToolMode.BOX_SELECT:\\n            self._start_box_select(scene_pos)\\n            return\\n\\n        super().mousePressEvent(event)\\n        self._emit_selection_changed()\", \"replace\": \"        # Left click - box select mode (explicit tool or empty canvas in SELECT mode)\\n        if event.button() == Qt.MouseButton.LeftButton and self._tool_mode == ToolMode.BOX_SELECT:\\n            self._start_box_select(scene_pos)\\n            return\\n\\n        # Left click on empty canvas in SELECT mode - start box select\\n        if event.button() == Qt.MouseButton.LeftButton and self._tool_mode == ToolMode.SELECT:\\n            item_at_pos = self.itemAt(event.pos())\\n            # Check if clicking on empty space (no item or just the selection outline)\\n            if item_at_pos is None or item_at_pos is self._selection_outline:\\n                self._start_box_select(scene_pos)\\n                return\\n\\n        super().mousePressEvent(event)\\n        self._emit_selection_changed()\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_017km6s9fXzbz1hgNiihqSqG",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/building_item.py\", \"search\": \"        elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged and self.scene():\\n            # Update model position and redraw belts during drag\\n            new_pos = self.pos()\\n            self.building.x = new_pos.x()\\n            self.building.y = new_pos.y()\\n            self.canvas.update_belts_for_building(self.building.id)\\n        return super().itemChange(change, value)\", \"replace\": \"        elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged and self.scene():\\n            # Update model position and redraw belts during drag\\n            new_pos = self.pos()\\n            self.building.x = new_pos.x()\\n            self.building.y = new_pos.y()\\n            self.canvas.update_belts_for_building(self.building.id)\\n            # Update selection outline during drag\\n            self.canvas._update_selection_outline()\\n        return super().itemChange(change, value)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01YYGUzLjTV1BpD4cEXaU5NU",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/building_item.py\", \"search\": \"    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n        \\\"\\\"\\\"Track drag start.\\\"\\\"\\\"\\n        self._drag_start_pos = self.pos()\\n        self._drag_start_rotation = self.building.rotation\\n        self._is_dragging = True\\n        super().mousePressEvent(event)\", \"replace\": \"    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n        \\\"\\\"\\\"Track drag start.\\\"\\\"\\\"\\n        self._drag_start_pos = self.pos()\\n        self._drag_start_rotation = self.building.rotation\\n        self._is_dragging = True\\n\\n        # For multi-select drag: compute offset from this item's position\\n        # All other selected items will move by the same delta (not snap individually)\\n        self._multi_drag_offsets: dict[str, QPointF] = {}\\n        for item in self.scene().selectedItems():\\n            if isinstance(item, BuildingItem) and item is not self:\\n                # Store offset from this building's current position\\n                self._multi_drag_offsets[item.building.id] = item.pos() - self.pos()\\n\\n        super().mousePressEvent(event)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_019AoaNWVzrCqR1EgbpTBik8",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/building_item.py\", \"search\": \"    def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:\\n        \\\"\\\"\\\"Handle item changes.\\\"\\\"\\\"\\n        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():\\n            # Snap to grid\\n            new_pos = value\\n            if isinstance(new_pos, QPointF) and self.canvas.grid_snap:\\n                grid = self.canvas.grid_size\\n                x = round(new_pos.x() / grid) * grid\\n                y = round(new_pos.y() / grid) * grid\\n                new_pos = QPointF(x, y)\\n            return new_pos\\n        elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged and self.scene():\", \"replace\": \"    def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:\\n        \\\"\\\"\\\"Handle item changes.\\\"\\\"\\\"\\n        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():\\n            # Snap to grid\\n            new_pos = value\\n            if isinstance(new_pos, QPointF) and self.canvas.grid_snap:\\n                grid = self.canvas.grid_size\\n                x = round(new_pos.x() / grid) * grid\\n                y = round(new_pos.y() / grid) * grid\\n                new_pos = QPointF(x, y)\\n\\n            # Multi-select: move other selected buildings by same delta\\n            # Only the \\\"lead\\\" building snaps; others maintain relative positions\\n            if isinstance(new_pos, QPointF) and hasattr(self, \\\"_multi_drag_offsets\\\"):\\n                for building_id, offset in self._multi_drag_offsets.items():\\n                    other_item = self.canvas._building_items.get(building_id)\\n                    if other_item and other_item is not self:\\n                        # Temporarily disable the other item's individual snapping\\n                        other_item.setFlag(\\n                            QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, False\\n                        )\\n                        other_item.setPos(new_pos + offset)\\n                        other_item.building.x = other_item.pos().x()\\n                        other_item.building.y = other_item.pos().y()\\n                        other_item.setFlag(\\n                            QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True\\n                        )\\n                        self.canvas.update_belts_for_building(building_id)\\n\\n            return new_pos\\n        elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged and self.scene():\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01Lqhf2a591MVa2XBLQD5vjn",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"IMPROVEMENT_IDEAS.md\", \"content\": \"# Improvement Ideas\\n\\nFuture features that are currently out of scope but might be interesting later.\\n\\n## Selection & Manipulation\\n\\n### Multi-select rotation should rotate the whole selection\\nCurrently, when multiple buildings are selected, rotating (via scroll wheel) only affects individual buildings around their own centers. It would be more intuitive if the entire selection rotated as a group around the selection's center point.\\n\\n**Implementation approach:**\\n1. Compute center of bounding box of all selected buildings\\n2. On rotation, rotate each building's position around that shared center\\n3. Also rotate each building's individual rotation by the same amount\\n4. Would need to handle snap-to-grid after rotation completes\\n\\n---\\n\\n## Belt Routing\\n\\n### Smart belt routing around obstacles\\nBelts currently use simple Dubins paths (circle-line-circle). Could add pathfinding to route around other buildings.\\n\\n### Belt bundling / bus support\\nAllow multiple belts to be grouped into a \\\"bus\\\" that routes together as a unit.\\n\\n---\\n\\n## Blueprints\\n\\n### Blueprint versioning\\nTrack versions of blueprints so linked instances can show when they're out of date.\\n\\n### Blueprint parameters\\nAllow blueprints to have configurable parameters (e.g., \\\"input item type\\\", \\\"output rate target\\\").\\n\\n---\\n\\n## Analysis\\n\\n### Bottleneck highlighting\\nVisually highlight belts/buildings that are limiting throughput.\\n\\n### \\\"What if\\\" mode\\nTemporarily modify clock speeds or belt tiers to see impact without committing changes.\\n\\n---\\n\\n## Import/Export\\n\\n### Import from Satisfactory save file\\nParse actual game saves to recreate factory layouts.\\n\\n### Export to game blueprint mod format\\nGenerate blueprints compatible with in-game blueprint mods.\\n\"}",
+            "name": "write_file"
+          },
+          "id": "toolu_vrtx_01BvJnTJ4ATM1eTGdPar31uE",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_01X2TVfRkib8QxZL4wfj6WQn",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_017km6s9fXzbz1hgNiihqSqG",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01YYGUzLjTV1BpD4cEXaU5NU",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/building_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_019AoaNWVzrCqR1EgbpTBik8",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/building_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Lqhf2a591MVa2XBLQD5vjn",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/building_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BvJnTJ4ATM1eTGdPar31uE",
+      "content": "{\"message\": \"Wrote 1715 bytes to IMPROVEMENT_IDEAS.md\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01X2TVfRkib8QxZL4wfj6WQn",
+      "content": "{\"output\": \"ruff check --fix src/ tests/\\nAll checks passed!\\nruff format src/ tests/\\n30 files left unchanged\\nruff check src/ tests/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 21 source files\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "All tests pass. Let me commit these fixes:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fix selection UX issues and add IMPROVEMENT_IDEAS.md\\n\\n- Box select now triggers when dragging on empty canvas in SELECT mode\\n- Selection outline updates during building drag (mid-drag feedback)\\n- Multi-building drag now snaps as a group (lead building snaps, others maintain relative positions)\\n- Created IMPROVEMENT_IDEAS.md with future feature ideas including group rotation\"}",
+            "name": "commit"
+          },
+          "id": "toolu_vrtx_01FoXyvXyQQADLDYWQBoUye1",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"src/satisfactory_planner/ui/canvas.py\", \"src/satisfactory_planner/ui/items/building_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01AGg2p1UiGwvvNCaSe5WQRQ",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"All fixes implemented and tests passing:\\n\\n**Fixes:**\\n1. **Box select on empty canvas** - In SELECT mode, clicking and dragging on empty space (or the selection outline) now starts a box selection. No need to switch to the explicit Box Select tool.\\n\\n2. **Selection outline updates mid-drag** - Added `canvas._update_selection_outline()` call in `BuildingItem.itemChange()` so the dashed outline follows buildings as you drag them.\\n\\n3. **Multi-building snap fix** - When dragging multiple selected buildings, only the \\\"lead\\\" building (the one you clicked) snaps to grid. Other selected buildings maintain their relative offsets from the lead, preventing the \\\"buildings snap to different locations\\\" issue.\\n\\n**New file: IMPROVEMENT_IDEAS.md** - Created with future feature ideas including:\\n- Multi-select rotation (rotate whole selection as a group)\\n- Smart belt routing around obstacles\\n- Belt bundling/bus support\\n- Blueprint versioning and parameters\\n- Bottleneck highlighting\\n- \\\"What if\\\" mode for analysis\\n- Import/export from game saves\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01QsUiDx6gaEfEwXdqpZ5eSC",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01FoXyvXyQQADLDYWQBoUye1",
+      "content": "{\"commit\": \"4c36fd42e5c3\", \"message\": \"Committed: 47 file(s) modified/created\", \"side_effects\": [\"mid_turn_commit\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01AGg2p1UiGwvvNCaSe5WQRQ",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 2 files from context\", \"remove\": [\"src/satisfactory_planner/ui/canvas.py\", \"src/satisfactory_planner/ui/items/building_item.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01QsUiDx6gaEfEwXdqpZ5eSC",
+      "content": "{\"done\": true, \"message\": \"All fixes implemented and tests passing:\\n\\n**Fixes:**\\n1. **Box select on empty canvas** - In SELECT mode, clicking and dragging on empty space (or the selection outline) now starts a box selection. No need to switch to the explicit Box Select tool.\\n\\n2. **Selection outline updates mid-drag** - Added `canvas._update_selection_outline()` call in `BuildingItem.itemChange()` so the dashed outline follows buildings as you drag them.\\n\\n3. **Multi-building snap fix** - When dragging multiple selected buildings, only the \\\"lead\\\" building (the one you clicked) snaps to grid. Other selected buildings maintain their relative offsets from the lead, preventing the \\\"buildings snap to different locations\\\" issue.\\n\\n**New file: IMPROVEMENT_IDEAS.md** - Created with future feature ideas including:\\n- Multi-select rotation (rotate whole selection as a group)\\n- Smart belt routing around obstacles\\n- Belt bundling/bus support\\n- Blueprint versioning and parameters\\n- Bottleneck highlighting\\n- \\\"What if\\\" mode for analysis\\n- Import/export from game saves\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "All fixes implemented and tests passing:\n\n**Fixes:**\n1. **Box select on empty canvas** - In SELECT mode, clicking and dragging on empty space (or the selection outline) now starts a box selection. No need to switch to the explicit Box Select tool.\n\n2. **Selection outline updates mid-drag** - Added `canvas._update_selection_outline()` call in `BuildingItem.itemChange()` so the dashed outline follows buildings as you drag them.\n\n3. **Multi-building snap fix** - When dragging multiple selected buildings, only the \"lead\" building (the one you clicked) snaps to grid. Other selected buildings maintain their relative offsets from the lead, preventing the \"buildings snap to different locations\" issue.\n\n**New file: IMPROVEMENT_IDEAS.md** - Created with future feature ideas including:\n- Multi-select rotation (rotate whole selection as a group)\n- Smart belt routing around obstacles\n- Belt bundling/bus support\n- Blueprint versioning and parameters\n- Bottleneck highlighting\n- \"What if\" mode for analysis\n- Import/export from game saves"
     }
   ]
 }
