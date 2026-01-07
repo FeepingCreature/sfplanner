@@ -6,7 +6,7 @@ import copy
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -109,6 +109,10 @@ class FactoryCanvas(QGraphicsView):
         # Clipboard for copy/paste
         self._clipboard_buildings: list[Building] = []
         self._clipboard_belts: list[Belt] = []
+
+        # Drag-drop state for building placement from library
+        self._drag_building_type: BuildingType | None = None
+        self._drag_rotation: int = 0
 
         # Enable drag-drop
         self.setAcceptDrops(True)
@@ -410,6 +414,20 @@ class FactoryCanvas(QGraphicsView):
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         """Handle drag enter for building placement."""
         if event.mimeData().hasFormat("application/x-building-type"):
+            # Track drag state for wheel rotation
+            building_name = bytes(
+                event.mimeData().data("application/x-building-type").data()
+            ).decode()
+            for bt in BuildingType:
+                if bt.value == building_name:
+                    self._drag_building_type = bt
+                    break
+            self._drag_rotation = 0
+            # Install event filter to capture wheel events during drag
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app:
+                app.installEventFilter(self)
             event.acceptProposedAction()
         else:
             super().dragEnterEvent(event)
@@ -420,6 +438,28 @@ class FactoryCanvas(QGraphicsView):
             event.acceptProposedAction()
         else:
             super().dragMoveEvent(event)
+
+    def dragLeaveEvent(self, event: QDragEnterEvent) -> None:  # type: ignore[override]
+        """Handle drag leave - clear drag state."""
+        self._drag_building_type = None
+        self._drag_rotation = 0
+        # Remove event filter
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app:
+            app.removeEventFilter(self)
+        super().dragLeaveEvent(event)  # type: ignore[arg-type]
+
+    def eventFilter(self, obj: object, event: QEvent) -> bool:
+        """Capture wheel events during drag-drop for building rotation."""
+        if event.type() == QEvent.Type.Wheel and self._drag_building_type is not None:
+            wheel_event: QWheelEvent = event  # type: ignore[assignment]
+            if wheel_event.angleDelta().y() > 0:
+                self._drag_rotation = (self._drag_rotation + 90) % 360
+            else:
+                self._drag_rotation = (self._drag_rotation - 90) % 360
+            return True  # Consume the event
+        return super().eventFilter(obj, event)  # type: ignore[arg-type]
 
     def dropEvent(self, event: QDropEvent) -> None:
         """Handle drop to place building."""
@@ -445,25 +485,42 @@ class FactoryCanvas(QGraphicsView):
                         scene_pos.x() - spec.width / 2, scene_pos.y() - spec.height / 2
                     )
                 snapped = self._snap_to_grid(scene_pos)
-                self._place_building(building_type, snapped.x(), snapped.y())
+                # Use rotation accumulated during drag
+                rotation = self._drag_rotation
+                self._place_building_with_rotation(building_type, snapped.x(), snapped.y(), rotation)
                 event.acceptProposedAction()
+
+            # Clean up drag state
+            self._drag_building_type = None
+            self._drag_rotation = 0
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app:
+                app.removeEventFilter(self)
         else:
             super().dropEvent(event)
 
     def _place_building(self, building_type: BuildingType, x: float, y: float) -> None:
-        """Place a new building at the given position."""
+        """Place a new building at the given position (uses placement mode rotation)."""
+        self._place_building_with_rotation(building_type, x, y, self._placement_rotation)
+
+    def _place_building_with_rotation(
+        self, building_type: BuildingType, x: float, y: float, rotation: int
+    ) -> None:
+        """Place a new building at the given position with specified rotation."""
         building = Building(
             id=generate_id(),
             building_type=building_type,
             x=x,
             y=y,
+            rotation=rotation,
         )
         cmd = PlaceBuildingCommand(document=self.document, building=building, canvas=self)
         self.command_stack.execute(cmd)
-        # Command already added the item via handler, but we need to set rotation
+        # Command already added the item via handler, but we need to set visual rotation
         item = self._building_items.get(building.id)
         if item:
-            item.rotation_angle = self._placement_rotation
+            item.rotation_angle = rotation
 
     def delete_selection(self) -> None:
         """Delete selected items."""
