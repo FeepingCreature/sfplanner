@@ -125,6 +125,7 @@ class FactoryCanvas(QGraphicsView):
         # Clipboard for copy/paste
         self._clipboard_buildings: list[Building] = []
         self._clipboard_belts: list[Belt] = []
+        self._clipboard_room_ids: list[str] = []  # Room IDs for shallow-copy paste
 
         # Drag-drop state for building placement from library
         self._drag_building_type: BuildingType | None = None
@@ -1179,9 +1180,15 @@ class FactoryCanvas(QGraphicsView):
         self._emit_selection_changed()
 
     def copy_selection(self) -> None:
-        """Copy selected buildings and their connecting belts to clipboard."""
+        """Copy selected buildings, belts, and rooms to clipboard.
+
+        For rooms, we store the room_id for shallow-copy (linked instance) paste.
+        """
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
         self._clipboard_buildings.clear()
         self._clipboard_belts.clear()
+        self._clipboard_room_ids.clear()
 
         selected_building_ids: set[str] = set()
         for item in self._scene.selectedItems():
@@ -1189,6 +1196,9 @@ class FactoryCanvas(QGraphicsView):
                 # Deep copy the building
                 self._clipboard_buildings.append(copy.deepcopy(item.building))
                 selected_building_ids.add(item.building.id)
+            elif isinstance(item, RoomItem):
+                # Store room_id for shallow copy (linked instance)
+                self._clipboard_room_ids.append(item.room.id)
 
         # Copy belts that connect selected buildings to each other
         for belt in self.document.belts.values():
@@ -1199,62 +1209,109 @@ class FactoryCanvas(QGraphicsView):
                 self._clipboard_belts.append(copy.deepcopy(belt))
 
     def paste(self) -> None:
-        """Paste buildings from clipboard at an offset from originals."""
-        if not self._clipboard_buildings:
+        """Paste buildings and rooms from clipboard at an offset from originals.
+
+        Rooms are pasted as linked instances (shallow copy) - they reference
+        the same Room definition, so editing one edits all instances.
+        """
+        from satisfactory_planner.core.models import RoomPlacement
+
+        if not self._clipboard_buildings and not self._clipboard_room_ids:
             return
 
         # Offset for pasted items
         offset = 50.0
 
-        # Map old IDs to new IDs
-        id_map: dict[str, str] = {}
+        # Track new items for selection
+        new_item_ids: list[str] = []
 
-        # Create new buildings with new IDs
-        for old_building in self._clipboard_buildings:
-            new_id = generate_id()
-            id_map[old_building.id] = new_id
-            new_building = Building(
-                id=new_id,
-                building_type=old_building.building_type,
-                x=old_building.x + offset,
-                y=old_building.y + offset,
-                recipe_id=old_building.recipe_id,
-                clock_speed=old_building.clock_speed,
-                rotation=old_building.rotation,
-            )
-            # Determine scene from paste position
-            scene_room_id = self.get_room_at_point(QPointF(new_building.x, new_building.y))
-            cmd = PlaceBuildingCommand(
-                scene_room_id=scene_room_id, building=new_building, canvas=self
-            )
-            self.command_stack.execute(cmd)
+        # Paste buildings
+        if self._clipboard_buildings:
+            # Map old IDs to new IDs
+            id_map: dict[str, str] = {}
+            scene_room_id: str | None = None
 
-        # Create new belts with updated building references
-        for old_belt in self._clipboard_belts:
-            new_source = id_map.get(old_belt.source_building_id)
-            new_dest = id_map.get(old_belt.dest_building_id)
-            if new_source and new_dest:
-                new_belt = Belt(
-                    id=generate_id(),
-                    tier=old_belt.tier,
-                    source_building_id=new_source,
-                    source_port_index=old_belt.source_port_index,
-                    dest_building_id=new_dest,
-                    dest_port_index=old_belt.dest_port_index,
-                    item_id=old_belt.item_id,
+            # Create new buildings with new IDs
+            for old_building in self._clipboard_buildings:
+                new_id = generate_id()
+                id_map[old_building.id] = new_id
+                new_building = Building(
+                    id=new_id,
+                    building_type=old_building.building_type,
+                    x=old_building.x + offset,
+                    y=old_building.y + offset,
+                    recipe_id=old_building.recipe_id,
+                    clock_speed=old_building.clock_speed,
+                    rotation=old_building.rotation,
                 )
-                # Paste belts into same scene as buildings
-                belt_cmd = ConnectBeltCommand(
-                    scene_room_id=scene_room_id, belt=new_belt, canvas=self
+                # Determine scene from paste position
+                scene_room_id = self.get_room_at_point(QPointF(new_building.x, new_building.y))
+                cmd = PlaceBuildingCommand(
+                    scene_room_id=scene_room_id, building=new_building, canvas=self
                 )
-                self.command_stack.execute(belt_cmd)
+                self.command_stack.execute(cmd)
+                new_item_ids.append(new_id)
 
-        # Select the newly pasted buildings
+            # Create new belts with updated building references
+            for old_belt in self._clipboard_belts:
+                new_source = id_map.get(old_belt.source_building_id)
+                new_dest = id_map.get(old_belt.dest_building_id)
+                if new_source and new_dest:
+                    new_belt = Belt(
+                        id=generate_id(),
+                        tier=old_belt.tier,
+                        source_building_id=new_source,
+                        source_port_index=old_belt.source_port_index,
+                        dest_building_id=new_dest,
+                        dest_port_index=old_belt.dest_port_index,
+                        item_id=old_belt.item_id,
+                    )
+                    # Paste belts into same scene as buildings
+                    belt_cmd = ConnectBeltCommand(
+                        scene_room_id=scene_room_id, belt=new_belt, canvas=self
+                    )
+                    self.command_stack.execute(belt_cmd)
+
+        # Paste rooms as linked instances (shallow copy)
+        for room_id in self._clipboard_room_ids:
+            room = self.document.rooms.get(room_id)
+            if not room:
+                continue
+
+            # Find existing placement to get position for offset
+            existing_placements = self.document.get_placements_for_room(room_id)
+            if existing_placements:
+                base_x = existing_placements[0].x + offset
+                base_y = existing_placements[0].y + offset
+            else:
+                base_x, base_y = offset, offset
+
+            # Create new placement pointing to same room (linked instance!)
+            new_placement = RoomPlacement(
+                id=generate_id(),
+                room_id=room_id,
+                x=base_x,
+                y=base_y,
+                parent_room_id=None,  # Paste into root for now
+            )
+            self.document.room_placements[new_placement.id] = new_placement
+            self.add_room_item(new_placement, room)
+            new_item_ids.append(new_placement.id)
+
+        self.notify_mutation()
+
+        # Select the newly pasted items
         self._scene.clearSelection()
-        for new_id in id_map.values():
+        for new_id in new_item_ids:
             item = self._building_items.get(new_id)
             if item:
                 item.setSelected(True)
+            room_item = self._room_items.get(new_id)
+            if room_item:
+                from satisfactory_planner.ui.items.room_item import RoomItem
+
+                if isinstance(room_item, RoomItem):
+                    room_item.setSelected(True)
         self._emit_selection_changed()
 
     def on_building_moved(

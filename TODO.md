@@ -6,7 +6,7 @@
 - [ ] Room name editing in properties panel
 - [ ] Clamp port movement to room edge (drag along boundary only)
 - [ ] Prevent/intercept belts crossing room boundary (auto-create port or reject)
-- [x] Fix redo of room creation (building state not restored)
+- [ ] Fix redo of room creation (buildings not restored - command captures IDs but buildings were moved)
 - [ ] Undo stack is per-canvas, not per-scene (actions inside rooms should undo)
 
 ## Known Incomplete Items
