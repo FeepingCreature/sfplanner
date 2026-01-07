@@ -107,32 +107,39 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
                     inequality_rows.append(row)
                     inequality_rhs.append(node.outputs[i].rate)
 
-            # Inputs are limited by what upstream can provide
-            for i, in_edge in enumerate(incoming):
-                if i < len(node.inputs):
-                    # Input can't exceed what we need at full speed
-                    row = [0.0] * n_edges
-                    row[edge_to_idx[in_edge.id]] = 1.0
-                    inequality_rows.append(row)
-                    inequality_rhs.append(node.inputs[i].rate)
+            # If no inputs connected, treat as a source (like a miner)
+            # This handles smelters where we don't model the ore input
+            if not incoming:
+                # No input constraints - outputs just flow at capacity
+                # (already constrained by output capacity above)
+                pass
+            else:
+                # Inputs are limited by what upstream can provide
+                for i, in_edge in enumerate(incoming):
+                    if i < len(node.inputs):
+                        # Input can't exceed what we need at full speed
+                        row = [0.0] * n_edges
+                        row[edge_to_idx[in_edge.id]] = 1.0
+                        inequality_rows.append(row)
+                        inequality_rhs.append(node.inputs[i].rate)
 
-            # Recipe ratio constraint: inputs and outputs are proportional
-            # If we have input rate r_in and output rate r_out, then:
-            # actual_in / r_in = actual_out / r_out (same efficiency)
-            if incoming and outgoing and node.inputs and node.outputs:
-                # Use first input and first output as reference
-                ref_in_rate = node.inputs[0].rate
-                ref_out_rate = node.outputs[0].rate
-                if ref_in_rate > 0 and ref_out_rate > 0:
-                    ref_in_edge = incoming[0]
-                    ref_out_edge = outgoing[0]
-                    # actual_in / ref_in_rate = actual_out / ref_out_rate
-                    # actual_in * ref_out_rate = actual_out * ref_in_rate
-                    row = [0.0] * n_edges
-                    row[edge_to_idx[ref_in_edge.id]] = ref_out_rate
-                    row[edge_to_idx[ref_out_edge.id]] = -ref_in_rate
-                    equality_rows.append(row)
-                    equality_rhs.append(0.0)
+                # Recipe ratio constraint: inputs and outputs are proportional
+                # If we have input rate r_in and output rate r_out, then:
+                # actual_in / r_in = actual_out / r_out (same efficiency)
+                if outgoing and node.inputs and node.outputs:
+                    # Use first input and first output as reference
+                    ref_in_rate = node.inputs[0].rate
+                    ref_out_rate = node.outputs[0].rate
+                    if ref_in_rate > 0 and ref_out_rate > 0:
+                        ref_in_edge = incoming[0]
+                        ref_out_edge = outgoing[0]
+                        # actual_in / ref_in_rate = actual_out / ref_out_rate
+                        # actual_in * ref_out_rate = actual_out * ref_in_rate
+                        row = [0.0] * n_edges
+                        row[edge_to_idx[ref_in_edge.id]] = ref_out_rate
+                        row[edge_to_idx[ref_out_edge.id]] = -ref_in_rate
+                        equality_rows.append(row)
+                        equality_rhs.append(0.0)
 
         elif node.node_type == NodeType.SPLITTER:
             # Splitter: sum of outputs <= input (conservation)
@@ -236,14 +243,22 @@ def _compute_efficiencies(
         if node.node_type != NodeType.PRODUCER:
             continue
 
-        # Get intended output rate (first output as reference)
-        if not node.outputs:
-            continue
-        intended_rate = node.outputs[0].rate
-
-        # Get actual output rate from flows
+        # Get intended and actual rates
+        # Prefer output flow, but fall back to input flow for end-of-chain buildings
         outgoing = graph.get_outgoing_edges(node_id)
-        actual_rate = 0.0 if not outgoing else flows.get(outgoing[0].id, 0.0)
+        incoming = graph.get_incoming_edges(node_id)
+
+        if outgoing and node.outputs:
+            # Use output flow
+            intended_rate = node.outputs[0].rate
+            actual_rate = flows.get(outgoing[0].id, 0.0)
+        elif incoming and node.inputs:
+            # No outputs connected - compute from input flow
+            intended_rate = node.inputs[0].rate
+            actual_rate = flows.get(incoming[0].id, 0.0)
+        else:
+            # No connections at all
+            continue
 
         # Compute duty cycle
         duty_cycle = actual_rate / intended_rate if intended_rate > 0 else 1.0

@@ -5,9 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from warnings import detect_spare_capacity
-
 from builder import Belt, Building, Document, build_flow_graph
+from detectors import detect_spare_capacity
 from recipes import BuildingType
 from solver import solve_flows
 

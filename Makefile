@@ -1,6 +1,10 @@
-.PHONY: test lint format typecheck check all fix
+.PHONY: test lint format typecheck check all fix pytest
 
-all: fix lint typecheck
+all: fix lint typecheck pytest
+
+pytest:
+	pytest tests/ -q
+	cd spikes/flowsim && pytest tests/ -q
 
 # test target runs all fixes and checks because `make test` is the
 # `run_tests` builtin entrypoint, and this way we prettyprint our commits.

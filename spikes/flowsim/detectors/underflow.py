@@ -25,6 +25,28 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
 
         # Check each input port
         incoming = model.graph.get_incoming_edges(node_id)
+
+        # If NO inputs are connected, check if it has outputs
+        # - Has outputs but no inputs = treat as source (like a miner feeding downstream)
+        # - Has no outputs AND no inputs = orphaned building, should warn
+        outgoing = model.graph.get_outgoing_edges(node_id)
+        if not incoming and outgoing:
+            # Has outputs, treat as source - skip input checking
+            continue
+        if not incoming and not outgoing:
+            # Orphaned building - warn about all missing inputs
+            for i, input_port in enumerate(node.inputs):
+                if input_port.rate > 0:
+                    warnings.append(
+                        Warning(
+                            warning_type=WarningType.RESOURCE_UNDERFLOW,
+                            message=f"{node_id}: input {i} ({input_port.item_id}) not connected",
+                            element_id=node_id,
+                            severity=1.0,
+                        )
+                    )
+            continue
+
         for i, input_port in enumerate(node.inputs):
             if input_port.rate <= 0:
                 continue
@@ -37,7 +59,7 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                     break
 
             if feeding_edge is None:
-                # No belt connected - this is an underflow
+                # No belt connected to this specific input, but others are connected
                 warnings.append(
                     Warning(
                         warning_type=WarningType.RESOURCE_UNDERFLOW,
