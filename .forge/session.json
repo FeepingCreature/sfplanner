@@ -1,10 +1,12 @@
 {
   "active_files": [
     "CLAUDE.md",
+    "src/satisfactory_planner/ui/items/building_item.py",
     "TODO.md",
     "REVIEW.md",
     "SPEC.md",
     "src/satisfactory_planner/ui/commands.py",
+    "src/satisfactory_planner/ui/canvas.py",
     "src/satisfactory_planner/ui/__init__.py"
   ],
   "request_log_entries": [
@@ -340,6 +342,51 @@
       "streaming": true,
       "actual_cost": 0.02398675,
       "generation_id": "gen-1767794624-geZWArXaBQkPShfPS53N"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767794647958.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767794647958.json",
+      "timestamp": 1767794647.959083,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.15462125,
+      "generation_id": "gen-1767794648-bFGBWyUZh3ZXNOosLJx3"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767794651867.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767794651867.json",
+      "timestamp": 1767794651.868109,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.07683275,
+      "generation_id": "gen-1767794652-uI9pZYn7EBUqTe7QVkaW"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767794664624.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767794664624.json",
+      "timestamp": 1767794664.625175,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0671435,
+      "generation_id": "gen-1767794664-mHE58sbhG3fYwVGdadt3"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767794685376.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767794685376.json",
+      "timestamp": 1767794685.3772557,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.08725825,
+      "generation_id": "gen-1767794685-i92k754uTxFEHsTsmqqW"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767794710026.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767794710026.json",
+      "timestamp": 1767794710.0269022,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.2592,
+      "generation_id": "gen-1767794710-gShhe03mSLCpzQ2DUOWi"
     }
   ],
   "messages": [
@@ -762,6 +809,245 @@
     {
       "role": "assistant",
       "content": "Added a comment above `SetRecipeCommand` noting to consider refactoring to a generic `ChangePropertyCommand` pattern if more property-change commands are added."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 10a4859b",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Apropos rotation, we should add building rotation via mouse wheel when dragging."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01NxTdZdXGJAtKWidTG1NVNE",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01NxTdZdXGJAtKWidTG1NVNE",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"scratchpad\": \"Looking at the code, I see that:\\n\\n1. In placement mode, mouse wheel already rotates the ghost building (in `wheelEvent`)\\n2. When a building is placed, the rotation is applied to the placed item\\n\\nBut the user is asking about rotation \\\"when dragging\\\" - I think they mean when dragging an already-placed building to move it. Currently there's no way to rotate buildings after placement.\\n\\nLooking at BuildingItem, I need to check how dragging works there. The `on_building_moved` method is called after a drag completes.\\n\\nSo the feature request is: when dragging an existing building, mouse wheel should rotate it.\\n\\nThis would need:\\n1. Track when a building is being dragged (in BuildingItem or Canvas)\\n2. In wheelEvent, if dragging a building, rotate it instead of zooming\\n3. Need to be careful about undo - rotation during drag should probably be part of the move command, or a separate command\\n\\nActually, looking more carefully at the TODO.md:\\n\\\"- [x] Mousewheel rotates building while attached to cursor\\\"\\n\\nThis is marked done for placement mode. But the user wants it for dragging existing buildings too.\\n\\nLet me check BuildingItem to see how dragging is tracked.\\n\", \"conclusion\": \"User wants mouse wheel rotation when dragging existing buildings (not just during placement). Need to load BuildingItem to see how dragging works, then add rotation support during drag. Will need to track dragging state and intercept wheel events.\"}",
+            "name": "think"
+          },
+          "id": "toolu_vrtx_01QXzTcYfYsYjymhmUVe3n81",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/items/building_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01JrrPQvKM4TgwqcGriZXSfP",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01QXzTcYfYsYjymhmUVe3n81",
+      "content": "{\"conclusion\": \"User wants mouse wheel rotation when dragging existing buildings (not just during placement). Need to load BuildingItem to see how dragging works, then add rotation support during drag. Will need to track dragging state and intercept wheel events.\", \"message\": \"Thought through 250 tokens, concluded.\", \"success\": true, \"think\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01JrrPQvKM4TgwqcGriZXSfP",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/items/building_item.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at the code, I see that rotation during **placement mode** already works (in `wheelEvent`). But the user wants rotation while **dragging an existing building**.\n\nI'll add this by:\n1. Tracking when a building is being dragged in `BuildingItem`\n2. Installing a wheel event filter during drag to handle rotation\n3. Updating the visual during drag, then creating a command on release if rotation changed",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/building_item.py\", \"search\": \"        # Drag tracking\\n        self._drag_start_pos: QPointF | None = None\", \"replace\": \"        # Drag tracking\\n        self._drag_start_pos: QPointF | None = None\\n        self._drag_start_rotation: int = 0\\n        self._is_dragging: bool = False\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_011mnuPtECexb6bmt9tFbwgd",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/building_item.py\", \"search\": \"    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n        \\\"\\\"\\\"Track drag start.\\\"\\\"\\\"\\n        self._drag_start_pos = self.pos()\\n        super().mousePressEvent(event)\", \"replace\": \"    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n        \\\"\\\"\\\"Track drag start.\\\"\\\"\\\"\\n        self._drag_start_pos = self.pos()\\n        self._drag_start_rotation = self.building.rotation\\n        self._is_dragging = True\\n        super().mousePressEvent(event)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01Jw8fdcUiETuxkYE6BrQjQJ",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/building_item.py\", \"search\": \"    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n        \\\"\\\"\\\"Handle drag end - create move command.\\\"\\\"\\\"\\n        super().mouseReleaseEvent(event)\\n\\n        if self._drag_start_pos is not None:\\n            new_pos = self.pos()\\n\\n            # Only create command if actually moved\\n            if new_pos != self._drag_start_pos:\\n                # Pass original position to canvas for immutable command\\n                self.canvas.on_building_moved(\\n                    self.building.id,\\n                    self._drag_start_pos.x(),\\n                    self._drag_start_pos.y(),\\n                )\\n\\n            self._drag_start_pos = None\", \"replace\": \"    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n        \\\"\\\"\\\"Handle drag end - create move command.\\\"\\\"\\\"\\n        super().mouseReleaseEvent(event)\\n\\n        if self._drag_start_pos is not None:\\n            new_pos = self.pos()\\n            moved = new_pos != self._drag_start_pos\\n            rotated = self.building.rotation != self._drag_start_rotation\\n\\n            # Only create command if actually moved\\n            if moved:\\n                # Pass original position to canvas for immutable command\\n                self.canvas.on_building_moved(\\n                    self.building.id,\\n                    self._drag_start_pos.x(),\\n                    self._drag_start_pos.y(),\\n                )\\n\\n            # Create rotation command if rotated (and didn't move - moves are separate)\\n            if rotated and not moved:\\n                self.canvas.on_building_rotated(\\n                    self.building.id,\\n                    self._drag_start_rotation,\\n                    self.building.rotation,\\n                )\\n\\n            self._drag_start_pos = None\\n\\n        self._is_dragging = False\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01Bh6cBtK9w9R4YyHEXukwWF",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/building_item.py\", \"search\": \"        return super().itemChange(change, value)\", \"replace\": \"        return super().itemChange(change, value)\\n\\n    def wheelEvent(self, event: object) -> None:\\n        \\\"\\\"\\\"Handle mouse wheel for rotation while dragging.\\\"\\\"\\\"\\n        from PySide6.QtWidgets import QGraphicsSceneWheelEvent\\n\\n        if not isinstance(event, QGraphicsSceneWheelEvent):\\n            return\\n\\n        if self._is_dragging:\\n            # Rotate building while dragging\\n            if event.delta() > 0:\\n                self.rotate_building(90)\\n            else:\\n                self.rotate_building(-90)\\n            event.accept()\\n        else:\\n            # Pass to parent for zoom\\n            event.ignore()\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01XNCcd8Mox4fSdGPoZvEhTx",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_011mnuPtECexb6bmt9tFbwgd",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/building_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Jw8fdcUiETuxkYE6BrQjQJ",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/building_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Bh6cBtK9w9R4YyHEXukwWF",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/building_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01XNCcd8Mox4fSdGPoZvEhTx",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/items/building_item.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I need to add the `on_building_rotated` method to the canvas and create a `SetRotationCommand`. Let me add those:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/commands.py\", \"search\": \"@dataclass(frozen=True)\\nclass SetBeltTierCommand(Command):\", \"replace\": \"@dataclass(frozen=True)\\nclass SetRotationCommand(Command):\\n    \\\"\\\"\\\"Command to set a building's rotation.\\\"\\\"\\\"\\n\\n    document: Document\\n    building_id: str\\n    old_rotation: int\\n    new_rotation: int\\n    canvas: FactoryCanvas\\n\\n    def execute(self) -> None:\\n        building = self.document.buildings.get(self.building_id)\\n        if not building:\\n            logger.warning(f\\\"SetRotationCommand.execute: building {self.building_id} not found\\\")\\n            return\\n        if building.rotation == self.new_rotation:\\n            logger.warning(\\n                f\\\"SetRotationCommand.execute: rotation already set to {self.new_rotation}\\\"\\n            )\\n            return\\n        building.rotation = self.new_rotation\\n        self.canvas.refresh_building(self.building_id)\\n        self.canvas.refresh_belts_for_building(self.building_id)\\n        self.canvas.notify_mutation()\\n\\n    def undo(self) -> None:\\n        building = self.document.buildings.get(self.building_id)\\n        if not building:\\n            logger.warning(f\\\"SetRotationCommand.undo: building {self.building_id} not found\\\")\\n            return\\n        if building.rotation == self.old_rotation:\\n            logger.warning(\\n                f\\\"SetRotationCommand.undo: rotation already set to {self.old_rotation}\\\"\\n            )\\n            return\\n        building.rotation = self.old_rotation\\n        self.canvas.refresh_building(self.building_id)\\n        self.canvas.refresh_belts_for_building(self.building_id)\\n        self.canvas.notify_mutation()\\n\\n\\n@dataclass(frozen=True)\\nclass SetBeltTierCommand(Command):\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01HW677RanobDuxJ93bq8ro6",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"from satisfactory_planner.ui.commands import (\\n    CommandStack,\\n    ConnectBeltCommand,\\n    DeleteItemsCommand,\\n    MoveBuildingsCommand,\\n    PlaceBuildingCommand,\\n)\", \"replace\": \"from satisfactory_planner.ui.commands import (\\n    CommandStack,\\n    ConnectBeltCommand,\\n    DeleteItemsCommand,\\n    MoveBuildingsCommand,\\n    PlaceBuildingCommand,\\n    SetRotationCommand,\\n)\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01NVs8H9EYJ3GjosKP6WXHNs",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas.py\", \"search\": \"    def on_building_moved(self, building_id: str, old_x: float, old_y: float) -> None:\", \"replace\": \"    def on_building_rotated(self, building_id: str, old_rotation: int, new_rotation: int) -> None:\\n        \\\"\\\"\\\"Handle a building being rotated.\\n\\n        Args:\\n            building_id: The building that was rotated\\n            old_rotation: Original rotation before the change\\n            new_rotation: New rotation after the change\\n        \\\"\\\"\\\"\\n        cmd = SetRotationCommand(\\n            document=self.document,\\n            building_id=building_id,\\n            old_rotation=old_rotation,\\n            new_rotation=new_rotation,\\n            canvas=self,\\n        )\\n        self.command_stack.execute(cmd)\\n\\n    def on_building_moved(self, building_id: str, old_x: float, old_y: float) -> None:\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_013wGQMvvZKUgr2wjfaaqJmv",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/__init__.py\", \"search\": \"from satisfactory_planner.ui.commands import (\\n    Command,\\n    CommandStack,\\n    ConnectBeltCommand,\\n    DeleteItemsCommand,\\n    MoveBuildingsCommand,\\n    PlaceBuildingCommand,\\n    SetBeltTierCommand,\\n    SetClockSpeedCommand,\\n    SetRecipeCommand,\\n)\\n\\n__all__ = [\\n    \\\"Command\\\",\\n    \\\"CommandStack\\\",\\n    \\\"ConnectBeltCommand\\\",\\n    \\\"DeleteItemsCommand\\\",\\n    \\\"MoveBuildingsCommand\\\",\\n    \\\"PlaceBuildingCommand\\\",\\n    \\\"SetBeltTierCommand\\\",\\n    \\\"SetClockSpeedCommand\\\",\\n    \\\"SetRecipeCommand\\\",\\n]\", \"replace\": \"from satisfactory_planner.ui.commands import (\\n    Command,\\n    CommandStack,\\n    ConnectBeltCommand,\\n    DeleteItemsCommand,\\n    MoveBuildingsCommand,\\n    PlaceBuildingCommand,\\n    SetBeltTierCommand,\\n    SetClockSpeedCommand,\\n    SetRecipeCommand,\\n    SetRotationCommand,\\n)\\n\\n__all__ = [\\n    \\\"Command\\\",\\n    \\\"CommandStack\\\",\\n    \\\"ConnectBeltCommand\\\",\\n    \\\"DeleteItemsCommand\\\",\\n    \\\"MoveBuildingsCommand\\\",\\n    \\\"PlaceBuildingCommand\\\",\\n    \\\"SetBeltTierCommand\\\",\\n    \\\"SetClockSpeedCommand\\\",\\n    \\\"SetRecipeCommand\\\",\\n    \\\"SetRotationCommand\\\",\\n]\"}",
+            "name": "search_replace"
+          },
+          "id": "toolu_vrtx_01J9qqA8hwofaX5Q88xQKV4i",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"verbose\": false}",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_01RVWFSjBVzWB43uEJmhPGca",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01HW677RanobDuxJ93bq8ro6",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/commands.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01NVs8H9EYJ3GjosKP6WXHNs",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_013wGQMvvZKUgr2wjfaaqJmv",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/canvas.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01J9qqA8hwofaX5Q88xQKV4i",
+      "content": "{\"message\": \"Replaced in src/satisfactory_planner/ui/__init__.py\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01RVWFSjBVzWB43uEJmhPGca",
+      "content": "{\"output\": \"ruff check --fix src/ tests/\\nAll checks passed!\\nruff format src/ tests/\\n1 file reformatted, 28 files left unchanged\\nruff check src/ tests/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 20 source files\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Tests pass! Let me commit this feature.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Add building rotation via mouse wheel while dragging\\n\\n- Track drag state and start rotation in BuildingItem\\n- Add wheelEvent handler to rotate building during drag\\n- Create SetRotationCommand for undoable rotation changes\\n- Add on_building_rotated handler to canvas\"}",
+            "name": "commit"
+          },
+          "id": "toolu_vrtx_017qcWpgXa3LTFAU3BAPDVCD",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Added building rotation via mouse wheel while dragging:\\n\\n1. **BuildingItem** now tracks `_is_dragging` and `_drag_start_rotation`\\n2. **wheelEvent** on BuildingItem rotates the building by \u00b190\u00b0 when dragging\\n3. **SetRotationCommand** makes rotation changes undoable\\n4. On mouse release, if the building was rotated (but not moved), a rotation command is created\\n\\nThis means you can now click a building, hold, scroll wheel to rotate it, and release - the rotation is captured as an undoable command.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_016QzoqSR3VNUhVmdzc6u2yb",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_017qcWpgXa3LTFAU3BAPDVCD",
+      "content": "{\"commit\": \"15135b2f064a\", \"message\": \"Committed: 4 file(s) modified/created\", \"side_effects\": [\"mid_turn_commit\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_016QzoqSR3VNUhVmdzc6u2yb",
+      "content": "{\"done\": true, \"message\": \"Added building rotation via mouse wheel while dragging:\\n\\n1. **BuildingItem** now tracks `_is_dragging` and `_drag_start_rotation`\\n2. **wheelEvent** on BuildingItem rotates the building by \\u00b190\\u00b0 when dragging\\n3. **SetRotationCommand** makes rotation changes undoable\\n4. On mouse release, if the building was rotated (but not moved), a rotation command is created\\n\\nThis means you can now click a building, hold, scroll wheel to rotate it, and release - the rotation is captured as an undoable command.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Added building rotation via mouse wheel while dragging:\n\n1. **BuildingItem** now tracks `_is_dragging` and `_drag_start_rotation`\n2. **wheelEvent** on BuildingItem rotates the building by \u00b190\u00b0 when dragging\n3. **SetRotationCommand** makes rotation changes undoable\n4. On mouse release, if the building was rotated (but not moved), a rotation command is created\n\nThis means you can now click a building, hold, scroll wheel to rotate it, and release - the rotation is captured as an undoable command."
     }
   ]
 }

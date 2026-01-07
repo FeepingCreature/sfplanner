@@ -341,6 +341,47 @@ class SetClockSpeedCommand(Command):
 
 
 @dataclass(frozen=True)
+class SetRotationCommand(Command):
+    """Command to set a building's rotation."""
+
+    document: Document
+    building_id: str
+    old_rotation: int
+    new_rotation: int
+    canvas: FactoryCanvas
+
+    def execute(self) -> None:
+        building = self.document.buildings.get(self.building_id)
+        if not building:
+            logger.warning(f"SetRotationCommand.execute: building {self.building_id} not found")
+            return
+        if building.rotation == self.new_rotation:
+            logger.warning(
+                f"SetRotationCommand.execute: rotation already set to {self.new_rotation}"
+            )
+            return
+        building.rotation = self.new_rotation
+        self.canvas.refresh_building(self.building_id)
+        self.canvas.refresh_belts_for_building(self.building_id)
+        self.canvas.notify_mutation()
+
+    def undo(self) -> None:
+        building = self.document.buildings.get(self.building_id)
+        if not building:
+            logger.warning(f"SetRotationCommand.undo: building {self.building_id} not found")
+            return
+        if building.rotation == self.old_rotation:
+            logger.warning(
+                f"SetRotationCommand.undo: rotation already set to {self.old_rotation}"
+            )
+            return
+        building.rotation = self.old_rotation
+        self.canvas.refresh_building(self.building_id)
+        self.canvas.refresh_belts_for_building(self.building_id)
+        self.canvas.notify_mutation()
+
+
+@dataclass(frozen=True)
 class SetBeltTierCommand(Command):
     """Command to set a belt's tier."""
 

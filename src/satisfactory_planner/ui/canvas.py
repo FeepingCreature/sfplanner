@@ -38,6 +38,7 @@ from satisfactory_planner.ui.commands import (
     DeleteItemsCommand,
     MoveBuildingsCommand,
     PlaceBuildingCommand,
+    SetRotationCommand,
 )
 from satisfactory_planner.ui.items.belt_item import BeltItem
 from satisfactory_planner.ui.items.building_item import BuildingItem
@@ -648,6 +649,23 @@ class FactoryCanvas(QGraphicsView):
                     self.cancel_belt_connection()
                 return
         super().keyPressEvent(event)  # type: ignore[arg-type]
+
+    def on_building_rotated(self, building_id: str, old_rotation: int, new_rotation: int) -> None:
+        """Handle a building being rotated.
+
+        Args:
+            building_id: The building that was rotated
+            old_rotation: Original rotation before the change
+            new_rotation: New rotation after the change
+        """
+        cmd = SetRotationCommand(
+            document=self.document,
+            building_id=building_id,
+            old_rotation=old_rotation,
+            new_rotation=new_rotation,
+            canvas=self,
+        )
+        self.command_stack.execute(cmd)
 
     def on_building_moved(self, building_id: str, old_x: float, old_y: float) -> None:
         """Handle a building being moved.

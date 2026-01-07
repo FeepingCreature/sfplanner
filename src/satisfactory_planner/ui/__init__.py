@@ -10,6 +10,7 @@ from satisfactory_planner.ui.commands import (
     SetBeltTierCommand,
     SetClockSpeedCommand,
     SetRecipeCommand,
+    SetRotationCommand,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "SetBeltTierCommand",
     "SetClockSpeedCommand",
     "SetRecipeCommand",
+    "SetRotationCommand",
 ]

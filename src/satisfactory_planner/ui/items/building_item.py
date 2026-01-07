@@ -47,6 +47,8 @@ class BuildingItem(QGraphicsRectItem):
 
         # Drag tracking
         self._drag_start_pos: QPointF | None = None
+        self._drag_start_rotation: int = 0
+        self._is_dragging: bool = False
 
     def _get_display_size(self) -> tuple[int, int]:
         """Get display size - delegates to model."""
@@ -221,6 +223,8 @@ class BuildingItem(QGraphicsRectItem):
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Track drag start."""
         self._drag_start_pos = self.pos()
+        self._drag_start_rotation = self.building.rotation
+        self._is_dragging = True
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
@@ -229,9 +233,11 @@ class BuildingItem(QGraphicsRectItem):
 
         if self._drag_start_pos is not None:
             new_pos = self.pos()
+            moved = new_pos != self._drag_start_pos
+            rotated = self.building.rotation != self._drag_start_rotation
 
             # Only create command if actually moved
-            if new_pos != self._drag_start_pos:
+            if moved:
                 # Pass original position to canvas for immutable command
                 self.canvas.on_building_moved(
                     self.building.id,
@@ -239,7 +245,17 @@ class BuildingItem(QGraphicsRectItem):
                     self._drag_start_pos.y(),
                 )
 
+            # Create rotation command if rotated (and didn't move - moves are separate)
+            if rotated and not moved:
+                self.canvas.on_building_rotated(
+                    self.building.id,
+                    self._drag_start_rotation,
+                    self.building.rotation,
+                )
+
             self._drag_start_pos = None
+
+        self._is_dragging = False
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Handle item changes."""
@@ -259,3 +275,21 @@ class BuildingItem(QGraphicsRectItem):
             self.building.y = new_pos.y()
             self.canvas.update_belts_for_building(self.building.id)
         return super().itemChange(change, value)
+
+    def wheelEvent(self, event: object) -> None:
+        """Handle mouse wheel for rotation while dragging."""
+        from PySide6.QtWidgets import QGraphicsSceneWheelEvent
+
+        if not isinstance(event, QGraphicsSceneWheelEvent):
+            return
+
+        if self._is_dragging:
+            # Rotate building while dragging
+            if event.delta() > 0:
+                self.rotate_building(90)
+            else:
+                self.rotate_building(-90)
+            event.accept()
+        else:
+            # Pass to parent for zoom
+            event.ignore()
