@@ -169,16 +169,16 @@ class MainWindow(QMainWindow):
         # Connect library to current canvas for placement
         self.library_panel.building_selected.connect(self._on_building_selected)
 
-        # Properties panel - right
+        # Properties panel - right (larger)
         self.properties_panel = PropertiesPanel(Document(), CommandStack())
+        self.properties_panel.setMinimumHeight(400)
         props_dock = ads.CDockWidget("Properties")
         props_dock.setWidget(self.properties_panel)
         self.dock_manager.addDockWidget(ads.DockWidgetArea.RightDockWidgetArea, props_dock)
 
-        # Warnings panel - below properties panel (smaller by default)
+        # Warnings panel - below properties panel (smaller)
         self.warnings_panel = WarningsPanel(Document(), FlowSolver(Document()))
         self.warnings_panel.warning_clicked.connect(self._on_warning_clicked)
-        self.warnings_panel.setMaximumHeight(150)  # Keep warnings compact
         warnings_dock = ads.CDockWidget("Warnings")
         warnings_dock.setWidget(self.warnings_panel)
         self.dock_manager.addDockWidget(
@@ -273,12 +273,16 @@ class MainWindow(QMainWindow):
         new_action.triggered.connect(self._new_document)
         toolbar.addAction(new_action)
 
-        open_action = QAction(style.standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton), "", self)
+        open_action = QAction(
+            style.standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton), "", self
+        )
         open_action.setToolTip("Open document (Ctrl+O)")
         open_action.triggered.connect(self._open_document)
         toolbar.addAction(open_action)
 
-        save_action = QAction(style.standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton), "", self)
+        save_action = QAction(
+            style.standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton), "", self
+        )
         save_action.setToolTip("Save document (Ctrl+S)")
         save_action.triggered.connect(self._save_document)
         toolbar.addAction(save_action)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -32,9 +33,7 @@ from satisfactory_planner.core import (
     Document,
 )
 from satisfactory_planner.core.models import generate_id
-import copy
 from satisfactory_planner.core.routing import Point, compute_belt_path
-from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 from satisfactory_planner.ui.commands import (
     BuildingMove,
     CommandStack,
@@ -45,6 +44,7 @@ from satisfactory_planner.ui.commands import (
 )
 from satisfactory_planner.ui.items.belt_item import BeltItem
 from satisfactory_planner.ui.items.building_item import BuildingItem
+from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 
 if TYPE_CHECKING:
     pass
@@ -441,7 +441,9 @@ class FactoryCanvas(QGraphicsView):
                 # Center the building on the cursor (building pos is top-left)
                 spec = BUILDING_METADATA.get(building_type)
                 if spec:
-                    scene_pos = QPointF(scene_pos.x() - spec.width / 2, scene_pos.y() - spec.height / 2)
+                    scene_pos = QPointF(
+                        scene_pos.x() - spec.width / 2, scene_pos.y() - spec.height / 2
+                    )
                 snapped = self._snap_to_grid(scene_pos)
                 self._place_building(building_type, snapped.x(), snapped.y())
                 event.acceptProposedAction()
@@ -622,13 +624,19 @@ class FactoryCanvas(QGraphicsView):
             elif self._is_connecting:
                 self.cancel_belt_connection()
             return
-        elif event.key() == Qt.Key.Key_C and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+        elif (
+            event.key() == Qt.Key.Key_C and event.modifiers() & Qt.KeyboardModifier.ControlModifier
+        ):
             self.copy_selection()
             return
-        elif event.key() == Qt.Key.Key_V and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+        elif (
+            event.key() == Qt.Key.Key_V and event.modifiers() & Qt.KeyboardModifier.ControlModifier
+        ):
             self.paste()
             return
-        elif event.key() == Qt.Key.Key_A and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+        elif (
+            event.key() == Qt.Key.Key_A and event.modifiers() & Qt.KeyboardModifier.ControlModifier
+        ):
             self.select_all()
             return
         super().keyPressEvent(event)
@@ -655,7 +663,10 @@ class FactoryCanvas(QGraphicsView):
 
         # Copy belts that connect selected buildings to each other
         for belt in self.document.belts.values():
-            if belt.source_building_id in selected_building_ids and belt.dest_building_id in selected_building_ids:
+            if (
+                belt.source_building_id in selected_building_ids
+                and belt.dest_building_id in selected_building_ids
+            ):
                 self._clipboard_belts.append(copy.deepcopy(belt))
 
     def paste(self) -> None:
