@@ -44,6 +44,7 @@ class DocumentTab:
         self.flow_solver = FlowSolver(self.document)
         self.canvas: FactoryCanvas | None = None
         self.file_path: str | None = None
+        self.dirty: bool = False  # Track unsaved changes
 
 
 class SettingsDialog(QDialog):
@@ -264,6 +265,7 @@ class MainWindow(QMainWindow):
         # Connect signals
         canvas.selection_changed.connect(self.properties_panel.set_selection)
         canvas.document_changed.connect(self._update_warnings)
+        canvas.document_changed.connect(lambda: self._mark_dirty(tab))
 
         # Add tab
         index = self.tab_widget.addTab(canvas, tab.name)
@@ -281,7 +283,18 @@ class MainWindow(QMainWindow):
             return
 
         tab = self.tabs[index]
-        # TODO: Check for unsaved changes
+        
+        # Check for unsaved changes
+        if tab.dirty:
+            result = QMessageBox.question(
+                self,
+                "Unsaved Changes",
+                f"'{tab.name}' has unsaved changes. Close anyway?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if result != QMessageBox.Yes:
+                return
 
         self.tab_widget.removeTab(index)
         self.tabs.pop(index)
@@ -401,8 +414,9 @@ class MainWindow(QMainWindow):
                 save_document(self.current_tab.document, path, view_state)
                 self.current_tab.file_path = path
                 self.current_tab.name = Path(path).stem
+                self.current_tab.dirty = False
                 
-                # Update tab title
+                # Update tab title (remove dirty indicator)
                 current_index = self.tab_widget.currentIndex()
                 self.tab_widget.setTabText(current_index, self.current_tab.name)
                 
@@ -475,7 +489,30 @@ class MainWindow(QMainWindow):
             state = Path(path).read_bytes()
             self.dock_manager.restoreState(state)
 
+    def _mark_dirty(self, tab: DocumentTab) -> None:
+        """Mark a tab as having unsaved changes."""
+        if not tab.dirty:
+            tab.dirty = True
+            # Update tab title to show dirty indicator
+            index = self.tabs.index(tab) if tab in self.tabs else -1
+            if index >= 0:
+                self.tab_widget.setTabText(index, f"{tab.name}*")
+
+    def _has_unsaved_changes(self) -> bool:
+        """Check if any tab has unsaved changes."""
+        return any(tab.dirty for tab in self.tabs)
+
     def closeEvent(self, event: QCloseEvent) -> None:
         """Handle window close."""
-        # TODO: Check for unsaved changes in all tabs
+        if self._has_unsaved_changes():
+            result = QMessageBox.question(
+                self,
+                "Unsaved Changes",
+                "You have unsaved changes. Quit anyway?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if result != QMessageBox.Yes:
+                event.ignore()
+                return
         event.accept()

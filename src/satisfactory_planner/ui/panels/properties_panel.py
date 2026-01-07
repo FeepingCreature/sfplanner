@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from satisfactory_planner.core import Document, CommandStack, SetClockSpeedCommand, BuildingType
+from satisfactory_planner.core import Document, CommandStack, SetClockSpeedCommand, SetRecipeCommand, BuildingType
 from satisfactory_planner.core.models import get_building_power, get_building_io_counts
 from satisfactory_planner.core.persistence import load_user_recipes, save_user_recipes
 
@@ -474,6 +474,7 @@ class PropertiesPanel(QWidget):
         self.recipe_combo = QComboBox()
         self.recipe_combo.addItem("(No recipe)", None)
         self.recipe_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.recipe_combo.currentIndexChanged.connect(self._on_recipe_changed)
         recipe_layout.addWidget(self.recipe_combo, 1)
 
         building_layout.addRow("Recipe:", recipe_layout)
@@ -629,5 +630,21 @@ class PropertiesPanel(QWidget):
                     document=self.document,
                     building_id=building_id,
                     new_clock_speed=value / 100.0,
+                )
+                self.command_stack.execute(cmd)
+
+    def _on_recipe_changed(self, index: int) -> None:
+        """Handle recipe selection change."""
+        if self._updating:
+            return
+
+        if len(self._selected_ids) == 1:
+            building_id = self._selected_ids[0]
+            if building_id in self.document.buildings:
+                recipe_id = self.recipe_combo.currentData()
+                cmd = SetRecipeCommand(
+                    document=self.document,
+                    building_id=building_id,
+                    new_recipe_id=recipe_id,
                 )
                 self.command_stack.execute(cmd)
