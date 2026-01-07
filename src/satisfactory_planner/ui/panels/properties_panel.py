@@ -24,11 +24,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from satisfactory_planner.core import BuildingType, Document
+from satisfactory_planner.core import BuildingType, Document, Room, RoomPlacement
 from satisfactory_planner.core.models import get_building_io_counts, get_building_power
 from satisfactory_planner.core.persistence import load_all_recipes, save_user_recipes
 from satisfactory_planner.ui.commands import (
     CommandStack,
+    DelinkRoomCommand,
     SetBeltTierCommand,
     SetClockSpeedCommand,
     SetRecipeCommand,
@@ -532,6 +533,44 @@ class PropertiesPanel(QWidget):
         layout.addWidget(self.belt_group)
         self.belt_group.hide()
 
+        # Room properties group
+        self.room_group = QGroupBox("Room Properties")
+        room_layout = QFormLayout(self.room_group)
+
+        # Room name
+        self.room_name_label = QLabel("-")
+        room_layout.addRow("Name:", self.room_name_label)
+
+        # Size
+        self.room_size_label = QLabel("-")
+        room_layout.addRow("Size:", self.room_size_label)
+
+        # Contents
+        self.room_contents_label = QLabel("-")
+        room_layout.addRow("Contents:", self.room_contents_label)
+
+        # Link status
+        self.room_link_label = QLabel("-")
+        room_layout.addRow("Instances:", self.room_link_label)
+
+        # Action buttons
+        room_buttons = QHBoxLayout()
+
+        self.save_blueprint_btn = QPushButton("Save to Library")
+        self.save_blueprint_btn.setToolTip("Save this room as a blueprint")
+        self.save_blueprint_btn.clicked.connect(self._on_save_blueprint)
+        room_buttons.addWidget(self.save_blueprint_btn)
+
+        self.delink_btn = QPushButton("Unlink")
+        self.delink_btn.setToolTip("Make this instance independent")
+        self.delink_btn.clicked.connect(self._on_delink)
+        room_buttons.addWidget(self.delink_btn)
+
+        room_layout.addRow(room_buttons)
+
+        layout.addWidget(self.room_group)
+        self.room_group.hide()
+
         # Production stats
         self.stats_group = QGroupBox("Production Stats")
         stats_layout = QFormLayout(self.stats_group)
@@ -587,6 +626,25 @@ class PropertiesPanel(QWidget):
         """Update the displayed properties for the selection."""
         self._selected_ids = selected_ids
         self._update_display()
+
+    def _get_selected_room_item(self) -> tuple[RoomPlacement, Room] | None:
+        """Get the selected RoomItem if exactly one room is selected.
+
+        Returns (placement, room) or None.
+        """
+        if not self.canvas or len(self._selected_ids) != 1:
+            return None
+
+        from satisfactory_planner.ui.items import RoomItem
+
+        # Check if selected item is a room placement
+        item_id = self._selected_ids[0]
+        if item_id in self.canvas._room_items:
+            room_item = self.canvas._room_items[item_id]
+            if isinstance(room_item, RoomItem):
+                return (room_item.placement, room_item.room)
+
+        return None
 
     def _update_display(self) -> None:
         """Update the panel to show current selection."""
@@ -644,10 +702,45 @@ class PropertiesPanel(QWidget):
                 self.belt_group.show()
                 self.building_group.hide()
                 self.stats_group.hide()
+            # Check if it's a room placement
+            else:
+                room_info = self._get_selected_room_item()
+                if room_info:
+                    placement, room = room_info
+                    self.selection_label.setText(f"Room: {room.name}")
+
+                    self.room_name_label.setText(room.name)
+                    self.room_size_label.setText(f"{int(room.width)} × {int(room.height)}")
+                    self.room_contents_label.setText(
+                        f"{len(room.buildings)} buildings, {len(room.belts)} belts"
+                    )
+
+                    # Count placements of this room
+                    placements = self.document.get_placements_for_room(room.id)
+                    num_placements = len(placements)
+                    if num_placements > 1:
+                        self.room_link_label.setText(f"{num_placements} (linked)")
+                        self.delink_btn.setEnabled(True)
+                    else:
+                        self.room_link_label.setText("1 (unique)")
+                        self.delink_btn.setEnabled(False)
+
+                    self.room_group.show()
+                    self.building_group.hide()
+                    self.belt_group.hide()
+                    self.stats_group.hide()
+                else:
+                    # Unknown item type
+                    self.selection_label.setText("Unknown item")
+                    self.building_group.hide()
+                    self.belt_group.hide()
+                    self.room_group.hide()
+                    self.stats_group.hide()
         else:
             self.selection_label.setText(f"{len(self._selected_ids)} items selected")
             self.building_group.hide()
             self.belt_group.hide()
+            self.room_group.hide()
             self.stats_group.hide()
 
         self._updating = False
@@ -721,3 +814,57 @@ class PropertiesPanel(QWidget):
                         canvas=self.canvas,
                     )
                     self.command_stack.execute(cmd)
+
+    def _on_save_blueprint(self) -> None:
+        """Save the selected room as a blueprint."""
+        if not self.canvas:
+            return
+
+        room_info = self._get_selected_room_item()
+        if not room_info:
+            return
+
+        _placement, room = room_info
+
+        from satisfactory_planner.core import save_blueprint
+
+        save_blueprint(room)
+
+        # Try to refresh the library panel if accessible
+        # (MainWindow connects this)
+        QMessageBox.information(
+            self,
+            "Blueprint Saved",
+            f"Blueprint '{room.name}' saved to library.",
+        )
+
+    def _on_delink(self) -> None:
+        """Unlink the selected room placement."""
+        if not self.canvas:
+            return
+
+        room_info = self._get_selected_room_item()
+        if not room_info:
+            return
+
+        placement, room = room_info
+
+        # Check if room has multiple placements
+        placements = self.document.get_placements_for_room(room.id)
+        if len(placements) <= 1:
+            QMessageBox.information(
+                self,
+                "Cannot Unlink",
+                "This room has only one instance. Nothing to unlink.",
+            )
+            return
+
+        cmd = DelinkRoomCommand(
+            placement_id=placement.id,
+            canvas=self.canvas,
+            old_room_id=room.id,
+        )
+        self.command_stack.execute(cmd)
+
+        # Refresh display
+        self._update_display()
