@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QSpinBox,
+    QStyle,
     QTabWidget,
     QToolBar,
     QToolButton,
@@ -264,17 +265,19 @@ class MainWindow(QMainWindow):
         self.addToolBar(toolbar)
 
         # === 1. File Actions ===
-        new_action = QAction("New", self)
+        style = self.style()
+
+        new_action = QAction(style.standardIcon(QStyle.StandardPixmap.SP_FileIcon), "", self)
         new_action.setToolTip("New document (Ctrl+N)")
         new_action.triggered.connect(self._new_document)
         toolbar.addAction(new_action)
 
-        open_action = QAction("Open", self)
+        open_action = QAction(style.standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton), "", self)
         open_action.setToolTip("Open document (Ctrl+O)")
         open_action.triggered.connect(self._open_document)
         toolbar.addAction(open_action)
 
-        save_action = QAction("Save", self)
+        save_action = QAction(style.standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton), "", self)
         save_action.setToolTip("Save document (Ctrl+S)")
         save_action.triggered.connect(self._save_document)
         toolbar.addAction(save_action)
@@ -282,12 +285,12 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
 
         # === 2. Edit Actions ===
-        toolbar_undo = QAction("Undo", self)
+        toolbar_undo = QAction(style.standardIcon(QStyle.StandardPixmap.SP_ArrowBack), "", self)
         toolbar_undo.setToolTip("Undo (Ctrl+Z)")
         toolbar_undo.triggered.connect(self._undo)
         toolbar.addAction(toolbar_undo)
 
-        toolbar_redo = QAction("Redo", self)
+        toolbar_redo = QAction(style.standardIcon(QStyle.StandardPixmap.SP_ArrowForward), "", self)
         toolbar_redo.setToolTip("Redo (Ctrl+Shift+Z)")
         toolbar_redo.triggered.connect(self._redo)
         toolbar.addAction(toolbar_redo)
@@ -353,17 +356,18 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
 
         # === 6. View Controls ===
-        zoom_in_action = QAction("+", self)
+        # Note: Qt doesn't have great zoom icons, using +/- text with magnifier-style tooltip
+        zoom_in_action = QAction("🔍+", self)
         zoom_in_action.setToolTip("Zoom in (+)")
         zoom_in_action.triggered.connect(self._zoom_in)
         toolbar.addAction(zoom_in_action)
 
-        zoom_out_action = QAction("−", self)
+        zoom_out_action = QAction("🔍−", self)
         zoom_out_action.setToolTip("Zoom out (-)")
         zoom_out_action.triggered.connect(self._zoom_out)
         toolbar.addAction(zoom_out_action)
 
-        zoom_fit_action = QAction("Fit", self)
+        zoom_fit_action = QAction("⊡", self)
         zoom_fit_action.setToolTip("Fit all in view (0)")
         zoom_fit_action.triggered.connect(self._zoom_fit)
         toolbar.addAction(zoom_fit_action)
