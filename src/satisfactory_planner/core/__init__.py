@@ -10,7 +10,10 @@ from satisfactory_planner.core.models import (
     Outline,
     Recipe,
     BELT_CAPACITIES,
+    BUILDING_COLORS,
     BUILDING_METADATA,
+    DEFAULT_GRID_SIZE,
+    LOGISTICS_DISPLAY_SIZE,
 )
 from satisfactory_planner.core.commands import (
     Command,

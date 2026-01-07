@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
+import math
 import uuid
 
 if TYPE_CHECKING:
@@ -49,6 +50,29 @@ BUILDING_METADATA: dict[BuildingType, tuple[int, int, int, int, float]] = {
     BuildingType.MINER_MK3: (80, 80, 0, 1, 30.0),
     BuildingType.SPLITTER: (60, 60, 1, 3, 0.0),
     BuildingType.MERGER: (60, 60, 3, 1, 0.0),
+}
+
+# Display size for splitter/merger (smaller than metadata size)
+LOGISTICS_DISPLAY_SIZE = 40
+
+# Default grid size for snapping
+DEFAULT_GRID_SIZE = 20
+
+# Colors for different building types
+BUILDING_COLORS: dict[BuildingType, tuple[int, int, int]] = {
+    BuildingType.SMELTER: (200, 100, 50),
+    BuildingType.FOUNDRY: (180, 80, 40),
+    BuildingType.CONSTRUCTOR: (80, 150, 200),
+    BuildingType.ASSEMBLER: (100, 180, 100),
+    BuildingType.MANUFACTURER: (150, 100, 180),
+    BuildingType.REFINERY: (120, 120, 180),
+    BuildingType.PACKAGER: (100, 150, 150),
+    BuildingType.BLENDER: (180, 150, 100),
+    BuildingType.MINER_MK1: (150, 120, 80),
+    BuildingType.MINER_MK2: (160, 130, 90),
+    BuildingType.MINER_MK3: (170, 140, 100),
+    BuildingType.SPLITTER: (200, 200, 100),
+    BuildingType.MERGER: (100, 200, 200),
 }
 
 
@@ -106,6 +130,7 @@ class Building:
     y: float
     recipe_id: str | None = None
     clock_speed: float = 1.0  # 0.01 to 2.5
+    rotation: int = 0  # 0, 90, 180, 270 degrees
 
     @property
     def width(self) -> int:
@@ -125,9 +150,9 @@ class Building:
 
     def _get_display_size(self) -> tuple[int, int]:
         """Get display size - smaller for logistics."""
-        # Splitter/Merger display at 40x40, not the metadata 60x60
+        # Splitter/Merger display at smaller size, not the metadata 60x60
         if self.building_type in (BuildingType.SPLITTER, BuildingType.MERGER):
-            return (40, 40)
+            return (LOGISTICS_DISPLAY_SIZE, LOGISTICS_DISPLAY_SIZE)
         return (self.width, self.height)
 
     def input_port_pos(self, index: int) -> tuple[float, float]:
@@ -152,7 +177,6 @@ class Building:
 
     def input_port_direction(self, index: int) -> float:
         """Get direction (radians) a belt is TRAVELING when it enters this input port."""
-        import math
         if self.building_type == BuildingType.SPLITTER:
             return 0  # traveling right, into left side
         elif self.building_type == BuildingType.MERGER:
@@ -184,7 +208,6 @@ class Building:
 
     def output_port_direction(self, index: int) -> float:
         """Get direction (radians) a belt is TRAVELING when it leaves this output port."""
-        import math
         if self.building_type == BuildingType.SPLITTER:
             # top (traveling up), right (traveling right), bottom (traveling down)
             directions = [-math.pi / 2, 0, math.pi / 2]

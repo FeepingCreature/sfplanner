@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QStyle,
 )
 
-from satisfactory_planner.core import BuildingType, BUILDING_METADATA
+from satisfactory_planner.core import BuildingType, BUILDING_COLORS, BUILDING_METADATA, LOGISTICS_DISPLAY_SIZE
 
 
 # Building info: (description, extra_info)
@@ -35,22 +35,11 @@ BUILDING_INFO: dict[BuildingType, tuple[str, str]] = {
     BuildingType.MERGER: ("3 → 1 merge", "Combines belts"),
 }
 
-# Building colors (matching building_item.py)
-BUILDING_COLORS: dict[BuildingType, QColor] = {
-    BuildingType.SMELTER: QColor(200, 100, 50),
-    BuildingType.FOUNDRY: QColor(180, 80, 40),
-    BuildingType.CONSTRUCTOR: QColor(80, 150, 200),
-    BuildingType.ASSEMBLER: QColor(100, 180, 100),
-    BuildingType.MANUFACTURER: QColor(150, 100, 180),
-    BuildingType.REFINERY: QColor(120, 120, 180),
-    BuildingType.PACKAGER: QColor(100, 150, 150),
-    BuildingType.BLENDER: QColor(180, 150, 100),
-    BuildingType.MINER_MK1: QColor(150, 120, 80),
-    BuildingType.MINER_MK2: QColor(160, 130, 90),
-    BuildingType.MINER_MK3: QColor(170, 140, 100),
-    BuildingType.SPLITTER: QColor(200, 200, 100),
-    BuildingType.MERGER: QColor(100, 200, 200),
-}
+
+def _get_building_color(building_type: BuildingType) -> QColor:
+    """Get QColor for a building type from the core color definitions."""
+    rgb = BUILDING_COLORS.get(building_type, (150, 150, 150))
+    return QColor(rgb[0], rgb[1], rgb[2])
 
 # Item dimensions
 ICON_SIZE = 36
@@ -140,7 +129,7 @@ class BuildingItemDelegate(QStyledItemDelegate):
 
     def _draw_building_icon(self, painter: QPainter, rect: QRect, building_type: BuildingType) -> None:
         """Draw a mini building preview as the icon."""
-        color = BUILDING_COLORS.get(building_type, QColor(150, 150, 150))
+        color = _get_building_color(building_type)
         
         # Draw building body
         painter.setBrush(QBrush(color))
@@ -362,7 +351,7 @@ class LibraryPanel(QWidget):
         
         # Use display size (smaller for logistics)
         if building_type in (BuildingType.SPLITTER, BuildingType.MERGER):
-            w, h = 40, 40
+            w, h = LOGISTICS_DISPLAY_SIZE, LOGISTICS_DISPLAY_SIZE
         else:
             w, h = meta[0], meta[1]
         
@@ -381,7 +370,7 @@ class LibraryPanel(QWidget):
         bx, by = padding, padding
         
         # Draw building body
-        color = BUILDING_COLORS.get(building_type, QColor(150, 150, 150))
+        color = _get_building_color(building_type)
         painter.setBrush(QBrush(color))
         painter.setPen(QPen(QColor(255, 255, 255), 2))
         painter.drawRect(bx, by, w, h)

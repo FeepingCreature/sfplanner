@@ -23,6 +23,7 @@ from satisfactory_planner.core import (
     DeleteItemsCommand,
     MoveBuildingsCommand,
     ConnectBeltCommand,
+    DEFAULT_GRID_SIZE,
 )
 from satisfactory_planner.core.models import generate_id
 from satisfactory_planner.ui.items.building_item import BuildingItem
@@ -71,7 +72,7 @@ class FactoryCanvas(QGraphicsView):
         self._connect_start_building: str | None = None
         self._connect_start_port: int = 0
         self._grid_snap = True
-        self._grid_size = 20
+        self._grid_size = DEFAULT_GRID_SIZE
 
         # Item tracking
         self._building_items: dict[str, BuildingItem] = {}
@@ -119,6 +120,20 @@ class FactoryCanvas(QGraphicsView):
         """Enable or disable grid snapping."""
         self._grid_snap = enabled
         self.viewport().update()
+
+    @property
+    def grid_snap(self) -> bool:
+        """Return whether grid snapping is enabled."""
+        return self._grid_snap
+
+    @property
+    def grid_size(self) -> int:
+        """Return the grid size."""
+        return self._grid_size
+
+    def update_belts_for_building(self, building_id: str) -> None:
+        """Redraw all belts connected to a building."""
+        self._update_belts_for_building(building_id)
 
     def set_placement_mode(self, building_type: BuildingType | None) -> None:
         """Enter placement mode for a building type."""

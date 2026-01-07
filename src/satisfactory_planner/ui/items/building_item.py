@@ -15,32 +15,17 @@ from PySide6.QtWidgets import (
     QGraphicsSceneMouseEvent,
 )
 
-from satisfactory_planner.core import Building, BuildingType
+from satisfactory_planner.core import Building, BuildingType, BUILDING_COLORS, LOGISTICS_DISPLAY_SIZE
 from satisfactory_planner.ui.items.port_item import PortItem
 
 if TYPE_CHECKING:
     from satisfactory_planner.ui.canvas import FactoryCanvas
 
 
-# Colors for different building types
-BUILDING_COLORS: dict[BuildingType, QColor] = {
-    BuildingType.SMELTER: QColor(200, 100, 50),
-    BuildingType.FOUNDRY: QColor(180, 80, 40),
-    BuildingType.CONSTRUCTOR: QColor(80, 150, 200),
-    BuildingType.ASSEMBLER: QColor(100, 180, 100),
-    BuildingType.MANUFACTURER: QColor(150, 100, 180),
-    BuildingType.REFINERY: QColor(120, 120, 180),
-    BuildingType.PACKAGER: QColor(100, 150, 150),
-    BuildingType.BLENDER: QColor(180, 150, 100),
-    BuildingType.MINER_MK1: QColor(150, 120, 80),
-    BuildingType.MINER_MK2: QColor(160, 130, 90),
-    BuildingType.MINER_MK3: QColor(170, 140, 100),
-    BuildingType.SPLITTER: QColor(200, 200, 100),
-    BuildingType.MERGER: QColor(100, 200, 200),
-}
-
-# Smaller size for splitter/merger
-LOGISTICS_SIZE = 40
+def _get_building_color(building_type: BuildingType) -> QColor:
+    """Get QColor for a building type from the core color definitions."""
+    rgb = BUILDING_COLORS.get(building_type, (150, 150, 150))
+    return QColor(rgb[0], rgb[1], rgb[2])
 
 
 class BuildingItem(QGraphicsRectItem):
@@ -51,7 +36,6 @@ class BuildingItem(QGraphicsRectItem):
 
         self.building = building
         self.canvas = canvas
-        self.rotation_angle = 0  # 0, 90, 180, 270
 
         # Setup
         self._setup_rect()
@@ -62,10 +46,8 @@ class BuildingItem(QGraphicsRectItem):
         self._drag_start_pos: QPointF | None = None
 
     def _get_display_size(self) -> tuple[int, int]:
-        """Get display size - smaller for logistics."""
-        if self.building.building_type in (BuildingType.SPLITTER, BuildingType.MERGER):
-            return (LOGISTICS_SIZE, LOGISTICS_SIZE)
-        return (self.building.width, self.building.height)
+        """Get display size - delegates to model."""
+        return self.building._get_display_size()
 
     def _setup_rect(self) -> None:
         """Configure the rectangle."""
@@ -73,7 +55,7 @@ class BuildingItem(QGraphicsRectItem):
         self.setRect(0, 0, w, h)
         self.setPos(self.building.x, self.building.y)
 
-        color = BUILDING_COLORS.get(self.building.building_type, QColor(150, 150, 150))
+        color = _get_building_color(self.building.building_type)
         self.setBrush(QBrush(color))
         self.setPen(QPen(QColor(255, 255, 255), 2))
 
@@ -141,9 +123,19 @@ class BuildingItem(QGraphicsRectItem):
                 port.setPos(w, y)
                 self._output_ports.append(port)
 
+    @property
+    def rotation_angle(self) -> int:
+        """Get rotation angle from model."""
+        return self.building.rotation
+
+    @rotation_angle.setter
+    def rotation_angle(self, value: int) -> None:
+        """Set rotation angle on model."""
+        self.building.rotation = value
+
     def rotate_building(self, delta: int = 90) -> None:
         """Rotate the building by delta degrees."""
-        self.rotation_angle = (self.rotation_angle + delta) % 360
+        self.building.rotation = (self.building.rotation + delta) % 360
         self.update()
 
     def paint(
@@ -166,7 +158,7 @@ class BuildingItem(QGraphicsRectItem):
             painter.translate(-w / 2, -h / 2)
 
         # Draw the rectangle
-        color = BUILDING_COLORS.get(self.building.building_type, QColor(150, 150, 150))
+        color = _get_building_color(self.building.building_type)
         painter.setBrush(QBrush(color))
         painter.setPen(QPen(QColor(255, 255, 255), 2))
         painter.drawRect(rect)
@@ -192,7 +184,7 @@ class BuildingItem(QGraphicsRectItem):
         recipe_text = ""
         if not is_small and self.building.recipe_id:
             # Look up recipe in document
-            doc = self.canvas._document
+            doc = self.canvas.document
             recipe = doc.recipes.get(self.building.recipe_id)
             recipe_text = recipe.name if recipe else "No Recipe"
         elif not is_small:
@@ -247,8 +239,8 @@ class BuildingItem(QGraphicsRectItem):
         if change == QGraphicsItem.ItemPositionChange and self.scene():
             # Snap to grid
             new_pos = value
-            if isinstance(new_pos, QPointF) and self.canvas._grid_snap:
-                grid = self.canvas._grid_size
+            if isinstance(new_pos, QPointF) and self.canvas.grid_snap:
+                grid = self.canvas.grid_size
                 x = round(new_pos.x() / grid) * grid
                 y = round(new_pos.y() / grid) * grid
                 new_pos = QPointF(x, y)
@@ -258,5 +250,5 @@ class BuildingItem(QGraphicsRectItem):
             new_pos = self.pos()
             self.building.x = new_pos.x()
             self.building.y = new_pos.y()
-            self.canvas._update_belts_for_building(self.building.id)
+            self.canvas.update_belts_for_building(self.building.id)
         return super().itemChange(change, value)

@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
 
 import PySide6QtAds as ads
 
-from satisfactory_planner.core import Document, CommandStack, FlowSolver, load_document, save_document
+from satisfactory_planner.core import Document, CommandStack, FlowSolver, load_document, save_document, DEFAULT_GRID_SIZE
 from satisfactory_planner.ui.canvas import FactoryCanvas
 from satisfactory_planner.ui.panels.library_panel import LibraryPanel
 from satisfactory_planner.ui.panels.properties_panel import PropertiesPanel
@@ -70,7 +70,7 @@ class SettingsDialog(QDialog):
         # Grid size
         self.grid_size_spin = QSpinBox()
         self.grid_size_spin.setRange(5, 100)
-        self.grid_size_spin.setValue(20)
+        self.grid_size_spin.setValue(DEFAULT_GRID_SIZE)
         layout.addRow("Grid Size:", self.grid_size_spin)
 
         # Buttons
@@ -87,7 +87,7 @@ class SettingsDialog(QDialog):
         if font_family:
             self.font_combo.setCurrentFont(font_family)
         self.font_size_spin.setValue(int(settings.value("font_size", 10)))
-        self.grid_size_spin.setValue(int(settings.value("grid_size", 20)))
+        self.grid_size_spin.setValue(int(settings.value("grid_size", DEFAULT_GRID_SIZE)))
 
     def save_settings(self, settings: QSettings) -> None:
         """Save dialog values to settings."""
@@ -165,6 +165,7 @@ class MainWindow(QMainWindow):
 
         # Warnings panel - below properties panel
         self.warnings_panel = WarningsPanel(Document(), FlowSolver(Document()))
+        self.warnings_panel.warning_clicked.connect(self._on_warning_clicked)
         warnings_dock = ads.CDockWidget("Warnings")
         warnings_dock.setWidget(self.warnings_panel)
         self.dock_manager.addDockWidget(ads.DockWidgetArea.BottomDockWidgetArea, warnings_dock, props_dock.dockAreaWidget())
@@ -435,7 +436,7 @@ class MainWindow(QMainWindow):
     def _apply_settings(self) -> None:
         """Apply current settings."""
         # Apply grid size to all canvases
-        grid_size = int(self.settings.value("grid_size", 20))
+        grid_size = int(self.settings.value("grid_size", DEFAULT_GRID_SIZE))
         for tab in self.tabs:
             if tab.canvas:
                 tab.canvas._grid_size = grid_size
@@ -461,6 +462,36 @@ class MainWindow(QMainWindow):
         """Update the warnings panel."""
         self.warnings_panel.refresh()
         self._update_undo_redo_state()
+
+    def _on_warning_clicked(self, element_id: str) -> None:
+        """Navigate to and select the element referenced by a warning."""
+        if not self.current_tab or not self.current_tab.canvas:
+            return
+        
+        canvas = self.current_tab.canvas
+        doc = self.current_tab.document
+        
+        # Find the element (could be building or belt)
+        if element_id in doc.buildings:
+            building = doc.buildings[element_id]
+            # Select and center on the building
+            canvas.scene().clearSelection()
+            for item in canvas.scene().items():
+                from satisfactory_planner.ui.items import BuildingItem
+                if isinstance(item, BuildingItem) and item.building.id == element_id:
+                    item.setSelected(True)
+                    canvas.centerOn(item)
+                    break
+        elif element_id in doc.belts:
+            belt = doc.belts[element_id]
+            # Select and center on the belt
+            canvas.scene().clearSelection()
+            for item in canvas.scene().items():
+                from satisfactory_planner.ui.items import BeltItem
+                if isinstance(item, BeltItem) and item.belt.id == element_id:
+                    item.setSelected(True)
+                    canvas.centerOn(item)
+                    break
 
     def _update_undo_redo_state(self) -> None:
         """Update undo/redo action enabled state."""
