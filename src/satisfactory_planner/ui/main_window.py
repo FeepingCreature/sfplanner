@@ -325,9 +325,13 @@ class MainWindow(QMainWindow):
         self.box_select_tool.setText("Box Select")
         self.box_select_tool.setToolTip("Box select tool (B)")
         self.box_select_tool.setCheckable(True)
-        self.box_select_tool.setEnabled(False)  # TODO: Implement box select mode
         self.tool_group.addButton(self.box_select_tool)
         toolbar.addWidget(self.box_select_tool)
+
+        # Connect tool buttons to mode changes
+        self.select_tool.clicked.connect(lambda: self._set_tool_mode("select"))
+        self.pan_tool.clicked.connect(lambda: self._set_tool_mode("pan"))
+        self.box_select_tool.clicked.connect(lambda: self._set_tool_mode("box_select"))
 
         toolbar.addSeparator()
 
@@ -487,6 +491,21 @@ class MainWindow(QMainWindow):
         """Handle building selection from library."""
         if self.current_tab and self.current_tab.canvas:
             self.current_tab.canvas.set_placement_mode(building_type)  # type: ignore[arg-type]
+
+    def _set_tool_mode(self, mode: str) -> None:
+        """Set the tool mode on the current canvas."""
+        if not self.current_tab or not self.current_tab.canvas:
+            return
+
+        from satisfactory_planner.ui.canvas import ToolMode
+
+        mode_map = {
+            "select": ToolMode.SELECT,
+            "pan": ToolMode.PAN,
+            "box_select": ToolMode.BOX_SELECT,
+        }
+        if mode in mode_map:
+            self.current_tab.canvas.set_tool_mode(mode_map[mode])
 
     def _toggle_grid_snap(self, enabled: bool) -> None:
         """Toggle grid snap on current canvas."""

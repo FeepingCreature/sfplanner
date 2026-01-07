@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from PySide6.QtCore import QMimeData, QPoint, QRect, QSize, Qt, Signal
+from PySide6.QtCore import QMimeData, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QDrag, QFont, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,

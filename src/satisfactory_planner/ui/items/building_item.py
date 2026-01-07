@@ -77,7 +77,6 @@ class BuildingItem(QGraphicsRectItem):
 
     def shape(self) -> QPainterPath:
         """Return shape for hit testing, accounting for rotation."""
-        import math
 
         w, h = self._get_display_size()
         path = QPainterPath()
@@ -132,7 +131,9 @@ class BuildingItem(QGraphicsRectItem):
             # Outputs on top, right, bottom (base angles)
             base_angles = [270, 0, 90]
             base_positions = [(w / 2, 0), (w, h / 2), (w / 2, h)]
-            for i, (base_angle, (px, py)) in enumerate(zip(base_angles, base_positions, strict=True)):
+            for i, (base_angle, (px, py)) in enumerate(
+                zip(base_angles, base_positions, strict=True)
+            ):
                 angle = base_angle + rotation
                 port = PortItem(True, i, self.building.id, self.canvas, angle=angle)
                 port.setParentItem(self)
@@ -143,7 +144,9 @@ class BuildingItem(QGraphicsRectItem):
             # Merger: 3 inputs (top, left, bottom), 1 output (right)
             base_angles = [270, 180, 90]
             base_positions = [(w / 2, 0), (0, h / 2), (w / 2, h)]
-            for i, (base_angle, (px, py)) in enumerate(zip(base_angles, base_positions, strict=True)):
+            for i, (base_angle, (px, py)) in enumerate(
+                zip(base_angles, base_positions, strict=True)
+            ):
                 angle = base_angle + rotation
                 port = PortItem(False, i, self.building.id, self.canvas, angle=angle)
                 port.setParentItem(self)

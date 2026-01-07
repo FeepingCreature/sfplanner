@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import logging
 from collections.abc import Callable
+from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, Signal
@@ -22,12 +23,14 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsPathItem,
+    QGraphicsRectItem,
     QGraphicsScene,
     QGraphicsView,
 )
 
 from satisfactory_planner.core import (
     DEFAULT_GRID_SIZE,
+    SELECTION_MARGIN,
     Belt,
     Building,
     BuildingType,
@@ -51,6 +54,14 @@ if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
+
+
+class ToolMode(Enum):
+    """Active tool mode for the canvas."""
+
+    SELECT = auto()  # Click to select, drag to move
+    BOX_SELECT = auto()  # Drag to box select
+    PAN = auto()  # Drag to pan
 
 
 class GhostBuildingItem(BuildingItem):
@@ -118,6 +129,16 @@ class FactoryCanvas(QGraphicsView):
         self._drag_rotation: int = 0
         self._drag_ghost: GhostBuildingItem | None = None
 
+        # Tool mode
+        self._tool_mode: ToolMode = ToolMode.SELECT
+
+        # Box select state
+        self._box_select_start: QPointF | None = None
+        self._box_select_rect: QGraphicsRectItem | None = None
+
+        # Selection outline (dashed rect around selected items)
+        self._selection_outline: QGraphicsRectItem | None = None
+
         # Enable drag-drop
         self.setAcceptDrops(True)
 
@@ -126,6 +147,9 @@ class FactoryCanvas(QGraphicsView):
         self._scene = QGraphicsScene(self)
         self._scene.setSceneRect(-5000, -5000, 10000, 10000)
         self.setScene(self._scene)
+
+        # Connect to selection changes to update outline
+        self._scene.selectionChanged.connect(self._update_selection_outline)
 
     def _setup_view(self) -> None:
         """Configure view settings."""
@@ -339,16 +363,25 @@ class FactoryCanvas(QGraphicsView):
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
             return
 
-        # Right click to cancel placement
-        if event.button() == Qt.MouseButton.RightButton and self._placement_mode:
-            self.set_placement_mode(None)
-            return
+        # Right click to cancel placement or box select
+        if event.button() == Qt.MouseButton.RightButton:
+            if self._placement_mode:
+                self.set_placement_mode(None)
+                return
+            if self._box_select_start:
+                self._cancel_box_select()
+                return
 
         # Left click - placement mode
         if event.button() == Qt.MouseButton.LeftButton and self._placement_mode:
             snapped = self._snap_to_grid(scene_pos)
             self._place_building(self._placement_mode, snapped.x(), snapped.y())
             # Stay in placement mode for rapid placement
+            return
+
+        # Left click - box select mode
+        if event.button() == Qt.MouseButton.LeftButton and self._tool_mode == ToolMode.BOX_SELECT:
+            self._start_box_select(scene_pos)
             return
 
         super().mousePressEvent(event)
@@ -361,6 +394,12 @@ class FactoryCanvas(QGraphicsView):
             self._pan_start = QPointF(float(event.pos().x()), float(event.pos().y()))
             self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - int(delta.x()))
             self.verticalScrollBar().setValue(self.verticalScrollBar().value() - int(delta.y()))
+            return
+
+        # Update box select rect
+        if self._box_select_start and self._box_select_rect:
+            scene_pos = self.mapToScene(event.pos())
+            self._update_box_select(scene_pos)
             return
 
         # Update belt drag preview and check for target port
@@ -398,10 +437,17 @@ class FactoryCanvas(QGraphicsView):
         """Handle mouse release."""
         if event.button() == Qt.MouseButton.MiddleButton and self._is_panning:
             self._is_panning = False
-            if self._placement_mode:
+            if self._placement_mode or self._tool_mode == ToolMode.BOX_SELECT:
                 self.setCursor(Qt.CursorShape.CrossCursor)
+            elif self._tool_mode == ToolMode.PAN:
+                self.setCursor(Qt.CursorShape.OpenHandCursor)
             else:
                 self.setCursor(Qt.CursorShape.ArrowCursor)
+            return
+
+        # Complete box select
+        if event.button() == Qt.MouseButton.LeftButton and self._box_select_start:
+            self._complete_box_select()
             return
 
         # Cancel belt drag if released not on an input port
@@ -456,6 +502,7 @@ class FactoryCanvas(QGraphicsView):
 
             # Install event filter to capture wheel events during drag
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance()
             if app:
                 app.installEventFilter(self)
@@ -486,6 +533,7 @@ class FactoryCanvas(QGraphicsView):
             self._drag_ghost = None
         # Remove event filter
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance()
         if app:
             app.removeEventFilter(self)
@@ -531,7 +579,9 @@ class FactoryCanvas(QGraphicsView):
                 snapped = self._snap_to_grid(scene_pos)
                 # Use rotation accumulated during drag
                 rotation = self._drag_rotation
-                self._place_building_with_rotation(building_type, snapped.x(), snapped.y(), rotation)
+                self._place_building_with_rotation(
+                    building_type, snapped.x(), snapped.y(), rotation
+                )
                 event.acceptProposedAction()
 
             # Clean up drag state
@@ -541,6 +591,7 @@ class FactoryCanvas(QGraphicsView):
                 self._scene.removeItem(self._drag_ghost)
                 self._drag_ghost = None
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance()
             if app:
                 app.removeEventFilter(self)
@@ -614,6 +665,114 @@ class FactoryCanvas(QGraphicsView):
             elif isinstance(item, BeltItem):
                 selected_ids.append(item.belt.id)
         self.selection_changed.emit(selected_ids)
+
+    def _update_selection_outline(self) -> None:
+        """Update the dashed selection outline around selected buildings."""
+        # Remove old outline
+        if self._selection_outline:
+            self._scene.removeItem(self._selection_outline)
+            self._selection_outline = None
+
+        # Get selected building items
+        selected_buildings = [
+            item for item in self._scene.selectedItems() if isinstance(item, BuildingItem)
+        ]
+
+        if not selected_buildings:
+            return
+
+        # Compute bounding rect of all selected buildings
+        bounds: QRectF | None = None
+        for item in selected_buildings:
+            item_rect = item.sceneBoundingRect()
+            bounds = item_rect if bounds is None else bounds.united(item_rect)
+
+        if bounds is None:
+            return
+
+        # Add margin
+        bounds = bounds.adjusted(
+            -SELECTION_MARGIN, -SELECTION_MARGIN, SELECTION_MARGIN, SELECTION_MARGIN
+        )
+
+        # Create dashed outline rect
+        self._selection_outline = QGraphicsRectItem(bounds)
+        pen = QPen(QColor(100, 150, 255), 2, Qt.PenStyle.DashLine)
+        self._selection_outline.setPen(pen)
+        self._selection_outline.setBrush(QBrush(Qt.BrushStyle.NoBrush))
+        self._selection_outline.setZValue(-1)  # Behind buildings
+        # Don't make it selectable or movable
+        self._selection_outline.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
+        self._selection_outline.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+        self._scene.addItem(self._selection_outline)
+
+    def set_tool_mode(self, mode: ToolMode) -> None:
+        """Set the active tool mode."""
+        self._tool_mode = mode
+        if mode == ToolMode.PAN:
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
+        elif mode == ToolMode.BOX_SELECT:
+            self.setCursor(Qt.CursorShape.CrossCursor)
+        else:
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+
+    @property
+    def tool_mode(self) -> ToolMode:
+        """Get the current tool mode."""
+        return self._tool_mode
+
+    def _start_box_select(self, scene_pos: QPointF) -> None:
+        """Start a box selection at the given scene position."""
+        self._box_select_start = scene_pos
+
+        # Create the selection rectangle
+        self._box_select_rect = QGraphicsRectItem(QRectF(scene_pos, scene_pos))
+        pen = QPen(QColor(100, 150, 255), 1, Qt.PenStyle.DashLine)
+        self._box_select_rect.setPen(pen)
+        self._box_select_rect.setBrush(QBrush(QColor(100, 150, 255, 30)))
+        self._box_select_rect.setZValue(1000)  # On top
+        self._box_select_rect.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
+        self._scene.addItem(self._box_select_rect)
+
+    def _update_box_select(self, scene_pos: QPointF) -> None:
+        """Update the box selection rectangle to the given position."""
+        if not self._box_select_start or not self._box_select_rect:
+            return
+
+        # Create rect from start to current position
+        rect = QRectF(self._box_select_start, scene_pos).normalized()
+        self._box_select_rect.setRect(rect)
+
+    def _complete_box_select(self) -> None:
+        """Complete the box selection, selecting all items in the rect."""
+        if not self._box_select_rect:
+            self._cancel_box_select()
+            return
+
+        select_rect = self._box_select_rect.rect()
+
+        # Clear current selection
+        self._scene.clearSelection()
+
+        # Select all building items within the rect
+        for building_item in self._building_items.values():
+            if select_rect.intersects(building_item.sceneBoundingRect()):
+                building_item.setSelected(True)
+
+        # Optionally select belts within the rect too
+        for belt_item in self._belt_items.values():
+            if select_rect.intersects(belt_item.sceneBoundingRect()):
+                belt_item.setSelected(True)
+
+        self._cancel_box_select()
+        self._emit_selection_changed()
+
+    def _cancel_box_select(self) -> None:
+        """Cancel the current box selection."""
+        self._box_select_start = None
+        if self._box_select_rect:
+            self._scene.removeItem(self._box_select_rect)
+            self._box_select_rect = None
 
     def start_belt_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:
         """Start dragging a belt connection from an output port."""

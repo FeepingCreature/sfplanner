@@ -72,6 +72,9 @@ LOGISTICS_DISPLAY_SIZE = 40
 # Default grid size for snapping
 DEFAULT_GRID_SIZE = 20
 
+# Margin around selection for outline (used for room creation)
+SELECTION_MARGIN = 15
+
 BUILDING_COLORS: dict[BuildingType, RGB] = {
     BuildingType.SMELTER: RGB(200, 100, 50),
     BuildingType.FOUNDRY: RGB(180, 80, 40),

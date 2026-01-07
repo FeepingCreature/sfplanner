@@ -47,7 +47,7 @@ Working:
 - [x] Grid size dropdown
 
 Stubbed:
-- [ ] Box select tool
+- [x] Box select tool
 - [ ] Create room/outline
 - [ ] Create blueprint from selection
 - [ ] Unlink blueprint
