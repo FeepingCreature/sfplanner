@@ -258,12 +258,12 @@ class MainWindow(QMainWindow):
         view_menu.addAction(load_layout_action)
 
     def _setup_toolbar(self) -> None:
-        """Create toolbar with tools, view controls, and quick actions."""
+        """Create toolbar with logical groupings: File → Edit → Tools → Create → View → Analysis."""
         toolbar = QToolBar("Main Toolbar")
         toolbar.setMovable(False)
         self.addToolBar(toolbar)
 
-        # === File Actions ===
+        # === 1. File Actions ===
         new_action = QAction("New", self)
         new_action.setToolTip("New document (Ctrl+N)")
         new_action.triggered.connect(self._new_document)
@@ -281,8 +281,20 @@ class MainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # === Selection/Editing Tools ===
-        # These are mutually exclusive tool modes
+        # === 2. Edit Actions ===
+        toolbar_undo = QAction("Undo", self)
+        toolbar_undo.setToolTip("Undo (Ctrl+Z)")
+        toolbar_undo.triggered.connect(self._undo)
+        toolbar.addAction(toolbar_undo)
+
+        toolbar_redo = QAction("Redo", self)
+        toolbar_redo.setToolTip("Redo (Ctrl+Shift+Z)")
+        toolbar_redo.triggered.connect(self._redo)
+        toolbar.addAction(toolbar_redo)
+
+        toolbar.addSeparator()
+
+        # === 3. Selection/Interaction Tools ===
         self.tool_group = QButtonGroup(self)
         self.tool_group.setExclusive(True)
 
@@ -311,26 +323,26 @@ class MainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # === Room/Blueprint Tools ===
-        self.create_room_action = QAction("Create Room", self)
+        # === 4. Creation Tools ===
+        self.create_room_action = QAction("Room", self)
         self.create_room_action.setToolTip("Create a room/outline boundary")
         self.create_room_action.setEnabled(False)  # TODO: Implement rooms/outlines
         toolbar.addAction(self.create_room_action)
 
-        self.create_blueprint_action = QAction("Create Blueprint", self)
+        self.create_blueprint_action = QAction("Blueprint", self)
         self.create_blueprint_action.setToolTip("Create blueprint from selection")
         self.create_blueprint_action.setEnabled(False)  # TODO: Implement blueprints
         toolbar.addAction(self.create_blueprint_action)
 
-        self.unlink_blueprint_action = QAction("Unlink Blueprint", self)
+        self.unlink_blueprint_action = QAction("Unlink", self)
         self.unlink_blueprint_action.setToolTip("Unlink selected blueprint instance")
         self.unlink_blueprint_action.setEnabled(False)  # TODO: Implement blueprints
         toolbar.addAction(self.unlink_blueprint_action)
 
         toolbar.addSeparator()
 
-        # === Belt Tier ===
-        toolbar.addWidget(QLabel(" Belt Tier: "))
+        # === 5. Belt Tier ===
+        toolbar.addWidget(QLabel(" Belt: "))
         self.belt_tier_combo = QComboBox()
         self.belt_tier_combo.addItems(["Mk.1", "Mk.2", "Mk.3", "Mk.4", "Mk.5", "Mk.6"])
         self.belt_tier_combo.setToolTip("Default belt tier for new connections")
@@ -340,13 +352,13 @@ class MainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # === Zoom Controls ===
-        zoom_in_action = QAction("Zoom In", self)
+        # === 6. View Controls ===
+        zoom_in_action = QAction("+", self)
         zoom_in_action.setToolTip("Zoom in (+)")
         zoom_in_action.triggered.connect(self._zoom_in)
         toolbar.addAction(zoom_in_action)
 
-        zoom_out_action = QAction("Zoom Out", self)
+        zoom_out_action = QAction("−", self)
         zoom_out_action.setToolTip("Zoom out (-)")
         zoom_out_action.triggered.connect(self._zoom_out)
         toolbar.addAction(zoom_out_action)
@@ -358,15 +370,14 @@ class MainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # === Grid Controls ===
-        self.grid_snap_action = QAction("Grid Snap", self)
+        # === 7. Grid Controls ===
+        self.grid_snap_action = QAction("Snap", self)
         self.grid_snap_action.setCheckable(True)
         self.grid_snap_action.setChecked(True)
         self.grid_snap_action.setToolTip("Toggle grid snapping (G)")
         self.grid_snap_action.toggled.connect(self._toggle_grid_snap)
         toolbar.addAction(self.grid_snap_action)
 
-        toolbar.addWidget(QLabel(" Grid: "))
         self.grid_size_combo = QComboBox()
         self.grid_size_combo.addItems(["10", "20", "25", "50", "100"])
         self.grid_size_combo.setCurrentText(str(DEFAULT_GRID_SIZE))
@@ -374,7 +385,7 @@ class MainWindow(QMainWindow):
         self.grid_size_combo.currentTextChanged.connect(self._on_grid_size_changed)
         toolbar.addWidget(self.grid_size_combo)
 
-        self.show_grid_action = QAction("Show Grid", self)
+        self.show_grid_action = QAction("Grid", self)
         self.show_grid_action.setCheckable(True)
         self.show_grid_action.setChecked(False)
         self.show_grid_action.setToolTip("Show grid lines")
@@ -383,14 +394,14 @@ class MainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # === Visualization Toggles ===
+        # === 8. Analysis/Visualization ===
         self.show_bottlenecks_action = QAction("Bottlenecks", self)
         self.show_bottlenecks_action.setCheckable(True)
         self.show_bottlenecks_action.setToolTip("Highlight bottlenecks")
         self.show_bottlenecks_action.setEnabled(False)  # TODO: Implement after flow solver
         toolbar.addAction(self.show_bottlenecks_action)
 
-        self.show_flow_rates_action = QAction("Flow Rates", self)
+        self.show_flow_rates_action = QAction("Rates", self)
         self.show_flow_rates_action.setCheckable(True)
         self.show_flow_rates_action.setToolTip("Show flow rates on belts")
         self.show_flow_rates_action.setEnabled(False)  # TODO: Implement after flow solver
