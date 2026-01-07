@@ -14,6 +14,8 @@ from satisfactory_planner.core.models import (
     Document,
     ItemRate,
     Recipe,
+    Room,
+    RoomPlacement,
 )
 
 
@@ -194,10 +196,14 @@ def document_to_dict(
 ) -> dict[str, Any]:
     """Serialize a Document to a dictionary."""
     data: dict[str, Any] = {
-        "version": 1,
+        "version": 2,
         "buildings": [building_to_dict(b) for b in document.buildings.values()],
         "belts": [belt_to_dict(b) for b in document.belts.values()],
         "recipes": [recipe_to_dict(r) for r in document.recipes.values()],
+        "rooms": {rid: room_to_dict(r) for rid, r in document.rooms.items()},
+        "room_placements": {
+            pid: placement_to_dict(p) for pid, p in document.room_placements.items()
+        },
     }
     if view_state:
         data["view"] = view_state
@@ -224,6 +230,13 @@ def dict_to_document(data: dict[str, Any]) -> tuple[Document, dict[str, Any] | N
         recipe = dict_to_recipe(recipe_data)
         doc.recipes[recipe.id] = recipe
 
+    # v2+: load rooms and placements
+    for rid, room_data in data.get("rooms", {}).items():
+        doc.rooms[rid] = dict_to_room(room_data)
+
+    for pid, placement_data in data.get("room_placements", {}).items():
+        doc.room_placements[pid] = dict_to_placement(placement_data)
+
     view_state = data.get("view")
     return doc, view_state
 
@@ -246,3 +259,58 @@ def load_document(path: Path | str) -> tuple[Document, dict[str, Any] | None]:
     path = Path(path)
     data = json.loads(path.read_text())
     return dict_to_document(data)
+
+
+# --- Room Serialization ---
+
+
+def room_to_dict(room: Room) -> dict[str, Any]:
+    """Serialize a Room to a dictionary (recursive for nested rooms)."""
+    return {
+        "id": room.id,
+        "name": room.name,
+        "width": room.width,
+        "height": room.height,
+        "buildings": {bid: building_to_dict(b) for bid, b in room.buildings.items()},
+        "belts": {bid: belt_to_dict(b) for bid, b in room.belts.items()},
+        "rooms": {rid: room_to_dict(r) for rid, r in room.rooms.items()},
+    }
+
+
+def dict_to_room(data: dict[str, Any]) -> Room:
+    """Deserialize a Room from a dictionary."""
+    room = Room(
+        id=data["id"],
+        name=data["name"],
+        width=data["width"],
+        height=data["height"],
+    )
+    for bid, bdata in data.get("buildings", {}).items():
+        room.buildings[bid] = dict_to_building(bdata)
+    for bid, bdata in data.get("belts", {}).items():
+        room.belts[bid] = dict_to_belt(bdata)
+    for rid, rdata in data.get("rooms", {}).items():
+        room.rooms[rid] = dict_to_room(rdata)
+    return room
+
+
+def placement_to_dict(placement: RoomPlacement) -> dict[str, Any]:
+    """Serialize a RoomPlacement to a dictionary."""
+    return {
+        "id": placement.id,
+        "room_id": placement.room_id,
+        "x": placement.x,
+        "y": placement.y,
+        "parent_room_id": placement.parent_room_id,
+    }
+
+
+def dict_to_placement(data: dict[str, Any]) -> RoomPlacement:
+    """Deserialize a RoomPlacement from a dictionary."""
+    return RoomPlacement(
+        id=data["id"],
+        room_id=data["room_id"],
+        x=data["x"],
+        y=data["y"],
+        parent_room_id=data.get("parent_room_id"),
+    )

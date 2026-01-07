@@ -21,6 +21,8 @@ from satisfactory_planner.core.models import (
     ItemRate,
     Outline,
     Recipe,
+    Room,
+    RoomPlacement,
 )
 from satisfactory_planner.core.persistence import (
     load_all_recipes,
@@ -48,6 +50,8 @@ __all__ = [
     "Outline",
     "Recipe",
     "RGB",
+    "Room",
+    "RoomPlacement",
     "SELECTION_MARGIN",
     "Warning",
     "WarningType",

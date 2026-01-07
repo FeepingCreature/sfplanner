@@ -486,7 +486,6 @@ def _complete_room_creation(self, rect: QRectF) -> None:
 ```python
 @dataclass(frozen=True)
 class CreateRoomCommand(Command):
-    document: Document
     parent_scene_room_id: str | None
     rect: tuple[float, float, float, float]
     building_ids: tuple[str, ...]
@@ -496,17 +495,17 @@ class CreateRoomCommand(Command):
     
     # Captured state for undo
     created_room_id: str = field(default_factory=generate_id)
-    created_ports: tuple[Port, ...] = ()
+    created_placement_id: str = field(default_factory=generate_id)
     
-    def execute(self) -> None:
-        parent = self._get_parent_scene()
+    def execute(self, document: Document) -> None:
+        parent = self._get_parent_scene(document)
         x, y, w, h = self.rect
         
         # Create room
         room = Room(
             id=self.created_room_id,
-            name=f"Room {len(self.document.get_all_rooms()) + 1}",
-            x=x, y=y, width=w, height=h,
+            name=f"Room {len(document.rooms) + 1}",
+            width=w, height=h,
         )
         
         # Move buildings into room (translate to room-relative coords)

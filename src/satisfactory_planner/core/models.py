@@ -49,6 +49,10 @@ class BuildingType(Enum):
     SPLITTER = "Splitter"
     MERGER = "Merger"
 
+    # Room ports (one input, one output each - single item type)
+    PORT_IN = "Port (In)"
+    PORT_OUT = "Port (Out)"
+
 
 BUILDING_METADATA: dict[BuildingType, BuildingSpec] = {
     BuildingType.SMELTER: BuildingSpec(80, 60, 1, 1, 4.0),
@@ -64,6 +68,9 @@ BUILDING_METADATA: dict[BuildingType, BuildingSpec] = {
     BuildingType.MINER_MK3: BuildingSpec(80, 80, 0, 1, 30.0),
     BuildingType.SPLITTER: BuildingSpec(60, 60, 1, 3, 0.0),
     BuildingType.MERGER: BuildingSpec(60, 60, 3, 1, 0.0),
+    # Ports: small items on room boundary, 1 input OR 1 output (not both)
+    BuildingType.PORT_IN: BuildingSpec(30, 30, 1, 0, 0.0),
+    BuildingType.PORT_OUT: BuildingSpec(30, 30, 0, 1, 0.0),
 }
 
 # Display size for splitter/merger (smaller than metadata size)
@@ -89,6 +96,8 @@ BUILDING_COLORS: dict[BuildingType, RGB] = {
     BuildingType.MINER_MK3: RGB(170, 140, 100),
     BuildingType.SPLITTER: RGB(200, 200, 100),
     BuildingType.MERGER: RGB(100, 200, 200),
+    BuildingType.PORT_IN: RGB(220, 180, 50),  # Yellow-ish (input color)
+    BuildingType.PORT_OUT: RGB(50, 200, 100),  # Green-ish (output color)
 }
 
 
@@ -318,13 +327,100 @@ class Outline:
 
 
 @dataclass
+class Room:
+    """A room is both a positionable item and a container (scene) for buildings.
+
+    Rooms implement the Scene protocol - they can contain buildings, belts, and
+    nested rooms. Ports are stored as buildings with PORT_IN/PORT_OUT type.
+    """
+
+    id: str
+    name: str
+    width: float
+    height: float
+
+    # Scene contents (coordinates relative to room origin)
+    buildings: dict[str, Building] = field(default_factory=dict)
+    belts: dict[str, Belt] = field(default_factory=dict)
+    rooms: dict[str, Room] = field(default_factory=dict)  # Nested rooms
+
+    def add_building(self, building: Building) -> None:
+        """Add a building to this room."""
+        self.buildings[building.id] = building
+
+    def remove_building(self, building_id: str) -> Building | None:
+        """Remove a building and return it."""
+        return self.buildings.pop(building_id, None)
+
+    def add_belt(self, belt: Belt) -> None:
+        """Add a belt to this room."""
+        self.belts[belt.id] = belt
+
+    def remove_belt(self, belt_id: str) -> Belt | None:
+        """Remove a belt and return it."""
+        return self.belts.pop(belt_id, None)
+
+    def get_belts_for_building(self, building_id: str) -> list[Belt]:
+        """Get all belts connected to a building in this room."""
+        return [
+            b
+            for b in self.belts.values()
+            if b.source_building_id == building_id or b.dest_building_id == building_id
+        ]
+
+    def is_port_connected(self, building_id: str, port_index: int, is_output: bool) -> bool:
+        """Check if a port already has a belt connected."""
+        for belt in self.belts.values():
+            if is_output:
+                if belt.source_building_id == building_id and belt.source_port_index == port_index:
+                    return True
+            else:
+                if belt.dest_building_id == building_id and belt.dest_port_index == port_index:
+                    return True
+        return False
+
+    def get_ports(self) -> list[Building]:
+        """Get all port buildings in this room."""
+        return [
+            b
+            for b in self.buildings.values()
+            if b.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT)
+        ]
+
+
+@dataclass
+class RoomPlacement:
+    """A placement of a room in a scene.
+
+    Multiple placements can reference the same Room, creating "linked instances".
+    The Room contains the content; the placement says where to render it.
+    """
+
+    id: str
+    room_id: str  # References a Room in document.rooms
+    x: float  # Position in parent scene
+    y: float
+
+    # The parent scene - None means root document, otherwise a room_id
+    parent_room_id: str | None = None
+
+
+@dataclass
 class Document:
-    """The root document containing all factory data."""
+    """The root document containing all factory data.
+
+    Document implements the Scene protocol - it can contain buildings, belts,
+    and room placements at the top level.
+    """
 
     buildings: dict[str, Building] = field(default_factory=dict)
     belts: dict[str, Belt] = field(default_factory=dict)
-    outlines: dict[str, Outline] = field(default_factory=dict)
+    outlines: dict[str, Outline] = field(default_factory=dict)  # Legacy, will be removed
     recipes: dict[str, Recipe] = field(default_factory=dict)
+
+    # Rooms and their placements
+    rooms: dict[str, Room] = field(default_factory=dict)  # Room definitions
+    room_placements: dict[str, RoomPlacement] = field(default_factory=dict)  # Where rooms appear
 
     def add_building(self, building: Building) -> None:
         """Add a building to the document."""
@@ -360,6 +456,22 @@ class Document:
                 if belt.dest_building_id == building_id and belt.dest_port_index == port_index:
                     return True
         return False
+
+    def get_placements_for_room(self, room_id: str) -> list[RoomPlacement]:
+        """Get all placements of a room."""
+        return [p for p in self.room_placements.values() if p.room_id == room_id]
+
+    def get_all_rooms(self) -> list[Room]:
+        """Get all rooms recursively (including nested rooms)."""
+        result: list[Room] = []
+
+        def collect(rooms: dict[str, Room]) -> None:
+            for room in rooms.values():
+                result.append(room)
+                collect(room.rooms)
+
+        collect(self.rooms)
+        return result
 
 
 def generate_id() -> str:
