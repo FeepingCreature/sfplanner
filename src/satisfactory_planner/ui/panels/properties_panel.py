@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 
 from satisfactory_planner.core import Document, CommandStack, SetClockSpeedCommand, BuildingType
 from satisfactory_planner.core.models import get_building_power, get_building_io_counts
+from satisfactory_planner.core.persistence import load_user_recipes, save_user_recipes
 
 if TYPE_CHECKING:
     pass
@@ -410,6 +411,16 @@ class RecipeEditorDialog(QDialog):
         row = self.recipe_list.row(current)
         self.recipe_list.takeItem(row)
 
+    def accept(self) -> None:
+        """Save recipes to XDG before closing."""
+        save_user_recipes(self.document.recipes)
+        super().accept()
+
+    def reject(self) -> None:
+        """Save recipes to XDG before closing (even on cancel/X)."""
+        save_user_recipes(self.document.recipes)
+        super().reject()
+
 
 class PropertiesPanel(QWidget):
     """Panel for editing properties of selected items."""
@@ -523,6 +534,12 @@ class PropertiesPanel(QWidget):
 
     def _open_recipe_editor(self) -> None:
         """Open the recipe editor dialog."""
+        # Load user recipes into document before editing
+        user_recipes = load_user_recipes()
+        for recipe_id, recipe in user_recipes.items():
+            if recipe_id not in self.document.recipes:
+                self.document.recipes[recipe_id] = recipe
+        
         dialog = RecipeEditorDialog(self.document, self)
         dialog.exec()
         # Refresh recipe combo

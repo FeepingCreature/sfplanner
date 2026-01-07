@@ -173,12 +173,14 @@ class BuildingItem(QGraphicsRectItem):
 
         painter.restore()
 
-        # Draw the building name (always upright, centered)
+        # Draw the building name and recipe (always upright, centered)
         painter.setPen(QPen(QColor(255, 255, 255)))
         font = QFont()
-        font.setPointSize(7 if self.building.building_type in (BuildingType.SPLITTER, BuildingType.MERGER) else 8)
+        is_small = self.building.building_type in (BuildingType.SPLITTER, BuildingType.MERGER)
+        font.setPointSize(7 if is_small else 8)
         painter.setFont(font)
 
+        # Building type name
         name = self.building.building_type.value
         # Abbreviate for small buildings
         if self.building.building_type == BuildingType.SPLITTER:
@@ -186,7 +188,30 @@ class BuildingItem(QGraphicsRectItem):
         elif self.building.building_type == BuildingType.MERGER:
             name = "MRG"
 
-        painter.drawText(rect, Qt.AlignCenter, name)
+        # Get recipe name if available (skip for logistics)
+        recipe_text = ""
+        if not is_small and self.building.recipe_id:
+            # Look up recipe in document
+            doc = self.canvas._document
+            recipe = doc.recipes.get(self.building.recipe_id)
+            recipe_text = recipe.name if recipe else "No Recipe"
+        elif not is_small:
+            recipe_text = "No Recipe"
+
+        if recipe_text:
+            # Draw building type at top, recipe at bottom
+            top_rect = QRectF(0, 2, w, h / 2 - 2)
+            bottom_rect = QRectF(0, h / 2, w, h / 2 - 2)
+            painter.drawText(top_rect, Qt.AlignHCenter | Qt.AlignBottom, name)
+            
+            # Recipe in smaller, slightly dimmer text
+            painter.setPen(QPen(QColor(200, 200, 200)))
+            small_font = QFont()
+            small_font.setPointSize(7)
+            painter.setFont(small_font)
+            painter.drawText(bottom_rect, Qt.AlignHCenter | Qt.AlignTop, recipe_text)
+        else:
+            painter.drawText(rect, Qt.AlignCenter, name)
 
         # Draw selection highlight
         if self.isSelected():

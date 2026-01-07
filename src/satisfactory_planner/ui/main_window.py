@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
 
 import PySide6QtAds as ads
 
-from satisfactory_planner.core import Document, CommandStack, FlowSolver
+from satisfactory_planner.core import Document, CommandStack, FlowSolver, load_document, save_document
 from satisfactory_planner.ui.canvas import FactoryCanvas
 from satisfactory_planner.ui.panels.library_panel import LibraryPanel
 from satisfactory_planner.ui.panels.properties_panel import PropertiesPanel
@@ -162,11 +162,11 @@ class MainWindow(QMainWindow):
         props_dock.setWidget(self.properties_panel)
         self.dock_manager.addDockWidget(ads.DockWidgetArea.RightDockWidgetArea, props_dock)
 
-        # Warnings panel - right, tabbed with properties
+        # Warnings panel - below properties panel
         self.warnings_panel = WarningsPanel(Document(), FlowSolver(Document()))
         warnings_dock = ads.CDockWidget("Warnings")
         warnings_dock.setWidget(self.warnings_panel)
-        self.dock_manager.addDockWidget(ads.DockWidgetArea.RightDockWidgetArea, warnings_dock)
+        self.dock_manager.addDockWidget(ads.DockWidgetArea.BottomDockWidgetArea, warnings_dock, props_dock.dockAreaWidget())
 
         # Store dock widgets for view menu
         self._dock_widgets = [library_dock, props_dock, warnings_dock]
@@ -323,17 +323,60 @@ class MainWindow(QMainWindow):
             self, "Open Project", "", "Satisfactory Planner (*.satplan)"
         )
         if path:
-            # TODO: Implement document loading
-            QMessageBox.information(self, "TODO", "Document loading not yet implemented")
+            try:
+                document = load_document(path)
+                
+                # Create new tab with loaded document
+                tab = DocumentTab(Path(path).stem)
+                tab.document = document
+                tab.command_stack = CommandStack()
+                tab.flow_solver = FlowSolver(document)
+                tab.file_path = path
+                
+                canvas = FactoryCanvas(tab.document, tab.command_stack)
+                tab.canvas = canvas
+                
+                # Connect signals
+                canvas.selection_changed.connect(self.properties_panel.set_selection)
+                canvas.document_changed.connect(self._update_warnings)
+                
+                # Add tab
+                index = self.tab_widget.addTab(canvas, tab.name)
+                self.tabs.append(tab)
+                self.tab_widget.setCurrentIndex(index)
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to open file:\n{e}")
 
     def _save_document(self) -> None:
         """Save the document to file."""
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Save Project", "", "Satisfactory Planner (*.satplan)"
-        )
+        if not self.current_tab:
+            return
+        
+        # If already has a path, save directly; otherwise prompt
+        if self.current_tab.file_path:
+            path = self.current_tab.file_path
+        else:
+            path, _ = QFileDialog.getSaveFileName(
+                self, "Save Project", "", "Satisfactory Planner (*.satplan)"
+            )
+        
         if path:
-            # TODO: Implement document saving
-            QMessageBox.information(self, "TODO", "Document saving not yet implemented")
+            try:
+                # Ensure .satplan extension
+                if not path.endswith(".satplan"):
+                    path += ".satplan"
+                
+                save_document(self.current_tab.document, path)
+                self.current_tab.file_path = path
+                self.current_tab.name = Path(path).stem
+                
+                # Update tab title
+                current_index = self.tab_widget.currentIndex()
+                self.tab_widget.setTabText(current_index, self.current_tab.name)
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to save file:\n{e}")
 
     def _open_settings(self) -> None:
         """Open settings dialog."""

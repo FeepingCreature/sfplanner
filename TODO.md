@@ -10,7 +10,7 @@
 - [ ] Linked blueprint editing restrictions
 - [ ] Power summary panel
 - [ ] Production summary panel
-- [ ] Project file save/load (.satplan)
+- [x] Project file save/load (.satplan)
 - [ ] pyside6-deploy configuration for static builds
 - [ ] Flow solver causal chain tracking (currently just flags issues)
 
