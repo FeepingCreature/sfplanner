@@ -27,7 +27,12 @@ from PySide6.QtWidgets import (
 from satisfactory_planner.core import BuildingType, Document
 from satisfactory_planner.core.models import get_building_io_counts, get_building_power
 from satisfactory_planner.core.persistence import load_all_recipes, save_user_recipes
-from satisfactory_planner.ui.commands import CommandStack, SetClockSpeedCommand, SetRecipeCommand
+from satisfactory_planner.ui.commands import (
+    CommandStack,
+    SetBeltTierCommand,
+    SetClockSpeedCommand,
+    SetRecipeCommand,
+)
 
 if TYPE_CHECKING:
     from satisfactory_planner.ui.canvas import FactoryCanvas
@@ -513,6 +518,7 @@ class PropertiesPanel(QWidget):
         self.tier_combo.addItem("Mk.4 (480/min)", 4)
         self.tier_combo.addItem("Mk.5 (780/min)", 5)
         self.tier_combo.addItem("Mk.6 (1200/min)", 6)
+        self.tier_combo.currentIndexChanged.connect(self._on_tier_changed)
         belt_layout.addRow("Tier:", self.tier_combo)
 
         # Flow rate (read-only)
@@ -668,3 +674,23 @@ class PropertiesPanel(QWidget):
                     canvas=self.canvas,
                 )
                 self.command_stack.execute(cmd)
+
+    def _on_tier_changed(self, index: int) -> None:
+        """Handle belt tier change."""
+        if self._updating or not self.canvas:
+            return
+
+        if len(self._selected_ids) == 1:
+            belt_id = self._selected_ids[0]
+            belt = self.document.belts.get(belt_id)
+            if belt:
+                new_tier = self.tier_combo.currentData()
+                if new_tier and new_tier != belt.tier:
+                    cmd = SetBeltTierCommand(
+                        document=self.document,
+                        belt_id=belt_id,
+                        old_tier=belt.tier,
+                        new_tier=new_tier,
+                        canvas=self.canvas,
+                    )
+                    self.command_stack.execute(cmd)

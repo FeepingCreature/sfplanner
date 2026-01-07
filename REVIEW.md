@@ -57,8 +57,8 @@ The `FlowSolver` is called on `document_changed` signal, but it doesn't actually
 ### 11. No notification when user recipes are saved
 `save_user_recipes()` in `RecipeEditorDialog` doesn't notify the document or other open tabs that recipes changed.
 
-### 12. Belt tier changes have no command
-The `PropertiesPanel` has a tier combo for belts but no handler connected to create a command. Tier changes aren't undoable.
+### ~~12. Belt tier changes have no command~~ ✓ FIXED
+~~The `PropertiesPanel` has a tier combo for belts but no handler connected to create a command. Tier changes aren't undoable.~~
 
 
 
@@ -149,5 +149,5 @@ Others import whole modules like `from PySide6 import QtCore`
 
 ## Priority Fixes
 
-1. **MISSING**: Add belt tier change command
+1. ~~**MISSING**: Add belt tier change command~~ ✓ DONE
 

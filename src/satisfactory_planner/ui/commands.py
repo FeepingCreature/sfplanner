@@ -334,3 +334,38 @@ class SetClockSpeedCommand(Command):
         building.clock_speed = self.old_clock_speed
         self.canvas.refresh_building(self.building_id)
         self.canvas.notify_mutation()
+
+
+@dataclass(frozen=True)
+class SetBeltTierCommand(Command):
+    """Command to set a belt's tier."""
+
+    document: Document
+    belt_id: str
+    old_tier: int
+    new_tier: int
+    canvas: FactoryCanvas
+
+    def execute(self) -> None:
+        belt = self.document.belts.get(self.belt_id)
+        if not belt:
+            logger.warning(f"SetBeltTierCommand.execute: belt {self.belt_id} not found")
+            return
+        if belt.tier == self.new_tier:
+            logger.warning(f"SetBeltTierCommand.execute: tier already set to {self.new_tier}")
+            return
+        belt.tier = self.new_tier
+        self.canvas.refresh_belt(self.belt_id)
+        self.canvas.notify_mutation()
+
+    def undo(self) -> None:
+        belt = self.document.belts.get(self.belt_id)
+        if not belt:
+            logger.warning(f"SetBeltTierCommand.undo: belt {self.belt_id} not found")
+            return
+        if belt.tier == self.old_tier:
+            logger.warning(f"SetBeltTierCommand.undo: tier already set to {self.old_tier}")
+            return
+        belt.tier = self.old_tier
+        self.canvas.refresh_belt(self.belt_id)
+        self.canvas.notify_mutation()

@@ -242,6 +242,16 @@ class FactoryCanvas(QGraphicsView):
         """Refresh belts connected to a building (CommandHandler protocol)."""
         self._update_belts_for_building(building_id)
 
+    def refresh_belt(self, belt_id: str) -> None:
+        """Refresh a belt's visual state (CommandHandler protocol)."""
+        belt_item = self._belt_items.get(belt_id)
+        belt = self.document.belts.get(belt_id)
+        if belt_item and belt:
+            source = self.document.buildings.get(belt.source_building_id)
+            dest = self.document.buildings.get(belt.dest_building_id)
+            if source and dest:
+                belt_item.update_path(source, dest)
+
     def notify_mutation(self) -> None:
         """Notify that the document was mutated (CommandHandler protocol).
 

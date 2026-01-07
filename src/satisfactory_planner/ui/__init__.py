@@ -7,6 +7,7 @@ from satisfactory_planner.ui.commands import (
     DeleteItemsCommand,
     MoveBuildingsCommand,
     PlaceBuildingCommand,
+    SetBeltTierCommand,
     SetClockSpeedCommand,
     SetRecipeCommand,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "DeleteItemsCommand",
     "MoveBuildingsCommand",
     "PlaceBuildingCommand",
+    "SetBeltTierCommand",
     "SetClockSpeedCommand",
     "SetRecipeCommand",
 ]
