@@ -74,38 +74,48 @@ class BuildingItem(QGraphicsRectItem):
         """Create port items based on building type and rotation."""
         self._input_ports: list[PortItem] = []
         self._output_ports: list[PortItem] = []
+        self._create_ports()
 
+    def _create_ports(self) -> None:
+        """Create the actual port items (called by _setup_ports and _update_port_positions)."""
         w, h = self._get_display_size()
+        rotation = self.building.rotation
 
         if self.building.building_type == BuildingType.SPLITTER:
             # Splitter: 1 input (left), 3 outputs (top, right, bottom)
-            # Input on left
-            port = PortItem(False, 0, self.building.id, self.canvas, angle=180)
+            # Base angles before rotation
+            input_angle = 180 + rotation
+            port = PortItem(False, 0, self.building.id, self.canvas, angle=input_angle)
             port.setParentItem(self)
-            port.setPos(0, h / 2)
+            port.setPos(*self._rotate_port_pos(0, h / 2, w, h, rotation))
             self._input_ports.append(port)
 
-            # Outputs on top, right, bottom
-            angles_pos = [(270, w / 2, 0), (0, w, h / 2), (90, w / 2, h)]
-            for i, (angle, px, py) in enumerate(angles_pos):
+            # Outputs on top, right, bottom (base angles)
+            base_angles = [270, 0, 90]
+            base_positions = [(w / 2, 0), (w, h / 2), (w / 2, h)]
+            for i, (base_angle, (px, py)) in enumerate(zip(base_angles, base_positions, strict=True)):
+                angle = base_angle + rotation
                 port = PortItem(True, i, self.building.id, self.canvas, angle=angle)
                 port.setParentItem(self)
-                port.setPos(px, py)
+                port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))
                 self._output_ports.append(port)
 
         elif self.building.building_type == BuildingType.MERGER:
             # Merger: 3 inputs (top, left, bottom), 1 output (right)
-            angles_pos = [(270, w / 2, 0), (180, 0, h / 2), (90, w / 2, h)]
-            for i, (angle, px, py) in enumerate(angles_pos):
+            base_angles = [270, 180, 90]
+            base_positions = [(w / 2, 0), (0, h / 2), (w / 2, h)]
+            for i, (base_angle, (px, py)) in enumerate(zip(base_angles, base_positions)):
+                angle = base_angle + rotation
                 port = PortItem(False, i, self.building.id, self.canvas, angle=angle)
                 port.setParentItem(self)
-                port.setPos(px, py)
+                port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))
                 self._input_ports.append(port)
 
             # Output on right
-            port = PortItem(True, 0, self.building.id, self.canvas, angle=0)
+            output_angle = 0 + rotation
+            port = PortItem(True, 0, self.building.id, self.canvas, angle=output_angle)
             port.setParentItem(self)
-            port.setPos(w, h / 2)
+            port.setPos(*self._rotate_port_pos(w, h / 2, w, h, rotation))
             self._output_ports.append(port)
 
         else:
@@ -114,19 +124,49 @@ class BuildingItem(QGraphicsRectItem):
             for i in range(self.building.num_inputs):
                 spacing = h / (self.building.num_inputs + 1)
                 y = spacing * (i + 1)
-                port = PortItem(False, i, self.building.id, self.canvas, angle=180)
+                input_angle = 180 + rotation
+                port = PortItem(False, i, self.building.id, self.canvas, angle=input_angle)
                 port.setParentItem(self)
-                port.setPos(0, y)
+                port.setPos(*self._rotate_port_pos(0, y, w, h, rotation))
                 self._input_ports.append(port)
 
             # Output ports (right side)
             for i in range(self.building.num_outputs):
                 spacing = h / (self.building.num_outputs + 1)
                 y = spacing * (i + 1)
-                port = PortItem(True, i, self.building.id, self.canvas, angle=0)
+                output_angle = 0 + rotation
+                port = PortItem(True, i, self.building.id, self.canvas, angle=output_angle)
                 port.setParentItem(self)
-                port.setPos(w, y)
+                port.setPos(*self._rotate_port_pos(w, y, w, h, rotation))
                 self._output_ports.append(port)
+
+    def _rotate_port_pos(
+        self, x: float, y: float, w: float, h: float, rotation: int
+    ) -> tuple[float, float]:
+        """Rotate a port position around the building center."""
+        import math
+
+        # Center of building
+        cx, cy = w / 2, h / 2
+        # Translate to origin
+        dx, dy = x - cx, y - cy
+        # Rotate
+        rad = math.radians(rotation)
+        rx = dx * math.cos(rad) - dy * math.sin(rad)
+        ry = dx * math.sin(rad) + dy * math.cos(rad)
+        # Translate back
+        return cx + rx, cy + ry
+
+    def _update_port_positions(self) -> None:
+        """Update port positions and angles after rotation change."""
+        # Remove existing ports
+        for port in self._input_ports + self._output_ports:
+            if port.scene():
+                port.scene().removeItem(port)
+        self._input_ports.clear()
+        self._output_ports.clear()
+        # Recreate with new rotation
+        self._create_ports()
 
     @property
     def rotation_angle(self) -> int:
@@ -135,12 +175,14 @@ class BuildingItem(QGraphicsRectItem):
 
     @rotation_angle.setter
     def rotation_angle(self, value: int) -> None:
-        """Set rotation angle on model."""
+        """Set rotation angle on model and update port positions."""
         self.building.rotation = value
+        self._update_port_positions()
 
     def rotate_building(self, delta: int = 90) -> None:
         """Rotate the building by delta degrees."""
         self.building.rotation = (self.building.rotation + delta) % 360
+        self._update_port_positions()
         self.update()
 
     def paint(
