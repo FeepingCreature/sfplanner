@@ -89,10 +89,11 @@ class TestMoveBuildingsCommand:
         canvas = make_mock_canvas()
 
         stack = CommandStack()
+        # positions tuple: (id, old_x, old_y, old_rot, new_x, new_y, new_rot)
         cmd = MoveBuildingsCommand(
             document=doc,
             canvas=canvas,
-            positions=(("b1", 0, 0, 50, 30),),
+            positions=(("b1", 0, 0, 0, 50, 30, 0),),
         )
 
         stack.execute(cmd)
@@ -103,6 +104,31 @@ class TestMoveBuildingsCommand:
         assert doc.buildings["b1"].x == 0
         assert doc.buildings["b1"].y == 0
 
+    def test_move_and_rotate_building(self) -> None:
+        """Can move and rotate a building in one command."""
+        doc = Document()
+        building = Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0)
+        doc.add_building(building)
+        canvas = make_mock_canvas()
+
+        stack = CommandStack()
+        # Move and rotate 90 degrees
+        cmd = MoveBuildingsCommand(
+            document=doc,
+            canvas=canvas,
+            positions=(("b1", 0, 0, 0, 50, 30, 90),),
+        )
+
+        stack.execute(cmd)
+        assert doc.buildings["b1"].x == 50
+        assert doc.buildings["b1"].y == 30
+        assert doc.buildings["b1"].rotation == 90
+
+        stack.undo()
+        assert doc.buildings["b1"].x == 0
+        assert doc.buildings["b1"].y == 0
+        assert doc.buildings["b1"].rotation == 0
+
     def test_move_merge(self) -> None:
         """Consecutive moves of same buildings merge."""
         doc = Document()
@@ -112,24 +138,26 @@ class TestMoveBuildingsCommand:
 
         stack = CommandStack()
 
-        # Simulate dragging in small increments (old_x, old_y, new_x, new_y)
+        # Simulate dragging in small increments (id, old_x, old_y, old_rot, new_x, new_y, new_rot)
         stack.execute(
-            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 0, 0, 10, 0),))
+            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 0, 0, 0, 10, 0, 0),))
         )
         stack.execute(
-            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 10, 0, 20, 0),))
+            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 10, 0, 0, 20, 0, 0),))
         )
         stack.execute(
-            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 20, 0, 30, 0),))
+            MoveBuildingsCommand(document=doc, canvas=canvas, positions=(("b1", 20, 0, 0, 30, 0, 90),))
         )
 
         # Should have merged into one command
         assert len(stack.undo_stack) == 1
         assert doc.buildings["b1"].x == 30
+        assert doc.buildings["b1"].rotation == 90
 
-        # Single undo should restore original position
+        # Single undo should restore original position and rotation
         stack.undo()
         assert doc.buildings["b1"].x == 0
+        assert doc.buildings["b1"].rotation == 0
 
 
 class TestDeleteItemsCommand:

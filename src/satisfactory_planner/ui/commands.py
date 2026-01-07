@@ -164,54 +164,59 @@ class DeleteItemsCommand(Command):
 
 @dataclass(frozen=True)
 class MoveBuildingsCommand(Command):
-    """Command to move buildings.
+    """Command to move and/or rotate buildings.
 
-    Stores original and new positions for idempotent execute/undo.
+    Stores original and new positions/rotations for idempotent execute/undo.
+    Movement and rotation during drag are a single UI gesture.
     """
 
     document: Document
     canvas: FactoryCanvas
-    # Maps building_id -> (old_x, old_y, new_x, new_y)
-    positions: tuple[tuple[str, float, float, float, float], ...]
+    # Maps building_id -> (old_x, old_y, old_rot, new_x, new_y, new_rot)
+    positions: tuple[tuple[str, float, float, int, float, float, int], ...]
 
     def execute(self) -> None:
-        any_moved = False
-        for building_id, _old_x, _old_y, new_x, new_y in self.positions:
+        any_changed = False
+        for building_id, _old_x, _old_y, _old_rot, new_x, new_y, new_rot in self.positions:
             building = self.document.buildings.get(building_id)
             if not building:
                 logger.warning(f"MoveBuildingsCommand.execute: building {building_id} not found")
                 continue
-            if building.x == new_x and building.y == new_y:
-                logger.warning(
-                    f"MoveBuildingsCommand.execute: building {building_id} already at target"
-                )
-                continue
-            building.x = new_x
-            building.y = new_y
-            self.canvas.refresh_building(building_id)
-            self.canvas.refresh_belts_for_building(building_id)
-            any_moved = True
-        if any_moved:
+            changed = False
+            if building.x != new_x or building.y != new_y:
+                building.x = new_x
+                building.y = new_y
+                changed = True
+            if building.rotation != new_rot:
+                building.rotation = new_rot
+                changed = True
+            if changed:
+                self.canvas.refresh_building(building_id)
+                self.canvas.refresh_belts_for_building(building_id)
+                any_changed = True
+        if any_changed:
             self.canvas.notify_mutation()
 
     def undo(self) -> None:
-        any_moved = False
-        for building_id, old_x, old_y, _new_x, _new_y in self.positions:
+        any_changed = False
+        for building_id, old_x, old_y, old_rot, _new_x, _new_y, _new_rot in self.positions:
             building = self.document.buildings.get(building_id)
             if not building:
                 logger.warning(f"MoveBuildingsCommand.undo: building {building_id} not found")
                 continue
-            if building.x == old_x and building.y == old_y:
-                logger.warning(
-                    f"MoveBuildingsCommand.undo: building {building_id} already at original"
-                )
-                continue
-            building.x = old_x
-            building.y = old_y
-            self.canvas.refresh_building(building_id)
-            self.canvas.refresh_belts_for_building(building_id)
-            any_moved = True
-        if any_moved:
+            changed = False
+            if building.x != old_x or building.y != old_y:
+                building.x = old_x
+                building.y = old_y
+                changed = True
+            if building.rotation != old_rot:
+                building.rotation = old_rot
+                changed = True
+            if changed:
+                self.canvas.refresh_building(building_id)
+                self.canvas.refresh_belts_for_building(building_id)
+                any_changed = True
+        if any_changed:
             self.canvas.notify_mutation()
 
     def merge_with(self, other: Command) -> Command | None:
@@ -224,11 +229,11 @@ class MoveBuildingsCommand(Command):
         if self_ids != other_ids:
             return None
 
-        # Merge: keep our old positions, use their new positions
-        other_new = {p[0]: (p[3], p[4]) for p in other.positions}
+        # Merge: keep our old state, use their new state
+        other_new = {p[0]: (p[4], p[5], p[6]) for p in other.positions}
         merged_positions = tuple(
-            (bid, old_x, old_y, other_new[bid][0], other_new[bid][1])
-            for bid, old_x, old_y, new_x, new_y in self.positions
+            (bid, old_x, old_y, old_rot, other_new[bid][0], other_new[bid][1], other_new[bid][2])
+            for bid, old_x, old_y, old_rot, new_x, new_y, new_rot in self.positions
         )
         return MoveBuildingsCommand(
             document=self.document,
@@ -262,7 +267,7 @@ class ConnectBeltCommand(Command):
         self.canvas.notify_mutation()
 
 
-# NOTE: If more property-change commands are added (e.g., rotation, item_id),
+# NOTE: If more property-change commands are added (e.g., belt item_id),
 # consider refactoring to a generic ChangePropertyCommand pattern.
 
 
@@ -337,47 +342,6 @@ class SetClockSpeedCommand(Command):
             return
         building.clock_speed = self.old_clock_speed
         self.canvas.refresh_building(self.building_id)
-        self.canvas.notify_mutation()
-
-
-@dataclass(frozen=True)
-class SetRotationCommand(Command):
-    """Command to set a building's rotation."""
-
-    document: Document
-    building_id: str
-    old_rotation: int
-    new_rotation: int
-    canvas: FactoryCanvas
-
-    def execute(self) -> None:
-        building = self.document.buildings.get(self.building_id)
-        if not building:
-            logger.warning(f"SetRotationCommand.execute: building {self.building_id} not found")
-            return
-        if building.rotation == self.new_rotation:
-            logger.warning(
-                f"SetRotationCommand.execute: rotation already set to {self.new_rotation}"
-            )
-            return
-        building.rotation = self.new_rotation
-        self.canvas.refresh_building(self.building_id)
-        self.canvas.refresh_belts_for_building(self.building_id)
-        self.canvas.notify_mutation()
-
-    def undo(self) -> None:
-        building = self.document.buildings.get(self.building_id)
-        if not building:
-            logger.warning(f"SetRotationCommand.undo: building {self.building_id} not found")
-            return
-        if building.rotation == self.old_rotation:
-            logger.warning(
-                f"SetRotationCommand.undo: rotation already set to {self.old_rotation}"
-            )
-            return
-        building.rotation = self.old_rotation
-        self.canvas.refresh_building(self.building_id)
-        self.canvas.refresh_belts_for_building(self.building_id)
         self.canvas.notify_mutation()
 
 

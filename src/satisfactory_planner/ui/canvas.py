@@ -38,7 +38,6 @@ from satisfactory_planner.ui.commands import (
     DeleteItemsCommand,
     MoveBuildingsCommand,
     PlaceBuildingCommand,
-    SetRotationCommand,
 )
 from satisfactory_planner.ui.items.belt_item import BeltItem
 from satisfactory_planner.ui.items.building_item import BuildingItem
@@ -650,30 +649,16 @@ class FactoryCanvas(QGraphicsView):
                 return
         super().keyPressEvent(event)  # type: ignore[arg-type]
 
-    def on_building_rotated(self, building_id: str, old_rotation: int, new_rotation: int) -> None:
-        """Handle a building being rotated.
-
-        Args:
-            building_id: The building that was rotated
-            old_rotation: Original rotation before the change
-            new_rotation: New rotation after the change
-        """
-        cmd = SetRotationCommand(
-            document=self.document,
-            building_id=building_id,
-            old_rotation=old_rotation,
-            new_rotation=new_rotation,
-            canvas=self,
-        )
-        self.command_stack.execute(cmd)
-
-    def on_building_moved(self, building_id: str, old_x: float, old_y: float) -> None:
-        """Handle a building being moved.
+    def on_building_moved(
+        self, building_id: str, old_x: float, old_y: float, old_rotation: int | None = None
+    ) -> None:
+        """Handle a building being moved and/or rotated.
 
         Args:
             building_id: The building that was moved
             old_x: Original x position before the move
             old_y: Original y position before the move
+            old_rotation: Original rotation before the move (if changed)
         """
         building = self.document.buildings.get(building_id)
         if not building:
@@ -687,15 +672,19 @@ class FactoryCanvas(QGraphicsView):
         new_x = item.pos().x()
         new_y = item.pos().y()
 
+        # Get rotation (use current if old not provided)
+        new_rot = building.rotation
+        old_rot = old_rotation if old_rotation is not None else new_rot
+
         # Sync model to visual position
         building.x = new_x
         building.y = new_y
 
-        # Create immutable command with captured positions
+        # Create immutable command with captured positions and rotation
         cmd = MoveBuildingsCommand(
             document=self.document,
             canvas=self,
-            positions=((building_id, old_x, old_y, new_x, new_y),),
+            positions=((building_id, old_x, old_y, old_rot, new_x, new_y, new_rot),),
         )
         # Command will see model already at new position and log warning, which is fine
         # The important thing is the command captures old/new for undo/redo

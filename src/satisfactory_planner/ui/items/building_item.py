@@ -236,21 +236,13 @@ class BuildingItem(QGraphicsRectItem):
             moved = new_pos != self._drag_start_pos
             rotated = self.building.rotation != self._drag_start_rotation
 
-            # Only create command if actually moved
-            if moved:
-                # Pass original position to canvas for immutable command
+            # Create single command if moved or rotated
+            if moved or rotated:
                 self.canvas.on_building_moved(
                     self.building.id,
                     self._drag_start_pos.x(),
                     self._drag_start_pos.y(),
-                )
-
-            # Create rotation command if rotated (and didn't move - moves are separate)
-            if rotated and not moved:
-                self.canvas.on_building_rotated(
-                    self.building.id,
                     self._drag_start_rotation,
-                    self.building.rotation,
                 )
 
             self._drag_start_pos = None
