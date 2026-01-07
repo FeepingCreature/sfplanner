@@ -50,7 +50,7 @@ class DocumentTab:
     def __init__(self, name: str = "Untitled") -> None:
         self.name = name
         self.document = Document()
-        self.command_stack = CommandStack()
+        self.command_stack = CommandStack(self.document)
         self.flow_solver = FlowSolver(self.document)
         self.canvas: FactoryCanvas | None = None
         self.file_path: str | None = None
@@ -170,7 +170,8 @@ class MainWindow(QMainWindow):
         self.library_panel.building_selected.connect(self._on_building_selected)
 
         # Properties panel - right (larger)
-        self.properties_panel = PropertiesPanel(Document(), CommandStack())
+        dummy_doc = Document()
+        self.properties_panel = PropertiesPanel(dummy_doc, CommandStack(dummy_doc))
         self.properties_panel.setMinimumHeight(400)
         props_dock = ads.CDockWidget("Properties")
         props_dock.setWidget(self.properties_panel)
@@ -533,7 +534,7 @@ class MainWindow(QMainWindow):
             # Create new tab with loaded document
             tab = DocumentTab(Path(path).stem)
             tab.document = document
-            tab.command_stack = CommandStack()
+            tab.command_stack = CommandStack(document)
             tab.flow_solver = FlowSolver(document)
             tab.file_path = path
 

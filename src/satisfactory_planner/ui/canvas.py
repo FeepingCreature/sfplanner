@@ -631,7 +631,7 @@ class FactoryCanvas(QGraphicsView):
             y=y,
             rotation=rotation,
         )
-        cmd = PlaceBuildingCommand(document=self.document, building=building, canvas=self)
+        cmd = PlaceBuildingCommand(scene_room_id=None, building=building, canvas=self)
         self.command_stack.execute(cmd)
         # Command already added the item via handler, but we need to set visual rotation
         item = self._building_items.get(building.id)
@@ -666,7 +666,7 @@ class FactoryCanvas(QGraphicsView):
                 self.document.belts[bid] for bid in selected_belts if bid in self.document.belts
             )
             cmd = DeleteItemsCommand(
-                document=self.document,
+                scene_room_id=None,
                 buildings=buildings_to_delete,
                 belts=belts_to_delete,
                 canvas=self,
@@ -907,7 +907,7 @@ class FactoryCanvas(QGraphicsView):
                 dest_building_id=building_id,
                 dest_port_index=port_index,
             )
-            cmd = ConnectBeltCommand(document=self.document, belt=belt, canvas=self)
+            cmd = ConnectBeltCommand(scene_room_id=None, belt=belt, canvas=self)
             self.command_stack.execute(cmd)
             # Command handles UI updates via handler
 
@@ -1018,7 +1018,7 @@ class FactoryCanvas(QGraphicsView):
                 clock_speed=old_building.clock_speed,
                 rotation=old_building.rotation,
             )
-            cmd = PlaceBuildingCommand(document=self.document, building=new_building, canvas=self)
+            cmd = PlaceBuildingCommand(scene_room_id=None, building=new_building, canvas=self)
             self.command_stack.execute(cmd)
 
         # Create new belts with updated building references
@@ -1035,7 +1035,7 @@ class FactoryCanvas(QGraphicsView):
                     dest_port_index=old_belt.dest_port_index,
                     item_id=old_belt.item_id,
                 )
-                belt_cmd = ConnectBeltCommand(document=self.document, belt=new_belt, canvas=self)
+                belt_cmd = ConnectBeltCommand(scene_room_id=None, belt=new_belt, canvas=self)
                 self.command_stack.execute(belt_cmd)
 
         # Select the newly pasted buildings
@@ -1088,7 +1088,7 @@ class FactoryCanvas(QGraphicsView):
             new_rotation=new_rot,
         )
         cmd = MoveBuildingsCommand(
-            document=self.document,
+            scene_room_id=None,
             canvas=self,
             moves=(move,),
         )

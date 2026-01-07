@@ -5,6 +5,11 @@ Commands can directly update both the data model and the UI.
 
 Commands are immutable - all state needed for execute/undo is captured at construction.
 Execute and undo are idempotent - calling them multiple times logs a warning but doesn't break.
+
+Commands receive the Document at execute/undo time, not at construction. They store a
+scene_room_id to identify which scene (Document or Room) they operate on, and look up
+the scene from the document at execute time. This keeps commands serializable and avoids
+stale references.
 """
 
 from __future__ import annotations
@@ -15,7 +20,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from satisfactory_planner.core.models import Belt, Building, Document
+    from satisfactory_planner.core.models import Belt, Building, Document, Scene
     from satisfactory_planner.ui.canvas import FactoryCanvas
 
 logger = logging.getLogger(__name__)
@@ -34,15 +39,20 @@ class BuildingMove(NamedTuple):
 
 
 class Command(ABC):
-    """Base class for undoable commands."""
+    """Base class for undoable commands.
+
+    Commands receive the document at execute/undo time from the CommandStack.
+    They should not store a document reference - instead store scene_room_id
+    and look up the scene from the document.
+    """
 
     @abstractmethod
-    def execute(self) -> None:
+    def execute(self, document: Document) -> None:
         """Execute the command."""
         ...
 
     @abstractmethod
-    def undo(self) -> None:
+    def undo(self, document: Document) -> None:
         """Undo the command."""
         ...
 
@@ -51,16 +61,41 @@ class Command(ABC):
         return None
 
 
-class CommandStack:
-    """Stack of commands for undo/redo."""
+def get_scene(document: Document, scene_room_id: str | None) -> Scene:
+    """Get a scene from a document by room ID.
 
-    def __init__(self) -> None:
+    Args:
+        document: The document to search
+        scene_room_id: None for root document, or a room ID
+
+    Returns:
+        The Document itself if scene_room_id is None, otherwise the Room
+    """
+    if scene_room_id is None:
+        return document
+    return document.rooms[scene_room_id]
+
+
+class CommandStack:
+    """Stack of commands for undo/redo.
+
+    The stack owns the document reference and passes it to commands at execute time.
+    """
+
+    def __init__(self, document: Document) -> None:
+        self.document = document
         self.undo_stack: list[Command] = []
         self.redo_stack: list[Command] = []
 
+    def set_document(self, document: Document) -> None:
+        """Set a new document (e.g., when switching tabs)."""
+        self.document = document
+        self.undo_stack.clear()
+        self.redo_stack.clear()
+
     def execute(self, cmd: Command) -> None:
         """Execute a command and add to undo stack."""
-        cmd.execute()
+        cmd.execute(self.document)
         # Try to merge with previous
         if self.undo_stack:
             merged = self.undo_stack[-1].merge_with(cmd)
@@ -75,14 +110,14 @@ class CommandStack:
         """Undo the last command."""
         if self.undo_stack:
             cmd = self.undo_stack.pop()
-            cmd.undo()
+            cmd.undo(self.document)
             self.redo_stack.append(cmd)
 
     def redo(self) -> None:
         """Redo the last undone command."""
         if self.redo_stack:
             cmd = self.redo_stack.pop()
-            cmd.execute()
+            cmd.execute(self.document)
             self.undo_stack.append(cmd)
 
     def can_undo(self) -> bool:
@@ -94,27 +129,29 @@ class CommandStack:
 
 @dataclass(frozen=True)
 class PlaceBuildingCommand(Command):
-    """Command to place a building."""
+    """Command to place a building in a scene."""
 
-    document: Document
+    scene_room_id: str | None  # None = root document, else room ID
     building: Building
     canvas: FactoryCanvas
 
-    def execute(self) -> None:
-        if self.building.id in self.document.buildings:
+    def execute(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        if self.building.id in scene.buildings:
             logger.warning(
                 f"PlaceBuildingCommand.execute: building {self.building.id} already exists"
             )
             return
-        self.document.add_building(self.building)
+        scene.add_building(self.building)
         self.canvas.add_building_item(self.building)
         self.canvas.notify_mutation()
 
-    def undo(self) -> None:
-        if self.building.id not in self.document.buildings:
+    def undo(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        if self.building.id not in scene.buildings:
             logger.warning(f"PlaceBuildingCommand.undo: building {self.building.id} not found")
             return
-        self.document.remove_building(self.building.id)
+        scene.remove_building(self.building.id)
         self.canvas.remove_building_item(self.building.id)
         self.canvas.notify_mutation()
 
@@ -126,47 +163,49 @@ class DeleteItemsCommand(Command):
     Buildings and belts to delete are captured at construction time.
     """
 
-    document: Document
+    scene_room_id: str | None  # None = root document, else room ID
     buildings: tuple[Building, ...]
     belts: tuple[Belt, ...]
     canvas: FactoryCanvas
 
-    def execute(self) -> None:
+    def execute(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
         any_deleted = False
         for building in self.buildings:
-            if building.id not in self.document.buildings:
+            if building.id not in scene.buildings:
                 logger.warning(f"DeleteItemsCommand.execute: building {building.id} not found")
                 continue
-            self.document.remove_building(building.id)
+            scene.remove_building(building.id)
             self.canvas.remove_building_item(building.id)
             any_deleted = True
 
         for belt in self.belts:
-            if belt.id not in self.document.belts:
+            if belt.id not in scene.belts:
                 logger.warning(f"DeleteItemsCommand.execute: belt {belt.id} not found")
                 continue
-            self.document.remove_belt(belt.id)
+            scene.remove_belt(belt.id)
             self.canvas.remove_belt_item(belt.id)
             any_deleted = True
 
         if any_deleted:
             self.canvas.notify_mutation()
 
-    def undo(self) -> None:
+    def undo(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
         any_restored = False
         for building in self.buildings:
-            if building.id in self.document.buildings:
+            if building.id in scene.buildings:
                 logger.warning(f"DeleteItemsCommand.undo: building {building.id} already exists")
                 continue
-            self.document.add_building(building)
+            scene.add_building(building)
             self.canvas.add_building_item(building)
             any_restored = True
 
         for belt in self.belts:
-            if belt.id in self.document.belts:
+            if belt.id in scene.belts:
                 logger.warning(f"DeleteItemsCommand.undo: belt {belt.id} already exists")
                 continue
-            self.document.add_belt(belt)
+            scene.add_belt(belt)
             self.canvas.add_belt_item(belt)
             any_restored = True
 
@@ -182,14 +221,15 @@ class MoveBuildingsCommand(Command):
     Movement and rotation during drag are a single UI gesture.
     """
 
-    document: Document
+    scene_room_id: str | None  # None = root document, else room ID
     canvas: FactoryCanvas
     moves: tuple[BuildingMove, ...]
 
-    def execute(self) -> None:
+    def execute(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
         any_changed = False
         for move in self.moves:
-            building = self.document.buildings.get(move.building_id)
+            building = scene.buildings.get(move.building_id)
             if not building:
                 logger.warning(
                     f"MoveBuildingsCommand.execute: building {move.building_id} not found"
@@ -210,10 +250,11 @@ class MoveBuildingsCommand(Command):
         if any_changed:
             self.canvas.notify_mutation()
 
-    def undo(self) -> None:
+    def undo(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
         any_changed = False
         for move in self.moves:
-            building = self.document.buildings.get(move.building_id)
+            building = scene.buildings.get(move.building_id)
             if not building:
                 logger.warning(f"MoveBuildingsCommand.undo: building {move.building_id} not found")
                 continue
@@ -237,6 +278,10 @@ class MoveBuildingsCommand(Command):
         if not isinstance(other, MoveBuildingsCommand):
             return None
 
+        # Can only merge commands in the same scene
+        if self.scene_room_id != other.scene_room_id:
+            return None
+
         self_ids = {m.building_id for m in self.moves}
         other_ids = {m.building_id for m in other.moves}
         if self_ids != other_ids:
@@ -257,7 +302,7 @@ class MoveBuildingsCommand(Command):
             for m in self.moves
         )
         return MoveBuildingsCommand(
-            document=self.document,
+            scene_room_id=self.scene_room_id,
             canvas=self.canvas,
             moves=merged_moves,
         )
@@ -267,23 +312,25 @@ class MoveBuildingsCommand(Command):
 class ConnectBeltCommand(Command):
     """Command to connect a belt between buildings."""
 
-    document: Document
+    scene_room_id: str | None  # None = root document, else room ID
     belt: Belt
     canvas: FactoryCanvas
 
-    def execute(self) -> None:
-        if self.belt.id in self.document.belts:
+    def execute(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        if self.belt.id in scene.belts:
             logger.warning(f"ConnectBeltCommand.execute: belt {self.belt.id} already exists")
             return
-        self.document.add_belt(self.belt)
+        scene.add_belt(self.belt)
         self.canvas.add_belt_item(self.belt)
         self.canvas.notify_mutation()
 
-    def undo(self) -> None:
-        if self.belt.id not in self.document.belts:
+    def undo(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        if self.belt.id not in scene.belts:
             logger.warning(f"ConnectBeltCommand.undo: belt {self.belt.id} not found")
             return
-        self.document.remove_belt(self.belt.id)
+        scene.remove_belt(self.belt.id)
         self.canvas.remove_belt_item(self.belt.id)
         self.canvas.notify_mutation()
 
@@ -296,14 +343,15 @@ class ConnectBeltCommand(Command):
 class SetRecipeCommand(Command):
     """Command to set a building's recipe."""
 
-    document: Document
+    scene_room_id: str | None  # None = root document, else room ID
     building_id: str
     old_recipe_id: str | None
     new_recipe_id: str | None
     canvas: FactoryCanvas
 
-    def execute(self) -> None:
-        building = self.document.buildings.get(self.building_id)
+    def execute(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        building = scene.buildings.get(self.building_id)
         if not building:
             logger.warning(f"SetRecipeCommand.execute: building {self.building_id} not found")
             return
@@ -314,8 +362,9 @@ class SetRecipeCommand(Command):
         self.canvas.refresh_building(self.building_id)
         self.canvas.notify_mutation()
 
-    def undo(self) -> None:
-        building = self.document.buildings.get(self.building_id)
+    def undo(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        building = scene.buildings.get(self.building_id)
         if not building:
             logger.warning(f"SetRecipeCommand.undo: building {self.building_id} not found")
             return
@@ -331,14 +380,15 @@ class SetRecipeCommand(Command):
 class SetClockSpeedCommand(Command):
     """Command to set a building's clock speed."""
 
-    document: Document
+    scene_room_id: str | None  # None = root document, else room ID
     building_id: str
     old_clock_speed: float
     new_clock_speed: float
     canvas: FactoryCanvas
 
-    def execute(self) -> None:
-        building = self.document.buildings.get(self.building_id)
+    def execute(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        building = scene.buildings.get(self.building_id)
         if not building:
             logger.warning(f"SetClockSpeedCommand.execute: building {self.building_id} not found")
             return
@@ -351,8 +401,9 @@ class SetClockSpeedCommand(Command):
         self.canvas.refresh_building(self.building_id)
         self.canvas.notify_mutation()
 
-    def undo(self) -> None:
-        building = self.document.buildings.get(self.building_id)
+    def undo(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        building = scene.buildings.get(self.building_id)
         if not building:
             logger.warning(f"SetClockSpeedCommand.undo: building {self.building_id} not found")
             return
@@ -370,14 +421,15 @@ class SetClockSpeedCommand(Command):
 class SetBeltTierCommand(Command):
     """Command to set a belt's tier."""
 
-    document: Document
+    scene_room_id: str | None  # None = root document, else room ID
     belt_id: str
     old_tier: int
     new_tier: int
     canvas: FactoryCanvas
 
-    def execute(self) -> None:
-        belt = self.document.belts.get(self.belt_id)
+    def execute(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        belt = scene.belts.get(self.belt_id)
         if not belt:
             logger.warning(f"SetBeltTierCommand.execute: belt {self.belt_id} not found")
             return
@@ -388,8 +440,9 @@ class SetBeltTierCommand(Command):
         self.canvas.refresh_belt(self.belt_id)
         self.canvas.notify_mutation()
 
-    def undo(self) -> None:
-        belt = self.document.belts.get(self.belt_id)
+    def undo(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        belt = scene.belts.get(self.belt_id)
         if not belt:
             logger.warning(f"SetBeltTierCommand.undo: belt {self.belt_id} not found")
             return

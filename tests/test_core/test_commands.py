@@ -32,11 +32,11 @@ class TestCommandStack:
     def test_execute_and_undo(self) -> None:
         """Commands can be executed and undone."""
         doc = Document()
-        stack = CommandStack()
+        stack = CommandStack(doc)
         canvas = make_mock_canvas()
 
         building = Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0)
-        cmd = PlaceBuildingCommand(document=doc, building=building, canvas=canvas)
+        cmd = PlaceBuildingCommand(scene_room_id=None, building=building, canvas=canvas)
 
         stack.execute(cmd)
         assert "b1" in doc.buildings
@@ -47,11 +47,11 @@ class TestCommandStack:
     def test_redo(self) -> None:
         """Undone commands can be redone."""
         doc = Document()
-        stack = CommandStack()
+        stack = CommandStack(doc)
         canvas = make_mock_canvas()
 
         building = Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0)
-        cmd = PlaceBuildingCommand(document=doc, building=building, canvas=canvas)
+        cmd = PlaceBuildingCommand(scene_room_id=None, building=building, canvas=canvas)
 
         stack.execute(cmd)
         stack.undo()
@@ -63,17 +63,17 @@ class TestCommandStack:
     def test_execute_clears_redo(self) -> None:
         """Executing a new command clears the redo stack."""
         doc = Document()
-        stack = CommandStack()
+        stack = CommandStack(doc)
         canvas = make_mock_canvas()
 
         b1 = Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0)
         b2 = Building(id="b2", building_type=BuildingType.CONSTRUCTOR, x=100, y=0)
 
-        stack.execute(PlaceBuildingCommand(document=doc, building=b1, canvas=canvas))
+        stack.execute(PlaceBuildingCommand(scene_room_id=None, building=b1, canvas=canvas))
         stack.undo()
 
         # Execute a new command
-        stack.execute(PlaceBuildingCommand(document=doc, building=b2, canvas=canvas))
+        stack.execute(PlaceBuildingCommand(scene_room_id=None, building=b2, canvas=canvas))
 
         # Redo should not bring back b1
         assert not stack.can_redo()
@@ -89,7 +89,7 @@ class TestMoveBuildingsCommand:
         doc.add_building(building)
         canvas = make_mock_canvas()
 
-        stack = CommandStack()
+        stack = CommandStack(doc)
         move = BuildingMove(
             building_id="b1",
             old_x=0,
@@ -99,7 +99,7 @@ class TestMoveBuildingsCommand:
             new_y=30,
             new_rotation=0,
         )
-        cmd = MoveBuildingsCommand(document=doc, canvas=canvas, moves=(move,))
+        cmd = MoveBuildingsCommand(scene_room_id=None, canvas=canvas, moves=(move,))
 
         stack.execute(cmd)
         assert doc.buildings["b1"].x == 50
@@ -116,7 +116,7 @@ class TestMoveBuildingsCommand:
         doc.add_building(building)
         canvas = make_mock_canvas()
 
-        stack = CommandStack()
+        stack = CommandStack(doc)
         move = BuildingMove(
             building_id="b1",
             old_x=0,
@@ -126,7 +126,7 @@ class TestMoveBuildingsCommand:
             new_y=30,
             new_rotation=90,
         )
-        cmd = MoveBuildingsCommand(document=doc, canvas=canvas, moves=(move,))
+        cmd = MoveBuildingsCommand(scene_room_id=None, canvas=canvas, moves=(move,))
 
         stack.execute(cmd)
         assert doc.buildings["b1"].x == 50
@@ -145,26 +145,26 @@ class TestMoveBuildingsCommand:
         doc.add_building(building)
         canvas = make_mock_canvas()
 
-        stack = CommandStack()
+        stack = CommandStack(doc)
 
         # Simulate dragging in small increments
         stack.execute(
             MoveBuildingsCommand(
-                document=doc,
+                scene_room_id=None,
                 canvas=canvas,
                 moves=(BuildingMove("b1", 0, 0, 0, 10, 0, 0),),
             )
         )
         stack.execute(
             MoveBuildingsCommand(
-                document=doc,
+                scene_room_id=None,
                 canvas=canvas,
                 moves=(BuildingMove("b1", 10, 0, 0, 20, 0, 0),),
             )
         )
         stack.execute(
             MoveBuildingsCommand(
-                document=doc,
+                scene_room_id=None,
                 canvas=canvas,
                 moves=(BuildingMove("b1", 20, 0, 0, 30, 0, 90),),
             )
@@ -191,8 +191,8 @@ class TestDeleteItemsCommand:
         doc.add_building(building)
         canvas = make_mock_canvas()
 
-        stack = CommandStack()
-        cmd = DeleteItemsCommand(document=doc, buildings=(building,), belts=(), canvas=canvas)
+        stack = CommandStack(doc)
+        cmd = DeleteItemsCommand(scene_room_id=None, buildings=(building,), belts=(), canvas=canvas)
 
         stack.execute(cmd)
         assert "b1" not in doc.buildings
@@ -214,8 +214,8 @@ class TestDeleteItemsCommand:
         doc.add_belt(belt)
         canvas = make_mock_canvas()
 
-        stack = CommandStack()
-        cmd = DeleteItemsCommand(document=doc, buildings=(), belts=(belt,), canvas=canvas)
+        stack = CommandStack(doc)
+        cmd = DeleteItemsCommand(scene_room_id=None, buildings=(), belts=(belt,), canvas=canvas)
 
         stack.execute(cmd)
         assert "belt1" not in doc.belts
@@ -234,9 +234,9 @@ class TestSetClockSpeedCommand:
         doc.add_building(building)
         canvas = make_mock_canvas()
 
-        stack = CommandStack()
+        stack = CommandStack(doc)
         cmd = SetClockSpeedCommand(
-            document=doc,
+            scene_room_id=None,
             building_id="b1",
             old_clock_speed=1.0,
             new_clock_speed=1.5,
