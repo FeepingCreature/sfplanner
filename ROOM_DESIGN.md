@@ -16,6 +16,16 @@ Rooms are groupings of buildings that act as a single movable unit while remaini
 
 4. **Room names are just the name** - No instance numbers in the data model. Delinking creates "Copy of {name}" Windows-style.
 
+5. **CRITICAL: There is no "active scene" or "current scene"** - Every UI action determines its target scene from the specific thing being acted upon:
+   - **Placement** (drop/click): Hit-test the position to find the deepest room at that coordinate
+   - **Move/Delete/Property changes**: Ask the item for its scene (`BuildingItem.building_scene`)
+   - **Belt connection**: Get scene from the source port's building
+   
+   The scene is ALWAYS derived from the interaction target (position or item), never from global state. This is essential because:
+   - User can click directly inside a room without "activating" it first
+   - There's no "enter room" mode in the transparent room model
+   - Selection spanning multiple scenes is impossible, but that's enforced by clearing selection when clicking a different scene, not by tracking "active" scene
+
 ## Core Concepts
 
 ### Scene Protocol

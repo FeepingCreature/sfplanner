@@ -661,8 +661,13 @@ class PropertiesPanel(QWidget):
             building_id = self._selected_ids[0]
             building = self.document.buildings.get(building_id)
             if building:
+                # Get scene from the building item itself
+                building_item = self.canvas._building_items.get(building_id)
+                scene_room_id = (
+                    self.canvas.get_scene_for_item(building_item) if building_item else None
+                )
                 cmd = SetClockSpeedCommand(
-                    scene_room_id=self.canvas._get_active_scene_room_id(),
+                    scene_room_id=scene_room_id,
                     building_id=building_id,
                     old_clock_speed=building.clock_speed,
                     new_clock_speed=value / 100.0,
@@ -680,8 +685,13 @@ class PropertiesPanel(QWidget):
             building = self.document.buildings.get(building_id)
             if building:
                 recipe_id = self.recipe_combo.currentData()
+                # Get scene from the building item itself
+                building_item = self.canvas._building_items.get(building_id)
+                scene_room_id = (
+                    self.canvas.get_scene_for_item(building_item) if building_item else None
+                )
                 cmd = SetRecipeCommand(
-                    scene_room_id=self.canvas._get_active_scene_room_id(),
+                    scene_room_id=scene_room_id,
                     building_id=building_id,
                     old_recipe_id=building.recipe_id,
                     new_recipe_id=recipe_id,
@@ -700,8 +710,11 @@ class PropertiesPanel(QWidget):
             if belt:
                 new_tier = self.tier_combo.currentData()
                 if new_tier and new_tier != belt.tier:
+                    # Get scene from the belt item itself
+                    belt_item = self.canvas._belt_items.get(belt_id)
+                    scene_room_id = self.canvas.get_scene_for_item(belt_item) if belt_item else None
                     cmd = SetBeltTierCommand(
-                        scene_room_id=self.canvas._get_active_scene_room_id(),
+                        scene_room_id=scene_room_id,
                         belt_id=belt_id,
                         old_tier=belt.tier,
                         new_tier=new_tier,

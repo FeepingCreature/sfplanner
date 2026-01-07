@@ -139,10 +139,6 @@ class FactoryCanvas(QGraphicsView):
         # Selection outline (dashed rect around selected items)
         self._selection_outline: QGraphicsRectItem | None = None
 
-        # Scene-local selection: track which scene has the current selection
-        # None means root document, otherwise it's a Room
-        self._selection_scene: Scene | None = None
-
         # Enable drag-drop
         self.setAcceptDrops(True)
 
@@ -631,9 +627,9 @@ class FactoryCanvas(QGraphicsView):
             y=y,
             rotation=rotation,
         )
-        cmd = PlaceBuildingCommand(
-            scene_room_id=self._get_active_scene_room_id(), building=building, canvas=self
-        )
+        # Determine scene from placement position (hit-test to find deepest room)
+        scene_room_id = self.get_room_at_point(QPointF(x, y))
+        cmd = PlaceBuildingCommand(scene_room_id=scene_room_id, building=building, canvas=self)
         self.command_stack.execute(cmd)
         # Command already added the item via handler, but we need to set visual rotation
         item = self._building_items.get(building.id)
@@ -667,8 +663,14 @@ class FactoryCanvas(QGraphicsView):
             belts_to_delete = tuple(
                 self.document.belts[bid] for bid in selected_belts if bid in self.document.belts
             )
+            # Get scene from first selected item (all selected items are in same scene)
+            first_item = next(
+                (item for item in self._scene.selectedItems() if isinstance(item, BuildingItem)),
+                None,
+            )
+            scene_room_id = self.get_scene_for_item(first_item) if first_item else None
             cmd = DeleteItemsCommand(
-                scene_room_id=self._get_active_scene_room_id(),
+                scene_room_id=scene_room_id,
                 buildings=buildings_to_delete,
                 belts=belts_to_delete,
                 canvas=self,
@@ -718,20 +720,44 @@ class FactoryCanvas(QGraphicsView):
 
         Called by items (BuildingItem, RoomItem) when they're clicked.
         Clears selection in other scenes before the item is selected.
+
+        NOTE: This does NOT track an "active scene". It just ensures selection
+        cannot span multiple scenes by clearing selection in other scenes.
         """
         item_scene = self._get_scene_for_item(item)
         if item_scene is None:
             return
 
-        # If clicking in a different scene, clear selection in all other scenes
-        if self._selection_scene is not None and item_scene is not self._selection_scene:
-            self._clear_selection_in_other_scenes(item_scene)
+        # Clear selection in all other scenes (selection cannot span scenes)
+        self._clear_selection_in_other_scenes(item_scene)
 
-        # Update active selection scene
-        self._selection_scene = item_scene
+    def get_room_at_point(self, pos: QPointF) -> str | None:
+        """Get the deepest room_id at a scene position, or None for root document.
 
-    def _get_scene_room_id(self, scene: Scene | None) -> str | None:
-        """Get the room_id for a scene, or None if it's the root document."""
+        Used by placement commands to determine which scene to place into.
+        Hit-tests the position to find rooms, returns the innermost (deepest) one.
+        """
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        # Find all items at this point, sorted by Z-order (topmost first)
+        items_at_pos = self._scene.items(pos)
+
+        # Find the deepest RoomItem
+        for item in items_at_pos:
+            if isinstance(item, RoomItem):
+                # Found a room - return its ID
+                return item.room.id
+
+        # No room at this point - root document
+        return None
+
+    def get_scene_for_item(self, item: QGraphicsItem) -> str | None:
+        """Get the room_id for the scene an item belongs to, or None for root document.
+
+        Used by commands that operate on existing items (move, delete, property changes).
+        The item knows its scene - we just convert it to a room_id.
+        """
+        scene = self._get_scene_for_item(item)
         if scene is None or scene is self.document:
             return None
         # It's a Room - find its ID
@@ -739,10 +765,6 @@ class FactoryCanvas(QGraphicsView):
             if room is scene:
                 return room_id
         return None
-
-    def _get_active_scene_room_id(self) -> str | None:
-        """Get the room_id for the currently active selection scene."""
-        return self._get_scene_room_id(self._selection_scene)
 
     def _update_selection_outline(self) -> None:
         """Update the dashed selection outline around selected buildings."""
@@ -923,9 +945,10 @@ class FactoryCanvas(QGraphicsView):
                 dest_building_id=building_id,
                 dest_port_index=port_index,
             )
-            cmd = ConnectBeltCommand(
-                scene_room_id=self._get_active_scene_room_id(), belt=belt, canvas=self
-            )
+            # Get scene from source building (belt endpoints must be in same scene)
+            source_item = self._building_items.get(self._connect_start_building)
+            scene_room_id = self.get_scene_for_item(source_item) if source_item else None
+            cmd = ConnectBeltCommand(scene_room_id=scene_room_id, belt=belt, canvas=self)
             self.command_stack.execute(cmd)
             # Command handles UI updates via handler
 
@@ -1036,8 +1059,10 @@ class FactoryCanvas(QGraphicsView):
                 clock_speed=old_building.clock_speed,
                 rotation=old_building.rotation,
             )
+            # Determine scene from paste position
+            scene_room_id = self.get_room_at_point(QPointF(new_building.x, new_building.y))
             cmd = PlaceBuildingCommand(
-                scene_room_id=self._get_active_scene_room_id(), building=new_building, canvas=self
+                scene_room_id=scene_room_id, building=new_building, canvas=self
             )
             self.command_stack.execute(cmd)
 
@@ -1055,8 +1080,9 @@ class FactoryCanvas(QGraphicsView):
                     dest_port_index=old_belt.dest_port_index,
                     item_id=old_belt.item_id,
                 )
+                # Paste belts into same scene as buildings
                 belt_cmd = ConnectBeltCommand(
-                    scene_room_id=self._get_active_scene_room_id(), belt=new_belt, canvas=self
+                    scene_room_id=scene_room_id, belt=new_belt, canvas=self
                 )
                 self.command_stack.execute(belt_cmd)
 
@@ -1109,8 +1135,10 @@ class FactoryCanvas(QGraphicsView):
             new_y=new_y,
             new_rotation=new_rot,
         )
+        # Get scene from the item being moved
+        scene_room_id = self.get_scene_for_item(item)
         cmd = MoveBuildingsCommand(
-            scene_room_id=self._get_active_scene_room_id(),
+            scene_room_id=scene_room_id,
             canvas=self,
             moves=(move,),
         )
