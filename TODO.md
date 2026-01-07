@@ -1,5 +1,10 @@
 # TODO
 
+## Room System
+- [ ] Room resizing (drag edges/corners)
+- [ ] Constrain building movement to stay within room bounds
+- [ ] Room name editing in properties panel
+
 ## Known Incomplete Items
 - [x] Belt routing: Dubins path (circle-line-circle) implementation
 - [ ] Measure actual in-game belt turning radius

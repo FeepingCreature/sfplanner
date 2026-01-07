@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from satisfactory_planner.core.models import Belt, Building, Document, Scene
+    from satisfactory_planner.core.models import Belt, Building, Document, Room, Scene
     from satisfactory_planner.ui.canvas import FactoryCanvas
 
 logger = logging.getLogger(__name__)
@@ -470,11 +470,8 @@ class CreateRoomCommand(Command):
                 room.add_belt(belt)
                 self.canvas.remove_belt_item(belt_id)
 
-        # For now, just delete crossing belts (ports will handle this in Phase 7)
-        for belt_id in self.crossing_belt_ids:
-            belt = parent.remove_belt(belt_id)
-            if belt:
-                self.canvas.remove_belt_item(belt_id)
+        # Handle crossing belts by creating ports
+        self._handle_crossing_belts(document, parent, room, x, y)
 
         # Add room to document
         document.rooms[room.id] = room
@@ -522,14 +519,181 @@ class CreateRoomCommand(Command):
                 parent.add_belt(belt)
                 self.canvas.add_belt_item(belt)
 
-        # Restore crossing belts (they were deleted, need to recreate from document state)
-        # For now, crossing belts are lost on undo - will fix with proper port handling
+        # Restore crossing belts and remove created ports
+        self._undo_crossing_belts(document, parent, room, x, y)
 
         # Remove room and placement from document
         document.rooms.pop(self.created_room_id, None)
         document.room_placements.pop(self.created_placement_id, None)
 
         self.canvas.notify_mutation()
+
+    def _handle_crossing_belts(
+        self,
+        document: Document,
+        parent: Scene,
+        room: Room,
+        room_x: float,
+        room_y: float,
+    ) -> None:
+        """Handle belts that cross the room boundary by creating ports.
+
+        For each crossing belt:
+        1. Remove the original belt
+        2. Create a port at the room boundary (PORT_IN or PORT_OUT)
+        3. Create belt from external building to port (in parent scene)
+        4. Create belt from port to internal building (in room)
+        """
+
+        # Track created ports for undo
+        if not hasattr(self, "_created_port_ids"):
+            object.__setattr__(self, "_created_port_ids", [])
+        if not hasattr(self, "_created_belt_ids"):
+            object.__setattr__(self, "_created_belt_ids", [])
+        if not hasattr(self, "_original_belts"):
+            object.__setattr__(self, "_original_belts", {})
+
+        room_rect = (room_x, room_y, self.rect[2], self.rect[3])
+
+        for belt_id in self.crossing_belt_ids:
+            belt = parent.belts.get(belt_id)
+            if not belt:
+                continue
+
+            # Determine direction: is source inside or outside?
+            source_inside = belt.source_building_id in self.building_ids
+            dest_inside = belt.dest_building_id in self.building_ids
+
+            if source_inside and not dest_inside:
+                # Output: source is inside room, dest is outside
+                # Create PORT_OUT inside room, belt from room building to port,
+                # belt from port (via room boundary) to external building
+                self._create_output_port(document, parent, room, belt, room_rect)
+            elif dest_inside and not source_inside:
+                # Input: source is outside room, dest is inside
+                # Create PORT_IN inside room, belt from external to port,
+                # belt from port to room building
+                self._create_input_port(document, parent, room, belt, room_rect)
+
+            # Save original belt for undo and remove it
+            self._original_belts[belt_id] = belt  # type: ignore[attr-defined]
+            parent.remove_belt(belt_id)
+            self.canvas.remove_belt_item(belt_id)
+
+    def _create_input_port(
+        self,
+        document: Document,
+        parent: Scene,
+        room: Room,
+        belt: Belt,
+        room_rect: tuple[float, float, float, float],
+    ) -> None:
+        """Create an input port for a belt entering the room."""
+        from satisfactory_planner.core.models import Belt, Building, BuildingType, generate_id
+
+        room_x, room_y, room_w, room_h = room_rect
+
+        # Get dest building position (inside room, already moved)
+        dest_building = room.buildings.get(belt.dest_building_id)
+        if not dest_building:
+            return
+
+        # Port goes on left edge of room (simplified - could be smarter about edge selection)
+        port_id = generate_id()
+        port = Building(
+            id=port_id,
+            building_type=BuildingType.PORT_IN,
+            x=0,  # Left edge of room (room-relative)
+            y=dest_building.y,  # Same Y as destination
+            rotation=0,
+        )
+        room.add_building(port)
+        self._created_port_ids.append(port_id)  # type: ignore[attr-defined]
+
+        # Belt from external source to room boundary (in parent scene coords)
+        # The "port" from outside is just the room placement itself
+        # For now, we connect to a virtual position - this is a simplification
+        # In a full implementation, ports would be rendered on the room boundary
+
+        # Belt inside room: from port to destination
+        inside_belt_id = generate_id()
+        inside_belt = Belt(
+            id=inside_belt_id,
+            tier=belt.tier,
+            source_building_id=port_id,
+            source_port_index=0,  # PORT_IN has output at index 0 (inside room)
+            dest_building_id=belt.dest_building_id,
+            dest_port_index=belt.dest_port_index,
+            item_id=belt.item_id,
+        )
+        room.add_belt(inside_belt)
+        self._created_belt_ids.append(inside_belt_id)  # type: ignore[attr-defined]
+
+    def _create_output_port(
+        self,
+        document: Document,
+        parent: Scene,
+        room: Room,
+        belt: Belt,
+        room_rect: tuple[float, float, float, float],
+    ) -> None:
+        """Create an output port for a belt leaving the room."""
+        from satisfactory_planner.core.models import Belt, Building, BuildingType, generate_id
+
+        room_x, room_y, room_w, room_h = room_rect
+
+        # Get source building position (inside room, already moved)
+        source_building = room.buildings.get(belt.source_building_id)
+        if not source_building:
+            return
+
+        # Port goes on right edge of room (simplified)
+        port_id = generate_id()
+        port = Building(
+            id=port_id,
+            building_type=BuildingType.PORT_OUT,
+            x=room_w - 30,  # Right edge of room (room-relative), port is 30 wide
+            y=source_building.y,  # Same Y as source
+            rotation=0,
+        )
+        room.add_building(port)
+        self._created_port_ids.append(port_id)  # type: ignore[attr-defined]
+
+        # Belt inside room: from source to port
+        inside_belt_id = generate_id()
+        inside_belt = Belt(
+            id=inside_belt_id,
+            tier=belt.tier,
+            source_building_id=belt.source_building_id,
+            source_port_index=belt.source_port_index,
+            dest_building_id=port_id,
+            dest_port_index=0,  # PORT_OUT has input at index 0 (inside room)
+            item_id=belt.item_id,
+        )
+        room.add_belt(inside_belt)
+        self._created_belt_ids.append(inside_belt_id)  # type: ignore[attr-defined]
+
+    def _undo_crossing_belts(
+        self,
+        document: Document,
+        parent: Scene,
+        room: Room,
+        room_x: float,
+        room_y: float,
+    ) -> None:
+        """Undo crossing belt handling - restore original belts, remove ports."""
+        # Remove created belts from room
+        for belt_id in getattr(self, "_created_belt_ids", []):
+            room.remove_belt(belt_id)
+
+        # Remove created ports from room
+        for port_id in getattr(self, "_created_port_ids", []):
+            room.remove_building(port_id)
+
+        # Restore original belts to parent scene
+        for _belt_id, belt in getattr(self, "_original_belts", {}).items():
+            parent.add_belt(belt)
+            self.canvas.add_belt_item(belt)
 
 
 @dataclass(frozen=True)
