@@ -148,8 +148,9 @@ class FactoryCanvas(QGraphicsView):
         self._scene.setSceneRect(-5000, -5000, 10000, 10000)
         self.setScene(self._scene)
 
-        # Connect to selection changes to update outline
+        # Connect to selection changes to update outline and notify listeners
         self._scene.selectionChanged.connect(self._update_selection_outline)
+        self._scene.selectionChanged.connect(self._emit_selection_changed)
 
     def _setup_view(self) -> None:
         """Configure view settings."""
