@@ -62,6 +62,7 @@ class ToolMode(Enum):
     SELECT = auto()  # Click to select, drag to move
     BOX_SELECT = auto()  # Drag to box select
     PAN = auto()  # Drag to pan
+    CREATE_ROOM = auto()  # Drag to create a room (one-shot)
 
 
 class GhostBuildingItem(BuildingItem):
@@ -110,6 +111,7 @@ class FactoryCanvas(QGraphicsView):
         # Item tracking
         self._building_items: dict[str, BuildingItem] = {}
         self._belt_items: dict[str, BeltItem] = {}
+        self._room_items: dict[str, object] = {}  # RoomItem, using object to avoid circular import
 
         # Belt drag preview
         self._drag_preview: QGraphicsPathItem | None = None
@@ -135,6 +137,10 @@ class FactoryCanvas(QGraphicsView):
         # Box select state
         self._box_select_start: QPointF | None = None
         self._box_select_rect: QGraphicsRectItem | None = None
+
+        # Room creation state (similar to box select)
+        self._room_create_start: QPointF | None = None
+        self._room_create_rect: QGraphicsRectItem | None = None
 
         # Selection outline (dashed rect around selected items)
         self._selection_outline: QGraphicsRectItem | None = None
@@ -298,6 +304,45 @@ class FactoryCanvas(QGraphicsView):
             if source and dest:
                 belt_item.update_path(source, dest)
 
+    def add_room_item(
+        self,
+        placement: object,
+        room: object,  # RoomPlacement, Room - avoid circular import
+    ) -> None:
+        """Add a room item to the scene (CommandHandler protocol)."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        # Determine parent scene using getattr to avoid type errors
+        parent_scene_id = getattr(placement, "parent_scene_id", None)
+        if parent_scene_id:
+            parent_scene: Scene = self.document.rooms[parent_scene_id]
+        else:
+            parent_scene = self.document
+
+        room_item = RoomItem(placement, room, parent_scene, self)  # type: ignore[arg-type]
+        self._scene.addItem(room_item)
+
+        # Track the room item and all its children
+        placement_id = getattr(placement, "id", "")
+        self._room_items[placement_id] = room_item
+        for building_id, building_item in room_item._building_items.items():
+            self._building_items[building_id] = building_item
+        for belt_id, belt_item in room_item._belt_items.items():
+            self._belt_items[belt_id] = belt_item
+
+    def remove_room_item(self, placement_id: str) -> None:
+        """Remove a room item from the scene (CommandHandler protocol)."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        room_item = self._room_items.pop(placement_id, None)
+        if room_item and isinstance(room_item, RoomItem):
+            # Untrack all children
+            for building_id in list(room_item._building_items.keys()):
+                self._building_items.pop(building_id, None)
+            for belt_id in list(room_item._belt_items.keys()):
+                self._belt_items.pop(belt_id, None)
+            self._scene.removeItem(room_item)
+
     def notify_mutation(self) -> None:
         """Notify that the document was mutated (CommandHandler protocol).
 
@@ -390,6 +435,11 @@ class FactoryCanvas(QGraphicsView):
             self._start_box_select(scene_pos)
             return
 
+        # Left click - room creation mode (one-shot tool)
+        if event.button() == Qt.MouseButton.LeftButton and self._tool_mode == ToolMode.CREATE_ROOM:
+            self._start_room_create(scene_pos)
+            return
+
         # Left click on empty canvas in SELECT mode - start box select
         if event.button() == Qt.MouseButton.LeftButton and self._tool_mode == ToolMode.SELECT:
             item_at_pos = self.itemAt(event.pos())
@@ -414,6 +464,12 @@ class FactoryCanvas(QGraphicsView):
         if self._box_select_start and self._box_select_rect:
             scene_pos = self.mapToScene(event.pos())
             self._update_box_select(scene_pos)
+            return
+
+        # Update room creation rect
+        if self._room_create_start and self._room_create_rect:
+            scene_pos = self.mapToScene(event.pos())
+            self._update_room_create(scene_pos)
             return
 
         # Update belt drag preview and check for target port
@@ -462,6 +518,11 @@ class FactoryCanvas(QGraphicsView):
         # Complete box select
         if event.button() == Qt.MouseButton.LeftButton and self._box_select_start:
             self._complete_box_select()
+            return
+
+        # Complete room creation
+        if event.button() == Qt.MouseButton.LeftButton and self._room_create_start:
+            self._complete_room_create()
             return
 
         # Cancel belt drag if released not on an input port
@@ -873,6 +934,108 @@ class FactoryCanvas(QGraphicsView):
         if self._box_select_rect:
             self._scene.removeItem(self._box_select_rect)
             self._box_select_rect = None
+
+    # Room creation methods
+
+    def _start_room_create(self, scene_pos: QPointF) -> None:
+        """Start room creation at the given scene position."""
+        self._room_create_start = scene_pos
+
+        # Create the room rectangle preview (different color from box select)
+        self._room_create_rect = QGraphicsRectItem(QRectF(scene_pos, scene_pos))
+        pen = QPen(QColor(100, 200, 100), 2, Qt.PenStyle.DashLine)
+        self._room_create_rect.setPen(pen)
+        self._room_create_rect.setBrush(QBrush(QColor(100, 200, 100, 30)))
+        self._room_create_rect.setZValue(1000)  # On top
+        self._room_create_rect.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
+        self._scene.addItem(self._room_create_rect)
+
+    def _update_room_create(self, scene_pos: QPointF) -> None:
+        """Update the room creation rectangle to the given position."""
+        if not self._room_create_start or not self._room_create_rect:
+            return
+
+        rect = QRectF(self._room_create_start, scene_pos).normalized()
+        self._room_create_rect.setRect(rect)
+
+    def _complete_room_create(self) -> None:
+        """Complete room creation, validating and creating the room."""
+        from satisfactory_planner.ui.commands import CreateRoomCommand
+
+        if not self._room_create_rect:
+            self._cancel_room_create()
+            return
+
+        rect = self._room_create_rect.rect()
+
+        # Validate: minimum size
+        if rect.width() < 50 or rect.height() < 50:
+            logger.info("Room too small - minimum 50x50")
+            self._cancel_room_create()
+            self._tool_mode = ToolMode.SELECT  # One-shot tool
+            return
+
+        # Determine which scene we're creating in (based on top-left corner)
+        parent_scene_room_id = self.get_room_at_point(rect.topLeft())
+
+        # Get the parent scene
+        if parent_scene_room_id:
+            parent_scene: Scene = self.document.rooms[parent_scene_room_id]
+        else:
+            parent_scene = self.document
+
+        # Validate: no buildings intersected (partially inside)
+        for building in parent_scene.buildings.values():
+            building_rect = self._get_building_rect(building)
+            if rect.intersects(building_rect) and not rect.contains(building_rect):
+                logger.warning("Room boundary cannot intersect buildings")
+                self._cancel_room_create()
+                self._tool_mode = ToolMode.SELECT
+                return
+
+        # Collect buildings completely inside
+        contained_building_ids: list[str] = []
+        for building in parent_scene.buildings.values():
+            if rect.contains(self._get_building_rect(building)):
+                contained_building_ids.append(building.id)
+
+        # Collect belts where BOTH endpoints are inside
+        contained_belt_ids: list[str] = []
+        crossing_belt_ids: list[str] = []
+        for belt in parent_scene.belts.values():
+            source_inside = belt.source_building_id in contained_building_ids
+            dest_inside = belt.dest_building_id in contained_building_ids
+            if source_inside and dest_inside:
+                contained_belt_ids.append(belt.id)
+            elif source_inside or dest_inside:
+                crossing_belt_ids.append(belt.id)
+
+        # Create the room command
+        cmd = CreateRoomCommand(
+            parent_scene_room_id=parent_scene_room_id,
+            rect=(rect.x(), rect.y(), rect.width(), rect.height()),
+            building_ids=tuple(contained_building_ids),
+            belt_ids=tuple(contained_belt_ids),
+            crossing_belt_ids=tuple(crossing_belt_ids),
+            canvas=self,
+        )
+        self.command_stack.execute(cmd)
+
+        self._cancel_room_create()
+        self._tool_mode = ToolMode.SELECT  # One-shot tool
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+
+    def _cancel_room_create(self) -> None:
+        """Cancel the current room creation."""
+        self._room_create_start = None
+        if self._room_create_rect:
+            self._scene.removeItem(self._room_create_rect)
+            self._room_create_rect = None
+
+    def _get_building_rect(self, building: Building) -> QRectF:
+        """Get the bounding rectangle of a building."""
+        w, h = building._get_display_size()
+        return QRectF(building.x, building.y, w, h)
 
     def start_belt_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:
         """Start dragging a belt connection from an output port."""

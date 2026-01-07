@@ -338,8 +338,8 @@ class MainWindow(QMainWindow):
 
         # === 4. Creation Tools ===
         self.create_room_action = QAction("Room", self)
-        self.create_room_action.setToolTip("Create a room/outline boundary")
-        self.create_room_action.setEnabled(False)  # TODO: Implement rooms/outlines
+        self.create_room_action.setToolTip("Create a room (drag to select buildings)")
+        self.create_room_action.triggered.connect(self._start_room_creation)
         toolbar.addAction(self.create_room_action)
 
         self.create_blueprint_action = QAction("Blueprint", self)
@@ -744,6 +744,14 @@ class MainWindow(QMainWindow):
                     tab.canvas._grid_size = size
         except ValueError:
             pass
+
+    def _start_room_creation(self) -> None:
+        """Start room creation mode on current canvas (one-shot tool)."""
+        if self.current_tab and self.current_tab.canvas:
+            from satisfactory_planner.ui.canvas import ToolMode
+
+            self.current_tab.canvas.set_tool_mode(ToolMode.CREATE_ROOM)
+            self.current_tab.canvas.setCursor(Qt.CursorShape.CrossCursor)
 
     def _mark_dirty(self, tab: DocumentTab) -> None:
         """Mark a tab as having unsaved changes."""
