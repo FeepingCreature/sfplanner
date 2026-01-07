@@ -17,7 +17,8 @@ fix:
 	ruff format src/ tests/ spikes/
 
 typecheck:
-	mypy src/ spikes/
+	mypy src/
+	cd spikes/flowsim && mypy . --config-file mypy.ini
 
 check: lint typecheck test
 	@echo "All checks passed!"
