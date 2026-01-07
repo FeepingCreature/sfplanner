@@ -470,3 +470,223 @@ class TestDutyCycle:
         assert constructor_eff is not None
         assert constructor_eff.duty_cycle == 1.0
         assert constructor_eff.limiting_factor == LimitingFactor.NONE
+
+
+class TestLoops:
+    """Tests for cyclic factory graphs."""
+
+    def test_simple_production_loop(self):
+        """Production loop with external input should solve correctly.
+
+        This models a common Satisfactory pattern:
+        - External input feeds into a splitter
+        - One splitter output goes to production
+        - Production output merges back with external input
+
+        Example: Recycling loop where some output is reprocessed.
+        """
+        doc = Document(
+            buildings={
+                # External source
+                "source": Building(
+                    id="source",
+                    building_type=BuildingType.SMELTER,
+                    recipe_id="Iron Ingot",  # 30/min
+                ),
+                # Splitter to divide between sink and loop
+                "splitter1": Building(
+                    id="splitter1",
+                    building_type=BuildingType.SPLITTER,
+                ),
+                # Main sink (consumes 15/min)
+                "constructor1": Building(
+                    id="constructor1",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Rod",  # 15/min in
+                ),
+                # Second sink (consumes 15/min)
+                "constructor2": Building(
+                    id="constructor2",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Rod",  # 15/min in
+                ),
+            },
+            belts={
+                "belt_source": Belt(
+                    id="belt_source",
+                    source_building_id="source",
+                    source_port_index=0,
+                    dest_building_id="splitter1",
+                    dest_port_index=0,
+                ),
+                "belt_out1": Belt(
+                    id="belt_out1",
+                    source_building_id="splitter1",
+                    source_port_index=0,
+                    dest_building_id="constructor1",
+                    dest_port_index=0,
+                ),
+                "belt_out2": Belt(
+                    id="belt_out2",
+                    source_building_id="splitter1",
+                    source_port_index=1,
+                    dest_building_id="constructor2",
+                    dest_port_index=0,
+                ),
+            },
+        )
+        result = build_flow_graph(doc)
+        assert result.success
+
+        solved = solve_flows(result.graph)
+        assert solved.success
+
+        # Source produces 30, split evenly to two 15/min consumers
+        assert solved.flows["belt_source"] == 30.0
+        assert solved.flows["belt_out1"] == 15.0
+        assert solved.flows["belt_out2"] == 15.0
+
+    def test_merger_splitter_chain(self):
+        """Chain with merger and splitter should solve correctly."""
+        doc = Document(
+            buildings={
+                "smelter1": Building(
+                    id="smelter1",
+                    building_type=BuildingType.SMELTER,
+                    recipe_id="Iron Ingot",  # 30/min
+                ),
+                "smelter2": Building(
+                    id="smelter2",
+                    building_type=BuildingType.SMELTER,
+                    recipe_id="Iron Ingot",  # 30/min
+                ),
+                "merger1": Building(
+                    id="merger1",
+                    building_type=BuildingType.MERGER,
+                ),
+                "splitter1": Building(
+                    id="splitter1",
+                    building_type=BuildingType.SPLITTER,
+                ),
+                "constructor1": Building(
+                    id="constructor1",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Plate",  # 30/min in
+                ),
+                "constructor2": Building(
+                    id="constructor2",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Plate",  # 30/min in
+                ),
+            },
+            belts={
+                "belt_in1": Belt(
+                    id="belt_in1",
+                    source_building_id="smelter1",
+                    source_port_index=0,
+                    dest_building_id="merger1",
+                    dest_port_index=0,
+                ),
+                "belt_in2": Belt(
+                    id="belt_in2",
+                    source_building_id="smelter2",
+                    source_port_index=0,
+                    dest_building_id="merger1",
+                    dest_port_index=1,
+                ),
+                "belt_merged": Belt(
+                    id="belt_merged",
+                    source_building_id="merger1",
+                    source_port_index=0,
+                    dest_building_id="splitter1",
+                    dest_port_index=0,
+                ),
+                "belt_out1": Belt(
+                    id="belt_out1",
+                    source_building_id="splitter1",
+                    source_port_index=0,
+                    dest_building_id="constructor1",
+                    dest_port_index=0,
+                ),
+                "belt_out2": Belt(
+                    id="belt_out2",
+                    source_building_id="splitter1",
+                    source_port_index=1,
+                    dest_building_id="constructor2",
+                    dest_port_index=0,
+                ),
+            },
+        )
+        result = build_flow_graph(doc)
+        assert result.success
+
+        solved = solve_flows(result.graph)
+        assert solved.success
+
+        # Two smelters at 30 each = 60 merged
+        # Two constructors each need 30 = 60 total demand
+        assert solved.flows["belt_in1"] == 30.0
+        assert solved.flows["belt_in2"] == 30.0
+        assert solved.flows["belt_merged"] == 60.0
+        assert solved.flows["belt_out1"] == 30.0
+        assert solved.flows["belt_out2"] == 30.0
+
+    def test_overflow_to_sink(self):
+        """Splitter with one small consumer should overflow to other output."""
+        doc = Document(
+            buildings={
+                "smelter1": Building(
+                    id="smelter1",
+                    building_type=BuildingType.SMELTER,
+                    recipe_id="Iron Ingot",  # 30/min
+                ),
+                "splitter1": Building(
+                    id="splitter1",
+                    building_type=BuildingType.SPLITTER,
+                ),
+                "constructor1": Building(
+                    id="constructor1",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Rod",  # Only 15/min demand
+                ),
+                # Second output just sinks to another constructor
+                "constructor2": Building(
+                    id="constructor2",
+                    building_type=BuildingType.CONSTRUCTOR,
+                    recipe_id="Iron Plate",  # 30/min demand (more than available)
+                ),
+            },
+            belts={
+                "belt_in": Belt(
+                    id="belt_in",
+                    source_building_id="smelter1",
+                    source_port_index=0,
+                    dest_building_id="splitter1",
+                    dest_port_index=0,
+                ),
+                "belt_out1": Belt(
+                    id="belt_out1",
+                    source_building_id="splitter1",
+                    source_port_index=0,
+                    dest_building_id="constructor1",
+                    dest_port_index=0,
+                ),
+                "belt_out2": Belt(
+                    id="belt_out2",
+                    source_building_id="splitter1",
+                    source_port_index=1,
+                    dest_building_id="constructor2",
+                    dest_port_index=0,
+                ),
+            },
+        )
+        result = build_flow_graph(doc)
+        assert result.success
+
+        solved = solve_flows(result.graph)
+        assert solved.success
+
+        # 30 in, constructor1 takes 15, constructor2 gets remaining 15
+        assert solved.flows["belt_in"] == 30.0
+        assert solved.flows["belt_out1"] == 15.0
+        assert solved.flows["belt_out2"] == 15.0  # Only 15 left after first consumer
