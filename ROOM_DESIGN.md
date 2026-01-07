@@ -90,6 +90,23 @@ def update_belts_for_building(self, building_id: str, scene: Scene) -> None:
 
 ## Data Model
 
+### Room vs RoomPlacement - Critical Distinction
+
+**Room** is pure data - it contains buildings, belts, ports, width/height, and a name.
+It has NO position. It lives in `document.rooms` keyed by ID.
+
+**RoomPlacement** is a positioned instance - it says "render Room X at position (x, y)".
+It lives in `document.room_placements`. ALL placements are equal peers - there is no
+"original" vs "copy". The Room exists independently in the ether.
+
+When you:
+- **Edit inside any placement**: You're editing the underlying Room. All placements update.
+- **Delete a placement**: Just removes that view. Room persists if other placements exist.
+- **Copy/paste a placement**: Creates a new RoomPlacement pointing to the same Room.
+- **Delink a placement**: Deep-copies the Room, points this placement at the copy.
+
+This is like "instances" in game engines or "symbols" in Flash/Animate.
+
 ### Room
 
 ```python
