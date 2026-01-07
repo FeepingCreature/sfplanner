@@ -61,7 +61,7 @@ def compute_belt_path(
 ) -> BeltPath | None:
     """
     Compute optimal Dubins path (circle-line-circle).
-    
+
     Tries all 4 path types (LL, RR, LR, RL) and picks the shortest.
     """
     # If points are very close, return None (caller should handle)

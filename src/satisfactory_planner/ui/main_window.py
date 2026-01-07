@@ -22,7 +22,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from satisfactory_planner.core import Document, FlowSolver, load_document, save_document
+from satisfactory_planner.core import (
+    DEFAULT_GRID_SIZE,
+    Document,
+    FlowSolver,
+    load_document,
+    save_document,
+)
 from satisfactory_planner.ui.canvas import FactoryCanvas
 from satisfactory_planner.ui.commands import CommandStack
 from satisfactory_planner.ui.panels.library_panel import LibraryPanel
@@ -463,7 +469,7 @@ class MainWindow(QMainWindow):
 
     def _on_document_mutated(self, tab: DocumentTab) -> None:
         """Handle document mutation from commands.
-        
+
         This is called directly by commands via the canvas mutation callback.
         Centralizes all the effects of a document change.
         """
@@ -485,7 +491,6 @@ class MainWindow(QMainWindow):
 
         # Find the element (could be building or belt)
         if element_id in doc.buildings:
-            building = doc.buildings[element_id]
             # Select and center on the building
             canvas.scene().clearSelection()
             for item in canvas.scene().items():
@@ -495,7 +500,6 @@ class MainWindow(QMainWindow):
                     canvas.centerOn(item)
                     break
         elif element_id in doc.belts:
-            belt = doc.belts[element_id]
             # Select and center on the belt
             canvas.scene().clearSelection()
             for item in canvas.scene().items():

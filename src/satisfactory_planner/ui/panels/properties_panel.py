@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 class RecipeEditorDialog(QDialog):
     """Dialog for viewing and editing recipes.
-    
+
     Features auto-save: changes are applied immediately when fields change.
     """
 
@@ -255,7 +255,7 @@ class RecipeEditorDialog(QDialog):
         self.power_label.setText(f"{power} MW")
 
         # Show/hide input rows
-        for i, (name_edit, rate_spin, row_widget) in enumerate(self.input_rows):
+        for i, (_name_edit, _rate_spin, row_widget) in enumerate(self.input_rows):
             visible = i < num_inputs
             row_widget.setVisible(visible)
             # Find and hide the label too
@@ -266,7 +266,7 @@ class RecipeEditorDialog(QDialog):
                     label_item.widget().setVisible(visible)
 
         # Show/hide output rows
-        for i, (name_edit, rate_spin, row_widget) in enumerate(self.output_rows):
+        for i, (_name_edit, _rate_spin, row_widget) in enumerate(self.output_rows):
             visible = i < num_outputs
             row_widget.setVisible(visible)
             label_index = self.details_layout.indexOf(row_widget)

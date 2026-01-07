@@ -20,10 +20,7 @@ from satisfactory_planner.core.models import (
 def get_user_data_dir() -> Path:
     """Get XDG user data directory for the application."""
     xdg_data_home = os.environ.get("XDG_DATA_HOME")
-    if xdg_data_home:
-        base = Path(xdg_data_home)
-    else:
-        base = Path.home() / ".local" / "share"
+    base = Path(xdg_data_home) if xdg_data_home else Path.home() / ".local" / "share"
 
     app_dir = base / "satisfactory-planner"
     app_dir.mkdir(parents=True, exist_ok=True)
@@ -108,7 +105,7 @@ def load_user_recipes() -> dict[str, Recipe]:
 
 def load_all_recipes() -> dict[str, Recipe]:
     """Load all recipes (base game + user recipes).
-    
+
     User recipes override base recipes with the same ID.
     """
     recipes = load_base_recipes()
@@ -203,7 +200,7 @@ def document_to_dict(document: Document, view_state: dict[str, Any] | None = Non
 
 def dict_to_document(data: dict[str, Any]) -> tuple[Document, dict[str, Any] | None]:
     """Deserialize a Document from a dictionary.
-    
+
     Returns:
         Tuple of (document, view_state) where view_state may be None.
     """
@@ -234,7 +231,7 @@ def save_document(document: Document, path: Path | str, view_state: dict[str, An
 
 def load_document(path: Path | str) -> tuple[Document, dict[str, Any] | None]:
     """Load a document from a .sfp file.
-    
+
     Returns:
         Tuple of (document, view_state) where view_state may be None.
     """

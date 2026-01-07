@@ -2,8 +2,8 @@
 
 all: check
 
-test:
-	pytest
+# test target runs all checks (lint/format/typecheck) so CI catches issues
+test: all
 
 lint:
 	ruff check src/ tests/

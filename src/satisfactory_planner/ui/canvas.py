@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
@@ -23,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import (
+    DEFAULT_GRID_SIZE,
     Belt,
     Building,
     BuildingType,
@@ -31,7 +33,6 @@ from satisfactory_planner.core import (
 from satisfactory_planner.core.models import generate_id
 from satisfactory_planner.core.routing import Point, compute_belt_path, get_arc_points
 from satisfactory_planner.ui.commands import (
-    DEFAULT_GRID_SIZE,
     CommandStack,
     ConnectBeltCommand,
     DeleteItemsCommand,
@@ -57,7 +58,7 @@ class GhostBuildingItem(BuildingItem):
 
 class FactoryCanvas(QGraphicsView):
     """The main factory canvas for placing buildings and belts.
-    
+
     Implements CommandHandler protocol to receive UI updates from commands.
     """
 
@@ -99,7 +100,7 @@ class FactoryCanvas(QGraphicsView):
         self._hover_target_port: object | None = None  # PortItem being hovered during drag
 
         # Mutation callback (set by MainWindow to handle warnings, dirty flag, etc.)
-        self._mutation_callback: callable | None = None
+        self._mutation_callback: Callable[[], None] | None = None
 
         # Enable drag-drop
         self.setAcceptDrops(True)
@@ -243,7 +244,7 @@ class FactoryCanvas(QGraphicsView):
 
     def notify_mutation(self) -> None:
         """Notify that the document was mutated (CommandHandler protocol).
-        
+
         This is called by commands after they modify the document.
         The MainWindow connects to this via a callback to update warnings, dirty flag, etc.
         """
@@ -304,14 +305,12 @@ class FactoryCanvas(QGraphicsView):
             self.set_placement_mode(None)
             return
 
-        # Left click
-        if event.button() == Qt.LeftButton:
-            # Placement mode
-            if self._placement_mode:
-                snapped = self._snap_to_grid(scene_pos)
-                self._place_building(self._placement_mode, snapped.x(), snapped.y())
-                # Stay in placement mode for rapid placement
-                return
+        # Left click - placement mode
+        if event.button() == Qt.LeftButton and self._placement_mode:
+            snapped = self._snap_to_grid(scene_pos)
+            self._place_building(self._placement_mode, snapped.x(), snapped.y())
+            # Stay in placement mode for rapid placement
+            return
 
         super().mousePressEvent(event)
         self._emit_selection_changed()
@@ -640,7 +639,7 @@ class FactoryCanvas(QGraphicsView):
 
     def on_building_moved(self, building_id: str, old_x: float, old_y: float) -> None:
         """Handle a building being moved.
-        
+
         Args:
             building_id: The building that was moved
             old_x: Original x position before the move

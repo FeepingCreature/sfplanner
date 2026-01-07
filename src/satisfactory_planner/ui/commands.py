@@ -108,7 +108,7 @@ class PlaceBuildingCommand(Command):
 @dataclass(frozen=True)
 class DeleteItemsCommand(Command):
     """Command to delete buildings and belts.
-    
+
     Buildings and belts to delete are captured at construction time.
     """
 
@@ -163,7 +163,7 @@ class DeleteItemsCommand(Command):
 @dataclass(frozen=True)
 class MoveBuildingsCommand(Command):
     """Command to move buildings.
-    
+
     Stores original and new positions for idempotent execute/undo.
     """
 
@@ -174,7 +174,7 @@ class MoveBuildingsCommand(Command):
 
     def execute(self) -> None:
         any_moved = False
-        for building_id, old_x, old_y, new_x, new_y in self.positions:
+        for building_id, _old_x, _old_y, new_x, new_y in self.positions:
             building = self.document.buildings.get(building_id)
             if not building:
                 logger.warning(f"MoveBuildingsCommand.execute: building {building_id} not found")
@@ -192,7 +192,7 @@ class MoveBuildingsCommand(Command):
 
     def undo(self) -> None:
         any_moved = False
-        for building_id, old_x, old_y, new_x, new_y in self.positions:
+        for building_id, old_x, old_y, _new_x, _new_y in self.positions:
             building = self.document.buildings.get(building_id)
             if not building:
                 logger.warning(f"MoveBuildingsCommand.undo: building {building_id} not found")

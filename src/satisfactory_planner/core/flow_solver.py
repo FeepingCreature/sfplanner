@@ -70,7 +70,7 @@ class FlowSolver:
 
     def _check_belt_capacity(self) -> None:
         """Check for belts that are over capacity."""
-        for belt in self.document.belts.values():
+        for _belt in self.document.belts.values():
             # TODO: Calculate actual flow rate through belt
             # For now, just check if belt exists
             pass
