@@ -6,7 +6,28 @@ import math
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    pass
+
+
+@runtime_checkable
+class Scene(Protocol):
+    """Protocol for anything that can contain buildings and belts.
+
+    Both Document and Room implement this protocol.
+    """
+
+    buildings: dict[str, Building]
+    belts: dict[str, Belt]
+
+    def add_building(self, building: Building) -> None: ...
+    def remove_building(self, building_id: str) -> Building | None: ...
+    def add_belt(self, belt: Belt) -> None: ...
+    def remove_belt(self, belt_id: str) -> Belt | None: ...
+    def get_belts_for_building(self, building_id: str) -> list[Belt]: ...
+    def is_port_connected(self, building_id: str, port_index: int, is_output: bool) -> bool: ...
 
 
 class BuildingSpec(NamedTuple):

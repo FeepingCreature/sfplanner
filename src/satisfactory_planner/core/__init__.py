@@ -23,6 +23,7 @@ from satisfactory_planner.core.models import (
     Recipe,
     Room,
     RoomPlacement,
+    Scene,
 )
 from satisfactory_planner.core.persistence import (
     load_all_recipes,
@@ -52,6 +53,7 @@ __all__ = [
     "RGB",
     "Room",
     "RoomPlacement",
+    "Scene",
     "SELECTION_MARGIN",
     "Warning",
     "WarningType",

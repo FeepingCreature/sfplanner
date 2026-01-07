@@ -36,7 +36,7 @@ from satisfactory_planner.core import (
     BuildingType,
     Document,
 )
-from satisfactory_planner.core.models import generate_id
+from satisfactory_planner.core.models import Scene, generate_id
 from satisfactory_planner.core.routing import Point, compute_belt_path
 from satisfactory_planner.ui.commands import (
     BuildingMove,
@@ -190,9 +190,14 @@ class FactoryCanvas(QGraphicsView):
         """Return the grid size."""
         return self._grid_size
 
-    def update_belts_for_building(self, building_id: str) -> None:
-        """Redraw all belts connected to a building."""
-        self._update_belts_for_building(building_id)
+    def update_belts_for_building(self, building_id: str, scene: Scene | None = None) -> None:
+        """Redraw all belts connected to a building.
+
+        Args:
+            building_id: The building whose belts need updating
+            scene: The scene containing the building (defaults to document for backwards compat)
+        """
+        self._update_belts_for_building(building_id, scene)
 
     def set_placement_mode(self, building_type: BuildingType | None) -> None:
         """Enter placement mode for a building type."""
@@ -1046,13 +1051,19 @@ class FactoryCanvas(QGraphicsView):
         # Redraw all connected belts using absolute positions from model
         self._update_belts_for_building(building_id)
 
-    def _update_belts_for_building(self, building_id: str) -> None:
-        """Redraw all belts connected to a building using current model positions."""
-        for belt in self.document.get_belts_for_building(building_id):
+    def _update_belts_for_building(self, building_id: str, scene: Scene | None = None) -> None:
+        """Redraw all belts connected to a building using current model positions.
+
+        Args:
+            building_id: The building whose belts need updating
+            scene: The scene containing the building (defaults to document)
+        """
+        target_scene: Scene = scene if scene is not None else self.document
+        for belt in target_scene.get_belts_for_building(building_id):
             belt_item = self._belt_items.get(belt.id)
             if belt_item:
-                source = self.document.buildings.get(belt.source_building_id)
-                dest = self.document.buildings.get(belt.dest_building_id)
+                source = target_scene.buildings.get(belt.source_building_id)
+                dest = target_scene.buildings.get(belt.dest_building_id)
                 if source and dest:
                     belt_item.update_path(source, dest)
 

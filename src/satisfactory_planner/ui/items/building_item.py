@@ -19,6 +19,7 @@ from satisfactory_planner.core import (
     Building,
     BuildingType,
 )
+from satisfactory_planner.core.models import Scene
 from satisfactory_planner.ui.items.port_item import PortItem
 
 if TYPE_CHECKING:
@@ -34,11 +35,16 @@ def _get_building_color(building_type: BuildingType) -> QColor:
 class BuildingItem(QGraphicsRectItem):
     """A draggable building item on the canvas."""
 
-    def __init__(self, building: Building, canvas: FactoryCanvas) -> None:
+    def __init__(
+        self, building: Building, canvas: FactoryCanvas, scene: Scene | None = None
+    ) -> None:
         super().__init__()
 
         self.building = building
         self.canvas = canvas
+        # Scene this building belongs to (Document or Room)
+        # If not provided, defaults to canvas.document for backwards compatibility
+        self._scene: Scene = scene if scene is not None else canvas.document
 
         # Setup
         self._setup_rect()
@@ -388,7 +394,7 @@ class BuildingItem(QGraphicsRectItem):
             new_pos = self.pos()
             self.building.x = new_pos.x()
             self.building.y = new_pos.y()
-            self.canvas.update_belts_for_building(self.building.id)
+            self.canvas.update_belts_for_building(self.building.id, self._scene)
             # Update selection outline during drag
             self.canvas._update_selection_outline()
         return super().itemChange(change, value)
@@ -410,3 +416,13 @@ class BuildingItem(QGraphicsRectItem):
         else:
             # Pass to parent for zoom
             event.ignore()
+
+    @property
+    def building_scene(self) -> Scene:
+        """Get the scene this building belongs to."""
+        return self._scene
+
+    @building_scene.setter
+    def building_scene(self, scene: Scene) -> None:
+        """Set the scene this building belongs to."""
+        self._scene = scene
