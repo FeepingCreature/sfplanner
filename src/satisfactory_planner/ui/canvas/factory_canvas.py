@@ -8,7 +8,7 @@ from collections.abc import Callable
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -288,33 +288,34 @@ class FactoryCanvas(QGraphicsView):
         room_item = RoomItem(placement, room, parent_scene, self)
         self._scene.addItem(room_item)
 
-        # IMPORTANT: Refresh children AFTER adding to scene.
-        # RoomItem.__init__ calls _populate_children() before the item is in the scene,
-        # which can cause Qt rendering issues. Refreshing after scene addition ensures
-        # child items are properly initialized in the scene graph.
-        room_item.refresh()
-
         placement_id = getattr(placement, "id", "")
         self._room_items[placement_id] = room_item
-        for building_id, building_item in room_item._building_items.items():
-            self._building_items[building_id] = building_item
-        for belt_id, belt_item in room_item._belt_items.items():
-            self._belt_items[belt_id] = belt_item
 
-        # Refresh all OTHER RoomItems displaying the same room
-        # This ensures linked rooms stay in sync after undo/redo
-        for other_placement_id, other_room_item in list(self._room_items.items()):
-            if (
-                isinstance(other_room_item, RoomItem)
-                and other_room_item.room.id == room.id
-                and other_placement_id != placement_id
-            ):
-                other_room_item.refresh()
-                # Re-register refreshed items
-                for building_id, building_item in other_room_item._building_items.items():
-                    self._building_items[building_id] = building_item
-                for belt_id, belt_item in other_room_item._belt_items.items():
-                    self._belt_items[belt_id] = belt_item
+        # IMPORTANT: Defer refresh to next event loop iteration.
+        # Qt needs to finish processing the scene addition before child items
+        # can be properly rendered. Using QTimer.singleShot(0, ...) ensures
+        # the refresh happens after the current event is fully processed.
+        def deferred_refresh() -> None:
+            room_item.refresh()
+            # Re-register items after refresh
+            for building_id, building_item in room_item._building_items.items():
+                self._building_items[building_id] = building_item
+            for belt_id, belt_item in room_item._belt_items.items():
+                self._belt_items[belt_id] = belt_item
+            # Refresh linked rooms too
+            for other_placement_id, other_room_item in list(self._room_items.items()):
+                if (
+                    isinstance(other_room_item, RoomItem)
+                    and other_room_item.room.id == room.id
+                    and other_placement_id != placement_id
+                ):
+                    other_room_item.refresh()
+                    for building_id, building_item in other_room_item._building_items.items():
+                        self._building_items[building_id] = building_item
+                    for belt_id, belt_item in other_room_item._belt_items.items():
+                        self._belt_items[belt_id] = belt_item
+
+        QTimer.singleShot(0, deferred_refresh)
 
     def remove_room_item(self, placement_id: str) -> None:
         """Remove a room item from the scene."""

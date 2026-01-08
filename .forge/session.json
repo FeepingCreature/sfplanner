@@ -966,6 +966,33 @@
       "streaming": true,
       "actual_cost": 0.101423,
       "generation_id": "gen-1767908709-fM8AxEOgSWa4fbWF2BYX"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767908764067.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767908764067.json",
+      "timestamp": 1767908764.0682776,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.2968,
+      "generation_id": "gen-1767908764-T7rEfOfpxGW9hUFsF5yq"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767908770646.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767908770646.json",
+      "timestamp": 1767908770.6479876,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.11545025,
+      "generation_id": "gen-1767908770-u1HMrmyvCeQSXl9JHct2"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767908796836.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767908796836.json",
+      "timestamp": 1767908796.8376436,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.10571825,
+      "generation_id": "gen-1767908797-yyan2fi6atA5vKpN4InE"
     }
   ],
   "messages": [
@@ -3546,6 +3573,107 @@
     {
       "role": "assistant",
       "content": "Added a debug \u21bb button to the toolbar that forces refresh of all room items. \n\nTry: place building \u2192 create room \u2192 undo \u2192 redo (building invisible) \u2192 click \u21bb button\n\nIf the button makes the building visible, then we know it's a timing issue with when refresh() is called. If it doesn't fix it, then there's something else going on with the room's state after undo/redo."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 69794ee5",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "yeah hitting the button makes it visible.\n\nfuck. okay. yeah. had to be something like that. because it worked from copypaste but not from itself. the only difference was timing."
+    },
+    {
+      "role": "assistant",
+      "content": "So it's definitely a timing issue. The refresh in `add_room_item()` is being called, but Qt hasn't finished processing the scene addition yet.\n\nLet me try deferring the refresh with `QTimer.singleShot(0, ...)` which schedules it after the current event loop iteration:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas/factory_canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01WiTk5tUETUXD1avrsyJKWC",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01WiTk5tUETUXD1avrsyJKWC",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/factory_canvas.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me try deferring the refresh with `QTimer.singleShot(0, ...)`:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\nfrom PySide6.QtCore import QEvent, QPointF, QRectF, Qt, Signal\n</search>\n<replace>\nfrom PySide6.QtCore import QEvent, QPointF, QRectF, Qt, QTimer, Signal\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def add_room_item(self, placement: RoomPlacement, room: Room) -> None:\n        \"\"\"Add a room item to the scene.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        parent_scene_id = getattr(placement, \"parent_scene_id\", None)\n        if parent_scene_id:\n            parent_scene: Scene = self.document.rooms[parent_scene_id]\n        else:\n            parent_scene = self.document\n\n        room_item = RoomItem(placement, room, parent_scene, self)\n        self._scene.addItem(room_item)\n\n        # IMPORTANT: Refresh children AFTER adding to scene.\n        # RoomItem.__init__ calls _populate_children() before the item is in the scene,\n        # which can cause Qt rendering issues. Refreshing after scene addition ensures\n        # child items are properly initialized in the scene graph.\n        room_item.refresh()\n\n        placement_id = getattr(placement, \"id\", \"\")\n        self._room_items[placement_id] = room_item\n        for building_id, building_item in room_item._building_items.items():\n            self._building_items[building_id] = building_item\n        for belt_id, belt_item in room_item._belt_items.items():\n            self._belt_items[belt_id] = belt_item\n\n        # Refresh all OTHER RoomItems displaying the same room\n        # This ensures linked rooms stay in sync after undo/redo\n        for other_placement_id, other_room_item in list(self._room_items.items()):\n            if (\n                isinstance(other_room_item, RoomItem)\n                and other_room_item.room.id == room.id\n                and other_placement_id != placement_id\n            ):\n                other_room_item.refresh()\n                # Re-register refreshed items\n                for building_id, building_item in other_room_item._building_items.items():\n                    self._building_items[building_id] = building_item\n                for belt_id, belt_item in other_room_item._belt_items.items():\n                    self._belt_items[belt_id] = belt_item\n</search>\n<replace>\n    def add_room_item(self, placement: RoomPlacement, room: Room) -> None:\n        \"\"\"Add a room item to the scene.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        parent_scene_id = getattr(placement, \"parent_scene_id\", None)\n        if parent_scene_id:\n            parent_scene: Scene = self.document.rooms[parent_scene_id]\n        else:\n            parent_scene = self.document\n\n        room_item = RoomItem(placement, room, parent_scene, self)\n        self._scene.addItem(room_item)\n\n        placement_id = getattr(placement, \"id\", \"\")\n        self._room_items[placement_id] = room_item\n\n        # IMPORTANT: Defer refresh to next event loop iteration.\n        # Qt needs to finish processing the scene addition before child items\n        # can be properly rendered. Using QTimer.singleShot(0, ...) ensures\n        # the refresh happens after the current event is fully processed.\n        def deferred_refresh() -> None:\n            room_item.refresh()\n            # Re-register items after refresh\n            for building_id, building_item in room_item._building_items.items():\n                self._building_items[building_id] = building_item\n            for belt_id, belt_item in room_item._belt_items.items():\n                self._belt_items[belt_id] = belt_item\n            # Refresh linked rooms too\n            for other_placement_id, other_room_item in list(self._room_items.items()):\n                if (\n                    isinstance(other_room_item, RoomItem)\n                    and other_room_item.room.id == room.id\n                    and other_placement_id != placement_id\n                ):\n                    other_room_item.refresh()\n                    for building_id, building_item in other_room_item._building_items.items():\n                        self._building_items[building_id] = building_item\n                    for belt_id, belt_item in other_room_item._belt_items.items():\n                        self._belt_items[belt_id] = belt_item\n\n        QTimer.singleShot(0, deferred_refresh)\n</replace>\n</edit>",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_01CNPnpa2RDko499FDKh2P2z",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01CNPnpa2RDko499FDKh2P2z",
+      "content": "{\"output\": \"ruff check --fix src/ tests/ spikes/\\nAll checks passed!\\nruff format src/ tests/ spikes/\\n76 files left unchanged\\nruff check src/ tests/ spikes/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 45 source files\\ncd spikes/flowsim && mypy . --config-file mypy.ini\\nSuccess: no issues found in 18 source files\\npytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs__d_8dqd0\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollected 48 items\\n\\ntests/test_core/test_commands.py .........                               [ 18%]\\ntests/test_core/test_flow_solver.py .......                              [ 33%]\\ntests/test_core/test_models.py .........                                 [ 52%]\\ntests/test_core/test_room_commands.py ..............                     [ 81%]\\ntests/test_smoke.py ..                                                   [ 85%]\\ntests/test_ui/test_canvas.py .......                                     [100%]\\n\\n============================== 48 passed in 0.14s ==============================\\ncd spikes/flowsim && pytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs__d_8dqd0\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollected 49 items\\n\\ntests/test_builder.py ...................                                [ 38%]\\ntests/test_dangling.py .....                                             [ 48%]\\ntests/test_info.py ..                                                    [ 53%]\\ntests/test_overcapacity.py ....                                          [ 61%]\\ntests/test_solver.py ..............                                      [ 89%]\\ntests/test_underflow.py .....                                            [100%]\\n\\n============================== 49 passed in 0.07s ==============================\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Tests pass. Let me commit this:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fix invisible buildings after redo with deferred refresh\\n\\nThe root cause was that Qt needs to finish processing the scene\\naddition before child items can be properly rendered. The refresh()\\ncall was happening synchronously, before Qt had fully processed the\\naddItem() call.\\n\\nFix: Use QTimer.singleShot(0, ...) to defer the refresh to the next\\nevent loop iteration, ensuring Qt has finished processing the scene\\ngraph update before we recreate child items.\"}",
+            "name": "commit"
+          },
+          "id": "toolu_vrtx_01LUxB85y42P93cFB1xdLtJi",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"src/satisfactory_planner/ui/canvas/factory_canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_016ufsBamRPXjSfxXownh9xZ",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fixed! Used `QTimer.singleShot(0, deferred_refresh)` to defer the refresh to the next event loop iteration.\\n\\n**The issue:** Qt needs to fully process `addItem()` before child items can be properly rendered. Calling `refresh()` synchronously was too early - Qt hadn't finished updating the scene graph.\\n\\n**The fix:** Defer the refresh with `QTimer.singleShot(0, ...)` which schedules it after the current event is fully processed.\\n\\nPlease test: place building \u2192 create room \u2192 undo \u2192 redo. The building should now be visible immediately without needing the debug button.\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01BP9kkaKH5qS43bhthsiaFa",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01LUxB85y42P93cFB1xdLtJi",
+      "content": "{\"commit\": \"41adb247e32e\", \"message\": \"Committed: 99 file(s) modified/created\", \"side_effects\": [\"mid_turn_commit\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_016ufsBamRPXjSfxXownh9xZ",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"src/satisfactory_planner/ui/canvas/factory_canvas.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BP9kkaKH5qS43bhthsiaFa",
+      "content": "{\"done\": true, \"message\": \"Fixed! Used `QTimer.singleShot(0, deferred_refresh)` to defer the refresh to the next event loop iteration.\\n\\n**The issue:** Qt needs to fully process `addItem()` before child items can be properly rendered. Calling `refresh()` synchronously was too early - Qt hadn't finished updating the scene graph.\\n\\n**The fix:** Defer the refresh with `QTimer.singleShot(0, ...)` which schedules it after the current event is fully processed.\\n\\nPlease test: place building \\u2192 create room \\u2192 undo \\u2192 redo. The building should now be visible immediately without needing the debug button.\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Fixed! Used `QTimer.singleShot(0, deferred_refresh)` to defer the refresh to the next event loop iteration.\n\n**The issue:** Qt needs to fully process `addItem()` before child items can be properly rendered. Calling `refresh()` synchronously was too early - Qt hadn't finished updating the scene graph.\n\n**The fix:** Defer the refresh with `QTimer.singleShot(0, ...)` which schedules it after the current event is fully processed.\n\nPlease test: place building \u2192 create room \u2192 undo \u2192 redo. The building should now be visible immediately without needing the debug button."
     }
   ]
 }
