@@ -49,6 +49,13 @@ module = [
 ]
 ignore_missing_imports = true
 
+# Vendored third-party code - skip type checking
+[[tool.mypy.overrides]]
+module = [
+    "satisfactory_planner.core.linprog",
+]
+ignore_errors = true
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
@@ -57,6 +64,7 @@ src = ["src", "tests"]
 exclude = [
     "spikes/flowsim/linprog.py",
     "spikes/scipy_size_test/linprog.py",
+    "src/satisfactory_planner/core/linprog.py",
 ]
 
 [tool.ruff.lint]

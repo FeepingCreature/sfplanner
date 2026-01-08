@@ -3,6 +3,15 @@
 Note: Commands have been moved to ui.commands as they are a UI concern (undo/redo).
 """
 
+from satisfactory_planner.core.flow_models import (
+    BuildingEfficiency,
+    FlowEdge,
+    FlowGraph,
+    FlowNode,
+    FlowPort,
+    LimitingFactor,
+    NodeType,
+)
 from satisfactory_planner.core.flow_solver import FlowSolver, Warning, WarningType
 from satisfactory_planner.core.models import (
     BELT_CAPACITIES,
@@ -39,9 +48,11 @@ from satisfactory_planner.core.persistence import (
 )
 
 __all__ = [
+    # Models
     "Belt",
     "BELT_CAPACITIES",
     "Building",
+    "BuildingEfficiency",
     "BuildingSpec",
     "BuildingType",
     "BUILDING_COLORS",
@@ -49,9 +60,15 @@ __all__ = [
     "Connector",
     "DEFAULT_GRID_SIZE",
     "Document",
+    "FlowEdge",
+    "FlowGraph",
+    "FlowNode",
+    "FlowPort",
     "FlowSolver",
     "ItemRate",
+    "LimitingFactor",
     "LOGISTICS_DISPLAY_SIZE",
+    "NodeType",
     "Outline",
     "Recipe",
     "RGB",
@@ -61,6 +78,7 @@ __all__ = [
     "SELECTION_MARGIN",
     "Warning",
     "WarningType",
+    # Persistence
     "delete_blueprint",
     "load_all_recipes",
     "load_base_recipes",
