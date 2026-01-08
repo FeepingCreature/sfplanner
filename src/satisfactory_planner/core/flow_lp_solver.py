@@ -147,7 +147,8 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
         outgoing = graph.get_outgoing_edges(node_id)
 
         if node.node_type == NodeType.MINER:
-            # Miner: no inputs, output <= production rate (can produce less if not needed)
+            # Miner/Source: no inputs, output <= production rate (can produce less if not needed)
+            # The port rate comes from max_rate for Source, or tier-based rate for Miner
             for i, out_edge in enumerate(outgoing):
                 if i < len(node.outputs):
                     row = [0.0] * n_edges
@@ -231,8 +232,17 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                 equality_rows.append(row)
                 equality_rhs.append(0.0)
 
-        elif node.node_type in (NodeType.SINK, NodeType.PORT_OUT):
-            # Sinks just consume whatever comes in
+        elif node.node_type == NodeType.SINK:
+            # Sink inputs are limited by the port rate (which comes from max_rate)
+            for i, in_edge in enumerate(incoming):
+                if i < len(node.inputs) and node.inputs[i].rate < 99999:
+                    row = [0.0] * n_edges
+                    row[edge_to_idx[in_edge.id]] = 1.0
+                    inequality_rows.append(row)
+                    inequality_rhs.append(node.inputs[i].rate)
+
+        elif node.node_type == NodeType.PORT_OUT:
+            # Port outputs just pass through
             pass
 
         elif node.node_type == NodeType.PORT_IN:
