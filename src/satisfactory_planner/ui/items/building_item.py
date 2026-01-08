@@ -117,9 +117,11 @@ class BuildingItem(QGraphicsRectItem):
 
     def _setup_flags(self) -> None:
         """Configure item flags."""
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
+        # PORT buildings are fixed to room boundary - not movable/selectable
+        is_port = self.building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, not is_port)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, not is_port)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, not is_port)
 
     def _setup_ports(self) -> None:
         """Create port items based on building type and rotation."""

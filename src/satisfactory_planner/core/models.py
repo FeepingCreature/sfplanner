@@ -89,9 +89,11 @@ BUILDING_METADATA: dict[BuildingType, BuildingSpec] = {
     BuildingType.MINER: BuildingSpec(80, 80, 0, 1, 5.0),  # Power varies by tier
     BuildingType.SPLITTER: BuildingSpec(60, 60, 1, 3, 0.0),
     BuildingType.MERGER: BuildingSpec(60, 60, 3, 1, 0.0),
-    # Ports: small items on room boundary, 1 input OR 1 output (not both)
-    BuildingType.PORT_IN: BuildingSpec(30, 30, 1, 0, 0.0),
-    BuildingType.PORT_OUT: BuildingSpec(30, 30, 0, 1, 0.0),
+    # Ports: from INSIDE the room's perspective
+    # PORT_IN brings items into room = source inside (0 inputs, 1 output)
+    # PORT_OUT sends items out of room = sink inside (1 input, 0 outputs)
+    BuildingType.PORT_IN: BuildingSpec(30, 30, 0, 1, 0.0),
+    BuildingType.PORT_OUT: BuildingSpec(30, 30, 1, 0, 0.0),
     BuildingType.SOURCE: BuildingSpec(50, 50, 0, 1, 0.0),
     BuildingType.SINK: BuildingSpec(50, 50, 1, 0, 0.0),
 }
