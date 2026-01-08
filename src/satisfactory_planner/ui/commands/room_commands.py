@@ -7,6 +7,7 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from satisfactory_planner.core.models import PORT_EDGE_OFFSET
 from satisfactory_planner.ui.commands.base import Command, get_scene
 
 if TYPE_CHECKING:
@@ -241,7 +242,7 @@ class CreateRoomCommand(Command):
                 port = Building(
                     id=port_id,
                     building_type=BuildingType.PORT_OUT,
-                    x=room_w - 30,  # Right edge
+                    x=room_w - PORT_EDGE_OFFSET,  # Right edge
                     y=source_building.y,
                     rotation=0,
                 )

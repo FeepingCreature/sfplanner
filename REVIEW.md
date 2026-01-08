@@ -127,8 +127,8 @@ ui/
 
 1. [x] Remove `Connector`, `Outline`, `Document.outlines` *(done)*
 2. [ ] Add `Building.item_id` for MINER/SOURCE/SINK
-3. [ ] Define constants for magic numbers
-4. [ ] Wire or remove disabled toolbar buttons
+3. [x] Define constants for magic numbers *(done: INFINITE_RATE, FLOW_TOLERANCE, BOTTLENECK_TOLERANCE, PORT_EDGE_OFFSET, MIN_ROOM_SIZE)*
+4. [x] Wire or remove disabled toolbar buttons *(done: removed show_grid_action, show_leftovers_action)*
 5. [ ] Add tests for room commands (CreateRoomCommand, DelinkRoomCommand)
 6. [ ] Use specific types in Signal declarations where possible
 

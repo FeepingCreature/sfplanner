@@ -7,6 +7,11 @@ the abstract flow of items through the factory for LP solving.
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
+# Flow simulation constants
+INFINITE_RATE = 100000.0  # "Unlimited" rate for sources/sinks
+FLOW_TOLERANCE = 0.01  # Tolerance for flow rate comparisons
+BOTTLENECK_TOLERANCE = 0.1  # Tolerance for bottleneck detection
+
 
 class NodeType(Enum):
     """Types of nodes in the flow graph."""

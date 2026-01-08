@@ -9,6 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from satisfactory_planner.core.flow_models import (
+    BOTTLENECK_TOLERANCE,
+    FLOW_TOLERANCE,
+    INFINITE_RATE,
     BuildingEfficiency,
     FlowGraph,
     FlowNode,
@@ -104,7 +107,7 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
         # A belt is a bottleneck if:
         # 1. Theoretical flow exceeds actual
         # 2. Actual flow is at or near belt capacity
-        if theo > actual + 0.1 and actual >= edge.capacity - 0.1:
+        if theo > actual + BOTTLENECK_TOLERANCE and actual >= edge.capacity - BOTTLENECK_TOLERANCE:
             bottlenecks[edge_id] = (theo, actual)
 
     # Compute efficiencies using actual flows
@@ -235,7 +238,7 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
         elif node.node_type == NodeType.SINK:
             # Sink inputs are limited by the port rate (which comes from max_rate)
             for i, in_edge in enumerate(incoming):
-                if i < len(node.inputs) and node.inputs[i].rate < 99999:
+                if i < len(node.inputs) and node.inputs[i].rate < INFINITE_RATE - 1:
                     row = [0.0] * n_edges
                     row[edge_to_idx[in_edge.id]] = 1.0
                     inequality_rows.append(row)
@@ -268,7 +271,7 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
             upper_bound = edge.capacity if edge.capacity > 0 else 10000.0
         else:
             # No belt limits - use very high capacity for "theoretical" solve
-            upper_bound = 100000.0
+            upper_bound = INFINITE_RATE
         row = [0.0] * n_edges
         row[idx] = 1.0
         inequality_rows.append(row)
@@ -368,9 +371,9 @@ def _find_limiting_factor(
     for i, in_edge in enumerate(incoming):
         if i < len(node.inputs):
             actual_input = flows.get(in_edge.id, 0.0)
-            if actual_input < node.inputs[i].rate - 0.01:
+            if actual_input < node.inputs[i].rate - FLOW_TOLERANCE:
                 edge = graph.edges[in_edge.id]
-                if actual_input >= edge.capacity - 0.01:
+                if actual_input >= edge.capacity - FLOW_TOLERANCE:
                     return (
                         LimitingFactor.BELT_CAPACITY,
                         f"Input belt {in_edge.id} at capacity ({edge.capacity}/min)",
@@ -384,9 +387,9 @@ def _find_limiting_factor(
     for i, out_edge in enumerate(outgoing):
         if i < len(node.outputs):
             actual_output = flows.get(out_edge.id, 0.0)
-            if actual_output < node.outputs[i].rate - 0.01:
+            if actual_output < node.outputs[i].rate - FLOW_TOLERANCE:
                 edge = graph.edges[out_edge.id]
-                if actual_output >= edge.capacity - 0.01:
+                if actual_output >= edge.capacity - FLOW_TOLERANCE:
                     return (
                         LimitingFactor.BELT_CAPACITY,
                         f"Output belt {out_edge.id} at capacity ({edge.capacity}/min)",

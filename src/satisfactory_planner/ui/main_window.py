@@ -351,13 +351,6 @@ class MainWindow(QMainWindow):
         self.grid_size_combo.currentTextChanged.connect(self._on_grid_size_changed)
         toolbar.addWidget(self.grid_size_combo)
 
-        self.show_grid_action = QAction("Grid", self)
-        self.show_grid_action.setCheckable(True)
-        self.show_grid_action.setChecked(False)
-        self.show_grid_action.setToolTip("Show grid lines")
-        self.show_grid_action.setEnabled(False)  # TODO: Implement grid drawing
-        toolbar.addAction(self.show_grid_action)
-
         toolbar.addSeparator()
 
         # === 8. Analysis/Visualization ===
@@ -372,12 +365,6 @@ class MainWindow(QMainWindow):
         self.show_flow_rates_action.setToolTip("Show flow rates on belts")
         self.show_flow_rates_action.toggled.connect(self._toggle_flow_rates)
         toolbar.addAction(self.show_flow_rates_action)
-
-        self.show_leftovers_action = QAction("Leftovers", self)
-        self.show_leftovers_action.setCheckable(True)
-        self.show_leftovers_action.setToolTip("Show leftover items per port")
-        self.show_leftovers_action.setEnabled(False)  # TODO: Implement port spare capacity UI
-        toolbar.addAction(self.show_leftovers_action)
 
     def _new_document(self) -> None:
         """Create a new document tab."""
