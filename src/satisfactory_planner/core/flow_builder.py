@@ -221,6 +221,51 @@ def _find_logistics_loop(graph: FlowGraph) -> list[str] | None:
     return None
 
 
+def _resolve_belt_endpoint(
+    document: Document,
+    building_id: str,
+    port_index: int,
+    is_output: bool,
+) -> tuple[str, int]:
+    """Resolve a belt endpoint, translating RoomPlacement references to PORT buildings.
+
+    When a belt connects to a RoomPlacement (room acting as a building), we need to
+    find the corresponding PORT_IN or PORT_OUT building inside the room.
+
+    Args:
+        document: The document containing rooms and placements
+        building_id: The building or room_placement ID
+        port_index: The port index on the building/placement
+        is_output: True if this is the source (output) side of a belt
+
+    Returns:
+        Tuple of (resolved_building_id, resolved_port_index)
+    """
+    # Check if this is a room placement
+    placement = document.room_placements.get(building_id)
+    if placement is None:
+        # It's a regular building, return as-is
+        return (building_id, port_index)
+
+    # It's a room placement - find the corresponding PORT building
+    room = document.rooms.get(placement.room_id)
+    if room is None:
+        return (building_id, port_index)
+
+    # For output side of belt (source), we connect to room's input port (PORT_IN)
+    # For input side of belt (dest), we connect to room's output port (PORT_OUT)
+    # This is because:
+    #   - Belt going INTO room: source is outside, dest is room → connects to PORT_IN inside
+    #   - Belt coming FROM room: source is room, dest is outside → connects to PORT_OUT inside
+    port = room.get_port_by_index(port_index, is_output=is_output)
+    if port is None:
+        return (building_id, port_index)
+
+    # Return the PORT building ID - the port_index on PORT buildings is always 0
+    # (they have exactly one input or one output)
+    return (port.id, 0)
+
+
 def build_flow_graph(document: Document, recipes: dict[str, Recipe]) -> BuildResult:
     """Build a FlowGraph from a Document.
 
@@ -235,13 +280,13 @@ def build_flow_graph(document: Document, recipes: dict[str, Recipe]) -> BuildRes
     graph = FlowGraph()
 
     # Build from all scenes (document + rooms)
-    _build_scene(document, recipes, graph, errors)
+    _build_scene(document, document, recipes, graph, errors)
 
     # Also build from room contents (for room placements)
     for placement in document.room_placements.values():
         room = document.rooms.get(placement.room_id)
         if room:
-            _build_scene(room, recipes, graph, errors)
+            _build_scene(room, document, recipes, graph, errors)
 
     if errors:
         return BuildResult(errors=errors)
@@ -404,6 +449,7 @@ def _propagate_item_types(graph: FlowGraph) -> None:
 
 def _build_scene(
     scene: Scene,
+    document: Document,
     recipes: dict[str, Recipe],
     graph: FlowGraph,
     errors: list[FatalError],
@@ -419,14 +465,20 @@ def _build_scene(
                     element_id=belt_id,
                 )
             )
-        elif belt.source_building_id not in scene.buildings:
-            errors.append(
-                FatalError(
-                    error_type=FatalErrorType.DISCONNECTED_BELT,
-                    message=f"Belt {belt_id} source building not found",
-                    element_id=belt_id,
+        else:
+            # Check if source exists (as building or room placement)
+            source_in_scene = belt.source_building_id in scene.buildings
+            source_is_placement = hasattr(
+                scene, "room_placements"
+            ) and belt.source_building_id in getattr(scene, "room_placements", {})
+            if not source_in_scene and not source_is_placement:
+                errors.append(
+                    FatalError(
+                        error_type=FatalErrorType.DISCONNECTED_BELT,
+                        message=f"Belt {belt_id} source building not found",
+                        element_id=belt_id,
+                    )
                 )
-            )
 
         if belt.dest_building_id is None:
             errors.append(
@@ -436,14 +488,20 @@ def _build_scene(
                     element_id=belt_id,
                 )
             )
-        elif belt.dest_building_id not in scene.buildings:
-            errors.append(
-                FatalError(
-                    error_type=FatalErrorType.DISCONNECTED_BELT,
-                    message=f"Belt {belt_id} destination building not found",
-                    element_id=belt_id,
+        else:
+            # Check if dest exists (as building or room placement)
+            dest_in_scene = belt.dest_building_id in scene.buildings
+            dest_is_placement = hasattr(
+                scene, "room_placements"
+            ) and belt.dest_building_id in getattr(scene, "room_placements", {})
+            if not dest_in_scene and not dest_is_placement:
+                errors.append(
+                    FatalError(
+                        error_type=FatalErrorType.DISCONNECTED_BELT,
+                        message=f"Belt {belt_id} destination building not found",
+                        element_id=belt_id,
+                    )
                 )
-            )
 
     # Phase 2: Check for missing recipes on connected production buildings
     for building_id, building in scene.buildings.items():
@@ -482,11 +540,24 @@ def _build_scene(
         assert belt.source_building_id is not None
         assert belt.dest_building_id is not None
 
-        source_building = scene.buildings[belt.source_building_id]
-        dest_building = scene.buildings[belt.dest_building_id]
+        # Resolve room placement references to PORT buildings
+        source_node_id, source_port_idx = _resolve_belt_endpoint(
+            document, belt.source_building_id, belt.source_port_index, is_output=True
+        )
+        dest_node_id, dest_port_idx = _resolve_belt_endpoint(
+            document, belt.dest_building_id, belt.dest_port_index, is_output=False
+        )
 
-        source_item_id = _get_port_item_id(source_building, False, belt.source_port_index, recipes)
-        dest_item_id = _get_port_item_id(dest_building, True, belt.dest_port_index, recipes)
+        # Get the actual buildings (may be in rooms)
+        source_building = document.find_building(source_node_id)
+        dest_building = document.find_building(dest_node_id)
+
+        if source_building is None or dest_building is None:
+            # Already reported as disconnected belt error
+            continue
+
+        source_item_id = _get_port_item_id(source_building, False, source_port_idx, recipes)
+        dest_item_id = _get_port_item_id(dest_building, True, dest_port_idx, recipes)
 
         # Check item type mismatch (only if both are known)
         if (
@@ -495,19 +566,19 @@ def _build_scene(
             and source_item_id != dest_item_id
         ):
             # Get building names for clearer message
-            source_name = source_building.building_type.value
-            dest_name = dest_building.building_type.value
+            src_name = source_building.building_type.value
+            dst_name = dest_building.building_type.value
             if source_building.recipe_id and source_building.recipe_id in recipes:
-                source_name = recipes[source_building.recipe_id].name
+                src_name = recipes[source_building.recipe_id].name
             if dest_building.recipe_id and dest_building.recipe_id in recipes:
-                dest_name = recipes[dest_building.recipe_id].name
+                dst_name = recipes[dest_building.recipe_id].name
 
             errors.append(
                 FatalError(
                     error_type=FatalErrorType.ITEM_MISMATCH,
                     message=(
-                        f"Item mismatch: {source_name} outputs {source_item_id}, "
-                        f"but {dest_name} expects {dest_item_id}"
+                        f"Item mismatch: {src_name} outputs {source_item_id}, "
+                        f"but {dst_name} expects {dest_item_id}"
                     ),
                     element_id=belt_id,
                 )
@@ -520,10 +591,10 @@ def _build_scene(
         edge = FlowEdge(
             id=belt_id,
             belt_id=belt_id,
-            source_node_id=belt.source_building_id,
-            source_port_index=belt.source_port_index,
-            dest_node_id=belt.dest_building_id,
-            dest_port_index=belt.dest_port_index,
+            source_node_id=source_node_id,
+            source_port_index=source_port_idx,
+            dest_node_id=dest_node_id,
+            dest_port_index=dest_port_idx,
             capacity=BELT_CAPACITIES[belt.tier],
             item_id=item_id,
         )
