@@ -167,10 +167,6 @@ class CreateRoomCommand(Command):
 
         # Add room item to canvas
         self.canvas.add_room_item(placement, room)
-
-        # Refresh all linked room items (for redo case where other placements exist)
-        self.canvas._refresh_all_room_items(room.id)
-
         self.canvas.notify_mutation()
 
     def undo(self, document: Document) -> None:

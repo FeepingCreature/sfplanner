@@ -288,6 +288,12 @@ class FactoryCanvas(QGraphicsView):
         room_item = RoomItem(placement, room, parent_scene, self)
         self._scene.addItem(room_item)
 
+        # IMPORTANT: Refresh children AFTER adding to scene.
+        # RoomItem.__init__ calls _populate_children() before the item is in the scene,
+        # which can cause Qt rendering issues. Refreshing after scene addition ensures
+        # child items are properly initialized in the scene graph.
+        room_item.refresh()
+
         placement_id = getattr(placement, "id", "")
         self._room_items[placement_id] = room_item
         for building_id, building_item in room_item._building_items.items():
