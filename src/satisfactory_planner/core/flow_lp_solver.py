@@ -29,6 +29,11 @@ class SolvedModel:
     )  # node_id → efficiency
     success: bool = True
     message: str = ""
+    # Two-pass results for bottleneck detection
+    theoretical_flows: dict[str, float] = field(default_factory=dict)
+    bottlenecks: dict[str, tuple[float, float]] = field(
+        default_factory=dict
+    )  # edge_id → (theoretical, actual)
 
 
 def _get_downstream_demand(node: FlowNode, port_index: int) -> float | None:
@@ -50,8 +55,10 @@ def _get_downstream_demand(node: FlowNode, port_index: int) -> float | None:
 def solve_flows(graph: FlowGraph) -> SolvedModel:
     """Solve for steady-state flow rates using LP.
 
-    We solve WITHOUT belt capacity constraints to get "ideal" flows.
-    Capacity checking happens in the warning detection phase.
+    Two-pass approach:
+    1. Solve WITHOUT belt limits → theoretical max throughput
+    2. Solve WITH belt limits → actual throughput
+    3. Compare to identify belt bottlenecks
 
     The LP formulation:
     - Variables: one flow rate per edge
@@ -66,6 +73,63 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
         # No edges = no flows to solve
         return SolvedModel(graph=graph, flows={})
 
+    # Two-pass solve: first without belt limits, then with
+    theoretical_result = _solve_lp(graph, use_belt_limits=False)
+    if not theoretical_result[0]:
+        # If theoretical solve fails, return the error
+        return SolvedModel(
+            graph=graph,
+            flows={},
+            success=False,
+            message=theoretical_result[2],
+        )
+
+    actual_result = _solve_lp(graph, use_belt_limits=True)
+    if not actual_result[0]:
+        return SolvedModel(
+            graph=graph,
+            flows={},
+            success=False,
+            message=actual_result[2],
+        )
+
+    theoretical_flows = theoretical_result[1]
+    actual_flows = actual_result[1]
+
+    # Identify belt bottlenecks: where theoretical > actual
+    bottlenecks: dict[str, tuple[float, float]] = {}
+    for edge_id, edge in graph.edges.items():
+        theo = theoretical_flows.get(edge_id, 0.0)
+        actual = actual_flows.get(edge_id, 0.0)
+        # A belt is a bottleneck if:
+        # 1. Theoretical flow exceeds actual
+        # 2. Actual flow is at or near belt capacity
+        if theo > actual + 0.1 and actual >= edge.capacity - 0.1:
+            bottlenecks[edge_id] = (theo, actual)
+
+    # Compute efficiencies using actual flows
+    efficiencies = _compute_efficiencies(graph, actual_flows)
+
+    return SolvedModel(
+        graph=graph,
+        flows=actual_flows,
+        efficiencies=efficiencies,
+        success=True,
+        theoretical_flows=theoretical_flows,
+        bottlenecks=bottlenecks,
+    )
+
+
+def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, float], str]:
+    """Run the LP solver.
+
+    Args:
+        graph: The flow graph to solve
+        use_belt_limits: If True, apply belt capacity constraints
+
+    Returns:
+        (success, flows, error_message)
+    """
     # Create edge index mapping
     edge_ids = list(graph.edges.keys())
     edge_to_idx = {eid: i for i, eid in enumerate(edge_ids)}
@@ -195,12 +259,15 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
     # All variables are non-negative (flow rates >= 0)
     nonneg_vars = list(range(n_edges))
 
-    # Add upper bounds to prevent unbounded solutions
-    # Each edge is bounded by its belt capacity (or a large default)
+    # Add upper bounds for edges
     for edge_id, edge in graph.edges.items():
         idx = edge_to_idx[edge_id]
-        # Use belt capacity as upper bound, or 10000 as fallback
-        upper_bound = edge.capacity if edge.capacity > 0 else 10000.0
+        if use_belt_limits:
+            # Use actual belt capacity
+            upper_bound = edge.capacity if edge.capacity > 0 else 10000.0
+        else:
+            # No belt limits - use very high capacity for "theoretical" solve
+            upper_bound = 100000.0
         row = [0.0] * n_edges
         row[idx] = 1.0
         inequality_rows.append(row)
@@ -238,20 +305,11 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
         else:
             msg = f"Flow analysis failed: {resolution}"
 
-        return SolvedModel(
-            graph=graph,
-            flows={},
-            success=False,
-            message=msg,
-        )
+        return (False, {}, msg)
 
     # Extract flows
     flows = {edge_ids[i]: max(0.0, solution[i]) for i in range(n_edges)}
-
-    # Compute duty cycles for all producer nodes
-    efficiencies = _compute_efficiencies(graph, flows)
-
-    return SolvedModel(graph=graph, flows=flows, efficiencies=efficiencies, success=True)
+    return (True, flows, "")
 
 
 def _compute_efficiencies(

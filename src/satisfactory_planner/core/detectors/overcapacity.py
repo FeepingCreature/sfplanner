@@ -17,13 +17,36 @@ if TYPE_CHECKING:
 def detect_overcapacity(model: SolvedModel) -> list[Warning]:
     """Detect belt overcapacity warnings.
 
-    Returns warnings only for belts that are the FIRST bottleneck
-    in their flow chain (upstream belts are not overcapacity).
+    Uses the two-pass solve results to identify belts where:
+    - Theoretical flow (no belt limits) > Actual flow (with belt limits)
+    - Actual flow is at belt capacity
+
+    This correctly identifies "you forgot to upgrade this belt" situations.
     """
     if not model.success:
         return []
 
-    # First pass: find all overcapacity belts
+    warnings: list[Warning] = []
+
+    # Use bottlenecks from two-pass solve if available
+    if model.bottlenecks:
+        for edge_id, (theoretical, actual) in model.bottlenecks.items():
+            edge = model.graph.edges[edge_id]
+            warnings.append(
+                Warning(
+                    type=WarningType.BELT_OVERCAPACITY,
+                    message=(
+                        f"Belt bottleneck: needs {theoretical:.0f}/min "
+                        f"but belt capacity is {edge.capacity:.0f}/min "
+                        f"(actual flow: {actual:.0f}/min)"
+                    ),
+                    element_id=edge.belt_id or edge_id,
+                    severity=min(1.0, (theoretical - actual) / actual) if actual > 0 else 1.0,
+                )
+            )
+        return warnings
+
+    # Fallback: old behavior for backward compatibility
     overcap_edges: set[str] = set()
     for edge_id, flow in model.flows.items():
         edge = model.graph.edges[edge_id]
@@ -41,7 +64,6 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
             filtered_overcap.add(edge_id)
 
     # Generate warnings for filtered set
-    warnings: list[Warning] = []
     for edge_id in filtered_overcap:
         edge = model.graph.edges[edge_id]
         flow = model.flows[edge_id]

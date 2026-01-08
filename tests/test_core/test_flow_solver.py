@@ -434,3 +434,59 @@ class TestFlowSolver:
         assert len(bottleneck_warnings) > 0, (
             f"Expected bottleneck warning, got: {[w.message for w in warnings]}"
         )
+
+    def test_two_pass_detects_belt_bottleneck(self) -> None:
+        """Two-pass solver detects belt bottlenecks by comparing theoretical vs actual.
+
+        Scenario: Miner(120/min) -> Belt(60/min) -> Sink
+        Theoretical: 120/min, Actual: 60/min (belt limited)
+        Should detect the belt as a bottleneck.
+        """
+        doc = Document()
+
+        # Miner at tier 2 (120/min)
+        miner = Building(
+            id="miner",
+            building_type=BuildingType.MINER,
+            x=0,
+            y=0,
+            recipe_id="iron_ore",
+            tier=2,  # 120/min
+        )
+        doc.add_building(miner)
+
+        # Sink
+        sink = Building(
+            id="sink",
+            building_type=BuildingType.SINK,
+            x=200,
+            y=0,
+            recipe_id="iron_ore",
+        )
+        doc.add_building(sink)
+
+        # Undersized belt - only tier 1 (60/min) but miner produces 120/min
+        doc.add_belt(
+            Belt(
+                id="b_bottleneck",
+                tier=1,  # Only 60/min!
+                source_building_id="miner",
+                source_port_index=0,
+                dest_building_id="sink",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc)
+        warnings = solver.solve()
+
+        # Should detect belt bottleneck as overcapacity
+        overcapacity = [w for w in warnings if w.type == WarningType.BELT_OVERCAPACITY]
+        assert len(overcapacity) > 0, (
+            f"Expected belt overcapacity warning, got: {[w.message for w in warnings]}"
+        )
+
+        # The warning should mention the theoretical vs actual flow
+        assert any("120" in w.message or "60" in w.message for w in overcapacity), (
+            f"Warning should mention flow rates: {overcapacity[0].message}"
+        )
