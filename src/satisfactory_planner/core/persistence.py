@@ -131,7 +131,7 @@ def save_user_recipes(recipes: dict[str, Recipe]) -> None:
 
 def building_to_dict(building: Building) -> dict[str, Any]:
     """Serialize a Building to a dictionary."""
-    return {
+    data: dict[str, Any] = {
         "id": building.id,
         "building_type": building.building_type.value,
         "x": building.x,
@@ -141,6 +141,12 @@ def building_to_dict(building: Building) -> dict[str, Any]:
         "rotation": building.rotation,
         "tier": building.tier,
     }
+    # Only save min/max_rate for Source/Sink
+    if building.min_rate is not None:
+        data["min_rate"] = building.min_rate
+    if building.max_rate is not None:
+        data["max_rate"] = building.max_rate
+    return data
 
 
 def dict_to_building(data: dict[str, Any]) -> Building:
@@ -160,6 +166,8 @@ def dict_to_building(data: dict[str, Any]) -> Building:
         clock_speed=data.get("clock_speed", 1.0),
         rotation=data.get("rotation", 0),
         tier=data.get("tier", 1),
+        min_rate=data.get("min_rate"),
+        max_rate=data.get("max_rate"),
     )
 
 

@@ -195,6 +195,8 @@ class Building:
     clock_speed: float = 1.0  # 0.01 to 2.5
     rotation: int = 0  # 0, 90, 180, 270 degrees
     tier: int = 1  # For MINER: 1, 2, or 3
+    min_rate: float | None = None  # For SOURCE/SINK: minimum flow rate
+    max_rate: float | None = None  # For SOURCE/SINK: maximum flow rate
 
     @property
     def width(self) -> int:

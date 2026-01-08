@@ -121,18 +121,20 @@ def _build_flow_ports(
     inputs: list[FlowPort] = []
     outputs: list[FlowPort] = []
 
-    # Source: single output with infinite rate (item_id stored in recipe_id)
+    # Source: single output (item_id stored in recipe_id)
+    # Use max_rate if set, otherwise "infinite" (100000)
     if building.building_type == BuildingType.SOURCE:
         item_id = building.recipe_id  # recipe_id holds item_id for Source
-        # Use a very high rate to represent "infinite" supply
-        outputs.append(FlowPort(item_id=item_id, rate=100000.0))
+        rate = building.max_rate if building.max_rate is not None else 100000.0
+        outputs.append(FlowPort(item_id=item_id, rate=rate))
         return inputs, outputs
 
-    # Sink: single input with infinite rate (item_id stored in recipe_id)
+    # Sink: single input (item_id stored in recipe_id)
+    # Use max_rate if set, otherwise "infinite" (100000)
     if building.building_type == BuildingType.SINK:
         item_id = building.recipe_id  # recipe_id holds item_id for Sink
-        # Use a very high rate to represent "infinite" demand
-        inputs.append(FlowPort(item_id=item_id, rate=100000.0))
+        rate = building.max_rate if building.max_rate is not None else 100000.0
+        inputs.append(FlowPort(item_id=item_id, rate=rate))
         return inputs, outputs
 
     # Miner: single output with tier-based rate (item_id stored in recipe_id)
