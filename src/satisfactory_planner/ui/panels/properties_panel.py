@@ -148,15 +148,17 @@ class PropertiesPanel(QWidget):
         self.min_rate_spin.setRange(0, 10000)
         self.min_rate_spin.setSuffix("/min")
         self.min_rate_spin.setValue(0)
-        self.min_rate_spin.valueChanged.connect(self._on_source_rate_changed)
-        source_layout.addRow("Min:", self.min_rate_spin)
+        self.min_rate_spin.valueChanged.connect(self._on_min_max_changed)
+        self.min_rate_label = QLabel("Min:")
+        source_layout.addRow(self.min_rate_label, self.min_rate_spin)
 
         self.max_rate_spin = QDoubleSpinBox()
         self.max_rate_spin.setRange(0, 10000)
         self.max_rate_spin.setSuffix("/min")
         self.max_rate_spin.setValue(0)
-        self.max_rate_spin.valueChanged.connect(self._on_source_rate_changed)
-        source_layout.addRow("Max:", self.max_rate_spin)
+        self.max_rate_spin.valueChanged.connect(self._on_min_max_changed)
+        self.max_rate_label = QLabel("Max:")
+        source_layout.addRow(self.max_rate_label, self.max_rate_spin)
 
         layout.addWidget(self.source_group)
         self.source_group.hide()
@@ -359,6 +361,18 @@ class PropertiesPanel(QWidget):
                         # Get flow from simulation
                         flow = self._get_sink_flow(building.id)
                         self.sink_flow_label.setText(f"{flow:.1f}/min" if flow else "-")
+
+                    # Min/Max visible for Source/Sink only (not Miner)
+                    show_min_max = is_source or is_sink
+                    self.min_rate_label.setVisible(show_min_max)
+                    self.min_rate_spin.setVisible(show_min_max)
+                    self.max_rate_label.setVisible(show_min_max)
+                    self.max_rate_spin.setVisible(show_min_max)
+
+                    # Load min/max values from building
+                    if show_min_max:
+                        self.min_rate_spin.setValue(building.min_rate or 0)
+                        self.max_rate_spin.setValue(building.max_rate or 0)
 
                     # Get item from recipe_id (which stores item_id for these types)
                     if building.recipe_id:
@@ -772,6 +786,29 @@ class PropertiesPanel(QWidget):
             return
 
         self._save_source_recipe()
+
+    def _on_min_max_changed(self, value: float) -> None:
+        """Handle min/max rate change for Source/Sink."""
+        if self._updating or not self.canvas:
+            return
+
+        if len(self._selected_ids) != 1:
+            return
+
+        building_id = self._selected_ids[0]
+        building = self.document.buildings.get(building_id)
+        if not building:
+            return
+
+        # Update building min/max directly
+        new_min = self.min_rate_spin.value()
+        new_max = self.max_rate_spin.value()
+
+        # Only update if changed
+        if building.min_rate != new_min or building.max_rate != new_max:
+            building.min_rate = new_min if new_min > 0 else None
+            building.max_rate = new_max if new_max > 0 else None
+            self.canvas.notify_mutation()
 
     def _save_source_recipe(self) -> None:
         """Save Source/Sink/Miner item selection - just store item_id in recipe_id."""
