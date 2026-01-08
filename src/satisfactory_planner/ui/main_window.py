@@ -366,6 +366,14 @@ class MainWindow(QMainWindow):
         self.show_flow_rates_action.toggled.connect(self._toggle_flow_rates)
         toolbar.addAction(self.show_flow_rates_action)
 
+        toolbar.addSeparator()
+
+        # === 9. Debug ===
+        refresh_action = QAction("↻", self)
+        refresh_action.setToolTip("Debug: Force refresh all room items")
+        refresh_action.triggered.connect(self._debug_refresh_rooms)
+        toolbar.addAction(refresh_action)
+
     def _new_document(self) -> None:
         """Create a new document tab."""
         tab = DocumentTab(f"Untitled {len(self.tabs) + 1}")
@@ -855,6 +863,15 @@ class MainWindow(QMainWindow):
     def _has_unsaved_changes(self) -> bool:
         """Check if any tab has unsaved changes."""
         return any(tab.dirty for tab in self.tabs)
+
+    def _debug_refresh_rooms(self) -> None:
+        """Debug: Force refresh all room items."""
+        if not self.current_tab or not self.current_tab.canvas:
+            return
+
+        canvas = self.current_tab.canvas
+        for room_id in self.current_tab.document.rooms:
+            canvas._refresh_all_room_items(room_id)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """Handle window close."""
