@@ -417,7 +417,7 @@ class BuildingItem(QGraphicsRectItem):
             # Create single command if moved or rotated
             if moved or rotated:
                 self.canvas.on_building_moved(
-                    self.building.id,
+                    self,  # Pass the actual item, not just ID
                     self._drag_start_pos.x(),
                     self._drag_start_pos.y(),
                     self._drag_start_rotation,

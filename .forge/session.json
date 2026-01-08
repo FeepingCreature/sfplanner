@@ -1,6 +1,5 @@
 {
   "active_files": [
-    "src/satisfactory_planner/ui/canvas/factory_canvas.py",
     "src/satisfactory_planner/ui/commands/room_commands.py",
     "CLAUDE.md",
     "docs/FLOWSIM_INTEGRATION_PLAN.md"
@@ -635,6 +634,78 @@
       "streaming": true,
       "actual_cost": 0.13757925,
       "generation_id": "gen-1767907444-LU7ocaCIRUbog8SnZFLS"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767907496274.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767907496274.json",
+      "timestamp": 1767907496.27575,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.35078625,
+      "generation_id": "gen-1767907498-7DQ9G27VBxaI5hYhWH0B"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767907505045.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767907505045.json",
+      "timestamp": 1767907505.0459452,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0508295,
+      "generation_id": "gen-1767907505-OgsM13O15eh2qbu7ClF1"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767907510453.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767907510453.json",
+      "timestamp": 1767907510.4547982,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.04143375,
+      "generation_id": "gen-1767907510-g5R4wldVIFzJY3u4Jl5B"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767907517927.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767907517927.json",
+      "timestamp": 1767907517.928082,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.04158275,
+      "generation_id": "gen-1767907518-4EjycVUsftTtWb7MNa3Y"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767907523906.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767907523906.json",
+      "timestamp": 1767907523.907865,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.08160375,
+      "generation_id": "gen-1767907524-XeBDpWb66ZzMvri8eC8h"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767907567295.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767907567295.json",
+      "timestamp": 1767907567.2971373,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.04221225,
+      "generation_id": "gen-1767907567-jmwPMkF42EjS1UYS6295"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767907576479.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767907576479.json",
+      "timestamp": 1767907576.480893,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.414565,
+      "generation_id": "gen-1767907577-QYpMCXCHR7zUnMQmIUzk"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767907599294.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767907599294.json",
+      "timestamp": 1767907599.2956595,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.16467725,
+      "generation_id": "gen-1767907599-8hEZghcF17L1tyiiDSCq"
     }
   ],
   "messages": [
@@ -2373,6 +2444,212 @@
     {
       "role": "assistant",
       "content": "Fixed the \"Unknown item\" issue! \n\n**Root cause:** The properties panel was only looking in `document.buildings` and `document.belts`, but after creating a room, the buildings/belts live inside `room.buildings` and `room.belts` instead.\n\n**Fix:**\n1. Added `Document.find_building(id)` - searches document AND all rooms recursively\n2. Added `Document.find_belt(id)` - same for belts  \n3. Updated properties panel to use these helpers\n\nThis should also fix the drag/drop bounce-back issue - can you test that? The building should now be properly recognized and editable after room undo/redo."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: fe02cabf",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Property works, drag in the first room still doesn't work."
+    },
+    {
+      "role": "assistant",
+      "content": "Let me look at how drag works. The issue is likely in `on_building_moved` or the drag handling in `BuildingItem`:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"on_building_moved|_is_dragging|mouseReleaseEvent\", \"file\": \"src/satisfactory_planner/ui/items/building_item.py\", \"context_before\": 3, \"context_after\": 15}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01B6fYhT6UHj3p1Pq2C8ahZF",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01B6fYhT6UHj3p1Pq2C8ahZF",
+      "content": "{\"message\": \"Found 7 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:57 \\u2500\\u2500\\n      54 |         # Drag tracking\\n      55 |         self._drag_start_pos: QPointF | None = None\\n      56 |         self._drag_start_rotation: int = 0\\n>>>   57 |         self._is_dragging: bool = False\\n      58 |         self._multi_drag_offsets: dict[str, QPointF] = {}\\n      59 | \\n      60 |         # Efficiency overlay state\\n      61 |         self._show_efficiency = False\\n      62 |         self._efficiency_value: float | None = None  # 0.0 - 1.0\\n      63 |         self._is_starved = False\\n      64 |         self._is_blocked = False\\n      65 | \\n      66 |     def _get_display_size(self) -> tuple[int, int]:\\n      67 |         \\\"\\\"\\\"Get display size - delegates to model.\\\"\\\"\\\"\\n      68 |         return self.building._get_display_size()\\n      69 | \\n      70 |     def boundingRect(self) -> QRectF:\\n      71 |         \\\"\\\"\\\"Return bounding rect accounting for rotation.\\\"\\\"\\\"\\n      72 |         import math\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:391 \\u2500\\u2500\\n     388 |         \\\"\\\"\\\"Track drag start.\\\"\\\"\\\"\\n     389 |         self._drag_start_pos = self.pos()\\n     390 |         self._drag_start_rotation = self.building.rotation\\n>>>  391 |         self._is_dragging = True\\n     392 | \\n     393 |         # Enforce scene-local selection before Qt handles selection\\n     394 |         self.canvas.on_item_clicked(self)\\n     395 | \\n     396 |         # Let Qt handle selection changes FIRST (e.g., clicking unselected item\\n     397 |         # clears old selection), then compute offsets based on new selection\\n     398 |         super().mousePressEvent(event)\\n     399 | \\n     400 |         # For multi-select drag: compute offset from this item's position\\n     401 |         # All other selected items will move by the same delta (not snap individually)\\n     402 |         self._multi_drag_offsets.clear()\\n     403 |         for item in self.scene().selectedItems():\\n     404 |             if isinstance(item, BuildingItem) and item is not self:\\n     405 |                 # Store offset from this building's current position\\n     406 |                 self._multi_drag_offsets[item.building.id] = item.pos() - self.pos()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:408 \\u2500\\u2500\\n     405 |                 # Store offset from this building's current position\\n     406 |                 self._multi_drag_offsets[item.building.id] = item.pos() - self.pos()\\n     407 | \\n>>>  408 |     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n     409 |         \\\"\\\"\\\"Handle drag end - create move command.\\\"\\\"\\\"\\n     410 |         super().mouseReleaseEvent(event)\\n     411 | \\n     412 |         if self._drag_start_pos is not None:\\n     413 |             new_pos = self.pos()\\n     414 |             moved = new_pos != self._drag_start_pos\\n     415 |             rotated = self.building.rotation != self._drag_start_rotation\\n     416 | \\n     417 |             # Create single command if moved or rotated\\n     418 |             if moved or rotated:\\n     419 |                 self.canvas.on_building_moved(\\n     420 |                     self.building.id,\\n     421 |                     self._drag_start_pos.x(),\\n     422 |                     self._drag_start_pos.y(),\\n     423 |                     self._drag_start_rotation,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:410 \\u2500\\u2500\\n     407 | \\n     408 |     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n     409 |         \\\"\\\"\\\"Handle drag end - create move command.\\\"\\\"\\\"\\n>>>  410 |         super().mouseReleaseEvent(event)\\n     411 | \\n     412 |         if self._drag_start_pos is not None:\\n     413 |             new_pos = self.pos()\\n     414 |             moved = new_pos != self._drag_start_pos\\n     415 |             rotated = self.building.rotation != self._drag_start_rotation\\n     416 | \\n     417 |             # Create single command if moved or rotated\\n     418 |             if moved or rotated:\\n     419 |                 self.canvas.on_building_moved(\\n     420 |                     self.building.id,\\n     421 |                     self._drag_start_pos.x(),\\n     422 |                     self._drag_start_pos.y(),\\n     423 |                     self._drag_start_rotation,\\n     424 |                 )\\n     425 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:419 \\u2500\\u2500\\n     416 | \\n     417 |             # Create single command if moved or rotated\\n     418 |             if moved or rotated:\\n>>>  419 |                 self.canvas.on_building_moved(\\n     420 |                     self.building.id,\\n     421 |                     self._drag_start_pos.x(),\\n     422 |                     self._drag_start_pos.y(),\\n     423 |                     self._drag_start_rotation,\\n     424 |                 )\\n     425 | \\n     426 |             self._drag_start_pos = None\\n     427 | \\n     428 |         self._is_dragging = False\\n     429 |         # Clear multi-drag offsets to prevent stale data on next drag\\n     430 |         self._multi_drag_offsets = {}\\n     431 | \\n     432 |     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:\\n     433 |         \\\"\\\"\\\"Handle item changes.\\\"\\\"\\\"\\n     434 |         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:428 \\u2500\\u2500\\n     425 | \\n     426 |             self._drag_start_pos = None\\n     427 | \\n>>>  428 |         self._is_dragging = False\\n     429 |         # Clear multi-drag offsets to prevent stale data on next drag\\n     430 |         self._multi_drag_offsets = {}\\n     431 | \\n     432 |     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:\\n     433 |         \\\"\\\"\\\"Handle item changes.\\\"\\\"\\\"\\n     434 |         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():\\n     435 |             # Snap to grid\\n     436 |             new_pos = value\\n     437 |             if isinstance(new_pos, QPointF) and self.canvas.grid_snap:\\n     438 |                 grid = self.canvas.grid_size\\n     439 |                 x = round(new_pos.x() / grid) * grid\\n     440 |                 y = round(new_pos.y() / grid) * grid\\n     441 |                 new_pos = QPointF(x, y)\\n     442 | \\n     443 |             # Multi-select: move other selected buildings by same delta\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:479 \\u2500\\u2500\\n     476 |         if not isinstance(event, QGraphicsSceneWheelEvent):\\n     477 |             return\\n     478 | \\n>>>  479 |         if self._is_dragging:\\n     480 |             # Rotate building while dragging\\n     481 |             if event.delta() > 0:\\n     482 |                 self.rotate_building(90)\\n     483 |             else:\\n     484 |                 self.rotate_building(-90)\\n     485 |             event.accept()\\n     486 |         else:\\n     487 |             # Pass to parent for zoom\\n     488 |             event.ignore()\\n     489 | \\n     490 |     @property\\n     491 |     def building_scene(self) -> Scene:\\n     492 |         \\\"\\\"\\\"Get the scene this building belongs to.\\\"\\\"\\\"\\n     493 |         return self._scene\\n     494 | \", \"success\": true, \"total_matches\": 7}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"context_after\": 15,\n  \"context_before\": 3,\n  \"file\": \"src/satisfactory_planner/ui/items/building_item.py\",\n  \"pattern\": \"on_building_moved|_is_dragging|mouseReleaseEvent\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 7 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:57 \\u2500\\u2500\\n      54 |         # Drag tracking\\n      55 |         self._drag_start_pos: QPointF | None = None\\n      56 |         self._drag_start_rotation: int = 0\\n>>>   57 |         self._is_dragging: bool = False\\n      58 |         self._multi_drag_offsets: dict[str, QPointF] = {}\\n      59 | \\n      60 |         # Efficiency overlay state\\n      61 |         self._show_efficiency = False\\n      62 |         self._efficiency_value: float | None = None  # 0.0 - 1.0\\n      63 |         self._is_starved = False\\n      64 |         self._is_blocked = False\\n      65 | \\n      66 |     def _get_display_size(self) -> tuple[int, int]:\\n      67 |         \\\"\\\"\\\"Get display size - delegates to model.\\\"\\\"\\\"\\n      68 |         return self.building._get_display_size()\\n      69 | \\n      70 |     def boundingRect(self) -> QRectF:\\n      71 |         \\\"\\\"\\\"Return bounding rect accounting for rotation.\\\"\\\"\\\"\\n      72 |         import math\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:391 \\u2500\\u2500\\n     388 |         \\\"\\\"\\\"Track drag start.\\\"\\\"\\\"\\n     389 |         self._drag_start_pos = self.pos()\\n     390 |         self._drag_start_rotation = self.building.rotation\\n>>>  391 |         self._is_dragging = True\\n     392 | \\n     393 |         # Enforce scene-local selection before Qt handles selection\\n     394 |         self.canvas.on_item_clicked(self)\\n     395 | \\n     396 |         # Let Qt handle selection changes FIRST (e.g., clicking unselected item\\n     397 |         # clears old selection), then compute offsets based on new selection\\n     398 |         super().mousePressEvent(event)\\n     399 | \\n     400 |         # For multi-select drag: compute offset from this item's position\\n     401 |         # All other selected items will move by the same delta (not snap individually)\\n     402 |         self._multi_drag_offsets.clear()\\n     403 |         for item in self.scene().selectedItems():\\n     404 |             if isinstance(item, BuildingItem) and item is not self:\\n     405 |                 # Store offset from this building's current position\\n     406 |                 self._multi_drag_offsets[item.building.id] = item.pos() - self.pos()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:408 \\u2500\\u2500\\n     405 |                 # Store offset from this building's current position\\n     406 |                 self._multi_drag_offsets[item.building.id] = item.pos() - self.pos()\\n     407 | \\n>>>  408 |     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n     409 |         \\\"\\\"\\\"Handle drag end - create move command.\\\"\\\"\\\"\\n     410 |         super().mouseReleaseEvent(event)\\n     411 | \\n     412 |         if self._drag_start_pos is not None:\\n     413 |             new_pos = self.pos()\\n     414 |             moved = new_pos != self._drag_start_pos\\n     415 |             rotated = self.building.rotation != self._drag_start_rotation\\n     416 | \\n     417 |             # Create single command if moved or rotated\\n     418 |             if moved or rotated:\\n     419 |                 self.canvas.on_building_moved(\\n     420 |                     self.building.id,\\n     421 |                     self._drag_start_pos.x(),\\n     422 |                     self._drag_start_pos.y(),\\n     423 |                     self._drag_start_rotation,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:410 \\u2500\\u2500\\n     407 | \\n     408 |     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n     409 |         \\\"\\\"\\\"Handle drag end - create move command.\\\"\\\"\\\"\\n>>>  410 |         super().mouseReleaseEvent(event)\\n     411 | \\n     412 |         if self._drag_start_pos is not None:\\n     413 |             new_pos = self.pos()\\n     414 |             moved = new_pos != self._drag_start_pos\\n     415 |             rotated = self.building.rotation != self._drag_start_rotation\\n     416 | \\n     417 |             # Create single command if moved or rotated\\n     418 |             if moved or rotated:\\n     419 |                 self.canvas.on_building_moved(\\n     420 |                     self.building.id,\\n     421 |                     self._drag_start_pos.x(),\\n     422 |                     self._drag_start_pos.y(),\\n     423 |                     self._drag_start_rotation,\\n     424 |                 )\\n     425 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:419 \\u2500\\u2500\\n     416 | \\n     417 |             # Create single command if moved or rotated\\n     418 |             if moved or rotated:\\n>>>  419 |                 self.canvas.on_building_moved(\\n     420 |                     self.building.id,\\n     421 |                     self._drag_start_pos.x(),\\n     422 |                     self._drag_start_pos.y(),\\n     423 |                     self._drag_start_rotation,\\n     424 |                 )\\n     425 | \\n     426 |             self._drag_start_pos = None\\n     427 | \\n     428 |         self._is_dragging = False\\n     429 |         # Clear multi-drag offsets to prevent stale data on next drag\\n     430 |         self._multi_drag_offsets = {}\\n     431 | \\n     432 |     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:\\n     433 |         \\\"\\\"\\\"Handle item changes.\\\"\\\"\\\"\\n     434 |         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:428 \\u2500\\u2500\\n     425 | \\n     426 |             self._drag_start_pos = None\\n     427 | \\n>>>  428 |         self._is_dragging = False\\n     429 |         # Clear multi-drag offsets to prevent stale data on next drag\\n     430 |         self._multi_drag_offsets = {}\\n     431 | \\n     432 |     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:\\n     433 |         \\\"\\\"\\\"Handle item changes.\\\"\\\"\\\"\\n     434 |         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():\\n     435 |             # Snap to grid\\n     436 |             new_pos = value\\n     437 |             if isinstance(new_pos, QPointF) and self.canvas.grid_snap:\\n     438 |                 grid = self.canvas.grid_size\\n     439 |                 x = round(new_pos.x() / grid) * grid\\n     440 |                 y = round(new_pos.y() / grid) * grid\\n     441 |                 new_pos = QPointF(x, y)\\n     442 | \\n     443 |             # Multi-select: move other selected buildings by same delta\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:479 \\u2500\\u2500\\n     476 |         if not isinstance(event, QGraphicsSceneWheelEvent):\\n     477 |             return\\n     478 | \\n>>>  479 |         if self._is_dragging:\\n     480 |             # Rotate building while dragging\\n     481 |             if event.delta() > 0:\\n     482 |                 self.rotate_building(90)\\n     483 |             else:\\n     484 |                 self.rotate_building(-90)\\n     485 |             event.accept()\\n     486 |         else:\\n     487 |             # Pass to parent for zoom\\n     488 |             event.ignore()\\n     489 | \\n     490 |     @property\\n     491 |     def building_scene(self) -> Scene:\\n     492 |         \\\"\\\"\\\"Get the scene this building belongs to.\\\"\\\"\\\"\\n     493 |         return self._scene\\n     494 | \",\n  \"success\": true,\n  \"total_matches\": 7\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see it now. The issue is in `on_building_moved` in `factory_canvas.py`. Let me look at it:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas/factory_canvas.py\", \"line\": 813, \"context\": 15}",
+            "name": "get_lines"
+          },
+          "id": "toolu_vrtx_01A5JcNz3BZEWwaz4DVf8F6g",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01A5JcNz3BZEWwaz4DVf8F6g",
+      "content": "{\"content\": \"     798 | \\n     799 |                 if isinstance(room_item, RoomItem):\\n     800 |                     room_item.setSelected(True)\\n     801 |         self._emit_selection_changed()\\n     802 | \\n     803 |     # === Building movement ===\\n     804 | \\n     805 |     def on_building_moved(\\n     806 |         self, building_id: str, old_x: float, old_y: float, old_rotation: int | None = None\\n     807 |     ) -> None:\\n     808 |         \\\"\\\"\\\"Handle a building being moved.\\\"\\\"\\\"\\n     809 |         item = self._building_items.get(building_id)\\n     810 |         if not item:\\n     811 |             return\\n     812 | \\n>>>  813 |         building = item.building_scene.buildings.get(building_id)\\n     814 |         if not building:\\n     815 |             return\\n     816 | \\n     817 |         new_x = item.pos().x()\\n     818 |         new_y = item.pos().y()\\n     819 |         new_rot = building.rotation\\n     820 |         old_rot = old_rotation if old_rotation is not None else new_rot\\n     821 | \\n     822 |         move = BuildingMove(\\n     823 |             building_id=building_id,\\n     824 |             old_x=old_x,\\n     825 |             old_y=old_y,\\n     826 |             old_rotation=old_rot,\\n     827 |             new_x=new_x,\\n     828 |             new_y=new_y,\", \"filepath\": \"src/satisfactory_planner/ui/canvas/factory_canvas.py\", \"range\": \"798-828\", \"success\": true, \"target_line\": 813, \"total_lines\": 983}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see `on_building_moved` uses `item.building_scene.buildings.get(building_id)` which should work. But wait - the issue is that `item` might not be in `_building_items` at all after redo!\n\nLet me check what happens in `add_room_item` - specifically whether building items inside rooms get registered in `_building_items`:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas/factory_canvas.py\", \"line\": 268, \"context\": 20}",
+            "name": "get_lines"
+          },
+          "id": "toolu_vrtx_01NfAuhhqMHQ3euNSTZpm8ij",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01NfAuhhqMHQ3euNSTZpm8ij",
+      "content": "{\"content\": \"     248 |         if item:\\n     249 |             self._scene.removeItem(item)\\n     250 | \\n     251 |     def refresh_building(self, building_id: str) -> None:\\n     252 |         \\\"\\\"\\\"Refresh a building's visual state.\\\"\\\"\\\"\\n     253 |         item = self._building_items.get(building_id)\\n     254 |         if item:\\n     255 |             building = self.document.buildings.get(building_id)\\n     256 |             if building:\\n     257 |                 item.setPos(building.x, building.y)\\n     258 |             item.update()\\n     259 | \\n     260 |     def refresh_belts_for_building(self, building_id: str) -> None:\\n     261 |         \\\"\\\"\\\"Refresh belts connected to a building.\\\"\\\"\\\"\\n     262 |         for room_id, room in self.document.rooms.items():\\n     263 |             if building_id in room.buildings:\\n     264 |                 self._refresh_all_room_items(room_id)\\n     265 |                 return\\n     266 |         self._update_belts_for_building(building_id)\\n     267 | \\n>>>  268 |     def refresh_belt(self, belt_id: str) -> None:\\n     269 |         \\\"\\\"\\\"Refresh a belt's visual state.\\\"\\\"\\\"\\n     270 |         belt_item = self._belt_items.get(belt_id)\\n     271 |         belt = self.document.belts.get(belt_id)\\n     272 |         if belt_item and belt:\\n     273 |             source = self.document.buildings.get(belt.source_building_id)\\n     274 |             dest = self.document.buildings.get(belt.dest_building_id)\\n     275 |             if source and dest:\\n     276 |                 belt_item.update_path(source, dest)\\n     277 | \\n     278 |     def add_room_item(self, placement: RoomPlacement, room: Room) -> None:\\n     279 |         \\\"\\\"\\\"Add a room item to the scene.\\\"\\\"\\\"\\n     280 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     281 | \\n     282 |         parent_scene_id = getattr(placement, \\\"parent_scene_id\\\", None)\\n     283 |         if parent_scene_id:\\n     284 |             parent_scene: Scene = self.document.rooms[parent_scene_id]\\n     285 |         else:\\n     286 |             parent_scene = self.document\\n     287 | \\n     288 |         room_item = RoomItem(placement, room, parent_scene, self)\", \"filepath\": \"src/satisfactory_planner/ui/canvas/factory_canvas.py\", \"range\": \"248-288\", \"success\": true, \"target_line\": 268, \"total_lines\": 983}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas/factory_canvas.py\", \"line\": 290, \"context\": 15}",
+            "name": "get_lines"
+          },
+          "id": "toolu_vrtx_01QdFaHxdvMRcJUTQ99k9Z1T",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01QdFaHxdvMRcJUTQ99k9Z1T",
+      "content": "{\"content\": \"     275 |             if source and dest:\\n     276 |                 belt_item.update_path(source, dest)\\n     277 | \\n     278 |     def add_room_item(self, placement: RoomPlacement, room: Room) -> None:\\n     279 |         \\\"\\\"\\\"Add a room item to the scene.\\\"\\\"\\\"\\n     280 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     281 | \\n     282 |         parent_scene_id = getattr(placement, \\\"parent_scene_id\\\", None)\\n     283 |         if parent_scene_id:\\n     284 |             parent_scene: Scene = self.document.rooms[parent_scene_id]\\n     285 |         else:\\n     286 |             parent_scene = self.document\\n     287 | \\n     288 |         room_item = RoomItem(placement, room, parent_scene, self)\\n     289 |         self._scene.addItem(room_item)\\n>>>  290 | \\n     291 |         placement_id = getattr(placement, \\\"id\\\", \\\"\\\")\\n     292 |         self._room_items[placement_id] = room_item\\n     293 |         for building_id, building_item in room_item._building_items.items():\\n     294 |             self._building_items[building_id] = building_item\\n     295 |         for belt_id, belt_item in room_item._belt_items.items():\\n     296 |             self._belt_items[belt_id] = belt_item\\n     297 | \\n     298 |     def remove_room_item(self, placement_id: str) -> None:\\n     299 |         \\\"\\\"\\\"Remove a room item from the scene.\\\"\\\"\\\"\\n     300 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     301 | \\n     302 |         room_item = self._room_items.pop(placement_id, None)\\n     303 |         if room_item and isinstance(room_item, RoomItem):\\n     304 |             for building_id in list(room_item._building_items.keys()):\\n     305 |                 self._building_items.pop(building_id, None)\", \"filepath\": \"src/satisfactory_planner/ui/canvas/factory_canvas.py\", \"range\": \"275-305\", \"success\": true, \"target_line\": 290, \"total_lines\": 983}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see `add_room_item` does register building items into `_building_items` (lines 293-294). But the issue might be that when we have **linked rooms** (multiple placements of the same room), the same `building_id` gets registered multiple times - and the second room's BuildingItem overwrites the first!\n\nLet me check RoomItem to understand the issue better:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"scratchpad\": \"The user's bug:\\n1. Place building\\n2. Create room around it \\n3. Undo room\\n4. Redo room\\n5. Drag the building - it bounces back\\n\\nThe issue is NOT about linked rooms - this is a single room. Let me think about what happens:\\n\\nOn redo:\\n1. CreateRoomCommand.execute() is called again\\n2. It creates a new Room object with the SAME created_room_id (frozen)\\n3. It creates a new RoomPlacement with the SAME created_placement_id\\n4. It calls canvas.add_room_item(placement, room)\\n5. add_room_item creates a new RoomItem\\n6. RoomItem._populate_children() creates new BuildingItems\\n7. These get registered in canvas._building_items\\n\\nWait - but on the FIRST execute, the building was removed from canvas._building_items (via remove_building_item), then re-added as a child of RoomItem. That should still work.\\n\\nLet me trace through what happens:\\n\\nFirst execute:\\n1. Building is in document.buildings, canvas._building_items[\\\"b1\\\"] = BuildingItem(pointing to document)\\n2. CreateRoomCommand.execute():\\n   - Moves building from document to room\\n   - canvas.remove_building_item(\\\"b1\\\") - removes from _building_items\\n   - Creates RoomItem\\n   - RoomItem._populate_children() creates BuildingItem with scene=room\\n   - add_room_item registers it: canvas._building_items[\\\"b1\\\"] = new BuildingItem\\n\\nUndo:\\n1. CreateRoomCommand.undo():\\n   - canvas.remove_room_item(placement_id) - removes from _room_items AND pops building_items\\n   - Moves building back to document\\n   - canvas.add_building_item(building) - creates NEW BuildingItem with scene=document\\n   - Registers: canvas._building_items[\\\"b1\\\"] = new BuildingItem\\n\\nRedo (execute again):\\n1. Building is in document.buildings, canvas._building_items[\\\"b1\\\"] = BuildingItem(pointing to document)\\n2. CreateRoomCommand.execute():\\n   - Moves building from document to room\\n   - canvas.remove_building_item(\\\"b1\\\") - removes from _building_items\\n   - Creates RoomItem which creates child BuildingItems\\n   - add_room_item registers it: canvas._building_items[\\\"b1\\\"] = new BuildingItem(pointing to room)\\n\\nSo after redo, canvas._building_items[\\\"b1\\\"] should point to the correct BuildingItem...\\n\\nBut wait! The user said \\\"if I move it it shows up in the first\\\". What does that mean?\\n\\nOh! \\\"Copy in a second room\\\" - maybe they're testing with a blueprint that creates LINKED placements. When you have two placements of the same room:\\n- Both RoomItems create BuildingItems for the SAME building_id\\n- canvas._building_items[\\\"b1\\\"] gets overwritten - only one is registered\\n- The other BuildingItem exists in the scene but isn't tracked\\n\\nThat explains the weirdness! When you move the building in one room, the OTHER BuildingItem doesn't update, but the move command updates the model... then when you interact with the first room, it picks up the model changes.\\n\\nBut the immediate issue is \\\"drag in the first room still doesn't work\\\" after simple undo/redo (no linked copies). Let me think...\\n\\nActually wait - the user mentioned \\\"if I undo, redo, copy, the item shows up in the second room\\\". So there ARE two rooms involved. The copy operation creates a second RoomPlacement pointing to the SAME room. Both RoomItems create BuildingItems for the same building_id.\\n\\nThe fix: BuildingItems inside linked rooms need UNIQUE keys in _building_items. Could use a composite key like (placement_id, building_id) or just not register them at all and look them up differently.\\n\\nBut actually, for the immediate simple case (no copy), it should still work. Let me re-read the original bug:\\n\\n\\\"yeah what I see is:\\n- the building is added\\n- I put a room around it\\n- I undo the room, the original building comes back\\n- I redo the room, I get the room but it's visually empty even though it says 1 building.\\\"\\n\\nAnd after my fix: \\\"If I click on the building in the undo/redone first room after I've revealed it by moving it in the second room, it says 'Unknown item'. And it rejects drag/drop- I can drag it but then it goes back to where it was before.\\\"\\n\\nSo there are TWO rooms now. The user copied the room after redo. So we have:\\n- Room with building\\n- Two placements of that room\\n- Both RoomItems have BuildingItems\\n- Only one is registered in _building_items (the second one, since it overwrites)\\n\\nWhen dragging in the first room:\\n1. MouseReleaseEvent calls canvas.on_building_moved()\\n2. on_building_moved does: item = self._building_items.get(building_id)\\n3. This gets the SECOND room's BuildingItem, not the first!\\n4. The command updates the model correctly\\n5. But the FIRST room's BuildingItem isn't updated properly\\n\\nActually no - the model should update correctly since both rooms share the same Room object. The issue is that on_building_moved gets the wrong BuildingItem (from second room) and creates a MoveBuildingsCommand with wrong scene_room_id.\\n\\nActually wait, the BuildingItem.pos() would be from the wrong item, and the model building.x/y would be the new values from the drag... Let me trace more carefully.\\n\\nOK I think the issue is:\\n1. Drag building in first room's BuildingItem\\n2. mouseReleaseEvent on that BuildingItem calls canvas.on_building_moved(building_id, old_x, old_y)\\n3. on_building_moved does: item = self._building_items.get(building_id)\\n4. This gets the WRONG BuildingItem (from second room, not the one being dragged)\\n5. new_x = item.pos().x() - this is the SECOND room's position, not the dragged position\\n6. So the move command is bogus\\n\\nThat's the bug! The fix is to pass `self` (the BuildingItem) to on_building_moved instead of looking it up by ID.\", \"conclusion\": \"Root cause: When there are linked room placements (same room, multiple RoomItems), each RoomItem creates its own BuildingItems for the same building_id. But canvas._building_items only stores ONE per building_id (the last one added). So on_building_moved() looks up the wrong BuildingItem and gets wrong position data.\\n\\nFix: Change on_building_moved to accept the BuildingItem directly instead of looking it up by ID. The BuildingItem already has all the info needed.\"}",
+            "name": "think"
+          },
+          "id": "toolu_vrtx_01Mw8MznjVVWtHWtE51vodNW",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Mw8MznjVVWtHWtE51vodNW",
+      "content": "{\"conclusion\": \"Root cause: When there are linked room placements (same room, multiple RoomItems), each RoomItem creates its own BuildingItems for the same building_id. But canvas._building_items only stores ONE per building_id (the last one added). So on_building_moved() looks up the wrong BuildingItem and gets wrong position data.\\n\\nFix: Change on_building_moved to accept the BuildingItem directly instead of looking it up by ID. The BuildingItem already has all the info needed.\", \"message\": \"Thought through 1056 tokens, concluded.\", \"success\": true, \"think\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I found the root cause. When there are **linked room placements** (same room data, multiple RoomItems on canvas), each RoomItem creates its own BuildingItems for the same `building_id`. But `canvas._building_items` only stores ONE entry per building_id - the last one added overwrites the first!\n\nSo when you:\n1. Create room (room1 placement) \u2192 BuildingItems registered\n2. Copy room (room2 placement) \u2192 BuildingItems overwrite the first ones\n3. Move building in room2 \u2192 works (it's the registered one)\n4. Move building in room1 \u2192 fails because `_building_items[id]` returns room2's BuildingItem\n\nThe fix is to pass the BuildingItem directly to `on_building_moved` instead of looking it up by ID:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/items/building_item.py\", \"src/satisfactory_planner/ui/canvas/factory_canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_019zp9Ac84GcbYv62D4hSa8u",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_019zp9Ac84GcbYv62D4hSa8u",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/items/building_item.py\", \"src/satisfactory_planner/ui/canvas/factory_canvas.py\"], \"message\": \"Added 2 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at the code, I now understand the full picture. The issue is that `_building_items` maps `building_id` \u2192 `BuildingItem`, but when you have linked rooms, multiple `BuildingItem` instances exist for the same `building_id` (one per RoomItem). The last one registered wins.\n\nBut wait - looking more carefully at `on_building_moved`:\n\n```python\nitem = self._building_items.get(building_id)\nif not item:\n    return\n\nbuilding = item.building_scene.buildings.get(building_id)\n```\n\nThe problem is that `item` comes from `_building_items` which has the WRONG BuildingItem (from the second room), so even though `item.building_scene` is correct for THAT item, the position `item.pos()` is wrong - it's the position in the second room, not the first!\n\nThe fix is to pass `self` (the actual BuildingItem being dragged) to `on_building_moved` instead of looking it up by ID:\n\n<edit file=\"src/satisfactory_planner/ui/items/building_item.py\">\n<search>\n            # Create single command if moved or rotated\n            if moved or rotated:\n                self.canvas.on_building_moved(\n                    self.building.id,\n                    self._drag_start_pos.x(),\n                    self._drag_start_pos.y(),\n                    self._drag_start_rotation,\n                )\n</search>\n<replace>\n            # Create single command if moved or rotated\n            if moved or rotated:\n                self.canvas.on_building_moved(\n                    self,  # Pass the actual item, not just ID\n                    self._drag_start_pos.x(),\n                    self._drag_start_pos.y(),\n                    self._drag_start_rotation,\n                )\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def on_building_moved(\n        self, building_id: str, old_x: float, old_y: float, old_rotation: int | None = None\n    ) -> None:\n        \"\"\"Handle a building being moved.\"\"\"\n        item = self._building_items.get(building_id)\n        if not item:\n            return\n\n        building = item.building_scene.buildings.get(building_id)\n        if not building:\n            return\n</search>\n<replace>\n    def on_building_moved(\n        self,\n        item_or_id: BuildingItem | str,\n        old_x: float,\n        old_y: float,\n        old_rotation: int | None = None,\n    ) -> None:\n        \"\"\"Handle a building being moved.\n\n        Args:\n            item_or_id: Either the BuildingItem itself (preferred) or building_id (legacy)\n        \"\"\"\n        if isinstance(item_or_id, str):\n            # Legacy path - lookup by ID (may get wrong item for linked rooms)\n            item = self._building_items.get(item_or_id)\n            building_id = item_or_id\n        else:\n            # New path - use the actual item that was dragged\n            item = item_or_id\n            building_id = item.building.id\n\n        if not item:\n            return\n\n        building = item.building_scene.buildings.get(building_id)\n        if not building:\n            return\n</replace>\n</edit>\n\nNow let's run the tests:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "",
+            "name": "run_tests"
+          },
+          "id": "toolu_vrtx_0177HhRZmTaJHj6iFwWTwDka",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_0177HhRZmTaJHj6iFwWTwDka",
+      "content": "{\"output\": \"ruff check --fix src/ tests/ spikes/\\nAll checks passed!\\nruff format src/ tests/ spikes/\\n76 files left unchanged\\nruff check src/ tests/ spikes/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 45 source files\\ncd spikes/flowsim && mypy . --config-file mypy.ini\\nSuccess: no issues found in 18 source files\\npytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_lc1qai8u\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollected 48 items\\n\\ntests/test_core/test_commands.py .........                               [ 18%]\\ntests/test_core/test_flow_solver.py .......                              [ 33%]\\ntests/test_core/test_models.py .........                                 [ 52%]\\ntests/test_core/test_room_commands.py ..............                     [ 81%]\\ntests/test_smoke.py ..                                                   [ 85%]\\ntests/test_ui/test_canvas.py .......                                     [100%]\\n\\n============================== 48 passed in 0.14s ==============================\\ncd spikes/flowsim && pytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\\nrootdir: /tmp/forge_vfs_lc1qai8u\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\\ncollected 49 items\\n\\ntests/test_builder.py ...................                                [ 38%]\\ntests/test_dangling.py .....                                             [ 48%]\\ntests/test_info.py ..                                                    [ 53%]\\ntests/test_overcapacity.py ....                                          [ 61%]\\ntests/test_solver.py ..............                                      [ 89%]\\ntests/test_underflow.py .....                                            [100%]\\n\\n============================== 49 passed in 0.07s ==============================\\n\", \"passed\": true, \"success\": true, \"summary\": \"\\u2713 Tests passed (make test)\", \"test_command\": \"make test\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "All tests pass. Let me commit this fix:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fix drag/drop for buildings in linked rooms\\n\\nWhen linked rooms have multiple placements, each RoomItem creates its own\\nBuildingItems for the same building_id. But _building_items only stores one\\nper ID (last one wins), so on_building_moved() was looking up the wrong\\nBuildingItem and getting wrong position data.\\n\\nFix: Pass the actual BuildingItem to on_building_moved() instead of looking\\nit up by ID. The method now accepts either BuildingItem or str for backwards\\ncompatibility.\"}",
+            "name": "commit"
+          },
+          "id": "toolu_vrtx_01PXKFnvzrYBmccZ85qeq9Zb",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"src/satisfactory_planner/ui/items/building_item.py\", \"src/satisfactory_planner/ui/canvas/factory_canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01F2mj8rv8zswyhvGzusYUUH",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Fixed the drag/drop issue for buildings in linked rooms!\\n\\n**Root cause:** When you have linked room placements (same room, multiple RoomItems), each RoomItem creates its own BuildingItems for the same `building_id`. But `canvas._building_items` only stores ONE entry per building_id - the last one added overwrites the first.\\n\\nSo when dragging in the first room:\\n1. `mouseReleaseEvent` calls `on_building_moved(building_id, ...)`\\n2. `on_building_moved` looks up `_building_items[building_id]` \u2192 gets the WRONG item (from room2)\\n3. Uses wrong position data \u2192 command fails/bounces back\\n\\n**Fix:** Pass the actual `BuildingItem` (i.e., `self`) to `on_building_moved()` instead of just the ID. The method now accepts either `BuildingItem` or `str` for backwards compatibility.\\n\\nGive it a try - drag should now work correctly in both linked room instances!\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01NT9d6WTkrdfd8WEQLei2XA",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01PXKFnvzrYBmccZ85qeq9Zb",
+      "content": "{\"commit\": \"04895fd4bf8a\", \"message\": \"Committed: 99 file(s) modified/created\", \"side_effects\": [\"mid_turn_commit\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01F2mj8rv8zswyhvGzusYUUH",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 2 files from context\", \"remove\": [\"src/satisfactory_planner/ui/items/building_item.py\", \"src/satisfactory_planner/ui/canvas/factory_canvas.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01NT9d6WTkrdfd8WEQLei2XA",
+      "content": "{\"done\": true, \"message\": \"Fixed the drag/drop issue for buildings in linked rooms!\\n\\n**Root cause:** When you have linked room placements (same room, multiple RoomItems), each RoomItem creates its own BuildingItems for the same `building_id`. But `canvas._building_items` only stores ONE entry per building_id - the last one added overwrites the first.\\n\\nSo when dragging in the first room:\\n1. `mouseReleaseEvent` calls `on_building_moved(building_id, ...)`\\n2. `on_building_moved` looks up `_building_items[building_id]` \\u2192 gets the WRONG item (from room2)\\n3. Uses wrong position data \\u2192 command fails/bounces back\\n\\n**Fix:** Pass the actual `BuildingItem` (i.e., `self`) to `on_building_moved()` instead of just the ID. The method now accepts either `BuildingItem` or `str` for backwards compatibility.\\n\\nGive it a try - drag should now work correctly in both linked room instances!\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Fixed the drag/drop issue for buildings in linked rooms!\n\n**Root cause:** When you have linked room placements (same room, multiple RoomItems), each RoomItem creates its own BuildingItems for the same `building_id`. But `canvas._building_items` only stores ONE entry per building_id - the last one added overwrites the first.\n\nSo when dragging in the first room:\n1. `mouseReleaseEvent` calls `on_building_moved(building_id, ...)`\n2. `on_building_moved` looks up `_building_items[building_id]` \u2192 gets the WRONG item (from room2)\n3. Uses wrong position data \u2192 command fails/bounces back\n\n**Fix:** Pass the actual `BuildingItem` (i.e., `self`) to `on_building_moved()` instead of just the ID. The method now accepts either `BuildingItem` or `str` for backwards compatibility.\n\nGive it a try - drag should now work correctly in both linked room instances!"
     }
   ]
 }

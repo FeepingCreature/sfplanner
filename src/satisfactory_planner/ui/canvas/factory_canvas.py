@@ -803,10 +803,26 @@ class FactoryCanvas(QGraphicsView):
     # === Building movement ===
 
     def on_building_moved(
-        self, building_id: str, old_x: float, old_y: float, old_rotation: int | None = None
+        self,
+        item_or_id: BuildingItem | str,
+        old_x: float,
+        old_y: float,
+        old_rotation: int | None = None,
     ) -> None:
-        """Handle a building being moved."""
-        item = self._building_items.get(building_id)
+        """Handle a building being moved.
+
+        Args:
+            item_or_id: Either the BuildingItem itself (preferred) or building_id (legacy)
+        """
+        if isinstance(item_or_id, str):
+            # Legacy path - lookup by ID (may get wrong item for linked rooms)
+            item = self._building_items.get(item_or_id)
+            building_id = item_or_id
+        else:
+            # New path - use the actual item that was dragged
+            item = item_or_id
+            building_id = item.building.id
+
         if not item:
             return
 
