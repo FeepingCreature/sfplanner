@@ -8,7 +8,7 @@ Minimal test to check packaged executable size when including scipy for LP solvi
 cd spikes/scipy_size_test
 uv venv
 source .venv/bin/activate
-uv pip install -e .
+uv pip install PySide6 numpy scipy
 ```
 
 ## Test Run (unpackaged)
