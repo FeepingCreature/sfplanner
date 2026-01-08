@@ -284,13 +284,25 @@ class BuildingItem(QGraphicsRectItem):
 
         # Get recipe name if available (skip for logistics)
         recipe_text = ""
-        if not is_small and self.building.recipe_id:
-            # Look up recipe in document
-            doc = self.canvas.document
-            recipe = doc.recipes.get(self.building.recipe_id)
-            recipe_text = recipe.name if recipe else "No Recipe"
-        elif not is_small:
-            recipe_text = "No Recipe"
+        if not is_small:
+            if self.building.building_type in (
+                BuildingType.SOURCE,
+                BuildingType.SINK,
+                BuildingType.MINER,
+            ):
+                # For Source/Sink/Miner, recipe_id holds the item_id directly
+                if self.building.recipe_id:
+                    # Show the item name (recipe_id is actually item_id)
+                    recipe_text = self.building.recipe_id.replace("_", " ").title()
+                else:
+                    recipe_text = "No Item"
+            elif self.building.recipe_id:
+                # Look up recipe in document
+                doc = self.canvas.document
+                recipe = doc.recipes.get(self.building.recipe_id)
+                recipe_text = recipe.name if recipe else "No Recipe"
+            else:
+                recipe_text = "No Recipe"
 
         if recipe_text:
             # Draw building type at top, recipe in middle, efficiency at bottom
