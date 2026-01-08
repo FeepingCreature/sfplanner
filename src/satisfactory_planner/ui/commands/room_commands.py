@@ -313,8 +313,8 @@ class CreateRoomCommand(Command):
 class DeleteRoomPlacementCommand(Command):
     """Command to delete a room placement.
 
-    If this is the last placement for a room, also restores the room's contents
-    back to the parent scene and removes the room.
+    If this is the last placement for a room, also deletes the room and all
+    its contents. Use DissolveRoomCommand to restore contents instead.
     """
 
     placement_id: str
@@ -356,21 +356,7 @@ class DeleteRoomPlacementCommand(Command):
         document.room_placements.pop(self.placement_id, None)
 
         if is_last:
-            # Restore buildings and belts to parent scene
-            parent = get_scene(document, placement.parent_room_id)
-
-            for building in list(room.buildings.values()):
-                # Translate back to absolute coords
-                building.x += placement.x
-                building.y += placement.y
-                parent.add_building(building)
-                self.canvas.add_building_item(building)
-
-            for belt in list(room.belts.values()):
-                parent.add_belt(belt)
-                self.canvas.add_belt_item(belt)
-
-            # Remove room from document
+            # Remove room from document (contents are deleted with it)
             document.rooms.pop(room.id, None)
 
         self.canvas.notify_mutation()
@@ -380,23 +366,99 @@ class DeleteRoomPlacementCommand(Command):
             logger.warning("DeleteRoomPlacementCommand.undo: no captured state")
             return
 
-        parent = get_scene(document, self._placement.parent_room_id)
-
         if self._was_last_placement:
             # Re-add the room
             room_copy = copy.deepcopy(self._room)
             document.rooms[room_copy.id] = room_copy
 
-            # Remove restored buildings/belts from parent
-            for building_id in self._room.buildings:
-                if building_id in parent.buildings:
-                    parent.remove_building(building_id)
-                    self.canvas.remove_building_item(building_id)
+        # Re-add placement
+        placement_copy = copy.deepcopy(self._placement)
+        document.room_placements[placement_copy.id] = placement_copy
 
-            for belt_id in self._room.belts:
-                if belt_id in parent.belts:
-                    parent.remove_belt(belt_id)
-                    self.canvas.remove_belt_item(belt_id)
+        # Re-add room item
+        room = document.rooms.get(placement_copy.room_id)
+        if room:
+            self.canvas.add_room_item(placement_copy, room)
+
+        self.canvas.notify_mutation()
+
+
+@dataclass(frozen=True)
+class DissolveRoomCommand(Command):
+    """Command to dissolve a room, restoring its contents to the parent scene.
+
+    Unlike delete, this preserves the buildings and belts by moving them back
+    to the parent scene at the room's position.
+    """
+
+    placement_id: str
+    canvas: FactoryCanvas
+
+    # Captured state for undo
+    _placement: RoomPlacement | None = None
+    _room: Room | None = None
+
+    def execute(self, document: Document) -> None:
+        placement = document.room_placements.get(self.placement_id)
+        if not placement:
+            logger.warning(f"DissolveRoomCommand.execute: placement {self.placement_id} not found")
+            return
+
+        room = document.rooms.get(placement.room_id)
+        if not room:
+            logger.warning(f"DissolveRoomCommand.execute: room {placement.room_id} not found")
+            return
+
+        # Capture state for undo
+        object.__setattr__(self, "_placement", copy.deepcopy(placement))
+        object.__setattr__(self, "_room", copy.deepcopy(room))
+
+        # Remove room item from canvas
+        self.canvas.remove_room_item(self.placement_id)
+
+        # Remove placement
+        document.room_placements.pop(self.placement_id, None)
+
+        # Restore buildings and belts to parent scene
+        parent = get_scene(document, placement.parent_room_id)
+
+        for building in list(room.buildings.values()):
+            # Translate back to absolute coords
+            building.x += placement.x
+            building.y += placement.y
+            parent.add_building(building)
+            self.canvas.add_building_item(building)
+
+        for belt in list(room.belts.values()):
+            parent.add_belt(belt)
+            self.canvas.add_belt_item(belt)
+
+        # Remove room from document
+        document.rooms.pop(room.id, None)
+
+        self.canvas.notify_mutation()
+
+    def undo(self, document: Document) -> None:
+        if not self._placement or not self._room:
+            logger.warning("DissolveRoomCommand.undo: no captured state")
+            return
+
+        parent = get_scene(document, self._placement.parent_room_id)
+
+        # Re-add the room
+        room_copy = copy.deepcopy(self._room)
+        document.rooms[room_copy.id] = room_copy
+
+        # Remove restored buildings/belts from parent
+        for building_id in self._room.buildings:
+            if building_id in parent.buildings:
+                parent.remove_building(building_id)
+                self.canvas.remove_building_item(building_id)
+
+        for belt_id in self._room.belts:
+            if belt_id in parent.belts:
+                parent.remove_belt(belt_id)
+                self.canvas.remove_belt_item(belt_id)
 
         # Re-add placement
         placement_copy = copy.deepcopy(self._placement)
