@@ -293,15 +293,30 @@ def _propagate_item_types(graph: FlowGraph) -> None:
     Splitters/mergers don't have recipes, so their port item types
     must be inferred from connected edges. This also updates their
     port rates to allow proper flow (using high capacity).
+
+    Convergence: Each iteration must make progress (set at least one port's
+    item_id). With N logistics nodes, we converge in at most N iterations.
     """
-    # Iterate until no more changes (handles chains of splitters/mergers)
+    # Count logistics nodes for convergence check
+    logistics_count = sum(
+        1 for n in graph.nodes.values() if n.node_type in (NodeType.SPLITTER, NodeType.MERGER)
+    )
+
+    # Iterate until no more changes
     changed = True
-    max_iterations = 100  # Prevent infinite loops
     iteration = 0
 
-    while changed and iteration < max_iterations:
+    while changed:
         changed = False
         iteration += 1
+
+        # Safety check: should never exceed logistics node count
+        if iteration > logistics_count + 1:
+            # This indicates a bug in the algorithm, not user error
+            raise RuntimeError(
+                f"Item type propagation failed to converge after {iteration} iterations. "
+                f"This is a bug - please report it."
+            )
 
         for node in graph.nodes.values():
             if node.node_type == NodeType.SPLITTER:
