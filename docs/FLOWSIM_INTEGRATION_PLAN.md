@@ -6,7 +6,7 @@ This document outlines how to integrate the `spikes/flowsim` prototype into the 
 
 The flowsim spike implements a complete flow simulation system:
 - **Builder**: Converts visual models (Building, Belt) → FlowGraph
-- **Solver**: LP-based steady-state flow calculation using scipy
+- **Solver**: LP-based steady-state flow calculation using pylinprog (pure Python)
 - **Detectors**: Modular warning detection (underflow, overcapacity, dangling, etc.)
 
 The current `src/satisfactory_planner/core/flow_solver.py` is a stub with basic disconnected belt detection. We'll replace it with the full implementation.
@@ -31,18 +31,24 @@ Document → build_flow_graph() → FlowGraph
 
 ## Integration Steps
 
-### Phase 1: Add Dependencies
+### Phase 1: Vendor pylinprog
 
-**File: `pyproject.toml`**
+**New file: `src/satisfactory_planner/core/linprog.py`**
+
+Copy the vendored `linprog.py` from `spikes/flowsim/linprog.py`. This is a pure Python simplex solver from [dmishin/pylinprog](https://github.com/dmishin/pylinprog) (MIT license).
+
+**Why pylinprog instead of scipy?**
+- scipy + numpy adds ~78MB to packaged executable and **doesn't work** with pyside6-deploy/Nuitka (missing Cython modules)
+- pylinprog is pure Python, single file (~300 lines), packages to ~39MB total
+- All 49 flowsim tests pass with pylinprog
+
+**Update `pyproject.toml`**: Add exclude for vendored file from ruff linting:
 ```toml
-dependencies = [
-    ...
-    "scipy>=1.11.0",
-    "numpy>=1.24.0",
+[tool.ruff]
+exclude = [
+    "src/satisfactory_planner/core/linprog.py",
 ]
 ```
-
-The LP solver uses `scipy.optimize.linprog` with the "highs" method.
 
 ---
 
@@ -137,9 +143,10 @@ Handle Rooms (not in spike):
 
 Copy `spikes/flowsim/solver.py` with adjustments:
 1. Update imports to use `satisfactory_planner.core.flow_models`
-2. Keep the same LP formulation (it's well-tested)
+2. Import from vendored `satisfactory_planner.core.linprog`
 
 ```python
+from satisfactory_planner.core.linprog import RESOLUTION_SOLVED, linsolve
 from satisfactory_planner.core.flow_models import (
     FlowGraph, FlowNode, NodeType, BuildingEfficiency, LimitingFactor
 )
@@ -359,6 +366,7 @@ Add tests in `tests/test_core/test_flow_solver.py`:
 ## File Summary
 
 ### New Files
+- `src/satisfactory_planner/core/linprog.py` - Vendored pure Python LP solver (MIT)
 - `src/satisfactory_planner/core/flow_models.py` - Flow graph models
 - `src/satisfactory_planner/core/flow_builder.py` - Document → FlowGraph
 - `src/satisfactory_planner/core/flow_lp_solver.py` - LP solver
@@ -369,7 +377,7 @@ Add tests in `tests/test_core/test_flow_solver.py`:
 - `src/satisfactory_planner/core/detectors/info.py`
 
 ### Modified Files
-- `pyproject.toml` - Add scipy, numpy dependencies
+- `pyproject.toml` - Add ruff exclude for vendored linprog.py
 - `src/satisfactory_planner/core/__init__.py` - Export new types
 - `src/satisfactory_planner/core/flow_solver.py` - Replace stub with orchestration
 - `src/satisfactory_planner/ui/panels/warnings_panel.py` - Causal chain UI
@@ -378,12 +386,15 @@ Add tests in `tests/test_core/test_flow_solver.py`:
 
 ### Deleted (after integration)
 - `spikes/flowsim/` - No longer needed
+- `spikes/scipy_size_test/` - No longer needed
 
 ---
 
 ## Migration Checklist
 
-- [ ] Add scipy/numpy to dependencies
+- [x] Test pylinprog as scipy replacement (39MB vs 78MB, works!)
+- [x] Port flowsim solver to pylinprog (all 49 tests pass)
+- [ ] Vendor `linprog.py` into src/
 - [ ] Create `flow_models.py` with flow graph types
 - [ ] Create `flow_builder.py` adapting spike builder
 - [ ] Create `flow_lp_solver.py` with LP solver
@@ -396,16 +407,18 @@ Add tests in `tests/test_core/test_flow_solver.py`:
 - [ ] Migrate and update all spike tests
 - [ ] Handle rooms in builder
 - [ ] Manual testing of full flow
-- [ ] Delete spike after verification
+- [ ] Delete spikes after verification
 
 ---
 
 ## Risks & Considerations
 
-1. **scipy dependency size**: ~30MB. Consider if this is acceptable for the packaged app.
+1. **~~scipy dependency size~~**: ✅ Solved! Using pylinprog instead (39MB total vs 78MB broken).
 
-2. **Performance**: LP solving is O(n³) worst case. For large factories (1000+ nodes), may need caching or incremental solving.
+2. **Performance**: LP solving is O(n³) worst case. For large factories (1000+ nodes), may need caching or incremental solving. pylinprog is pure Python so potentially slower than scipy's HiGHS, but for typical factory sizes should be fine.
 
 3. **Room graph stitching**: Connecting PORT_IN/PORT_OUT to parent graph needs careful handling of coordinate transforms.
 
 4. **Backward compatibility**: The new Warning format (with severity, caused_by) is a superset of the old format.
+
+5. **pylinprog maintenance**: We're vendoring a third-party library. If bugs are found, we either fix them ourselves or update from upstream. The code is simple enough (~300 lines) that this is manageable.

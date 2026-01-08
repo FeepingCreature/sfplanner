@@ -24,11 +24,13 @@ def run_simple_lp() -> tuple[bool, str]:
     c = np.array([-1.0, -1.0])
 
     # Inequality constraints: A_ub @ x <= b_ub
-    A_ub = np.array([
-        [1.0, 1.0],  # x1 + x2 <= 10
-        [1.0, 0.0],  # x1 <= 6
-        [0.0, 1.0],  # x2 <= 4
-    ])
+    A_ub = np.array(
+        [
+            [1.0, 1.0],  # x1 + x2 <= 10
+            [1.0, 0.0],  # x1 <= 6
+            [0.0, 1.0],  # x2 <= 4
+        ]
+    )
     b_ub = np.array([10.0, 6.0, 4.0])
 
     # Bounds: x1, x2 >= 0
@@ -58,10 +60,10 @@ class MainWindow(QMainWindow):
         success, message = run_simple_lp()
         status = "✅" if success else "❌"
 
-        layout.addWidget(QLabel(f"<h2>SciPy LP Solver Test</h2>"))
+        layout.addWidget(QLabel("<h2>SciPy LP Solver Test</h2>"))
         layout.addWidget(QLabel(f"<p>{status} {message}</p>"))
         layout.addWidget(QLabel(f"<p>NumPy version: {np.__version__}</p>"))
-        layout.addWidget(QLabel(f"<p>SciPy linprog method: highs</p>"))
+        layout.addWidget(QLabel("<p>SciPy linprog method: highs</p>"))
 
 
 def main() -> None:

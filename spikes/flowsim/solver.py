@@ -1,13 +1,13 @@
 """LP-based flow solver.
 
 Solves for steady-state flow rates using linear programming.
+Uses pylinprog (pure Python simplex) instead of scipy for smaller package size.
 """
 
 from dataclasses import dataclass, field
 
-import numpy as np
+from linprog import RESOLUTION_SOLVED, linsolve
 from models import BuildingEfficiency, FlowGraph, FlowNode, LimitingFactor, NodeType
-from scipy.optimize import linprog
 
 
 @dataclass
@@ -191,41 +191,33 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
                     equality_rows.append(row)
                     equality_rhs.append(node.outputs[i].rate)
 
-    # Convert to numpy arrays
-    if equality_rows:
-        A_eq = np.array(equality_rows)
-        b_eq = np.array(equality_rhs)
-    else:
-        A_eq = None
-        b_eq = None
-
-    if inequality_rows:
-        A_ub = np.array(inequality_rows)
-        b_ub = np.array(inequality_rhs)
-    else:
-        A_ub = None
-        b_ub = None
-
     # Objective: maximize total flow (minimize negative flow)
     # c @ x is minimized, so use -1 for each flow
-    c = np.array([-1.0] * n_edges)
+    c = [-1.0] * n_edges
 
-    # Bounds: all flows >= 0
-    bounds = [(0, None) for _ in range(n_edges)]
+    # All variables are non-negative (flow rates >= 0)
+    nonneg_vars = list(range(n_edges))
 
-    # Solve
-    result = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method="highs")
+    # Solve using pylinprog
+    resolution, solution = linsolve(
+        c,
+        ineq_left=inequality_rows,
+        ineq_right=inequality_rhs,
+        eq_left=equality_rows,
+        eq_right=equality_rhs,
+        nonneg_variables=nonneg_vars,
+    )
 
-    if not result.success:
+    if resolution != RESOLUTION_SOLVED:
         return SolvedModel(
             graph=graph,
             flows={},
             success=False,
-            message=f"LP solver failed: {result.message}",
+            message=f"LP solver failed: {resolution}",
         )
 
     # Extract flows
-    flows = {edge_ids[i]: max(0.0, result.x[i]) for i in range(n_edges)}
+    flows = {edge_ids[i]: max(0.0, solution[i]) for i in range(n_edges)}
 
     # Compute duty cycles for all producer nodes
     efficiencies = _compute_efficiencies(graph, flows)

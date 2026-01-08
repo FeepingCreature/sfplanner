@@ -5,10 +5,9 @@ Uses dmishin/pylinprog - a pure Python simplex implementation.
 
 import sys
 
-from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QWidget
-
 # pylinprog is a single file, we'll vendor it or pip install from git
-from linprog import linsolve, RESOLUTION_SOLVED
+from linprog import RESOLUTION_SOLVED, linsolve
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QWidget
 
 
 def run_simple_lp() -> tuple[bool, str]:
@@ -36,10 +35,10 @@ def run_simple_lp() -> tuple[bool, str]:
 
     # Solve - variables are non-negative by default with nonneg_variables
     resolution, solution = linsolve(
-        c, 
-        ineq_left=A, 
+        c,
+        ineq_left=A,
         ineq_right=b,
-        nonneg_variables=[0, 1]  # x1, x2 >= 0
+        nonneg_variables=[0, 1],  # x1, x2 >= 0
     )
 
     if resolution == RESOLUTION_SOLVED and solution is not None:
