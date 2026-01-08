@@ -52,6 +52,25 @@ class RecipeEditorDialog(QDialog):
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Building filter dropdown
+        self.filter_combo = QComboBox()
+        self.filter_combo.addItem("All Buildings", None)
+        for bt in BuildingType:
+            if bt not in (
+                BuildingType.SPLITTER,
+                BuildingType.MERGER,
+                BuildingType.MINER_MK1,
+                BuildingType.MINER_MK2,
+                BuildingType.MINER_MK3,
+                BuildingType.SOURCE,
+                BuildingType.SINK,
+                BuildingType.PORT_IN,
+                BuildingType.PORT_OUT,
+            ):
+                self.filter_combo.addItem(bt.value, bt)
+        self.filter_combo.currentIndexChanged.connect(self._on_filter_changed)
+        left_layout.addWidget(self.filter_combo)
+
         self.recipe_list = QListWidget()
         self.recipe_list.currentItemChanged.connect(self._on_recipe_selected)
         left_layout.addWidget(self.recipe_list)
@@ -276,10 +295,24 @@ class RecipeEditorDialog(QDialog):
                     if widget:
                         widget.setVisible(visible)
 
+    def _on_filter_changed(self, index: int) -> None:
+        """Handle building filter change."""
+        self._load_recipes()
+
     def _load_recipes(self) -> None:
-        """Load recipes into list."""
+        """Load recipes into list, filtered by building type."""
         self.recipe_list.clear()
+        filter_building = self.filter_combo.currentData()
+
         for recipe_id, recipe in self.document.recipes.items():
+            # Skip synthetic source/sink recipes
+            if recipe_id.startswith("_source_"):
+                continue
+
+            # Apply filter
+            if filter_building is not None and recipe.building_type != filter_building:
+                continue
+
             item = QListWidgetItem(recipe.name)
             item.setData(Qt.ItemDataRole.UserRole, recipe_id)
             self.recipe_list.addItem(item)

@@ -110,6 +110,42 @@ class PropertiesPanel(QWidget):
         layout.addWidget(self.building_group)
         self.building_group.hide()
 
+        # Source/Sink/Miner properties group (Item selector instead of Recipe)
+        self.source_group = QGroupBox("Item Selection")
+        source_layout = QFormLayout(self.source_group)
+
+        # Item selector
+        self.item_combo = QComboBox()
+        self.item_combo.addItem("(No item)", None)
+        self.item_combo.currentIndexChanged.connect(self._on_item_changed)
+        source_layout.addRow("Item:", self.item_combo)
+
+        # Rate for Source (how much it produces)
+        self.source_rate_spin = QDoubleSpinBox()
+        self.source_rate_spin.setRange(0, 10000)
+        self.source_rate_spin.setSuffix("/min")
+        self.source_rate_spin.setValue(60)
+        self.source_rate_spin.valueChanged.connect(self._on_source_rate_changed)
+        source_layout.addRow("Rate:", self.source_rate_spin)
+
+        # Min/Max for Source/Sink (warning thresholds)
+        self.min_rate_spin = QDoubleSpinBox()
+        self.min_rate_spin.setRange(0, 10000)
+        self.min_rate_spin.setSuffix("/min")
+        self.min_rate_spin.setValue(0)
+        self.min_rate_spin.valueChanged.connect(self._on_source_rate_changed)
+        source_layout.addRow("Min:", self.min_rate_spin)
+
+        self.max_rate_spin = QDoubleSpinBox()
+        self.max_rate_spin.setRange(0, 10000)
+        self.max_rate_spin.setSuffix("/min")
+        self.max_rate_spin.setValue(0)
+        self.max_rate_spin.valueChanged.connect(self._on_source_rate_changed)
+        source_layout.addRow("Max:", self.max_rate_spin)
+
+        layout.addWidget(self.source_group)
+        self.source_group.hide()
+
         # Belt properties group
         self.belt_group = QGroupBox("Belt Properties")
         belt_layout = QFormLayout(self.belt_group)
@@ -280,27 +316,56 @@ class PropertiesPanel(QWidget):
                 self.type_label.setText(building.building_type.value)
                 self.clock_spin.setValue(building.clock_speed * 100)
 
-                # Update recipe combo filtered by building type
-                self._update_recipe_combo(building.building_type)
+                # Source/Sink/Miner use item selector, not recipe
+                if self._is_source_type(building.building_type):
+                    self._populate_item_combo(building.building_type)
 
-                # Select current recipe in combo
-                if building.recipe_id:
-                    for i in range(self.recipe_combo.count()):
-                        if self.recipe_combo.itemData(i) == building.recipe_id:
-                            self.recipe_combo.setCurrentIndex(i)
-                            break
+                    # Get item from recipe if set
+                    if building.recipe_id and building.recipe_id in self.document.recipes:
+                        recipe = self.document.recipes[building.recipe_id]
+                        if recipe.outputs:
+                            item_id = recipe.outputs[0].item_id
+                            for i in range(self.item_combo.count()):
+                                if self.item_combo.itemData(i) == item_id:
+                                    self.item_combo.setCurrentIndex(i)
+                                    break
+                            self.source_rate_spin.setValue(recipe.outputs[0].rate)
+                        elif recipe.inputs:
+                            item_id = recipe.inputs[0].item_id
+                            for i in range(self.item_combo.count()):
+                                if self.item_combo.itemData(i) == item_id:
+                                    self.item_combo.setCurrentIndex(i)
+                                    break
+                            self.source_rate_spin.setValue(recipe.inputs[0].rate)
+
+                    self.source_group.show()
+                    self.building_group.hide()  # Hide recipe selector
+                    self.stats_group.hide()
                 else:
-                    self.recipe_combo.setCurrentIndex(0)
+                    # Update recipe combo filtered by building type
+                    self._update_recipe_combo(building.building_type)
 
-                self.building_group.show()
-                self.stats_group.show()
+                    # Select current recipe in combo
+                    if building.recipe_id:
+                        for i in range(self.recipe_combo.count()):
+                            if self.recipe_combo.itemData(i) == building.recipe_id:
+                                self.recipe_combo.setCurrentIndex(i)
+                                break
+                    else:
+                        self.recipe_combo.setCurrentIndex(0)
+
+                    self.building_group.show()
+                    self.stats_group.show()
+                    self.source_group.hide()
+
+                    # Update stats from recipe
+                    self._update_production_stats(building)
+
+                    # Update efficiency from flow solver
+                    self._update_efficiency_display(building.id)
+
                 self.belt_group.hide()
-
-                # Update stats from recipe
-                self._update_production_stats(building)
-
-                # Update efficiency from flow solver
-                self._update_efficiency_display(building.id)
+                self.room_group.hide()
 
             # Check if it's a belt
             elif item_id in self.document.belts:
@@ -321,6 +386,8 @@ class PropertiesPanel(QWidget):
                 self.belt_group.show()
                 self.building_group.hide()
                 self.stats_group.hide()
+                self.source_group.hide()
+                self.room_group.hide()
             # Check if it's a room placement
             else:
                 room_info = self._get_selected_room_item()
@@ -488,6 +555,59 @@ class PropertiesPanel(QWidget):
             f"Blueprint '{room.name}' saved to library.",
         )
 
+    def _is_source_type(self, building_type: BuildingType) -> bool:
+        """Check if building type uses item selector instead of recipe."""
+        return building_type in (
+            BuildingType.SOURCE,
+            BuildingType.SINK,
+            BuildingType.MINER_MK1,
+            BuildingType.MINER_MK2,
+            BuildingType.MINER_MK3,
+        )
+
+    def _populate_item_combo(self, building_type: BuildingType) -> None:
+        """Populate item combo based on building type."""
+        self.item_combo.clear()
+        self.item_combo.addItem("(No item)", None)
+
+        # Get items from recipes
+        items: set[str] = set()
+        for recipe in self.document.recipes.values():
+            for inp in recipe.inputs:
+                items.add(inp.item_id)
+            for out in recipe.outputs:
+                items.add(out.item_id)
+
+        # For miners, filter to ores only (items ending in "Ore" or starting with ore-like names)
+        if building_type in (
+            BuildingType.MINER_MK1,
+            BuildingType.MINER_MK2,
+            BuildingType.MINER_MK3,
+        ):
+            ore_items = [
+                i
+                for i in sorted(items)
+                if "Ore" in i
+                or i
+                in (
+                    "Coal",
+                    "Sulfur",
+                    "Bauxite",
+                    "Uranium",
+                    "Raw Quartz",
+                    "Caterium Ore",
+                    "Limestone",
+                    "Copper Ore",
+                    "Iron Ore",
+                )
+            ]
+            for item_id in ore_items:
+                self.item_combo.addItem(item_id, item_id)
+        else:
+            # Source/Sink can use any item
+            for item_id in sorted(items):
+                self.item_combo.addItem(item_id, item_id)
+
     def _get_belt_flow_rate(self, belt_id: str) -> float | None:
         """Get flow rate for a belt from flow solver."""
         if not self.canvas:
@@ -567,6 +687,74 @@ class PropertiesPanel(QWidget):
 
         # Display limiting factor
         self.status_label.setText(efficiency.limiting_details or "Running normally")
+
+    def _on_item_changed(self, index: int) -> None:
+        """Handle item selection change for Source/Sink/Miner."""
+        if self._updating or not self.canvas:
+            return
+
+        self._save_source_recipe()
+
+    def _on_source_rate_changed(self, value: float) -> None:
+        """Handle rate change for Source/Sink/Miner."""
+        if self._updating or not self.canvas:
+            return
+
+        self._save_source_recipe()
+
+    def _save_source_recipe(self) -> None:
+        """Save Source/Sink/Miner item selection as a synthetic recipe."""
+        if len(self._selected_ids) != 1:
+            return
+
+        building_id = self._selected_ids[0]
+        building = self.document.buildings.get(building_id)
+        if not building or not self._is_source_type(building.building_type):
+            return
+
+        item_id = self.item_combo.currentData()
+        if not item_id:
+            # Clear recipe if no item selected
+            if building.recipe_id:
+                building.recipe_id = None
+                if self.canvas:
+                    self.canvas.notify_mutation()
+            return
+
+        rate = self.source_rate_spin.value()
+
+        # Create synthetic recipe for this source/sink/miner
+        from satisfactory_planner.core.models import ItemRate, Recipe
+
+        recipe_id = f"_source_{building_id}"
+
+        if building.building_type == BuildingType.SINK:
+            # Sink consumes items
+            recipe = Recipe(
+                id=recipe_id,
+                name=f"Sink: {item_id}",
+                building_type=building.building_type,
+                inputs=[ItemRate(item_id, rate)],
+                outputs=[],
+                power_mw=0,
+                crafting_time=1.0,
+            )
+        else:
+            # Source/Miner produces items
+            recipe = Recipe(
+                id=recipe_id,
+                name=f"Source: {item_id}",
+                building_type=building.building_type,
+                inputs=[],
+                outputs=[ItemRate(item_id, rate)],
+                power_mw=0,
+                crafting_time=1.0,
+            )
+
+        self.document.recipes[recipe_id] = recipe
+        building.recipe_id = recipe_id
+        if self.canvas:
+            self.canvas.notify_mutation()
 
     def _on_delink(self) -> None:
         """Unlink the selected room placement."""
