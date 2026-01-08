@@ -79,13 +79,13 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
         outgoing = graph.get_outgoing_edges(node_id)
 
         if node.node_type == NodeType.MINER:
-            # Miner: no inputs, output = production rate
+            # Miner: no inputs, output <= production rate (can produce less if not needed)
             for i, out_edge in enumerate(outgoing):
                 if i < len(node.outputs):
                     row = [0.0] * n_edges
                     row[edge_to_idx[out_edge.id]] = 1.0
-                    equality_rows.append(row)
-                    equality_rhs.append(node.outputs[i].rate)
+                    inequality_rows.append(row)
+                    inequality_rhs.append(node.outputs[i].rate)
 
         elif node.node_type == NodeType.PRODUCER:
             # Producer: outputs are LIMITED by downstream demand (inequality)
