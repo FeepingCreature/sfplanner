@@ -45,6 +45,7 @@ from satisfactory_planner.ui.commands import (
 )
 from satisfactory_planner.ui.items.belt_item import BeltItem
 from satisfactory_planner.ui.items.building_item import BuildingItem
+from satisfactory_planner.ui.items.warning_icon_item import WarningIconItem
 
 if TYPE_CHECKING:
     from satisfactory_planner.core.models import RoomPlacement
@@ -102,6 +103,7 @@ class FactoryCanvas(QGraphicsView):
         self._building_items: dict[str, BuildingItem] = {}
         self._belt_items: dict[str, BeltItem] = {}
         self._room_items: dict[str, object] = {}
+        self._warning_icons: list[WarningIconItem] = []
 
         # Mutation callback
         self._mutation_callback: Callable[[], None] | None = None
@@ -869,6 +871,55 @@ class FactoryCanvas(QGraphicsView):
             if eff.building_id in self._building_items:
                 item = self._building_items[eff.building_id]
                 item.set_efficiency(eff.duty_cycle)
+
+        # Update warning icons
+        self._update_warning_icons(flow_solver._warnings)
+
+    def _update_warning_icons(self, warnings: list[object]) -> None:
+        """Update warning icons based on current warnings."""
+        from satisfactory_planner.core.flow_solver import Warning
+
+        # Remove existing warning icons
+        for icon in self._warning_icons:
+            self._scene.removeItem(icon)
+        self._warning_icons.clear()
+
+        # Add new warning icons at element positions
+        for warning in warnings:
+            if not isinstance(warning, Warning):
+                continue
+
+            position = self._get_element_position(warning.element_id)
+            if position:
+                # Offset slightly so icon doesn't cover the element
+                offset_pos = QPointF(position.x() + 30, position.y() - 10)
+                icon = WarningIconItem(warning, offset_pos)
+                self._scene.addItem(icon)
+                self._warning_icons.append(icon)
+
+    def _get_element_position(self, element_id: str) -> QPointF | None:
+        """Get the scene position for an element (building or belt)."""
+        # Check buildings
+        if element_id in self._building_items:
+            building_item = self._building_items[element_id]
+            rect = building_item.boundingRect()
+            return building_item.pos() + rect.center()
+
+        # Check belts - use midpoint
+        if element_id in self._belt_items:
+            belt_item = self._belt_items[element_id]
+            path = belt_item.path()
+            if path.length() > 0:
+                point: QPointF = path.pointAtPercent(0.5)
+                return point
+
+        return None
+
+    def clear_warning_icons(self) -> None:
+        """Remove all warning icons from the scene."""
+        for icon in self._warning_icons:
+            self._scene.removeItem(icon)
+        self._warning_icons.clear()
 
     def _refresh_all_room_items(self, room_id: str) -> None:
         """Refresh all RoomItems displaying the given room."""

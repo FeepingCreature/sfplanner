@@ -293,9 +293,13 @@ class BuildingItem(QGraphicsRectItem):
             recipe_text = "No Recipe"
 
         if recipe_text:
-            # Draw building type at top, recipe at bottom
-            top_rect = QRectF(0, 2, w, h / 2 - 2)
-            bottom_rect = QRectF(0, h / 2, w, h / 2 - 2)
+            # Draw building type at top, recipe in middle, efficiency at bottom
+            row_height = h / 3
+            top_rect = QRectF(0, 2, w, row_height - 2)
+            middle_rect = QRectF(0, row_height, w, row_height)
+            bottom_rect = QRectF(0, row_height * 2, w, row_height - 2)
+
+            # Building name
             painter.drawText(
                 top_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom, name
             )
@@ -306,8 +310,27 @@ class BuildingItem(QGraphicsRectItem):
             small_font.setPointSize(7)
             painter.setFont(small_font)
             painter.drawText(
-                bottom_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, recipe_text
+                middle_rect,
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
+                recipe_text,
             )
+
+            # Load factor (efficiency) at bottom
+            if self._efficiency_value is not None:
+                pct = self._efficiency_value * 100
+                if pct >= 99.9:
+                    eff_text = "✓ 100%"
+                    eff_color = QColor(100, 255, 100)
+                elif pct >= 50:
+                    eff_text = f"{pct:.0f}%"
+                    eff_color = QColor(255, 200, 50)
+                else:
+                    eff_text = f"{pct:.0f}%"
+                    eff_color = QColor(255, 100, 100)
+                painter.setPen(QPen(eff_color))
+                painter.drawText(
+                    bottom_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, eff_text
+                )
         else:
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, name)
 
