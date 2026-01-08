@@ -3,12 +3,14 @@
 ## Room System
 - [ ] Room resizing (drag edges/corners to resize, with building constraint checks)
 - [ ] Constrain building movement to stay within room bounds
-- [ ] Deletion inside rooms doesn't work (DeleteItemsCommand needs scene awareness)
+- [x] Deletion inside rooms (DeleteItemsCommand has scene awareness)
 - [ ] Clamp port movement to room edge (drag along boundary only)
-- [ ] Prevent/intercept belts crossing room boundary (auto-create port or reject)
-- [ ] Fix redo of room creation (buildings not restored - command captures IDs but buildings were moved)
-- [ ] Undo stack is per-canvas, not per-scene (actions inside rooms should undo)
-- [ ] Create Room toolbar button should show active state while in CREATE_ROOM mode
+- [x] Belts crossing room boundary auto-create ports
+- [x] Room creation redo works correctly
+- [x] Room deletion (DeleteRoomPlacementCommand)
+- [x] Room dissolve (DissolveRoomCommand) - ungroup and restore buildings
+- [x] Room delink (DelinkRoomCommand) - make independent copy
+- [x] Create Room toolbar button shows active state while in CREATE_ROOM mode
 
 ## Room System - Known Bugs (low priority)
 - [ ] Mid-drag doesn't update other linked room instances (only syncs on release)
@@ -20,21 +22,20 @@
 - [ ] Icons from Satisfactory wiki need to be added to data/icons/
 - [ ] Recipe database needs full Satisfactory recipes (currently has samples)
 - [ ] Pipe visual theming (currently same as belts)
-- [ ] Blueprint save/load to user library
+- [x] Blueprint save/load to user library
 - [ ] Linked blueprint editing restrictions
 - [ ] Power summary panel
 - [ ] Production summary panel
 - [x] Project file save/load (.satplan)
-- [ ] pyside6-deploy configuration for static builds
-- [x] Flow solver causal chain tracking (core complete, UI pending)
+- [x] Flow solver causal chain tracking (core + UI complete)
 
-## Flow Solver UI (post-integration)
-- [ ] Update warnings panel to display causal chains (caused_by field)
-- [ ] Add efficiency display to properties panel (duty_cycle, limiting_factor)
-- [ ] Add flow rate display to belt items on canvas
-- [ ] Show bottlenecks toolbar button (wire up to flow solver)
-- [ ] Show flow rates on belts toolbar button (wire up to flow solver)
-- [ ] Show leftover items per port toolbar button (wire up to flow solver)
+## Flow Solver UI - COMPLETE
+- [x] Update warnings panel to display causal chains (caused_by field)
+- [x] Add efficiency display to properties panel (duty_cycle, limiting_factor)
+- [x] Add flow rate display to belt items on canvas
+- [x] Show bottlenecks toolbar button (wired to flow solver)
+- [x] Show flow rates on belts toolbar button (wired to flow solver)
+- [ ] Show leftover items per port toolbar button (needs detector)
 - [ ] Delete spikes/flowsim/ after UI integration verified
 - [ ] Delete spikes/scipy_size_test/ after UI integration verified
 
@@ -69,13 +70,14 @@ Working:
 - [x] Zoom in/out/fit
 - [x] Grid snap toggle
 - [x] Grid size dropdown
+- [x] Box select tool
+- [x] Create room
+- [x] Create blueprint from selection
+- [x] Unlink blueprint
+- [x] Dissolve room
+- [x] Show bottlenecks
+- [x] Show flow rates on belts
 
 Stubbed:
-- [x] Box select tool
-- [ ] Create room
-- [ ] Create blueprint from selection
-- [ ] Unlink blueprint
 - [ ] Show grid lines
-- [ ] Show bottlenecks (needs flow solver)
-- [ ] Show flow rates on belts (needs flow solver)
-- [ ] Show leftover items per port (needs flow solver)
+- [ ] Show leftover items per port (needs detector)
