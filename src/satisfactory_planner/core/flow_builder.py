@@ -82,6 +82,16 @@ def _get_port_item_id(
     building: Building, is_input: bool, port_index: int, recipes: dict[str, Recipe]
 ) -> str | None:
     """Get the item ID for a port based on recipe."""
+    # Source/Sink use recipe_id to store the item_id directly
+    if building.building_type == BuildingType.SOURCE:
+        if not is_input and port_index == 0:
+            return building.recipe_id  # recipe_id holds item_id for Source
+        return None
+    if building.building_type == BuildingType.SINK:
+        if is_input and port_index == 0:
+            return building.recipe_id  # recipe_id holds item_id for Sink
+        return None
+
     if building.recipe_id is None:
         return None
 
@@ -105,6 +115,20 @@ def _build_flow_ports(
     """Build input and output FlowPorts for a building."""
     inputs: list[FlowPort] = []
     outputs: list[FlowPort] = []
+
+    # Source: single output with infinite rate (item_id stored in recipe_id)
+    if building.building_type == BuildingType.SOURCE:
+        item_id = building.recipe_id  # recipe_id holds item_id for Source
+        # Use a very high rate to represent "infinite" supply
+        outputs.append(FlowPort(item_id=item_id, rate=100000.0))
+        return inputs, outputs
+
+    # Sink: single input with infinite rate (item_id stored in recipe_id)
+    if building.building_type == BuildingType.SINK:
+        item_id = building.recipe_id  # recipe_id holds item_id for Sink
+        # Use a very high rate to represent "infinite" demand
+        inputs.append(FlowPort(item_id=item_id, rate=100000.0))
+        return inputs, outputs
 
     if building.recipe_id and building.recipe_id in recipes:
         recipe = recipes[building.recipe_id].scaled(building.clock_speed)
