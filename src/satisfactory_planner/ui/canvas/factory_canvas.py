@@ -83,6 +83,7 @@ class FactoryCanvas(QGraphicsView):
     """
 
     selection_changed = Signal(list)
+    tool_mode_changed = Signal(object)  # Emits ToolMode when it changes
 
     def __init__(
         self, document: Document, command_stack: CommandStack, parent: QGraphicsView | None = None
@@ -181,10 +182,11 @@ class FactoryCanvas(QGraphicsView):
         self._tool_mode = mode
         if mode == ToolMode.PAN:
             self.setCursor(Qt.CursorShape.OpenHandCursor)
-        elif mode == ToolMode.BOX_SELECT:
+        elif mode == ToolMode.BOX_SELECT or mode == ToolMode.CREATE_ROOM:
             self.setCursor(Qt.CursorShape.CrossCursor)
         else:
             self.setCursor(Qt.CursorShape.ArrowCursor)
+        self.tool_mode_changed.emit(mode)
 
     def set_placement_mode(self, building_type: BuildingType | None) -> None:
         """Enter placement mode for a building type."""

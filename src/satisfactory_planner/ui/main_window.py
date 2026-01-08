@@ -286,7 +286,8 @@ class MainWindow(QMainWindow):
         # === 4. Creation Tools ===
         self.create_room_action = QAction("Room", self)
         self.create_room_action.setToolTip("Create a room (drag to select buildings)")
-        self.create_room_action.triggered.connect(self._start_room_creation)
+        self.create_room_action.setCheckable(True)
+        self.create_room_action.toggled.connect(self._toggle_room_creation)
         toolbar.addAction(self.create_room_action)
 
         self.create_blueprint_action = QAction("Blueprint", self)
@@ -387,6 +388,7 @@ class MainWindow(QMainWindow):
         # Connect signals
         canvas.selection_changed.connect(self.properties_panel.set_selection)
         canvas.selection_changed.connect(self._update_selection_actions)
+        canvas.tool_mode_changed.connect(self._on_tool_mode_changed)
 
         # Set mutation callback (replaces document_changed signal)
         canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
@@ -508,6 +510,7 @@ class MainWindow(QMainWindow):
             # Connect signals
             canvas.selection_changed.connect(self.properties_panel.set_selection)
             canvas.selection_changed.connect(self._update_selection_actions)
+            canvas.tool_mode_changed.connect(self._on_tool_mode_changed)
 
             # Set mutation callback (replaces document_changed signal)
             canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
@@ -712,13 +715,27 @@ class MainWindow(QMainWindow):
         except ValueError:
             pass
 
-    def _start_room_creation(self) -> None:
-        """Start room creation mode on current canvas (one-shot tool)."""
-        if self.current_tab and self.current_tab.canvas:
-            from satisfactory_planner.ui.canvas import ToolMode
+    def _toggle_room_creation(self, checked: bool) -> None:
+        """Toggle room creation mode on current canvas."""
+        if not self.current_tab or not self.current_tab.canvas:
+            return
 
+        from satisfactory_planner.ui.canvas import ToolMode
+
+        if checked:
             self.current_tab.canvas.set_tool_mode(ToolMode.CREATE_ROOM)
-            self.current_tab.canvas.setCursor(Qt.CursorShape.CrossCursor)
+        else:
+            self.current_tab.canvas.set_tool_mode(ToolMode.SELECT)
+
+    def _on_tool_mode_changed(self, mode: object) -> None:
+        """Handle tool mode changes from canvas."""
+        from satisfactory_planner.ui.canvas import ToolMode
+
+        # Update Room button state without retriggering the toggle
+        if mode != ToolMode.CREATE_ROOM:
+            self.create_room_action.blockSignals(True)
+            self.create_room_action.setChecked(False)
+            self.create_room_action.blockSignals(False)
 
     def _unlink_room(self) -> None:
         """Unlink the selected room placement (make it an independent copy)."""
