@@ -356,13 +356,20 @@ class FactoryCanvas(QGraphicsView):
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
             return
 
-        # Right click to cancel
+        # Right click - cancel or pan (depending on context)
         if event.button() == Qt.MouseButton.RightButton:
             if self._placement.is_placing:
                 self._placement.set_building_mode(None)
                 return
             if self._drawing.is_box_selecting:
                 self._drawing.cancel_box_select()
+                return
+            # Right-click on empty space = pan (alternative to middle mouse)
+            item_at_pos = self.itemAt(event.pos())
+            if item_at_pos is None or item_at_pos is self._selection.outline_item:
+                self._is_panning = True
+                self._pan_start = QPointF(float(event.pos().x()), float(event.pos().y()))
+                self.setCursor(Qt.CursorShape.ClosedHandCursor)
                 return
 
         # Left click
@@ -425,7 +432,10 @@ class FactoryCanvas(QGraphicsView):
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         """Handle mouse release."""
-        if event.button() == Qt.MouseButton.MiddleButton and self._is_panning:
+        if (
+            event.button() in (Qt.MouseButton.MiddleButton, Qt.MouseButton.RightButton)
+            and self._is_panning
+        ):
             self._is_panning = False
             if self._placement.is_placing or self._tool_mode == ToolMode.BOX_SELECT:
                 self.setCursor(Qt.CursorShape.CrossCursor)

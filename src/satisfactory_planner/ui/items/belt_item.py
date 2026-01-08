@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QBrush, QColor, QPainter, QPen
+from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsPathItem,
@@ -65,6 +65,16 @@ class BeltItem(QGraphicsPathItem):
         """Configure item flags."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
         self.setZValue(-1)  # Draw behind buildings
+
+    def shape(self) -> QPainterPath:
+        """Return a wider shape for easier clicking."""
+        from PySide6.QtGui import QPainterPathStroker
+
+        stroker = QPainterPathStroker()
+        # Make clickable area wider than visual
+        stroker.setWidth(self.pen().widthF() + 8)
+        stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+        return stroker.createStroke(self.path())
 
     def _setup_appearance(self) -> None:
         """Configure appearance based on tier."""

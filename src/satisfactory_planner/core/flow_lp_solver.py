@@ -180,6 +180,17 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
     # All variables are non-negative (flow rates >= 0)
     nonneg_vars = list(range(n_edges))
 
+    # Add upper bounds to prevent unbounded solutions
+    # Each edge is bounded by its belt capacity (or a large default)
+    for edge_id, edge in graph.edges.items():
+        idx = edge_to_idx[edge_id]
+        # Use belt capacity as upper bound, or 10000 as fallback
+        upper_bound = edge.capacity if edge.capacity > 0 else 10000.0
+        row = [0.0] * n_edges
+        row[idx] = 1.0
+        inequality_rows.append(row)
+        inequality_rhs.append(upper_bound)
+
     # Solve using pylinprog (vendored, untyped)
     resolution, solution = linsolve(  # type: ignore[no-untyped-call]
         c,
@@ -191,11 +202,24 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
     )
 
     if resolution != RESOLUTION_SOLVED:
+        # Provide more helpful error messages
+        from satisfactory_planner.core.linprog import (
+            RESOLUTION_INCOMPATIBLE,
+            RESOLUTION_UNBOUNDED,
+        )
+
+        if resolution == RESOLUTION_UNBOUNDED:
+            msg = "Flow analysis failed: No constraints limit the flow (check for disconnected outputs)"
+        elif resolution == RESOLUTION_INCOMPATIBLE:
+            msg = "Flow analysis failed: Conflicting constraints (check recipe ratios)"
+        else:
+            msg = f"Flow analysis failed: {resolution}"
+
         return SolvedModel(
             graph=graph,
             flows={},
             success=False,
-            message=f"LP solver failed: {resolution}",
+            message=msg,
         )
 
     # Extract flows
