@@ -118,7 +118,6 @@ class MainWindow(QMainWindow):
         # Properties panel - right (larger)
         dummy_doc = Document()
         self.properties_panel = PropertiesPanel(dummy_doc, CommandStack(dummy_doc))
-        self.properties_panel.setMinimumHeight(400)
         props_dock = ads.CDockWidget("Properties")
         props_dock.setWidget(self.properties_panel)
         self.dock_manager.addDockWidget(ads.DockWidgetArea.RightDockWidgetArea, props_dock)
@@ -128,6 +127,8 @@ class MainWindow(QMainWindow):
         self.warnings_panel.warning_clicked.connect(self._on_warning_clicked)
         warnings_dock = ads.CDockWidget("Warnings")
         warnings_dock.setWidget(self.warnings_panel)
+        warnings_dock.setMinimumSizeHintMode(ads.CDockWidget.MinimumSizeHintFromContent)
+        self.warnings_panel.setMinimumHeight(150)  # Give warnings panel a reasonable min height
         self.dock_manager.addDockWidget(
             ads.DockWidgetArea.BottomDockWidgetArea, warnings_dock, props_dock.dockAreaWidget()
         )
