@@ -45,9 +45,7 @@ BUILDING_INFO: dict[BuildingType, BuildingInfo] = {
     BuildingType.REFINERY: BuildingInfo("Fluid processing", "2 in → 2 out"),
     BuildingType.PACKAGER: BuildingInfo("Fluid packaging", "2 in → 2 out"),
     BuildingType.BLENDER: BuildingInfo("Fluid blending", "4 in → 2 out"),
-    BuildingType.MINER_MK1: BuildingInfo("60/min base rate", "Extracts ore"),
-    BuildingType.MINER_MK2: BuildingInfo("120/min base rate", "Extracts ore"),
-    BuildingType.MINER_MK3: BuildingInfo("240/min base rate", "Extracts ore"),
+    BuildingType.MINER: BuildingInfo("Tier-based rate", "Extracts ore"),
     BuildingType.SPLITTER: BuildingInfo("1 → 3 split", "Divides belt"),
     BuildingType.MERGER: BuildingInfo("3 → 1 merge", "Combines belts"),
     BuildingType.SOURCE: BuildingInfo("Infinite supply", "0 in → 1 out"),
@@ -357,12 +355,7 @@ class LibraryPanel(QWidget):
         extraction_item.setFlags(extraction_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
         extraction_item.setFont(0, font)
 
-        for bt in [
-            BuildingType.MINER_MK1,
-            BuildingType.MINER_MK2,
-            BuildingType.MINER_MK3,
-        ]:
-            extraction_item.addChild(BuildingTreeItem(bt))
+        extraction_item.addChild(BuildingTreeItem(BuildingType.MINER))
 
         self.tree.addTopLevelItem(extraction_item)
         extraction_item.setExpanded(True)

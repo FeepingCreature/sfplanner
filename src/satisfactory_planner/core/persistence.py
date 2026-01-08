@@ -139,6 +139,7 @@ def building_to_dict(building: Building) -> dict[str, Any]:
         "recipe_id": building.recipe_id,
         "clock_speed": building.clock_speed,
         "rotation": building.rotation,
+        "tier": building.tier,
     }
 
 
@@ -158,6 +159,7 @@ def dict_to_building(data: dict[str, Any]) -> Building:
         recipe_id=data.get("recipe_id"),
         clock_speed=data.get("clock_speed", 1.0),
         rotation=data.get("rotation", 0),
+        tier=data.get("tier", 1),
     )
 
 

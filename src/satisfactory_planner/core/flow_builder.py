@@ -19,6 +19,7 @@ from satisfactory_planner.core.flow_models import (
 )
 from satisfactory_planner.core.models import (
     BELT_CAPACITIES,
+    MINER_RATES,
     Building,
     BuildingType,
     Scene,
@@ -61,7 +62,7 @@ class BuildResult:
 
 def _get_node_type(building_type: BuildingType) -> NodeType:
     """Map building type to flow node type."""
-    if building_type in (BuildingType.MINER_MK1, BuildingType.MINER_MK2, BuildingType.MINER_MK3):
+    if building_type == BuildingType.MINER:
         return NodeType.MINER
     if building_type == BuildingType.SPLITTER:
         return NodeType.SPLITTER
@@ -82,7 +83,7 @@ def _get_port_item_id(
     building: Building, is_input: bool, port_index: int, recipes: dict[str, Recipe]
 ) -> str | None:
     """Get the item ID for a port based on recipe."""
-    # Source/Sink use recipe_id to store the item_id directly
+    # Source/Sink/Miner use recipe_id to store the item_id directly
     if building.building_type == BuildingType.SOURCE:
         if not is_input and port_index == 0:
             return building.recipe_id  # recipe_id holds item_id for Source
@@ -90,6 +91,10 @@ def _get_port_item_id(
     if building.building_type == BuildingType.SINK:
         if is_input and port_index == 0:
             return building.recipe_id  # recipe_id holds item_id for Sink
+        return None
+    if building.building_type == BuildingType.MINER:
+        if not is_input and port_index == 0:
+            return building.recipe_id  # recipe_id holds item_id for Miner
         return None
 
     if building.recipe_id is None:
@@ -130,6 +135,14 @@ def _build_flow_ports(
         inputs.append(FlowPort(item_id=item_id, rate=100000.0))
         return inputs, outputs
 
+    # Miner: single output with tier-based rate (item_id stored in recipe_id)
+    if building.building_type == BuildingType.MINER:
+        item_id = building.recipe_id  # recipe_id holds item_id for Miner
+        base_rate = MINER_RATES.get(building.tier, 60)
+        rate = base_rate * building.clock_speed
+        outputs.append(FlowPort(item_id=item_id, rate=rate))
+        return inputs, outputs
+
     if building.recipe_id and building.recipe_id in recipes:
         recipe = recipes[building.recipe_id].scaled(building.clock_speed)
         for item_rate in recipe.inputs:
@@ -155,9 +168,7 @@ def _is_production_building(building_type: BuildingType) -> bool:
     return building_type not in (
         BuildingType.SPLITTER,
         BuildingType.MERGER,
-        BuildingType.MINER_MK1,
-        BuildingType.MINER_MK2,
-        BuildingType.MINER_MK3,
+        BuildingType.MINER,
         BuildingType.PORT_IN,
         BuildingType.PORT_OUT,
         BuildingType.SOURCE,

@@ -59,9 +59,7 @@ class RecipeEditorDialog(QDialog):
             if bt not in (
                 BuildingType.SPLITTER,
                 BuildingType.MERGER,
-                BuildingType.MINER_MK1,
-                BuildingType.MINER_MK2,
-                BuildingType.MINER_MK3,
+                BuildingType.MINER,
                 BuildingType.SOURCE,
                 BuildingType.SINK,
                 BuildingType.PORT_IN,
@@ -115,9 +113,7 @@ class RecipeEditorDialog(QDialog):
             if bt not in (
                 BuildingType.SPLITTER,
                 BuildingType.MERGER,
-                BuildingType.MINER_MK1,
-                BuildingType.MINER_MK2,
-                BuildingType.MINER_MK3,
+                BuildingType.MINER,
             ):
                 self.building_combo.addItem(bt.value, bt)
         self.building_combo.currentIndexChanged.connect(self._on_building_changed)

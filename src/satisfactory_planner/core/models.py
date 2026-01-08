@@ -62,9 +62,7 @@ class BuildingType(Enum):
     BLENDER = "Blender"
 
     # Extraction
-    MINER_MK1 = "Miner Mk.1"
-    MINER_MK2 = "Miner Mk.2"
-    MINER_MK3 = "Miner Mk.3"
+    MINER = "Miner"
 
     # Logistics
     SPLITTER = "Splitter"
@@ -88,9 +86,7 @@ BUILDING_METADATA: dict[BuildingType, BuildingSpec] = {
     BuildingType.REFINERY: BuildingSpec(120, 100, 2, 2, 30.0),
     BuildingType.PACKAGER: BuildingSpec(80, 80, 2, 2, 10.0),
     BuildingType.BLENDER: BuildingSpec(120, 100, 4, 2, 75.0),
-    BuildingType.MINER_MK1: BuildingSpec(80, 80, 0, 1, 5.0),
-    BuildingType.MINER_MK2: BuildingSpec(80, 80, 0, 1, 12.0),
-    BuildingType.MINER_MK3: BuildingSpec(80, 80, 0, 1, 30.0),
+    BuildingType.MINER: BuildingSpec(80, 80, 0, 1, 5.0),  # Power varies by tier
     BuildingType.SPLITTER: BuildingSpec(60, 60, 1, 3, 0.0),
     BuildingType.MERGER: BuildingSpec(60, 60, 3, 1, 0.0),
     # Ports: small items on room boundary, 1 input OR 1 output (not both)
@@ -118,9 +114,7 @@ BUILDING_COLORS: dict[BuildingType, RGB] = {
     BuildingType.REFINERY: RGB(120, 120, 180),
     BuildingType.PACKAGER: RGB(100, 150, 150),
     BuildingType.BLENDER: RGB(180, 150, 100),
-    BuildingType.MINER_MK1: RGB(150, 120, 80),
-    BuildingType.MINER_MK2: RGB(160, 130, 90),
-    BuildingType.MINER_MK3: RGB(170, 140, 100),
+    BuildingType.MINER: RGB(150, 120, 80),
     BuildingType.SPLITTER: RGB(200, 200, 100),
     BuildingType.MERGER: RGB(100, 200, 200),
     BuildingType.PORT_IN: RGB(220, 180, 50),  # Yellow-ish (input color)
@@ -174,6 +168,21 @@ class Recipe:
         )
 
 
+# Miner output rates by tier (items per minute at 100% clock)
+MINER_RATES = {
+    1: 60,  # Mk.1
+    2: 120,  # Mk.2
+    3: 240,  # Mk.3
+}
+
+# Miner power by tier (MW)
+MINER_POWER = {
+    1: 5.0,
+    2: 12.0,
+    3: 30.0,
+}
+
+
 @dataclass
 class Building:
     """A placed building in the factory."""
@@ -185,6 +194,7 @@ class Building:
     recipe_id: str | None = None
     clock_speed: float = 1.0  # 0.01 to 2.5
     rotation: int = 0  # 0, 90, 180, 270 degrees
+    tier: int = 1  # For MINER: 1, 2, or 3
 
     @property
     def width(self) -> int:
