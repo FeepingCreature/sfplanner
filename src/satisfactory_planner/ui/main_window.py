@@ -115,7 +115,7 @@ class MainWindow(QMainWindow):
         self.library_panel.building_selected.connect(self._on_building_selected)
         self.library_panel.blueprint_selected.connect(self._on_blueprint_selected)
 
-        # Properties panel - right (larger)
+        # Properties panel - right (larger, should expand)
         dummy_doc = Document()
         self.properties_panel = PropertiesPanel(dummy_doc, CommandStack(dummy_doc))
         props_dock = ads.CDockWidget("Properties")
@@ -127,8 +127,8 @@ class MainWindow(QMainWindow):
         self.warnings_panel.warning_clicked.connect(self._on_warning_clicked)
         warnings_dock = ads.CDockWidget("Warnings")
         warnings_dock.setWidget(self.warnings_panel)
+        # Use content size hint so the dock respects our sizeHint()
         warnings_dock.setMinimumSizeHintMode(ads.CDockWidget.MinimumSizeHintFromContent)
-        self.warnings_panel.setMinimumHeight(150)  # Give warnings panel a reasonable min height
         self.dock_manager.addDockWidget(
             ads.DockWidgetArea.BottomDockWidgetArea, warnings_dock, props_dock.dockAreaWidget()
         )

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QLabel,
+    QSizePolicy,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -51,6 +52,9 @@ class WarningsPanel(QWidget):
 
         self._setup_ui()
 
+        # Set size policy so we don't expand greedily
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+
     def _setup_ui(self) -> None:
         """Create the panel UI."""
         layout = QVBoxLayout(self)
@@ -68,6 +72,10 @@ class WarningsPanel(QWidget):
         self.tree.itemClicked.connect(self._on_item_clicked)
         self.tree.itemDoubleClicked.connect(self._on_item_double_clicked)
         layout.addWidget(self.tree)
+
+    def sizeHint(self) -> QSize:
+        """Return preferred size - small height so properties panel gets more space."""
+        return QSize(250, 150)
 
     def set_document(self, document: Document, flow_solver: FlowSolver) -> None:
         """Set a new document."""
