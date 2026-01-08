@@ -304,6 +304,12 @@ class MainWindow(QMainWindow):
         self.unlink_blueprint_action.triggered.connect(self._unlink_room)
         toolbar.addAction(self.unlink_blueprint_action)
 
+        self.dissolve_room_action = QAction("Dissolve", self)
+        self.dissolve_room_action.setToolTip("Dissolve room, restoring buildings to canvas")
+        self.dissolve_room_action.setEnabled(False)
+        self.dissolve_room_action.triggered.connect(self._dissolve_room)
+        toolbar.addAction(self.dissolve_room_action)
+
         toolbar.addSeparator()
 
         # === 5. Belt Tier ===
@@ -724,6 +730,34 @@ class MainWindow(QMainWindow):
             self.create_room_action.setChecked(False)
             self.create_room_action.blockSignals(False)
 
+    def _dissolve_room(self) -> None:
+        """Dissolve the selected room, restoring buildings to the parent scene."""
+        if not self.current_tab or not self.current_tab.canvas:
+            return
+
+        from satisfactory_planner.ui.commands.room_commands import DissolveRoomCommand
+        from satisfactory_planner.ui.items import RoomItem
+
+        canvas = self.current_tab.canvas
+        selected = canvas.scene().selectedItems()
+
+        # Find selected room item
+        room_item = None
+        for item in selected:
+            if isinstance(item, RoomItem):
+                room_item = item
+                break
+
+        if not room_item:
+            return
+
+        # Create and execute dissolve command
+        cmd = DissolveRoomCommand(
+            placement_id=room_item.placement.id,
+            canvas=canvas,
+        )
+        self.current_tab.command_stack.execute(cmd)
+
     def _unlink_room(self) -> None:
         """Unlink the selected room placement (make it an independent copy)."""
         if not self.current_tab or not self.current_tab.canvas:
@@ -828,6 +862,7 @@ class MainWindow(QMainWindow):
 
         self.unlink_blueprint_action.setEnabled(can_unlink)
         self.create_blueprint_action.setEnabled(can_save_blueprint)
+        self.dissolve_room_action.setEnabled(can_save_blueprint)  # Can dissolve any room
 
     def _toggle_efficiency_overlay(self, enabled: bool) -> None:
         """Toggle efficiency overlay on buildings."""
