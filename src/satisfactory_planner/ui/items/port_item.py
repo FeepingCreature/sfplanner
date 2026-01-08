@@ -47,6 +47,7 @@ class PortItem(QGraphicsItem):
         self._setup_flags()
         self._hovered = False
         self._drag_target = False  # Highlighted as valid drop target during belt drag
+        self._spare_capacity: float | None = None  # For overflow display
 
     def _setup_flags(self) -> None:
         """Configure flags."""
@@ -100,11 +101,6 @@ class PortItem(QGraphicsItem):
 
         painter.restore()
 
-    def hoverEnterEvent(self, event: object) -> None:
-        """Highlight on hover."""
-        self._hovered = True
-        self.update()
-
     def hoverLeaveEvent(self, event: object) -> None:
         """Remove highlight."""
         self._hovered = False
@@ -135,3 +131,42 @@ class PortItem(QGraphicsItem):
         """Set whether this port is being targeted during belt drag."""
         self._drag_target = targeted
         self.update()
+
+    def set_spare_capacity(self, spare: float | None) -> None:
+        """Set the spare/overflow capacity for this port."""
+        self._spare_capacity = spare
+        if spare is not None and spare > 0:
+            self.setToolTip(f"Spare capacity: {spare:.1f}/min")
+        else:
+            self.setToolTip("")
+
+    def hoverEnterEvent(self, event: object) -> None:
+        """Highlight on hover and show spare capacity."""
+        self._hovered = True
+        self.update()
+
+        # Update spare capacity tooltip from flow solver
+        if self.is_output and self._spare_capacity is None:
+            self._update_spare_capacity()
+
+    def _update_spare_capacity(self) -> None:
+        """Fetch spare capacity from flow solver."""
+        main_window = self.canvas.window()
+        if not hasattr(main_window, "current_tab") or not main_window.current_tab:
+            return
+
+        flow_solver = main_window.current_tab.flow_solver
+        if not flow_solver or not flow_solver._solved_model:
+            return
+
+        # Find the node for this building
+        graph = flow_solver._solved_model.graph
+        for node in graph.nodes.values():
+            if node.building_id == self.building_id:
+                if self.port_index < len(node.outputs):
+                    port = node.outputs[self.port_index]
+                    # Spare = rate - actual_rate
+                    spare = port.rate - port.actual_rate
+                    if spare > 0.1:  # Only show if meaningful
+                        self.set_spare_capacity(spare)
+                break

@@ -232,7 +232,7 @@ class FactoryCanvas(QGraphicsView):
         source = self.document.buildings.get(belt.source_building_id)
         dest = self.document.buildings.get(belt.dest_building_id)
         if source and dest:
-            item = BeltItem(belt, source, dest)
+            item = BeltItem(belt, source, dest, canvas=self)
             self._scene.addItem(item)
             self._belt_items[belt.id] = item
             return item
@@ -830,6 +830,39 @@ class FactoryCanvas(QGraphicsView):
                 dest = target_scene.buildings.get(belt.dest_building_id)
                 if source and dest:
                     belt_item.update_path(source, dest)
+
+    def set_show_flow_rates(self, show: bool) -> None:
+        """Toggle flow rate display on all belts."""
+        for belt_item in self._belt_items.values():
+            belt_item.set_show_flow_rate(show)
+
+    def set_show_efficiency(self, show: bool) -> None:
+        """Toggle efficiency overlay on all buildings."""
+        for building_item in self._building_items.values():
+            building_item.set_show_efficiency(show)
+
+    def update_flow_visualization(self) -> None:
+        """Update visual state of items based on flow solver results."""
+        main_window = self.window()
+        if not hasattr(main_window, "current_tab") or not main_window.current_tab:
+            return
+
+        flow_solver = main_window.current_tab.flow_solver
+        if not flow_solver or not flow_solver._solved_model:
+            return
+
+        solved = flow_solver._solved_model
+
+        # Update belt overcapacity state
+        for edge in solved.graph.edges.values():
+            if edge.belt_id and edge.belt_id in self._belt_items:
+                self._belt_items[edge.belt_id].set_overcapacity(edge.is_overcapacity)
+
+        # Update building efficiency
+        for eff in solved.efficiencies.values():
+            if eff.building_id in self._building_items:
+                item = self._building_items[eff.building_id]
+                item.set_efficiency(eff.duty_cycle)
 
     def _refresh_all_room_items(self, room_id: str) -> None:
         """Refresh all RoomItems displaying the given room."""

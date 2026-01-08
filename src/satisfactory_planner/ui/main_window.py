@@ -359,22 +359,22 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
 
         # === 8. Analysis/Visualization ===
-        self.show_bottlenecks_action = QAction("Bottlenecks", self)
+        self.show_bottlenecks_action = QAction("Efficiency", self)
         self.show_bottlenecks_action.setCheckable(True)
-        self.show_bottlenecks_action.setToolTip("Highlight bottlenecks")
-        self.show_bottlenecks_action.setEnabled(False)  # TODO: Implement after flow solver
+        self.show_bottlenecks_action.setToolTip("Show efficiency overlay on buildings")
+        self.show_bottlenecks_action.toggled.connect(self._toggle_efficiency_overlay)
         toolbar.addAction(self.show_bottlenecks_action)
 
         self.show_flow_rates_action = QAction("Rates", self)
         self.show_flow_rates_action.setCheckable(True)
         self.show_flow_rates_action.setToolTip("Show flow rates on belts")
-        self.show_flow_rates_action.setEnabled(False)  # TODO: Implement after flow solver
+        self.show_flow_rates_action.toggled.connect(self._toggle_flow_rates)
         toolbar.addAction(self.show_flow_rates_action)
 
         self.show_leftovers_action = QAction("Leftovers", self)
         self.show_leftovers_action.setCheckable(True)
         self.show_leftovers_action.setToolTip("Show leftover items per port")
-        self.show_leftovers_action.setEnabled(False)  # TODO: Implement after flow solver
+        self.show_leftovers_action.setEnabled(False)  # TODO: Implement port spare capacity UI
         toolbar.addAction(self.show_leftovers_action)
 
     def _new_document(self) -> None:
@@ -809,6 +809,20 @@ class MainWindow(QMainWindow):
 
         self.unlink_blueprint_action.setEnabled(can_unlink)
         self.create_blueprint_action.setEnabled(can_save_blueprint)
+
+    def _toggle_efficiency_overlay(self, enabled: bool) -> None:
+        """Toggle efficiency overlay on buildings."""
+        if self.current_tab and self.current_tab.canvas:
+            self.current_tab.canvas.set_show_efficiency(enabled)
+            if enabled:
+                self.current_tab.canvas.update_flow_visualization()
+
+    def _toggle_flow_rates(self, enabled: bool) -> None:
+        """Toggle flow rate display on belts."""
+        if self.current_tab and self.current_tab.canvas:
+            self.current_tab.canvas.set_show_flow_rates(enabled)
+            if enabled:
+                self.current_tab.canvas.update_flow_visualization()
 
     def _mark_dirty(self, tab: DocumentTab) -> None:
         """Mark a tab as having unsaved changes."""

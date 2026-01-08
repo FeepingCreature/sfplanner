@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from satisfactory_planner.core import Document, FlowSolver, WarningType
+from satisfactory_planner.core import Document, FlowSolver, Warning, WarningType
 
 if TYPE_CHECKING:
     pass
@@ -26,6 +26,7 @@ WARNING_ICONS = {
     WarningType.PRODUCTION_UNDERFLOW: "⚠️",
     WarningType.LEFTOVER_ITEMS: "📦",
     WarningType.BELT_OVERCAPACITY: "🚫",
+    WarningType.ITEM_MISMATCH: "❌",
 }
 
 
@@ -89,23 +90,33 @@ class WarningsPanel(QWidget):
                 by_type[warning.type] = []
             by_type[warning.type].append(warning)
 
+        # Sort warnings by severity (highest first)
+        sorted_types = sorted(
+            by_type.items(),
+            key=lambda x: max((w.severity for w in x[1]), default=0),  # type: ignore[attr-defined]
+            reverse=True,
+        )
+
         # Create tree items
-        for warning_type, type_warnings in by_type.items():
+        for warning_type, type_warnings in sorted_types:
             icon = WARNING_ICONS.get(warning_type, "⚠️")
             type_item = QTreeWidgetItem([f"{icon} {warning_type.value} ({len(type_warnings)})"])
 
             for w in type_warnings:
-                warning_item = QTreeWidgetItem([w.message])  # type: ignore[attr-defined]
-                warning_item.setData(0, Qt.ItemDataRole.UserRole, w.element_id)  # type: ignore[attr-defined]
-                type_item.addChild(warning_item)
-
-                # TODO: Add causal chain as nested items
-                # if warning.details and "chain" in warning.details:
-                #     for chain_item in warning.details["chain"]:
-                #         ...
+                self._add_warning_item(type_item, w)  # type: ignore[arg-type]
 
             self.tree.addTopLevelItem(type_item)
             type_item.setExpanded(True)
+
+    def _add_warning_item(self, parent: QTreeWidgetItem, warning: Warning) -> None:
+        """Add a warning item with its causal chain as nested children."""
+        warning_item = QTreeWidgetItem([warning.message])
+        warning_item.setData(0, Qt.ItemDataRole.UserRole, warning.element_id)
+        parent.addChild(warning_item)
+
+        # Add causal chain as nested children
+        for cause in warning.caused_by:
+            self._add_warning_item(warning_item, cause)
 
     def _on_item_clicked(self, item: QTreeWidgetItem, column: int) -> None:
         """Handle clicking on a warning."""

@@ -57,6 +57,12 @@ class BuildingItem(QGraphicsRectItem):
         self._is_dragging: bool = False
         self._multi_drag_offsets: dict[str, QPointF] = {}
 
+        # Efficiency overlay state
+        self._show_efficiency = False
+        self._efficiency_value: float | None = None  # 0.0 - 1.0
+        self._is_starved = False
+        self._is_blocked = False
+
     def _get_display_size(self) -> tuple[int, int]:
         """Get display size - delegates to model."""
         return self.building._get_display_size()
@@ -305,6 +311,32 @@ class BuildingItem(QGraphicsRectItem):
         else:
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, name)
 
+        # Draw efficiency underlay if enabled (behind selection)
+        if self._show_efficiency and self._efficiency_value is not None:
+            painter.save()
+            if self.rotation_angle != 0:
+                painter.translate(w / 2, h / 2)
+                painter.rotate(self.rotation_angle)
+                painter.translate(-w / 2, -h / 2)
+
+            # Color based on efficiency: green (100%) -> yellow (50%) -> red (0%)
+            eff = self._efficiency_value
+            if eff >= 0.99:
+                eff_color = QColor(50, 200, 50, 100)  # Green
+            elif eff >= 0.5:
+                # Lerp from yellow to green
+                t = (eff - 0.5) * 2
+                eff_color = QColor(int(255 - t * 205), int(200 + t * 0), 50, 100)
+            else:
+                # Lerp from red to yellow
+                t = eff * 2
+                eff_color = QColor(255, int(t * 200), 50, 100)
+
+            painter.setPen(QPen(eff_color.darker(120), 4))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRect(rect.adjusted(-4, -4, 4, 4))
+            painter.restore()
+
         # Draw selection highlight (rotated with the building)
         if self.isSelected():
             painter.save()
@@ -429,3 +461,33 @@ class BuildingItem(QGraphicsRectItem):
     def building_scene(self, scene: Scene) -> None:
         """Set the scene this building belongs to."""
         self._scene = scene
+
+    def set_show_efficiency(self, show: bool) -> None:
+        """Toggle efficiency overlay display."""
+        self._show_efficiency = show
+        if show:
+            self._update_efficiency_from_solver()
+        self.update()
+
+    def set_efficiency(
+        self, value: float | None, starved: bool = False, blocked: bool = False
+    ) -> None:
+        """Set the efficiency value for overlay display."""
+        self._efficiency_value = value
+        self._is_starved = starved
+        self._is_blocked = blocked
+        self.update()
+
+    def _update_efficiency_from_solver(self) -> None:
+        """Fetch efficiency from flow solver."""
+        main_window = self.canvas.window()
+        if not hasattr(main_window, "current_tab") or not main_window.current_tab:
+            return
+
+        flow_solver = main_window.current_tab.flow_solver
+        if flow_solver:
+            eff = flow_solver.get_efficiency(self.building.id)
+            if eff:
+                self.set_efficiency(eff.duty_cycle)
+            else:
+                self.set_efficiency(None)

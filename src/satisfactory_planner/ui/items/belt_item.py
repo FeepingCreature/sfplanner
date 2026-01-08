@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QPointF, Qt
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import (
     QGraphicsItem,
@@ -18,7 +18,7 @@ from satisfactory_planner.core.routing import Point, compute_belt_path
 from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 
 if TYPE_CHECKING:
-    pass
+    from satisfactory_planner.ui.canvas import FactoryCanvas
 
 
 # Belt colors by tier (darker = lower tier)
@@ -45,14 +45,20 @@ BELT_WIDTHS = {
 class BeltItem(QGraphicsPathItem):
     """A belt connecting two buildings."""
 
-    def __init__(self, belt: Belt, source: Building, dest: Building) -> None:
+    def __init__(
+        self, belt: Belt, source: Building, dest: Building, canvas: FactoryCanvas | None = None
+    ) -> None:
         super().__init__()
 
         self.belt = belt
+        self.canvas = canvas
+        self._show_flow_rate = False  # Controlled by toolbar toggle
+        self._is_overcapacity = False  # Set by flow solver
 
         self._setup_flags()
         self._setup_appearance()
         self.update_path(source, dest)
+        self.setAcceptHoverEvents(True)
 
     def _setup_flags(self) -> None:
         """Configure item flags."""
@@ -88,6 +94,13 @@ class BeltItem(QGraphicsPathItem):
         widget: QWidget | None = None,
     ) -> None:
         """Paint the belt with flow direction indicators."""
+        # Draw overcapacity underlay first (wider, behind)
+        if self._is_overcapacity:
+            overcap_pen = QPen(QColor(255, 80, 80), self.pen().widthF() + 6)
+            overcap_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(overcap_pen)
+            painter.drawPath(self.path())
+
         # Draw the main belt line
         super().paint(painter, option, widget)
 
@@ -99,6 +112,10 @@ class BeltItem(QGraphicsPathItem):
 
         # Draw flow direction arrows
         self._draw_flow_arrows(painter)
+
+        # Draw flow rate if enabled
+        if self._show_flow_rate:
+            self._draw_flow_rate(painter)
 
     def _draw_flow_arrows(self, painter: QPainter) -> None:
         """Draw small arrows along the belt to show flow direction."""
@@ -134,3 +151,90 @@ class BeltItem(QGraphicsPathItem):
                 ]
             )
             painter.restore()
+
+    def _draw_flow_rate(self, painter: QPainter) -> None:
+        """Draw the flow rate at the belt midpoint."""
+        if not self.canvas:
+            return
+
+        # Get flow rate from flow solver
+        flow_rate = self._get_flow_rate()
+        if flow_rate is None:
+            return
+
+        path = self.path()
+        if path.length() < 30:
+            return
+
+        # Draw at midpoint
+        midpoint = path.pointAtPercent(0.5)
+
+        # Background for readability
+        text = f"{flow_rate:.1f}/min"
+        font = painter.font()
+        font.setPointSize(8)
+        painter.setFont(font)
+
+        from PySide6.QtGui import QFontMetrics
+
+        fm = QFontMetrics(font)
+        text_rect = fm.boundingRect(text)
+        bg_rect = QRectF(
+            midpoint.x() - text_rect.width() / 2 - 3,
+            midpoint.y() - text_rect.height() / 2 - 2,
+            text_rect.width() + 6,
+            text_rect.height() + 4,
+        )
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(QColor(30, 30, 30, 200)))
+        painter.drawRoundedRect(bg_rect, 3, 3)
+
+        # Draw text
+        if self._is_overcapacity:
+            painter.setPen(QPen(QColor(255, 100, 100)))
+        else:
+            painter.setPen(QPen(QColor(200, 200, 200)))
+        painter.drawText(bg_rect, Qt.AlignmentFlag.AlignCenter, text)
+
+    def _get_flow_rate(self) -> float | None:
+        """Get flow rate from the flow solver."""
+        if not self.canvas:
+            return None
+
+        main_window = self.canvas.window()
+        if not hasattr(main_window, "current_tab") or not main_window.current_tab:
+            return None
+
+        flow_solver = main_window.current_tab.flow_solver
+        if flow_solver:
+            result: float | None = flow_solver.get_flow_rate(self.belt.id)
+            return result
+        return None
+
+    def set_show_flow_rate(self, show: bool) -> None:
+        """Toggle flow rate display."""
+        self._show_flow_rate = show
+        self.update()
+
+    def set_overcapacity(self, overcapacity: bool) -> None:
+        """Set overcapacity state for visual feedback."""
+        self._is_overcapacity = overcapacity
+        self.update()
+
+    def hoverEnterEvent(self, event: object) -> None:
+        """Show flow rate tooltip on hover."""
+        flow_rate = self._get_flow_rate()
+        capacity = self.belt.capacity
+        if flow_rate is not None:
+            usage_pct = (flow_rate / capacity) * 100 if capacity > 0 else 0
+            tooltip = (
+                f"Flow: {flow_rate:.1f}/min\nCapacity: {capacity}/min\nUsage: {usage_pct:.1f}%"
+            )
+            if self._is_overcapacity:
+                tooltip += "\n⚠️ OVERCAPACITY"
+            self.setToolTip(tooltip)
+
+    def hoverLeaveEvent(self, event: object) -> None:
+        """Clear tooltip on hover exit."""
+        self.setToolTip("")

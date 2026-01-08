@@ -20,7 +20,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from satisfactory_planner.core import BuildingType, Document, Room, RoomPlacement
+from satisfactory_planner.core import (
+    BuildingEfficiency,
+    BuildingType,
+    Document,
+    Room,
+    RoomPlacement,
+)
 from satisfactory_planner.core.persistence import load_all_recipes
 from satisfactory_planner.ui.commands import (
     CommandStack,
@@ -182,6 +188,13 @@ class PropertiesPanel(QWidget):
         self.output_label = QLabel("-")
         stats_layout.addRow("Output:", self.output_label)
 
+        # Efficiency section
+        self.efficiency_label = QLabel("-")
+        stats_layout.addRow("Efficiency:", self.efficiency_label)
+
+        self.status_label = QLabel("-")
+        stats_layout.addRow("Status:", self.status_label)
+
         layout.addWidget(self.stats_group)
         self.stats_group.hide()
 
@@ -216,6 +229,7 @@ class PropertiesPanel(QWidget):
         self.document = document
         self.command_stack = command_stack
         self.canvas = canvas
+        self.flow_solver = getattr(canvas, "_flow_solver", None)
         self._selected_ids = []
         self._update_recipe_combo()
         self._update_display()
@@ -286,6 +300,9 @@ class PropertiesPanel(QWidget):
                 self.power_label.setText("- MW")  # TODO: Calculate from recipe
                 self.input_label.setText("-")
                 self.output_label.setText("-")
+
+                # Update efficiency from flow solver
+                self._update_efficiency_display(building.id)
 
             # Check if it's a belt
             elif item_id in self.document.belts:
@@ -462,6 +479,39 @@ class PropertiesPanel(QWidget):
             "Blueprint Saved",
             f"Blueprint '{room.name}' saved to library.",
         )
+
+    def _update_efficiency_display(self, building_id: str) -> None:
+        """Update the efficiency display for a building."""
+        # Try to get flow solver from main window
+        flow_solver = None
+        if self.canvas:
+            # Access flow solver through main window's current tab
+            main_window = self.canvas.window()
+            if hasattr(main_window, "current_tab") and main_window.current_tab:
+                flow_solver = main_window.current_tab.flow_solver
+
+        if flow_solver is None:
+            self.efficiency_label.setText("-")
+            self.status_label.setText("-")
+            return
+
+        efficiency: BuildingEfficiency | None = flow_solver.get_efficiency(building_id)
+        if efficiency is None:
+            self.efficiency_label.setText("-")
+            self.status_label.setText("-")
+            return
+
+        # Display efficiency as percentage
+        pct = efficiency.duty_cycle * 100
+        if pct >= 99.9:
+            self.efficiency_label.setText(f"✅ {pct:.1f}%")
+        elif pct >= 50:
+            self.efficiency_label.setText(f"⚠️ {pct:.1f}%")
+        else:
+            self.efficiency_label.setText(f"❌ {pct:.1f}%")
+
+        # Display limiting factor
+        self.status_label.setText(efficiency.limiting_details or "Running normally")
 
     def _on_delink(self) -> None:
         """Unlink the selected room placement."""
