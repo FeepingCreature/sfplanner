@@ -134,7 +134,7 @@ class DrawingTools:
         if rect.width() < 50 or rect.height() < 50:
             logger.info("Room too small - minimum 50x50")
             self.cancel_room_create()
-            self.canvas._tool_mode = ToolMode.SELECT
+            self.canvas.set_tool_mode(ToolMode.SELECT)
             return
 
         # Determine parent scene
@@ -150,7 +150,7 @@ class DrawingTools:
             if rect.intersects(building_rect) and not rect.contains(building_rect):
                 logger.warning("Room boundary cannot intersect buildings")
                 self.cancel_room_create()
-                self.canvas._tool_mode = ToolMode.SELECT
+                self.canvas.set_tool_mode(ToolMode.SELECT)
                 return
 
         # Collect contained buildings
@@ -182,8 +182,7 @@ class DrawingTools:
         self.canvas.command_stack.execute(cmd)
 
         self.cancel_room_create()
-        self.canvas._tool_mode = ToolMode.SELECT
-        self.canvas.setCursor(Qt.CursorShape.ArrowCursor)
+        self.canvas.set_tool_mode(ToolMode.SELECT)
 
     def cancel_room_create(self) -> None:
         """Cancel the current room creation."""
