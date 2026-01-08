@@ -26,7 +26,17 @@
 - [ ] Production summary panel
 - [x] Project file save/load (.satplan)
 - [ ] pyside6-deploy configuration for static builds
-- [ ] Flow solver causal chain tracking (currently just flags issues)
+- [x] Flow solver causal chain tracking (core complete, UI pending)
+
+## Flow Solver UI (post-integration)
+- [ ] Update warnings panel to display causal chains (caused_by field)
+- [ ] Add efficiency display to properties panel (duty_cycle, limiting_factor)
+- [ ] Add flow rate display to belt items on canvas
+- [ ] Show bottlenecks toolbar button (wire up to flow solver)
+- [ ] Show flow rates on belts toolbar button (wire up to flow solver)
+- [ ] Show leftover items per port toolbar button (wire up to flow solver)
+- [ ] Delete spikes/flowsim/ after UI integration verified
+- [ ] Delete spikes/scipy_size_test/ after UI integration verified
 
 ## Completed
 - [x] TreeView for library panel with categories
