@@ -291,11 +291,11 @@ def _propagate_item_types(graph: FlowGraph) -> None:
     """Propagate item types through splitters and mergers.
 
     Splitters/mergers don't have recipes, so their port item types
-    must be inferred from connected edges. This also updates their
-    port rates to allow proper flow (using high capacity).
+    must be inferred from connected edges. We also propagate item types
+    along edges to handle chains of logistics nodes.
 
-    Convergence: Each iteration must make progress (set at least one port's
-    item_id). With N logistics nodes, we converge in at most N iterations.
+    Convergence: Each iteration must make progress (set at least one item_id).
+    With N logistics nodes, we converge in at most N iterations.
     """
     # Count logistics nodes for convergence check
     logistics_count = sum(
@@ -318,12 +318,48 @@ def _propagate_item_types(graph: FlowGraph) -> None:
                 f"This is a bug - please report it."
             )
 
+        # Step 1: Propagate item types along edges from known nodes
+        for edge in graph.edges.values():
+            if edge.item_id is not None:
+                continue  # Already has item type
+
+            # Check if source node knows its output item type
+            source_node = graph.nodes.get(edge.source_node_id)
+            if source_node and edge.source_port_index < len(source_node.outputs):
+                source_item = source_node.outputs[edge.source_port_index].item_id
+                if source_item is not None:
+                    edge.item_id = source_item
+                    changed = True
+                    continue
+
+            # Check if dest node knows its input item type
+            dest_node = graph.nodes.get(edge.dest_node_id)
+            if dest_node and edge.dest_port_index < len(dest_node.inputs):
+                dest_item = dest_node.inputs[edge.dest_port_index].item_id
+                if dest_item is not None:
+                    edge.item_id = dest_item
+                    changed = True
+
+        # Step 2: Update splitter/merger ports from connected edges
         for node in graph.nodes.values():
             if node.node_type == NodeType.SPLITTER:
                 # Get item type from incoming edge
                 incoming = graph.get_incoming_edges(node.id)
-                if incoming and incoming[0].item_id is not None:
-                    item_id = incoming[0].item_id
+                item_id = None
+                for edge in incoming:
+                    if edge.item_id is not None:
+                        item_id = edge.item_id
+                        break
+
+                # Also check outgoing edges
+                if item_id is None:
+                    outgoing = graph.get_outgoing_edges(node.id)
+                    for edge in outgoing:
+                        if edge.item_id is not None:
+                            item_id = edge.item_id
+                            break
+
+                if item_id is not None:
                     # Update all ports with this item type
                     for port in node.inputs:
                         if port.item_id != item_id:
@@ -348,8 +384,10 @@ def _propagate_item_types(graph: FlowGraph) -> None:
                 # Also check outgoing edge
                 if item_id is None:
                     outgoing = graph.get_outgoing_edges(node.id)
-                    if outgoing and outgoing[0].item_id is not None:
-                        item_id = outgoing[0].item_id
+                    for edge in outgoing:
+                        if edge.item_id is not None:
+                            item_id = edge.item_id
+                            break
 
                 if item_id is not None:
                     # Update all ports with this item type
