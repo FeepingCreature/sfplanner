@@ -751,9 +751,11 @@ class PropertiesPanel(QWidget):
         new_tier = self.miner_tier_combo.currentData()
         if new_tier is not None and new_tier != building.tier:
             building.tier = new_tier
-            # Refresh building item and flow
+            # Refresh building item visual
             building_item = self.canvas._building_items.get(building_id)
             if building_item:
+                # Rebuild the rect with new tier info and repaint
+                building_item._setup_rect()
                 building_item.update()
             self.canvas.notify_mutation()
 

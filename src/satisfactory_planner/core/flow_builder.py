@@ -264,10 +264,16 @@ def build_flow_graph(document: Document, recipes: dict[str, Recipe]) -> BuildRes
             incoming_edges = graph.get_incoming_edges(node.id)
             item_ids = {e.item_id for e in incoming_edges if e.item_id is not None}
             if len(item_ids) > 1:
+                # Build detailed message showing which belts bring which items
+                details = []
+                for edge in incoming_edges:
+                    if edge.item_id:
+                        details.append(f"  • Input {edge.dest_port_index}: {edge.item_id}")
+                detail_str = "\n".join(details)
                 errors.append(
                     FatalError(
                         error_type=FatalErrorType.MERGER_TYPE_CONFLICT,
-                        message=f"Merger {node.id} has mixed item types: {item_ids}",
+                        message=f"Merger receives different item types:\n{detail_str}",
                         element_id=node.id,
                     )
                 )
@@ -370,10 +376,21 @@ def _build_scene(
             and dest_item_id is not None
             and source_item_id != dest_item_id
         ):
+            # Get building names for clearer message
+            source_name = source_building.building_type.value
+            dest_name = dest_building.building_type.value
+            if source_building.recipe_id and source_building.recipe_id in recipes:
+                source_name = recipes[source_building.recipe_id].name
+            if dest_building.recipe_id and dest_building.recipe_id in recipes:
+                dest_name = recipes[dest_building.recipe_id].name
+
             errors.append(
                 FatalError(
                     error_type=FatalErrorType.ITEM_MISMATCH,
-                    message=f"Belt {belt_id} connects {source_item_id} to {dest_item_id}",
+                    message=(
+                        f"Item mismatch: {source_name} outputs {source_item_id}, "
+                        f"but {dest_name} expects {dest_item_id}"
+                    ),
                     element_id=belt_id,
                 )
             )
