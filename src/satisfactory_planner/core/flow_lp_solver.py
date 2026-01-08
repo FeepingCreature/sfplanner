@@ -55,8 +55,12 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
 
     The LP formulation:
     - Variables: one flow rate per edge
-    - Constraints: flow conservation at each node
+    - Constraints: flow conservation at each node, splitter fairness
     - Objective: maximize total flow (to fill the factory)
+
+    Fairness: Splitter outputs are constrained to be equal. This ensures
+    the LP distributes flow evenly and surfaces downstream bottlenecks
+    instead of silently starving one branch to avoid them.
     """
     if not graph.edges:
         # No edges = no flows to solve
@@ -132,14 +136,25 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
 
         elif node.node_type == NodeType.SPLITTER:
             if incoming and outgoing:
-                # Conservation: sum(outputs) <= sum(inputs)
+                # Conservation: sum(outputs) = sum(inputs) (equality for full flow-through)
                 row = [0.0] * n_edges
                 for out_edge in outgoing:
                     row[edge_to_idx[out_edge.id]] = 1.0
                 for in_edge in incoming:
                     row[edge_to_idx[in_edge.id]] = -1.0
-                inequality_rows.append(row)
-                inequality_rhs.append(0.0)
+                equality_rows.append(row)
+                equality_rhs.append(0.0)
+
+                # Fairness: connected outputs should be equal (round-robin behavior)
+                # This surfaces downstream bottlenecks instead of silently starving branches
+                connected_outputs = [e for e in outgoing if e.capacity > 0]
+                if len(connected_outputs) >= 2:
+                    for i in range(len(connected_outputs) - 1):
+                        row = [0.0] * n_edges
+                        row[edge_to_idx[connected_outputs[i].id]] = 1.0
+                        row[edge_to_idx[connected_outputs[i + 1].id]] = -1.0
+                        equality_rows.append(row)
+                        equality_rhs.append(0.0)
 
                 # Each output is limited by downstream demand
                 for out_edge in outgoing:

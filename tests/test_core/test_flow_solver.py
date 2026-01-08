@@ -228,3 +228,209 @@ class TestFlowSolver:
         flow_rate = solver.get_flow_rate("b1")
         assert flow_rate is not None
         assert flow_rate > 0
+
+    def test_splitter_fairness_surfaces_bottleneck(self) -> None:
+        """Splitter should distribute fairly, surfacing downstream bottlenecks.
+
+        Scenario: Miner(120/min) -> Splitter -> 3 Smelters(30/min each) -> Merger chain -> Sink
+        But the belt to sink is only 60/min capacity.
+
+        Without fairness: LP might starve one smelter to avoid the bottleneck.
+        With fairness: LP distributes evenly, hits the bottleneck, shows overcapacity warning.
+        """
+        doc = Document()
+
+        # Miner at tier 2 (120/min)
+        miner = Building(
+            id="miner",
+            building_type=BuildingType.MINER,
+            x=0,
+            y=0,
+            recipe_id="iron_ore",
+            tier=2,  # 120/min
+        )
+        doc.add_building(miner)
+
+        # Chain of 3 splitters to feed 3 smelters
+        splitter1 = Building(id="split1", building_type=BuildingType.SPLITTER, x=100, y=0)
+        splitter2 = Building(id="split2", building_type=BuildingType.SPLITTER, x=200, y=0)
+        splitter3 = Building(id="split3", building_type=BuildingType.SPLITTER, x=300, y=0)
+        doc.add_building(splitter1)
+        doc.add_building(splitter2)
+        doc.add_building(splitter3)
+
+        # 3 smelters (30/min input each)
+        smelter1 = Building(
+            id="smelt1", building_type=BuildingType.SMELTER, x=200, y=-100, recipe_id="iron_ingot"
+        )
+        smelter2 = Building(
+            id="smelt2", building_type=BuildingType.SMELTER, x=300, y=-100, recipe_id="iron_ingot"
+        )
+        smelter3 = Building(
+            id="smelt3", building_type=BuildingType.SMELTER, x=400, y=-100, recipe_id="iron_ingot"
+        )
+        doc.add_building(smelter1)
+        doc.add_building(smelter2)
+        doc.add_building(smelter3)
+
+        # Merger chain
+        merger1 = Building(id="merge1", building_type=BuildingType.MERGER, x=500, y=0)
+        merger2 = Building(id="merge2", building_type=BuildingType.MERGER, x=600, y=0)
+        doc.add_building(merger1)
+        doc.add_building(merger2)
+
+        # Sink
+        sink = Building(
+            id="sink", building_type=BuildingType.SINK, x=700, y=0, recipe_id="iron_ingot"
+        )
+        doc.add_building(sink)
+
+        # Belts - miner output is tier 2 (120/min)
+        doc.add_belt(
+            Belt(
+                id="b_miner",
+                tier=2,  # 120/min capacity
+                source_building_id="miner",
+                source_port_index=0,
+                dest_building_id="split1",
+                dest_port_index=0,
+            )
+        )
+
+        # Splitter chain: split1 -> smelter1, split1 -> split2 -> smelter2, split2 -> split3 -> smelter3
+        doc.add_belt(
+            Belt(
+                id="b_s1_smelt1",
+                tier=1,
+                source_building_id="split1",
+                source_port_index=0,
+                dest_building_id="smelt1",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_s1_s2",
+                tier=2,
+                source_building_id="split1",
+                source_port_index=1,
+                dest_building_id="split2",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_s2_smelt2",
+                tier=1,
+                source_building_id="split2",
+                source_port_index=0,
+                dest_building_id="smelt2",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_s2_s3",
+                tier=2,
+                source_building_id="split2",
+                source_port_index=1,
+                dest_building_id="split3",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_s3_smelt3",
+                tier=1,
+                source_building_id="split3",
+                source_port_index=0,
+                dest_building_id="smelt3",
+                dest_port_index=0,
+            )
+        )
+
+        # Smelter outputs to merger chain
+        doc.add_belt(
+            Belt(
+                id="b_smelt1_m1",
+                tier=1,
+                source_building_id="smelt1",
+                source_port_index=0,
+                dest_building_id="merge1",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_smelt2_m1",
+                tier=1,
+                source_building_id="smelt2",
+                source_port_index=0,
+                dest_building_id="merge1",
+                dest_port_index=1,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_m1_m2",
+                tier=2,
+                source_building_id="merge1",
+                source_port_index=0,
+                dest_building_id="merge2",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_smelt3_m2",
+                tier=1,
+                source_building_id="smelt3",
+                source_port_index=0,
+                dest_building_id="merge2",
+                dest_port_index=1,
+            )
+        )
+
+        # THE BOTTLENECK: Belt to sink is only tier 1 (60/min) but 90/min is coming
+        doc.add_belt(
+            Belt(
+                id="b_m2_sink",
+                tier=1,  # Only 60/min! Should trigger overcapacity
+                source_building_id="merge2",
+                source_port_index=0,
+                dest_building_id="sink",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc)
+        warnings = solver.solve()
+
+        # All 3 smelters should be running (not starving one to avoid bottleneck)
+        eff1 = solver.get_efficiency("smelt1")
+        eff2 = solver.get_efficiency("smelt2")
+        eff3 = solver.get_efficiency("smelt3")
+
+        # With fairness, all smelters should have similar efficiency
+        assert eff1 is not None and eff2 is not None and eff3 is not None
+        # None should be at 0% while others are at 100%
+        assert eff1.duty_cycle > 0.1, f"Smelter 1 starved: {eff1.duty_cycle}"
+        assert eff2.duty_cycle > 0.1, f"Smelter 2 starved: {eff2.duty_cycle}"
+        assert eff3.duty_cycle > 0.1, f"Smelter 3 starved: {eff3.duty_cycle}"
+
+        # The bottleneck should be surfaced - either as overcapacity or underflow
+        # With fairness constraints, the LP distributes evenly, causing all smelters
+        # to be underfed when downstream is constrained
+        bottleneck_warnings = [
+            w
+            for w in warnings
+            if w.type
+            in (
+                WarningType.BELT_OVERCAPACITY,
+                WarningType.PRODUCTION_UNDERFLOW,
+                WarningType.RESOURCE_UNDERFLOW,
+            )
+        ]
+        assert len(bottleneck_warnings) > 0, (
+            f"Expected bottleneck warning, got: {[w.message for w in warnings]}"
+        )
