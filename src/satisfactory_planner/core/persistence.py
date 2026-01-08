@@ -149,6 +149,9 @@ def building_to_dict(building: Building) -> dict[str, Any]:
         data["min_rate"] = building.min_rate
     if building.max_rate is not None:
         data["max_rate"] = building.max_rate
+    # Only save port_index for PORT_IN/PORT_OUT
+    if building.port_index is not None:
+        data["port_index"] = building.port_index
     return data
 
 
@@ -184,6 +187,7 @@ def dict_to_building(data: dict[str, Any]) -> Building:
         tier=data.get("tier", 1),
         min_rate=data.get("min_rate"),
         max_rate=data.get("max_rate"),
+        port_index=data.get("port_index"),
     )
 
 
