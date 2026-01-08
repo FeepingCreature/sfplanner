@@ -281,7 +281,73 @@ def build_flow_graph(document: Document, recipes: dict[str, Recipe]) -> BuildRes
     if errors:
         return BuildResult(errors=errors)
 
+    # Phase: Propagate item types through splitters/mergers
+    _propagate_item_types(graph)
+
     return BuildResult(graph=graph)
+
+
+def _propagate_item_types(graph: FlowGraph) -> None:
+    """Propagate item types through splitters and mergers.
+
+    Splitters/mergers don't have recipes, so their port item types
+    must be inferred from connected edges. This also updates their
+    port rates to allow proper flow (using high capacity).
+    """
+    # Iterate until no more changes (handles chains of splitters/mergers)
+    changed = True
+    max_iterations = 100  # Prevent infinite loops
+    iteration = 0
+
+    while changed and iteration < max_iterations:
+        changed = False
+        iteration += 1
+
+        for node in graph.nodes.values():
+            if node.node_type == NodeType.SPLITTER:
+                # Get item type from incoming edge
+                incoming = graph.get_incoming_edges(node.id)
+                if incoming and incoming[0].item_id is not None:
+                    item_id = incoming[0].item_id
+                    # Update all ports with this item type
+                    for port in node.inputs:
+                        if port.item_id != item_id:
+                            port.item_id = item_id
+                            port.rate = 100000.0  # High capacity
+                            changed = True
+                    for port in node.outputs:
+                        if port.item_id != item_id:
+                            port.item_id = item_id
+                            port.rate = 100000.0  # High capacity
+                            changed = True
+
+            elif node.node_type == NodeType.MERGER:
+                # Get item type from any incoming edge that has one
+                incoming = graph.get_incoming_edges(node.id)
+                item_id = None
+                for edge in incoming:
+                    if edge.item_id is not None:
+                        item_id = edge.item_id
+                        break
+
+                # Also check outgoing edge
+                if item_id is None:
+                    outgoing = graph.get_outgoing_edges(node.id)
+                    if outgoing and outgoing[0].item_id is not None:
+                        item_id = outgoing[0].item_id
+
+                if item_id is not None:
+                    # Update all ports with this item type
+                    for port in node.inputs:
+                        if port.item_id != item_id:
+                            port.item_id = item_id
+                            port.rate = 100000.0  # High capacity
+                            changed = True
+                    for port in node.outputs:
+                        if port.item_id != item_id:
+                            port.item_id = item_id
+                            port.rate = 100000.0  # High capacity
+                            changed = True
 
 
 def _build_scene(
