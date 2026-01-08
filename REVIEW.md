@@ -43,10 +43,6 @@ This keeps the main canvas file from becoming monolithic.
 
 ### High Priority
 
-#### 1. Unused Legacy Types
-`Connector` and `Outline` in `models.py` appear unused. The `outlines` field in `Document` is even marked "Legacy, will be removed".
-
-**Recommendation:** Delete `Connector`, `Outline`, and `Document.outlines`.
 
 #### 2. `recipe_id` Overloading
 For `MINER`, `SOURCE`, and `SINK`, the `building.recipe_id` field stores an `item_id` instead of a recipe ID. This works but is confusing and could cause bugs.
@@ -129,7 +125,7 @@ ui/
 
 ## Suggested Cleanup Tasks
 
-1. [ ] Remove `Connector`, `Outline`, `Document.outlines`
+1. [x] Remove `Connector`, `Outline`, `Document.outlines` *(done)*
 2. [ ] Add `Building.item_id` for MINER/SOURCE/SINK
 3. [ ] Define constants for magic numbers
 4. [ ] Wire or remove disabled toolbar buttons

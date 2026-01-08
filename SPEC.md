@@ -63,28 +63,6 @@ This requires solving for tangent points between two circles with a connecting l
 
 The minimum turning radius should match the actual in-game belt radius (to be measured).
 
-### Connectors
-- **Cross-wall/cross-building connectors**: Square icon
-- Snap/lock to the **building outline** (boundary rectangle)
-- Move with the building outline when it's resized
-- Used to separate "inside" from "outside" of a blueprint
-- When a building is converted to a blueprint, everything up to the connector is included
-- Drawing a belt across a building boundary either:
-  - Auto-creates a connector at the boundary, splitting into two connected belts, OR
-  - Refuses (TBD which is better UX)
-- The split is necessary because linked blueprints cannot be edited directly until unlinked
-
-### Building Outlines (Sub-factory Boundaries)
-- A **building outline** is a resizable rectangle primitive
-- Used to group items into a logical "sub-factory"
-- When drawn, captures all items inside its area
-- Items newly placed inside are automatically parented to it
-- Moving the outline moves all children with it
-- Resizing does NOT move children (just changes boundary)
-- Constraints:
-  - Cannot be placed across an existing building
-  - Buildings cannot be placed across its boundary
-  - Connectors snap/lock to the outline edges
 
 ### Blueprints
 - A **blueprint** is created from a building outline
@@ -222,28 +200,6 @@ class Belt:
     # Routing is computed, not stored
 ```
 
-### Outline
-```python
-@dataclass
-class Outline:
-    id: str
-    rect: tuple[float, float, float, float]  # x, y, width, height
-    children: list[str]  # IDs of contained buildings/belts/outlines
-    connectors: list[Connector]
-```
-
-### Connector
-```python
-@dataclass
-class Connector:
-    id: str
-    outline_id: str
-    edge: str  # "top", "bottom", "left", "right"
-    position: float  # 0.0-1.0 along edge
-    direction: str  # "in" or "out"
-    connected_belt_inside: str | None  # belt ID
-    connected_belt_outside: str | None  # belt ID
-```
 
 ### Blueprint
 ```python

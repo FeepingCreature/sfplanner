@@ -72,7 +72,7 @@ Working:
 
 Stubbed:
 - [x] Box select tool
-- [ ] Create room/outline
+- [ ] Create room
 - [ ] Create blueprint from selection
 - [ ] Unlink blueprint
 - [ ] Show grid lines

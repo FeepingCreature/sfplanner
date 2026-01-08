@@ -342,32 +342,6 @@ class Belt:
 
 
 @dataclass
-class Connector:
-    """A connector on a building outline boundary."""
-
-    id: str
-    outline_id: str
-    edge: str  # "top", "bottom", "left", "right"
-    position: float  # 0.0 - 1.0 along edge
-    direction: str  # "in" or "out"
-    connected_belt_inside: str | None = None
-    connected_belt_outside: str | None = None
-
-
-@dataclass
-class Outline:
-    """A building outline / sub-factory boundary."""
-
-    id: str
-    x: float
-    y: float
-    width: float
-    height: float
-    children: list[str] = field(default_factory=list)  # IDs of contained items
-    connectors: list[Connector] = field(default_factory=list)
-
-
-@dataclass
 class Room:
     """A room is both a positionable item and a container (scene) for buildings.
 
@@ -467,7 +441,6 @@ class Document:
 
     buildings: dict[str, Building] = field(default_factory=dict)
     belts: dict[str, Belt] = field(default_factory=dict)
-    outlines: dict[str, Outline] = field(default_factory=dict)  # Legacy, will be removed
     recipes: dict[str, Recipe] = field(default_factory=dict)
 
     # Rooms and their placements
