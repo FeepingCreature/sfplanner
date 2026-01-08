@@ -1,7 +1,6 @@
 {
   "active_files": [
-    "docs/FLOWSIM_INTEGRATION_PLAN.md",
-    "CLAUDE.md"
+    "docs/FLOWSIM_INTEGRATION_PLAN.md"
   ],
   "request_log_entries": [
     {
@@ -1029,6 +1028,24 @@
       "streaming": true,
       "actual_cost": 0.29345125,
       "generation_id": "gen-1767908879-hsafGnEpwQZOKz6ofJJj"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767908929976.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767908929976.json",
+      "timestamp": 1767908929.9781373,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.02864,
+      "generation_id": "gen-1767908930-0fax5rVUWCddd285h7MN"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767908933731.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767908933731.json",
+      "timestamp": 1767908933.7324347,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.25087125,
+      "generation_id": "gen-1767908933-P1ZpMukxGcNRHl6BmtHj"
     }
   ],
   "messages": [
@@ -3831,6 +3848,87 @@
     {
       "role": "assistant",
       "content": "Debug button removed. The real fix (using `QTimer.singleShot(0, ...)` to defer room refresh) is in place.\n\n**Summary of this bug hunt:**\n- Buildings inside rooms were invisible after redo\n- Root cause: Qt needs to finish processing `addItem()` before child item geometry is valid\n- Fix: Defer the `refresh()` call to the next event loop iteration\n\nFUCKING QT INDEED. \ud83c\udf89"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 6ca8b913",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "whew.\n\nmight want to add that to CLAUDE.md? when all else fails, defer to next frame"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"CLAUDE.md\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_0159pXMLBCaEpoMxkcgYZPQs",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_0159pXMLBCaEpoMxkcgYZPQs",
+      "content": "{\"action\": \"update_context\", \"add\": [\"CLAUDE.md\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "<edit file=\"CLAUDE.md\">\n<search>\n## Web Tools (web_search / web_fetch)\n</search>\n<replace>\n## Qt Gotchas\n\n**Defer to next frame when child items misbehave** - Qt sometimes needs to finish processing `addItem()` before child item geometry/visibility is valid. If items are invisible or mispositioned after being added, use `QTimer.singleShot(0, callback)` to defer the fix to the next event loop iteration.\n\n## Web Tools (web_search / web_fetch)\n</replace>\n</edit>",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"Add Qt timing gotcha to CLAUDE.md\"}",
+            "name": "commit"
+          },
+          "id": "toolu_vrtx_01W83ZCxajsfw3vzWQkmSMn8",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"CLAUDE.md\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01P4pFDimcyCJMXXe54votVb",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"message\": \"Added Qt gotcha to CLAUDE.md - future us will thank past us for that one. \ud83d\ude4f\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_01BTuf5tVCfRj3js5Aszde2u",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01W83ZCxajsfw3vzWQkmSMn8",
+      "content": "{\"commit\": \"bb95c8ff4708\", \"message\": \"Committed: 1 file(s) modified/created\", \"side_effects\": [\"mid_turn_commit\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01P4pFDimcyCJMXXe54votVb",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"CLAUDE.md\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BTuf5tVCfRj3js5Aszde2u",
+      "content": "{\"done\": true, \"message\": \"Added Qt gotcha to CLAUDE.md - future us will thank past us for that one. \\ud83d\\ude4f\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Added Qt gotcha to CLAUDE.md - future us will thank past us for that one. \ud83d\ude4f"
     }
   ]
 }

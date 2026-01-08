@@ -33,6 +33,10 @@ ruff check src/
 ruff format src/
 ```
 
+## Qt Gotchas
+
+**Defer to next frame when child items misbehave** - Qt sometimes needs to finish processing `addItem()` before child item geometry/visibility is valid. If items are invisible or mispositioned after being added, use `QTimer.singleShot(0, callback)` to defer the fix to the next event loop iteration.
+
 ## Web Tools (web_search / web_fetch)
 
 **Compact aggressively after use** - these add lots of tokens to context.
