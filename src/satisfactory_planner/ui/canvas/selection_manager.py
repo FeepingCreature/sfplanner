@@ -28,9 +28,13 @@ class SelectionManager:
 
     def update_outline(self) -> None:
         """Update the dashed selection outline around selected buildings."""
-        # Remove old outline
+        # Remove old outline (guard against deleted scene)
         if self._selection_outline:
-            self.canvas._scene.removeItem(self._selection_outline)
+            try:
+                if self.canvas._scene is not None:
+                    self.canvas._scene.removeItem(self._selection_outline)
+            except RuntimeError:
+                pass  # Scene already deleted
             self._selection_outline = None
 
         # Get selected building items

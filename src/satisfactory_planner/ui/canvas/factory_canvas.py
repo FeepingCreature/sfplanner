@@ -324,7 +324,8 @@ class FactoryCanvas(QGraphicsView):
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         """Handle zoom with mouse wheel, rotation in placement mode."""
-        delta = 90 if event.angleDelta().y() > 0 else -90
+        # Scroll up = counter-clockwise (-90), scroll down = clockwise (+90)
+        delta = -90 if event.angleDelta().y() > 0 else 90
 
         # Placement mode rotation
         if self._placement.placement_mode:
