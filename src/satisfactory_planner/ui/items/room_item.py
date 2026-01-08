@@ -89,6 +89,9 @@ class RoomItem(QGraphicsRectItem):
         for building in self.room.buildings.values():
             building_item = BuildingItem(building, self.canvas, scene=self.room)
             building_item.setParentItem(self)  # Qt parent = coordinate transform
+            # Re-apply position after parenting (BuildingItem sets pos in __init__
+            # before parenting, which can cause incorrect positioning)
+            building_item.setPos(building.x, building.y)
             self._building_items[building.id] = building_item
 
         # Belts inside the room
@@ -193,6 +196,8 @@ class RoomItem(QGraphicsRectItem):
 
         item = BuildingItem(building, self.canvas, scene=self.room)
         item.setParentItem(self)
+        # Re-apply position after parenting
+        item.setPos(building.x, building.y)
         self._building_items[building_id] = item
         return item
 
