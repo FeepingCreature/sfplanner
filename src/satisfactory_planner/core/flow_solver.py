@@ -28,6 +28,7 @@ class WarningType(Enum):
     LEFTOVER_ITEMS = "leftover_items"
     BELT_OVERCAPACITY = "belt_overcapacity"
     ITEM_MISMATCH = "item_mismatch"
+    RECIPE_NOT_SET = "recipe_not_set"
 
 
 @dataclass
@@ -114,7 +115,7 @@ class FlowSolver:
             FatalErrorType.DISCONNECTED_BELT: WarningType.DISCONNECTED_BELT,
             FatalErrorType.ITEM_MISMATCH: WarningType.ITEM_MISMATCH,
             FatalErrorType.MERGER_TYPE_CONFLICT: WarningType.ITEM_MISMATCH,
-            FatalErrorType.RECIPE_NOT_SET: WarningType.PRODUCTION_UNDERFLOW,
+            FatalErrorType.RECIPE_NOT_SET: WarningType.RECIPE_NOT_SET,
             FatalErrorType.SOURCELESS_CYCLE: WarningType.DISCONNECTED_BELT,
         }
         return mapping.get(error_type, WarningType.DISCONNECTED_BELT)

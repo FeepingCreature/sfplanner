@@ -42,10 +42,22 @@ class BeltConnector:
         return self._is_connecting
 
     def start_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:
-        """Start dragging a belt connection from an output port."""
-        # Check if output port is already connected
-        if self.canvas.document.is_port_connected(building_id, port_index, True):
-            return
+        """Start dragging a belt connection from an output port.
+
+        If the port already has a belt, delete it first (implicit replacement).
+        """
+        # Check if output port is already connected - if so, delete existing belt
+        existing_belt = self.canvas.document.get_belt_at_port(building_id, port_index, True)
+        if existing_belt:
+            from satisfactory_planner.ui.commands import DeleteItemsCommand
+
+            cmd = DeleteItemsCommand(
+                scene_room_id=None,
+                buildings=(),
+                belts=(existing_belt,),
+                canvas=self.canvas,
+            )
+            self.canvas.command_stack.execute(cmd)
 
         self._is_connecting = True
         self._connect_start_building = building_id

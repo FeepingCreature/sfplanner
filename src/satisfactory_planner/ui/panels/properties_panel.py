@@ -114,7 +114,7 @@ class PropertiesPanel(QWidget):
         self.belt_group = QGroupBox("Belt Properties")
         belt_layout = QFormLayout(self.belt_group)
 
-        # Belt tier
+        # Belt tier (includes capacity)
         self.tier_combo = QComboBox()
         self.tier_combo.addItem("Mk.1 (60/min)", 1)
         self.tier_combo.addItem("Mk.2 (120/min)", 2)
@@ -125,13 +125,13 @@ class PropertiesPanel(QWidget):
         self.tier_combo.currentIndexChanged.connect(self._on_tier_changed)
         belt_layout.addRow("Tier:", self.tier_combo)
 
-        # Flow rate (read-only)
-        self.flow_label = QLabel("-")
-        belt_layout.addRow("Flow Rate:", self.flow_label)
-
-        # Item type (read-only)
+        # Item type (read-only, determined by connected buildings)
         self.item_label = QLabel("-")
         belt_layout.addRow("Item:", self.item_label)
+
+        # Current flow (read-only, from flow solver)
+        self.current_flow_label = QLabel("-")
+        belt_layout.addRow("Current Flow:", self.current_flow_label)
 
         layout.addWidget(self.belt_group)
         self.belt_group.hide()
@@ -309,8 +309,14 @@ class PropertiesPanel(QWidget):
 
                 # Set tier combo
                 self.tier_combo.setCurrentIndex(belt.tier - 1)
-                self.flow_label.setText(f"{belt.capacity}/min")
-                self.item_label.setText(belt.item_id or "-")
+                self.item_label.setText(belt.item_id or "(no item)")
+
+                # Get current flow from flow solver
+                flow_rate = self._get_belt_flow_rate(belt.id)
+                if flow_rate is not None:
+                    self.current_flow_label.setText(f"{flow_rate:.1f}/min")
+                else:
+                    self.current_flow_label.setText("-")
 
                 self.belt_group.show()
                 self.building_group.hide()
@@ -427,6 +433,10 @@ class PropertiesPanel(QWidget):
                         canvas=self.canvas,
                     )
                     self.command_stack.execute(cmd)
+                    # Refresh the belt item appearance
+                    if belt_item:
+                        belt_item._setup_appearance()
+                        belt_item.update()
 
     def _on_room_name_changed(self) -> None:
         """Handle room name edit."""
@@ -477,6 +487,21 @@ class PropertiesPanel(QWidget):
             "Blueprint Saved",
             f"Blueprint '{room.name}' saved to library.",
         )
+
+    def _get_belt_flow_rate(self, belt_id: str) -> float | None:
+        """Get flow rate for a belt from flow solver."""
+        if not self.canvas:
+            return None
+
+        main_window = self.canvas.window()
+        if not hasattr(main_window, "current_tab") or not main_window.current_tab:
+            return None
+
+        flow_solver = main_window.current_tab.flow_solver
+        if flow_solver:
+            result: float | None = flow_solver.get_flow_rate(belt_id)
+            return result
+        return None
 
     def _update_production_stats(self, building: object) -> None:
         """Update input/output/power stats from recipe."""

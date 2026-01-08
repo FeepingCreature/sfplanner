@@ -27,6 +27,7 @@ WARNING_ICONS = {
     WarningType.LEFTOVER_ITEMS: "📦",
     WarningType.BELT_OVERCAPACITY: "🚫",
     WarningType.ITEM_MISMATCH: "❌",
+    WarningType.RECIPE_NOT_SET: "📋",
 }
 
 
@@ -62,6 +63,7 @@ class WarningsPanel(QWidget):
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["Warning"])
         self.tree.setRootIsDecorated(True)
+        self.tree.setWordWrap(True)
         self.tree.itemClicked.connect(self._on_item_clicked)
         layout.addWidget(self.tree)
 

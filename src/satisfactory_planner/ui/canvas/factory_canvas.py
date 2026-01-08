@@ -842,6 +842,9 @@ class FactoryCanvas(QGraphicsView):
         """Toggle efficiency overlay on all buildings."""
         for building_item in self._building_items.values():
             building_item.set_show_efficiency(show)
+            if not show:
+                # Clear efficiency value when disabling
+                building_item.set_efficiency(None)
 
     def update_flow_visualization(self) -> None:
         """Update visual state of items based on flow solver results."""

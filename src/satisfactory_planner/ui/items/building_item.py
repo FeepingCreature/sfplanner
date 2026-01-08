@@ -345,17 +345,17 @@ class BuildingItem(QGraphicsRectItem):
             # Color based on efficiency: green (100%) -> yellow (50%) -> red (0%)
             eff = self._efficiency_value
             if eff >= 0.99:
-                eff_color = QColor(50, 200, 50, 100)  # Green
+                eff_color = QColor(80, 255, 80, 180)  # Bright green
             elif eff >= 0.5:
                 # Lerp from yellow to green
                 t = (eff - 0.5) * 2
-                eff_color = QColor(int(255 - t * 205), int(200 + t * 0), 50, 100)
+                eff_color = QColor(int(255 - t * 175), int(220 + t * 35), 50, 180)
             else:
                 # Lerp from red to yellow
                 t = eff * 2
-                eff_color = QColor(255, int(t * 200), 50, 100)
+                eff_color = QColor(255, int(t * 180), 50, 180)
 
-            painter.setPen(QPen(eff_color.darker(120), 4))
+            painter.setPen(QPen(eff_color, 5))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRect(rect.adjusted(-4, -4, 4, 4))
             painter.restore()

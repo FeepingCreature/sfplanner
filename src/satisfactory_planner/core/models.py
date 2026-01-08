@@ -408,6 +408,17 @@ class Room:
                     return True
         return False
 
+    def get_belt_at_port(self, building_id: str, port_index: int, is_output: bool) -> Belt | None:
+        """Get the belt connected to a specific port, or None."""
+        for belt in self.belts.values():
+            if is_output:
+                if belt.source_building_id == building_id and belt.source_port_index == port_index:
+                    return belt
+            else:
+                if belt.dest_building_id == building_id and belt.dest_port_index == port_index:
+                    return belt
+        return None
+
     def get_ports(self) -> list[Building]:
         """Get all port buildings in this room."""
         return [
@@ -485,6 +496,17 @@ class Document:
                 if belt.dest_building_id == building_id and belt.dest_port_index == port_index:
                     return True
         return False
+
+    def get_belt_at_port(self, building_id: str, port_index: int, is_output: bool) -> Belt | None:
+        """Get the belt connected to a specific port, or None."""
+        for belt in self.belts.values():
+            if is_output:
+                if belt.source_building_id == building_id and belt.source_port_index == port_index:
+                    return belt
+            else:
+                if belt.dest_building_id == building_id and belt.dest_port_index == port_index:
+                    return belt
+        return None
 
     def get_placements_for_room(self, room_id: str) -> list[RoomPlacement]:
         """Get all placements of a room."""

@@ -99,13 +99,13 @@ class BeltItem(QGraphicsPathItem):
         if self._utilization is not None and not self._is_overcapacity:
             util = self._utilization
             if util >= 0.9:
-                util_color = QColor(50, 200, 50, 120)  # Green - well utilized
+                util_color = QColor(80, 255, 80, 180)  # Bright green - well utilized
             elif util >= 0.5:
                 t = (util - 0.5) / 0.4
-                util_color = QColor(int(255 - t * 205), 200, 50, 120)
+                util_color = QColor(int(255 - t * 175), int(220 + t * 35), 50, 180)
             else:
-                util_color = QColor(200, 200, 50, 80)  # Yellow - underutilized
-            util_pen = QPen(util_color, self.pen().widthF() + 4)
+                util_color = QColor(255, 220, 50, 140)  # Yellow - underutilized
+            util_pen = QPen(util_color, self.pen().widthF() + 5)
             util_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             painter.setPen(util_pen)
             painter.drawPath(self.path())
