@@ -295,6 +295,21 @@ class FactoryCanvas(QGraphicsView):
         for belt_id, belt_item in room_item._belt_items.items():
             self._belt_items[belt_id] = belt_item
 
+        # Refresh all OTHER RoomItems displaying the same room
+        # This ensures linked rooms stay in sync after undo/redo
+        for other_placement_id, other_room_item in list(self._room_items.items()):
+            if (
+                isinstance(other_room_item, RoomItem)
+                and other_room_item.room.id == room.id
+                and other_placement_id != placement_id
+            ):
+                other_room_item.refresh()
+                # Re-register refreshed items
+                for building_id, building_item in other_room_item._building_items.items():
+                    self._building_items[building_id] = building_item
+                for belt_id, belt_item in other_room_item._belt_items.items():
+                    self._belt_items[belt_id] = belt_item
+
     def remove_room_item(self, placement_id: str) -> None:
         """Remove a room item from the scene."""
         from satisfactory_planner.ui.items.room_item import RoomItem
