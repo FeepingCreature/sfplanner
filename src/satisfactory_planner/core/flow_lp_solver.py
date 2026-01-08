@@ -211,7 +211,15 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
         if resolution == RESOLUTION_UNBOUNDED:
             msg = "Flow analysis failed: No constraints limit the flow (check for disconnected outputs)"
         elif resolution == RESOLUTION_INCOMPATIBLE:
-            msg = "Flow analysis failed: Conflicting constraints (check recipe ratios)"
+            # Build diagnostic info about the constraints
+            diag_lines = ["Flow analysis failed: Conflicting constraints"]
+            diag_lines.append("")
+            diag_lines.append("Nodes in graph:")
+            for _node_id, node in graph.nodes.items():
+                node_in = [f"{p.item_id}@{p.rate}/min" for p in node.inputs]
+                node_out = [f"{p.item_id}@{p.rate}/min" for p in node.outputs]
+                diag_lines.append(f"  {node.node_type.name}: in={node_in} out={node_out}")
+            msg = "\n".join(diag_lines)
         else:
             msg = f"Flow analysis failed: {resolution}"
 
