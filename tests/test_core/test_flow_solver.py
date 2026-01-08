@@ -229,14 +229,14 @@ class TestFlowSolver:
         assert flow_rate is not None
         assert flow_rate > 0
 
-    def test_splitter_fairness_surfaces_bottleneck(self) -> None:
-        """Splitter should distribute fairly, surfacing downstream bottlenecks.
+    def test_tree_splitter_layout(self) -> None:
+        """Tree splitter layout should work without artificial fairness constraints.
 
-        Scenario: Miner(120/min) -> Splitter -> 3 Smelters(30/min each) -> Merger chain -> Sink
-        But the belt to sink is only 60/min capacity.
+        Scenario: Miner(120/min) -> Splitter chain -> 3 Smelters(30/min each) -> Merger chain -> Sink
+        With undersized sink belt (60/min), LP will limit total throughput.
 
-        Without fairness: LP might starve one smelter to avoid the bottleneck.
-        With fairness: LP distributes evenly, hits the bottleneck, shows overcapacity warning.
+        The LP optimizes based on downstream demand - no forced "fair" distribution.
+        Bottleneck detection uses two-pass comparison (with/without belt limits).
         """
         doc = Document()
 
@@ -406,33 +406,24 @@ class TestFlowSolver:
         solver = FlowSolver(doc)
         warnings = solver.solve()
 
-        # All 3 smelters should be running (not starving one to avoid bottleneck)
-        eff1 = solver.get_efficiency("smelt1")
-        eff2 = solver.get_efficiency("smelt2")
-        eff3 = solver.get_efficiency("smelt3")
+        # LP should solve successfully
+        assert not any("Conflicting constraints" in w.message for w in warnings), (
+            f"LP failed: {[w.message for w in warnings]}"
+        )
 
-        # With fairness, all smelters should have similar efficiency
-        assert eff1 is not None and eff2 is not None and eff3 is not None
-        # None should be at 0% while others are at 100%
-        assert eff1.duty_cycle > 0.1, f"Smelter 1 starved: {eff1.duty_cycle}"
-        assert eff2.duty_cycle > 0.1, f"Smelter 2 starved: {eff2.duty_cycle}"
-        assert eff3.duty_cycle > 0.1, f"Smelter 3 starved: {eff3.duty_cycle}"
+        # Total demand is 90/min (3 smelters @ 30/min each)
+        # But sink belt is 60/min, so only 60/min can flow through
+        # LP will optimize to maximize throughput - may not feed all smelters equally
 
-        # The bottleneck should be surfaced - either as overcapacity or underflow
-        # With fairness constraints, the LP distributes evenly, causing all smelters
-        # to be underfed when downstream is constrained
-        bottleneck_warnings = [
-            w
-            for w in warnings
-            if w.type
-            in (
-                WarningType.BELT_OVERCAPACITY,
-                WarningType.PRODUCTION_UNDERFLOW,
-                WarningType.RESOURCE_UNDERFLOW,
-            )
-        ]
+        # The bottleneck should be detected via two-pass comparison
+        bottleneck_warnings = [w for w in warnings if w.type == WarningType.BELT_OVERCAPACITY]
         assert len(bottleneck_warnings) > 0, (
-            f"Expected bottleneck warning, got: {[w.message for w in warnings]}"
+            f"Expected belt bottleneck warning, got: {[w.message for w in warnings]}"
+        )
+
+        # Check that the bottleneck belt is identified
+        assert any("b_m2_sink" in w.element_id for w in bottleneck_warnings), (
+            f"Bottleneck should be on sink belt: {[w.element_id for w in bottleneck_warnings]}"
         )
 
     def test_two_pass_detects_belt_bottleneck(self) -> None:

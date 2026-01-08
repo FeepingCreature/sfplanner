@@ -209,18 +209,9 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                 equality_rows.append(row)
                 equality_rhs.append(0.0)
 
-                # Fairness: connected outputs should be equal (round-robin behavior)
-                # This surfaces downstream bottlenecks instead of silently starving branches
-                connected_outputs = [e for e in outgoing if e.capacity > 0]
-                if len(connected_outputs) >= 2:
-                    for i in range(len(connected_outputs) - 1):
-                        row = [0.0] * n_edges
-                        row[edge_to_idx[connected_outputs[i].id]] = 1.0
-                        row[edge_to_idx[connected_outputs[i + 1].id]] = -1.0
-                        equality_rows.append(row)
-                        equality_rhs.append(0.0)
-
-                # Each output is limited by downstream demand
+                # Each output is limited by downstream demand (or belt capacity)
+                # We DON'T force equal outputs - that breaks tree layouts
+                # Instead, we let the LP optimize flow based on actual demand
                 for out_edge in outgoing:
                     dest_node = graph.nodes[out_edge.dest_node_id]
                     demand = _get_downstream_demand(dest_node, out_edge.dest_port_index)

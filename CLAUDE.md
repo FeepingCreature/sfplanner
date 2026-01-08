@@ -17,6 +17,10 @@ The Forge tool framework is malleable - please suggest improvements and wishes f
 - `spikes/` - Experimental prototypes
 - `tools/` - Custom Forge tools
 
+## LP Solver Design Notes
+
+**NO FAIRNESS CONSTRAINTS** - Splitter output equality constraints are NEVER correct for steady-state flow simulation. They break tree layouts and over-constrain the LP. The LP should optimize based on actual downstream demand, not artificial "fair" distribution. Bottleneck detection is done via two-pass comparison (with/without belt limits), not by forcing equal splits.
+
 ## Commands
 ```bash
 # Run panel system spike
