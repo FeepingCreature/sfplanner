@@ -204,6 +204,7 @@ class Building:
     tier: int = 1  # For MINER: 1, 2, or 3
     min_rate: float | None = None  # For SOURCE/SINK: minimum flow rate
     max_rate: float | None = None  # For SOURCE/SINK: maximum flow rate
+    port_index: int | None = None  # For PORT_IN/PORT_OUT: which room port this corresponds to
 
     @property
     def width(self) -> int:
@@ -420,6 +421,54 @@ class Room:
             if b.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT)
         ]
 
+    def get_input_ports(self) -> list[Building]:
+        """Get all PORT_IN buildings, sorted by port_index."""
+        ports = [b for b in self.buildings.values() if b.building_type == BuildingType.PORT_IN]
+        return sorted(ports, key=lambda p: p.port_index if p.port_index is not None else 0)
+
+    def get_output_ports(self) -> list[Building]:
+        """Get all PORT_OUT buildings, sorted by port_index."""
+        ports = [b for b in self.buildings.values() if b.building_type == BuildingType.PORT_OUT]
+        return sorted(ports, key=lambda p: p.port_index if p.port_index is not None else 0)
+
+    def get_port_by_index(self, port_index: int, is_output: bool) -> Building | None:
+        """Get a port building by its port_index."""
+        target_type = BuildingType.PORT_OUT if is_output else BuildingType.PORT_IN
+        for b in self.buildings.values():
+            if b.building_type == target_type and b.port_index == port_index:
+                return b
+        return None
+
+    @property
+    def num_inputs(self) -> int:
+        """Number of input ports on this room."""
+        return len(self.get_input_ports())
+
+    @property
+    def num_outputs(self) -> int:
+        """Number of output ports on this room."""
+        return len(self.get_output_ports())
+
+    def input_port_pos(self, index: int) -> tuple[float, float]:
+        """Get position of input port by index (in room-local coordinates)."""
+        port = self.get_port_by_index(index, is_output=False)
+        if port:
+            # Port position is at the port building's location on the room edge
+            return (port.x, port.y + port.height / 2)
+        # Fallback: distribute evenly on left edge
+        spacing = self.height / (self.num_inputs + 1) if self.num_inputs > 0 else self.height / 2
+        return (0, spacing * (index + 1))
+
+    def output_port_pos(self, index: int) -> tuple[float, float]:
+        """Get position of output port by index (in room-local coordinates)."""
+        port = self.get_port_by_index(index, is_output=True)
+        if port:
+            # Port position is at the port building's location on the room edge
+            return (port.x + port.width, port.y + port.height / 2)
+        # Fallback: distribute evenly on right edge
+        spacing = self.height / (self.num_outputs + 1) if self.num_outputs > 0 else self.height / 2
+        return (self.width, spacing * (index + 1))
+
 
 @dataclass
 class RoomPlacement:
@@ -427,6 +476,10 @@ class RoomPlacement:
 
     Multiple placements can reference the same Room, creating "linked instances".
     The Room contains the content; the placement says where to render it.
+
+    From the outside, a RoomPlacement acts like a Building - it has ports that
+    belts can connect to. The port positions come from the PORT_IN/PORT_OUT
+    buildings inside the room, offset by the placement position.
     """
 
     id: str
@@ -436,6 +489,49 @@ class RoomPlacement:
 
     # The parent scene - None means root document, otherwise a room_id
     parent_room_id: str | None = None
+
+    # Cache reference to room (set by document when needed)
+    _room: Room | None = None
+
+    def get_room(self, document: Document) -> Room | None:
+        """Get the Room this placement references."""
+        if self._room is None or self._room.id != self.room_id:
+            self._room = document.rooms.get(self.room_id)
+        return self._room
+
+    def num_inputs(self, document: Document) -> int:
+        """Number of input ports on this room."""
+        room = self.get_room(document)
+        return room.num_inputs if room else 0
+
+    def num_outputs(self, document: Document) -> int:
+        """Number of output ports on this room."""
+        room = self.get_room(document)
+        return room.num_outputs if room else 0
+
+    def input_port_pos(self, index: int, document: Document) -> tuple[float, float]:
+        """Get position of input port by index (in parent scene coordinates)."""
+        room = self.get_room(document)
+        if room:
+            local_pos = room.input_port_pos(index)
+            return (self.x + local_pos[0], self.y + local_pos[1])
+        return (self.x, self.y)
+
+    def output_port_pos(self, index: int, document: Document) -> tuple[float, float]:
+        """Get position of output port by index (in parent scene coordinates)."""
+        room = self.get_room(document)
+        if room:
+            local_pos = room.output_port_pos(index)
+            return (self.x + local_pos[0], self.y + local_pos[1])
+        return (self.x, self.y)
+
+    def input_port_direction(self, index: int) -> float:
+        """Get direction (radians) a belt is TRAVELING when it enters this input port."""
+        return 0.0  # Traveling right, into left side
+
+    def output_port_direction(self, index: int) -> float:
+        """Get direction (radians) a belt is TRAVELING when it leaves this output port."""
+        return 0.0  # Traveling right, out of right side
 
 
 @dataclass

@@ -111,7 +111,8 @@ class CreateRoomCommand(Command):
         if not self.created_placement_id:
             object.__setattr__(self, "created_placement_id", generate_id())
 
-        # Pre-generate IDs for each crossing belt: (original_belt_id, port_id, internal_belt_id, external_belt_id)
+        # Pre-generate IDs for each crossing belt:
+        # (original_belt_id, port_id, internal_belt_id, external_belt_id)
         if not self.crossing_belt_port_ids and self.original_crossing_belts:
             port_ids = tuple(
                 (belt.id, generate_id(), generate_id(), generate_id())
@@ -220,16 +221,28 @@ class CreateRoomCommand(Command):
 
         Uses pre-generated IDs from crossing_belt_port_ids - fully deterministic.
         Creates:
-        - A port building inside the room (PORT_IN or PORT_OUT)
+        - A port building inside the room (PORT_IN or PORT_OUT) with port_index
         - An internal belt connecting the port to the building inside the room
-        - An external belt connecting the outside building to the port
+        - An external belt connecting the outside building to the RoomPlacement
+
+        External belts reference the RoomPlacement's ID as the building_id,
+        treating the room as a building with ports.
         """
         from satisfactory_planner.core.models import Belt as BeltModel
         from satisfactory_planner.core.models import Building, BuildingType
 
         room_w = self.rect[2]
 
-        for crossing_belt_id, port_id, internal_belt_id, external_belt_id in self.crossing_belt_port_ids:
+        # Track port indices for each direction
+        input_port_index = 0
+        output_port_index = 0
+
+        for (
+            crossing_belt_id,
+            port_id,
+            internal_belt_id,
+            external_belt_id,
+        ) in self.crossing_belt_port_ids:
             belt = parent.belts.get(crossing_belt_id)
             if not belt:
                 continue
@@ -250,6 +263,7 @@ class CreateRoomCommand(Command):
                     x=room_w - PORT_EDGE_OFFSET,  # Right edge
                     y=source_building.y,
                     rotation=0,
+                    port_index=output_port_index,
                 )
                 room.add_building(port)
 
@@ -265,18 +279,21 @@ class CreateRoomCommand(Command):
                 )
                 room.add_belt(inside_belt)
 
-                # External belt: from port to original destination (outside)
+                # External belt: from RoomPlacement (as building) to original destination
+                # The RoomPlacement's output port corresponds to this PORT_OUT's port_index
                 external_belt = BeltModel(
                     id=external_belt_id,
                     tier=belt.tier,
-                    source_building_id=port_id,
-                    source_port_index=0,
+                    source_building_id=self.created_placement_id,  # Room as building
+                    source_port_index=output_port_index,
                     dest_building_id=belt.dest_building_id,
                     dest_port_index=belt.dest_port_index,
                     item_id=belt.item_id,
                 )
                 parent.add_belt(external_belt)
                 self.canvas.add_belt_item(external_belt)
+
+                output_port_index += 1
 
             elif dest_inside and not source_inside:
                 # Input: dest is inside room, create PORT_IN
@@ -290,6 +307,7 @@ class CreateRoomCommand(Command):
                     x=0,  # Left edge
                     y=dest_building.y,
                     rotation=0,
+                    port_index=input_port_index,
                 )
                 room.add_building(port)
 
@@ -305,18 +323,20 @@ class CreateRoomCommand(Command):
                 )
                 room.add_belt(inside_belt)
 
-                # External belt: from original source (outside) to port
+                # External belt: from original source to RoomPlacement (as building)
                 external_belt = BeltModel(
                     id=external_belt_id,
                     tier=belt.tier,
                     source_building_id=belt.source_building_id,
                     source_port_index=belt.source_port_index,
-                    dest_building_id=port_id,
-                    dest_port_index=0,
+                    dest_building_id=self.created_placement_id,  # Room as building
+                    dest_port_index=input_port_index,
                     item_id=belt.item_id,
                 )
                 parent.add_belt(external_belt)
                 self.canvas.add_belt_item(external_belt)
+
+                input_port_index += 1
 
             # Remove original crossing belt from parent
             parent.remove_belt(crossing_belt_id)
@@ -330,7 +350,12 @@ class CreateRoomCommand(Command):
     ) -> None:
         """Undo crossing belt handling - restore original belts, remove ports."""
         # Remove created ports, internal belts, and external belts
-        for _crossing_belt_id, port_id, internal_belt_id, external_belt_id in self.crossing_belt_port_ids:
+        for (
+            _crossing_belt_id,
+            port_id,
+            internal_belt_id,
+            external_belt_id,
+        ) in self.crossing_belt_port_ids:
             # Remove internal belt from room
             room.remove_belt(internal_belt_id)
             # Remove port from room

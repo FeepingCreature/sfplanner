@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QRectF, Qt
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
     QGraphicsItem,
@@ -119,7 +119,7 @@ class RoomItem(QGraphicsRectItem):
         option: QStyleOptionGraphicsItem,
         widget: QWidget | None = None,
     ) -> None:
-        """Paint the room boundary and name."""
+        """Paint the room boundary, name, and port symbols."""
         rect = self.rect()
 
         # Check if room has multiple placements (linked)
@@ -139,6 +139,9 @@ class RoomItem(QGraphicsRectItem):
         painter.setBrush(QBrush(QColor(50, 50, 55, 100)))
         painter.drawRect(rect)
 
+        # Draw port symbols on the room boundary
+        self._draw_port_symbols(painter, rect)
+
         # Selection highlight
         if self.isSelected():
             painter.setPen(QPen(QColor(255, 255, 0), 3))
@@ -157,6 +160,37 @@ class RoomItem(QGraphicsRectItem):
         painter.drawText(
             name_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, self.room.name
         )
+
+    def _draw_port_symbols(self, painter: QPainter, rect: QRectF) -> None:
+        """Draw port symbols on the room boundary."""
+        from satisfactory_planner.core.models import BuildingType
+
+        port_radius = 6
+        input_color = QColor(220, 180, 50)  # Yellow for inputs
+        output_color = QColor(50, 200, 100)  # Green for outputs
+
+        for port in self.room.get_ports():
+            if port.port_index is None:
+                continue
+
+            # Get port position in room-local coordinates
+            if port.building_type == BuildingType.PORT_IN:
+                # Input ports on left edge
+                local_pos = self.room.input_port_pos(port.port_index)
+                color = input_color
+            else:
+                # Output ports on right edge
+                local_pos = self.room.output_port_pos(port.port_index)
+                color = output_color
+
+            # Draw port circle
+            painter.setPen(QPen(color.darker(120), 2))
+            painter.setBrush(QBrush(color))
+            painter.drawEllipse(
+                QPointF(local_pos[0], local_pos[1]),
+                port_radius,
+                port_radius,
+            )
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle mouse press - enforce scene-local selection."""

@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import Belt, Building
+from satisfactory_planner.core.models import RoomPlacement
 from satisfactory_planner.core.routing import Point, compute_belt_path
 from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 
@@ -43,22 +44,32 @@ BELT_WIDTHS = {
 
 
 class BeltItem(QGraphicsPathItem):
-    """A belt connecting two buildings."""
+    """A belt connecting two buildings or room placements."""
 
     def __init__(
-        self, belt: Belt, source: Building, dest: Building, canvas: FactoryCanvas | None = None
+        self,
+        belt: Belt,
+        source: Building | None = None,
+        dest: Building | None = None,
+        source_placement: RoomPlacement | None = None,
+        dest_placement: RoomPlacement | None = None,
+        canvas: FactoryCanvas | None = None,
     ) -> None:
         super().__init__()
 
         self.belt = belt
         self.canvas = canvas
+        self._source = source
+        self._dest = dest
+        self._source_placement = source_placement
+        self._dest_placement = dest_placement
         self._show_flow_rate = False  # Controlled by toolbar toggle
         self._is_overcapacity = False  # Set by flow solver
         self._utilization: float | None = None  # 0.0-1.0, for efficiency outline
 
         self._setup_flags()
         self._setup_appearance()
-        self.update_path(source, dest)
+        self._update_path_from_endpoints()
         self.setAcceptHoverEvents(True)
 
     def _setup_flags(self) -> None:
@@ -82,13 +93,34 @@ class BeltItem(QGraphicsPathItem):
         width = BELT_WIDTHS.get(self.belt.tier, BELT_WIDTHS[1])
         self.setPen(QPen(color, width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
 
-    def update_path(self, source: Building, dest: Building) -> None:
-        """Update the belt path between source and dest buildings."""
-        # Get port positions and directions
-        start_pos = source.output_port_pos(self.belt.source_port_index)
-        end_pos = dest.input_port_pos(self.belt.dest_port_index)
-        start_dir = source.output_port_direction(self.belt.source_port_index)
-        end_dir = dest.input_port_direction(self.belt.dest_port_index)
+    def _update_path_from_endpoints(self) -> None:
+        """Update the belt path from stored endpoints."""
+        if not self.canvas:
+            return
+
+        document = self.canvas.document
+
+        # Get start position and direction
+        if self._source:
+            start_pos = self._source.output_port_pos(self.belt.source_port_index)
+            start_dir = self._source.output_port_direction(self.belt.source_port_index)
+        elif self._source_placement:
+            start_pos = self._source_placement.output_port_pos(
+                self.belt.source_port_index, document
+            )
+            start_dir = self._source_placement.output_port_direction(self.belt.source_port_index)
+        else:
+            return
+
+        # Get end position and direction
+        if self._dest:
+            end_pos = self._dest.input_port_pos(self.belt.dest_port_index)
+            end_dir = self._dest.input_port_direction(self.belt.dest_port_index)
+        elif self._dest_placement:
+            end_pos = self._dest_placement.input_port_pos(self.belt.dest_port_index, document)
+            end_dir = self._dest_placement.input_port_direction(self.belt.dest_port_index)
+        else:
+            return
 
         start = Point(start_pos[0], start_pos[1])
         end = Point(end_pos[0], end_pos[1])
@@ -97,6 +129,17 @@ class BeltItem(QGraphicsPathItem):
         belt_path = compute_belt_path(start, start_dir, end, end_dir)
         path = belt_path_to_painter_path(start, end, belt_path)
         self.setPath(path)
+
+    def update_path(self, source: Building, dest: Building) -> None:
+        """Update the belt path between source and dest buildings.
+
+        Legacy method for backward compatibility with room-internal belts.
+        """
+        self._source = source
+        self._dest = dest
+        self._source_placement = None
+        self._dest_placement = None
+        self._update_path_from_endpoints()
 
     def paint(
         self,

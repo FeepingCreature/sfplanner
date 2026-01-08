@@ -245,15 +245,41 @@ class FactoryCanvas(QGraphicsView):
             self._scene.removeItem(item)
 
     def add_belt_item(self, belt: Belt) -> BeltItem | None:
-        """Add a belt item to the scene."""
+        """Add a belt item to the scene.
+
+        Supports belts connecting to:
+        - Buildings (in document or rooms)
+        - RoomPlacements (treated as buildings with ports)
+        """
+        # Look up source - could be a Building or RoomPlacement
         source = self.document.buildings.get(belt.source_building_id)
+        source_placement = None
+        if source is None:
+            source_placement = self.document.room_placements.get(belt.source_building_id)
+
+        # Look up dest - could be a Building or RoomPlacement
         dest = self.document.buildings.get(belt.dest_building_id)
-        if source and dest:
-            item = BeltItem(belt, source, dest, canvas=self)
-            self._scene.addItem(item)
-            self._belt_items[belt.id] = item
-            return item
-        return None
+        dest_placement = None
+        if dest is None:
+            dest_placement = self.document.room_placements.get(belt.dest_building_id)
+
+        # Need at least one valid endpoint
+        if (source is None and source_placement is None) or (
+            dest is None and dest_placement is None
+        ):
+            return None
+
+        item = BeltItem(
+            belt,
+            source=source,
+            dest=dest,
+            source_placement=source_placement,
+            dest_placement=dest_placement,
+            canvas=self,
+        )
+        self._scene.addItem(item)
+        self._belt_items[belt.id] = item
+        return item
 
     def remove_belt_item(self, belt_id: str) -> None:
         """Remove a belt item from the scene."""
