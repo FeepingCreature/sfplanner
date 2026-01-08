@@ -141,6 +141,9 @@ def building_to_dict(building: Building) -> dict[str, Any]:
         "rotation": building.rotation,
         "tier": building.tier,
     }
+    # Only save item_id for Miner/Source/Sink
+    if building.item_id is not None:
+        data["item_id"] = building.item_id
     # Only save min/max_rate for Source/Sink
     if building.min_rate is not None:
         data["min_rate"] = building.min_rate
@@ -157,12 +160,25 @@ def dict_to_building(data: dict[str, Any]) -> Building:
             building_type = bt
             break
 
+    # Migration: old files stored item_id in recipe_id for Miner/Source/Sink
+    item_id = data.get("item_id")
+    recipe_id = data.get("recipe_id")
+    if item_id is None and building_type in (
+        BuildingType.MINER,
+        BuildingType.SOURCE,
+        BuildingType.SINK,
+    ):
+        # Migrate: move recipe_id to item_id for these types
+        item_id = recipe_id
+        recipe_id = None
+
     return Building(
         id=data["id"],
         building_type=building_type,
         x=data["x"],
         y=data["y"],
-        recipe_id=data.get("recipe_id"),
+        recipe_id=recipe_id,
+        item_id=item_id,
         clock_speed=data.get("clock_speed", 1.0),
         rotation=data.get("rotation", 0),
         tier=data.get("tier", 1),

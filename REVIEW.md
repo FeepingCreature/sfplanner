@@ -126,7 +126,7 @@ ui/
 ## Suggested Cleanup Tasks
 
 1. [x] Remove `Connector`, `Outline`, `Document.outlines` *(done)*
-2. [ ] Add `Building.item_id` for MINER/SOURCE/SINK
+2. [x] Add `Building.item_id` for MINER/SOURCE/SINK *(done: added field, updated flow_builder, added migration in persistence)*
 3. [x] Define constants for magic numbers *(done: INFINITE_RATE, FLOW_TOLERANCE, BOTTLENECK_TOLERANCE, PORT_EDGE_OFFSET, MIN_ROOM_SIZE)*
 4. [x] Wire or remove disabled toolbar buttons *(done: removed show_grid_action, show_leftovers_action)*
 5. [ ] Add tests for room commands (CreateRoomCommand, DelinkRoomCommand)

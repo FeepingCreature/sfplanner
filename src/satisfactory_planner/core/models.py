@@ -197,7 +197,8 @@ class Building:
     building_type: BuildingType
     x: float
     y: float
-    recipe_id: str | None = None
+    recipe_id: str | None = None  # For production buildings
+    item_id: str | None = None  # For MINER/SOURCE/SINK: the item being produced/consumed
     clock_speed: float = 1.0  # 0.01 to 2.5
     rotation: int = 0  # 0, 90, 180, 270 degrees
     tier: int = 1  # For MINER: 1, 2, or 3

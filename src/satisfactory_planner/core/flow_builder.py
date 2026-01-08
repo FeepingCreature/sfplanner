@@ -82,19 +82,19 @@ def _get_node_type(building_type: BuildingType) -> NodeType:
 def _get_port_item_id(
     building: Building, is_input: bool, port_index: int, recipes: dict[str, Recipe]
 ) -> str | None:
-    """Get the item ID for a port based on recipe."""
-    # Source/Sink/Miner use recipe_id to store the item_id directly
+    """Get the item ID for a port based on recipe or item_id field."""
+    # Source/Sink/Miner use item_id field directly
     if building.building_type == BuildingType.SOURCE:
         if not is_input and port_index == 0:
-            return building.recipe_id  # recipe_id holds item_id for Source
+            return building.item_id
         return None
     if building.building_type == BuildingType.SINK:
         if is_input and port_index == 0:
-            return building.recipe_id  # recipe_id holds item_id for Sink
+            return building.item_id
         return None
     if building.building_type == BuildingType.MINER:
         if not is_input and port_index == 0:
-            return building.recipe_id  # recipe_id holds item_id for Miner
+            return building.item_id
         return None
 
     if building.recipe_id is None:
@@ -121,28 +121,25 @@ def _build_flow_ports(
     inputs: list[FlowPort] = []
     outputs: list[FlowPort] = []
 
-    # Source: single output (item_id stored in recipe_id)
+    # Source: single output using item_id field
     # Use max_rate if set, otherwise "infinite" (100000)
     if building.building_type == BuildingType.SOURCE:
-        item_id = building.recipe_id  # recipe_id holds item_id for Source
         rate = building.max_rate if building.max_rate is not None else 100000.0
-        outputs.append(FlowPort(item_id=item_id, rate=rate))
+        outputs.append(FlowPort(item_id=building.item_id, rate=rate))
         return inputs, outputs
 
-    # Sink: single input (item_id stored in recipe_id)
+    # Sink: single input using item_id field
     # Use max_rate if set, otherwise "infinite" (100000)
     if building.building_type == BuildingType.SINK:
-        item_id = building.recipe_id  # recipe_id holds item_id for Sink
         rate = building.max_rate if building.max_rate is not None else 100000.0
-        inputs.append(FlowPort(item_id=item_id, rate=rate))
+        inputs.append(FlowPort(item_id=building.item_id, rate=rate))
         return inputs, outputs
 
-    # Miner: single output with tier-based rate (item_id stored in recipe_id)
+    # Miner: single output with tier-based rate using item_id field
     if building.building_type == BuildingType.MINER:
-        item_id = building.recipe_id  # recipe_id holds item_id for Miner
         base_rate = MINER_RATES.get(building.tier, 60)
         rate = base_rate * building.clock_speed
-        outputs.append(FlowPort(item_id=item_id, rate=rate))
+        outputs.append(FlowPort(item_id=building.item_id, rate=rate))
         return inputs, outputs
 
     if building.recipe_id and building.recipe_id in recipes:
