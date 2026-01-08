@@ -18,6 +18,7 @@ from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 if TYPE_CHECKING:
     from satisfactory_planner.ui.canvas.factory_canvas import FactoryCanvas
     from satisfactory_planner.ui.items.port_item import PortItem
+    from satisfactory_planner.ui.items.room_port_item import RoomPortItem
 
 
 class BeltConnector:
@@ -34,7 +35,7 @@ class BeltConnector:
         self._drag_preview: QGraphicsPathItem | None = None
         self._drag_start_pos: QPointF | None = None
         self._drag_start_dir: float = 0
-        self._hover_target_port: PortItem | None = None
+        self._hover_target_port: PortItem | RoomPortItem | None = None
 
     @property
     def is_connecting(self) -> bool:
@@ -44,6 +45,7 @@ class BeltConnector:
     def start_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:
         """Start dragging a belt connection from an output port.
 
+        The building_id can be either a Building ID or a RoomPlacement ID.
         If the port already has a belt, delete it first (implicit replacement).
         """
         # Check if output port is already connected - if so, delete existing belt
@@ -65,12 +67,17 @@ class BeltConnector:
         self._drag_start_pos = start_pos
         self.canvas.setCursor(Qt.CursorShape.CrossCursor)
 
-        # Get start direction from the source building
+        # Get start direction from the source (building or room placement)
         building = self.canvas.document.buildings.get(building_id)
         if building:
             self._drag_start_dir = building.output_port_direction(port_index)
         else:
-            self._drag_start_dir = 0
+            # Check if it's a room placement
+            placement = self.canvas.document.room_placements.get(building_id)
+            if placement:
+                self._drag_start_dir = placement.output_port_direction(port_index)
+            else:
+                self._drag_start_dir = 0
 
         # Create preview path
         self._drag_preview = QGraphicsPathItem()
@@ -100,10 +107,16 @@ class BeltConnector:
     def update_hover_target(self, scene_pos: QPointF) -> None:
         """Check if hovering over a valid input port and update highlight."""
         from satisfactory_planner.ui.items.port_item import PortItem
+        from satisfactory_planner.ui.items.room_port_item import RoomPortItem
 
-        new_target = None
+        new_target: PortItem | RoomPortItem | None = None
         for item in self.canvas._scene.items(scene_pos):
+            # Check for building port
             if isinstance(item, PortItem) and not item.is_output:
+                new_target = item
+                break
+            # Check for room port
+            if isinstance(item, RoomPortItem) and not item.is_output:
                 new_target = item
                 break
 
@@ -123,15 +136,27 @@ class BeltConnector:
             return False
 
         from satisfactory_planner.ui.items.port_item import PortItem
+        from satisfactory_planner.ui.items.room_port_item import RoomPortItem
 
         # Find input port at position
         for item in self.canvas._scene.items(scene_pos):
+            # Check for building port
             if isinstance(item, PortItem) and not item.is_output:
                 # Check if port already connected
                 if self.canvas.document.is_port_connected(item.building_id, item.port_index, False):
                     self.cancel()
                     return True
                 self.complete(item.building_id, item.port_index)
+                return True
+            # Check for room port
+            if isinstance(item, RoomPortItem) and not item.is_output:
+                # Check if port already connected (using placement_id as building_id)
+                if self.canvas.document.is_port_connected(
+                    item.placement_id, item.port_index, False
+                ):
+                    self.cancel()
+                    return True
+                self.complete(item.placement_id, item.port_index)
                 return True
 
         # No valid port - cancel

@@ -15,9 +15,10 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import Room, RoomPlacement
-from satisfactory_planner.core.models import Scene
+from satisfactory_planner.core.models import BuildingType, Scene
 from satisfactory_planner.ui.items.belt_item import BeltItem
 from satisfactory_planner.ui.items.building_item import BuildingItem
+from satisfactory_planner.ui.items.room_port_item import RoomPortItem
 
 if TYPE_CHECKING:
     from satisfactory_planner.ui.canvas import FactoryCanvas
@@ -79,6 +80,7 @@ class RoomItem(QGraphicsRectItem):
         self._building_items: dict[str, BuildingItem] = {}
         self._belt_items: dict[str, BeltItem] = {}
         self._room_items: dict[str, RoomItem] = {}
+        self._port_items: list[RoomPortItem] = []
 
         # Populate child items
         self._populate_children()
@@ -113,6 +115,9 @@ class RoomItem(QGraphicsRectItem):
                     room_item.setParentItem(self)
                     self._room_items[p.id] = room_item
 
+        # Create interactive port items on the room boundary
+        self._create_port_items()
+
     def paint(
         self,
         painter: QPainter,
@@ -139,8 +144,7 @@ class RoomItem(QGraphicsRectItem):
         painter.setBrush(QBrush(QColor(50, 50, 55, 100)))
         painter.drawRect(rect)
 
-        # Draw port symbols on the room boundary
-        self._draw_port_symbols(painter, rect)
+        # Port symbols are now rendered by RoomPortItem children
 
         # Selection highlight
         if self.isSelected():
@@ -161,36 +165,33 @@ class RoomItem(QGraphicsRectItem):
             name_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, self.room.name
         )
 
-    def _draw_port_symbols(self, painter: QPainter, rect: QRectF) -> None:
-        """Draw port symbols on the room boundary."""
-        from satisfactory_planner.core.models import BuildingType
-
-        port_radius = 6
-        input_color = QColor(220, 180, 50)  # Yellow for inputs
-        output_color = QColor(50, 200, 100)  # Green for outputs
-
+    def _create_port_items(self) -> None:
+        """Create interactive RoomPortItem for each port on the room boundary."""
         for port in self.room.get_ports():
             if port.port_index is None:
                 continue
 
-            # Get port position in room-local coordinates
-            if port.building_type == BuildingType.PORT_IN:
-                # Input ports on left edge
-                local_pos = self.room.input_port_pos(port.port_index)
-                color = input_color
-            else:
-                # Output ports on right edge
+            is_output = port.building_type == BuildingType.PORT_OUT
+            if is_output:
                 local_pos = self.room.output_port_pos(port.port_index)
-                color = output_color
+            else:
+                local_pos = self.room.input_port_pos(port.port_index)
 
-            # Draw port circle
-            painter.setPen(QPen(color.darker(120), 2))
-            painter.setBrush(QBrush(color))
-            painter.drawEllipse(
-                QPointF(local_pos[0], local_pos[1]),
-                port_radius,
-                port_radius,
+            port_item = RoomPortItem(
+                room_item=self,
+                port_index=port.port_index,
+                is_output=is_output,
+                local_pos=local_pos,
+                canvas=self.canvas,
             )
+            self._port_items.append(port_item)
+
+    def _clear_port_items(self) -> None:
+        """Remove all port items."""
+        for port_item in self._port_items:
+            if port_item.scene():
+                port_item.scene().removeItem(port_item)
+        self._port_items.clear()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle mouse press - enforce scene-local selection."""
@@ -200,7 +201,6 @@ class RoomItem(QGraphicsRectItem):
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Handle item changes."""
-        from PySide6.QtCore import QPointF
 
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():
             # Snap to grid
@@ -274,6 +274,7 @@ class RoomItem(QGraphicsRectItem):
         for room_item in self._room_items.values():
             if room_item.scene():
                 room_item.scene().removeItem(room_item)
+        self._clear_port_items()
 
         self._building_items.clear()
         self._belt_items.clear()
