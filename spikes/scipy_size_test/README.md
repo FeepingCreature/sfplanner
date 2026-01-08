@@ -1,42 +1,40 @@
 # SciPy Size Test
 
-Minimal test to check packaged executable size when including scipy for LP solving.
+Testing packaged executable size with different LP solvers.
 
 ## Setup
 
 ```bash
 cd spikes/scipy_size_test
-uv venv
+uv venv --seed
 source .venv/bin/activate
-uv pip install PySide6 numpy scipy
+uv pip install PySide6 nuitka
 ```
 
-## Test Run (unpackaged)
+## Option 1: scipy (DOES NOT WORK)
 
 ```bash
-python main.py
+uv pip install numpy scipy
+python main.py  # Works
+pyside6-deploy main.py  # 78MB, crashes with missing modules
 ```
 
-Should show a window with "Solution: x1=6.00, x2=4.00, max=10.00"
+**Result**: 78MB, broken. scipy has too many hidden Cython dependencies.
 
-## Package with pyside6-deploy
-
-```bash
-uv pip install nuitka
-pyside6-deploy main.py
-```
-
-The executable will be in `deployment/`. Check its size:
+## Option 2: solvOR (pure Python)
 
 ```bash
+uv pip install solvor
+python main_pure.py
+pyside6-deploy main_pure.py
 ls -lh deployment/
 ```
 
+This should be much smaller since solvOR has no compiled dependencies.
+
 ## What We're Testing
 
-The script uses:
-- `scipy.optimize.linprog` with method="highs" (same as flowsim)
-- `numpy` arrays for constraint matrices
-- Minimal PySide6 GUI
-
-This should give us a realistic estimate of the size overhead from scipy/numpy.
+Both scripts solve the same LP problem:
+- Maximize: x1 + x2
+- Subject to: x1 + x2 <= 10, x1 <= 6, x2 <= 4
+- Expected solution: x1=6, x2=4, max=10
