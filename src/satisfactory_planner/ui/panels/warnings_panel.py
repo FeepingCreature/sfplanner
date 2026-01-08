@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QLabel,
     QTreeWidget,
@@ -65,6 +66,7 @@ class WarningsPanel(QWidget):
         self.tree.setRootIsDecorated(True)
         self.tree.setWordWrap(True)
         self.tree.itemClicked.connect(self._on_item_clicked)
+        self.tree.itemDoubleClicked.connect(self._on_item_double_clicked)
         layout.addWidget(self.tree)
 
     def set_document(self, document: Document, flow_solver: FlowSolver) -> None:
@@ -125,3 +127,17 @@ class WarningsPanel(QWidget):
         element_id = item.data(0, Qt.ItemDataRole.UserRole)
         if element_id:
             self.warning_clicked.emit(element_id)
+
+    def _on_item_double_clicked(self, item: QTreeWidgetItem, column: int) -> None:
+        """Copy warning message to clipboard on double-click."""
+        text = item.text(0)
+        clipboard = QGuiApplication.clipboard()
+        if clipboard:
+            clipboard.setText(text)
+            # Brief visual feedback in summary
+            old_text = self.summary_label.text()
+            self.summary_label.setText("📋 Copied to clipboard!")
+            # Restore after a moment (using single-shot timer)
+            from PySide6.QtCore import QTimer
+
+            QTimer.singleShot(1500, lambda: self.summary_label.setText(old_text))
