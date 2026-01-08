@@ -318,6 +318,8 @@ class PropertiesPanel(QWidget):
             self.building_group.hide()
             self.belt_group.hide()
             self.stats_group.hide()
+            self.source_group.hide()
+            self.room_group.hide()
             self._updating = False
             return
 
@@ -747,8 +749,12 @@ class PropertiesPanel(QWidget):
             return
 
         new_tier = self.miner_tier_combo.currentData()
-        if new_tier and new_tier != building.tier:
+        if new_tier is not None and new_tier != building.tier:
             building.tier = new_tier
+            # Refresh building item and flow
+            building_item = self.canvas._building_items.get(building_id)
+            if building_item:
+                building_item.update()
             self.canvas.notify_mutation()
 
     def _on_item_changed(self, index: int) -> None:
@@ -780,10 +786,18 @@ class PropertiesPanel(QWidget):
         # For Source/Sink/Miner, we store item_id directly in recipe_id
         # The flow_builder handles these specially
         old_recipe_id = building.recipe_id
-        if item_id != old_recipe_id:
-            building.recipe_id = item_id
-            if self.canvas:
-                self.canvas.notify_mutation()
+        if item_id != old_recipe_id and self.canvas is not None:
+            # Use SetRecipeCommand for undo support
+            building_item = self.canvas._building_items.get(building_id)
+            scene_room_id = self.canvas.get_scene_for_item(building_item) if building_item else None
+            cmd = SetRecipeCommand(
+                scene_room_id=scene_room_id,
+                building_id=building_id,
+                old_recipe_id=old_recipe_id,
+                new_recipe_id=item_id,
+                canvas=self.canvas,
+            )
+            self.command_stack.execute(cmd)
 
     def _on_delink(self) -> None:
         """Unlink the selected room placement."""
