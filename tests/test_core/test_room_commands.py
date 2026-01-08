@@ -182,6 +182,74 @@ class TestCreateRoomCommand:
         assert room_id in doc.rooms
         assert placement_id in doc.room_placements
 
+    def test_place_building_then_room_undo_redo(self) -> None:
+        """Full flow: place building, create room around it, undo room, redo room."""
+        from satisfactory_planner.ui.commands import PlaceBuildingCommand
+
+        doc = Document()
+        canvas = make_mock_canvas()
+        stack = CommandStack(doc)
+
+        # Step 1: Place a building
+        building = Building(
+            id="b1",
+            building_type=BuildingType.CONSTRUCTOR,
+            x=100,
+            y=100,
+            rotation=0,
+        )
+        place_cmd = PlaceBuildingCommand(
+            scene_room_id=None,
+            building=building,
+            canvas=canvas,
+        )
+        stack.execute(place_cmd)
+        building_id = building.id
+
+        # Verify building exists
+        assert building_id in doc.buildings
+        assert doc.buildings[building_id].x == 100
+        assert doc.buildings[building_id].y == 100
+
+        # Step 2: Create room around the building
+        room_cmd = CreateRoomCommand(
+            parent_scene_room_id=None,
+            rect=(80, 80, 100, 100),
+            building_ids=(building_id,),
+            belt_ids=(),
+            original_crossing_belts=(),
+            canvas=canvas,
+        )
+        stack.execute(room_cmd)
+
+        # Building should be in room now
+        assert building_id not in doc.buildings
+        assert room_cmd.created_room_id in doc.rooms
+        room = doc.rooms[room_cmd.created_room_id]
+        assert building_id in room.buildings
+        assert room.buildings[building_id].x == 20  # 100 - 80
+        assert room.buildings[building_id].y == 20  # 100 - 80
+
+        # Step 3: Undo room creation
+        stack.undo()
+
+        # Building should be back in document with original coords
+        assert building_id in doc.buildings
+        assert doc.buildings[building_id].x == 100
+        assert doc.buildings[building_id].y == 100
+        assert room_cmd.created_room_id not in doc.rooms
+
+        # Step 4: Redo room creation
+        stack.redo()
+
+        # Building should be in room again
+        assert building_id not in doc.buildings
+        assert room_cmd.created_room_id in doc.rooms
+        room = doc.rooms[room_cmd.created_room_id]
+        assert building_id in room.buildings
+        assert room.buildings[building_id].x == 20
+        assert room.buildings[building_id].y == 20
+
     def test_create_room_with_crossing_belt_creates_port(self) -> None:
         """Crossing belts create ports at room boundary."""
         doc = Document()
