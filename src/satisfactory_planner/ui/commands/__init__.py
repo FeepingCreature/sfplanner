@@ -21,6 +21,7 @@ from satisfactory_planner.ui.commands.property_commands import (
 )
 from satisfactory_planner.ui.commands.room_commands import (
     CreateRoomCommand,
+    DeleteRoomPlacementCommand,
     DelinkRoomCommand,
     PlaceBlueprintCommand,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "ConnectBeltCommand",
     "CreateRoomCommand",
     "DeleteItemsCommand",
+    "DeleteRoomPlacementCommand",
     "DelinkRoomCommand",
     "MoveBuildingsCommand",
     "PlaceBlueprintCommand",

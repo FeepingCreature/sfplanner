@@ -216,6 +216,19 @@ class FactoryCanvas(QGraphicsView):
         for belt in self.document.belts.values():
             self.add_belt_item(belt)
 
+        # Clear and reload room items
+        for room_item in list(self._room_items.values()):
+            from satisfactory_planner.ui.items.room_item import RoomItem
+
+            if isinstance(room_item, RoomItem):
+                self._scene.removeItem(room_item)
+        self._room_items.clear()
+
+        for placement in self.document.room_placements.values():
+            room = self.document.rooms.get(placement.room_id)
+            if room:
+                self.add_room_item(placement, room)
+
     # === CommandHandler protocol ===
 
     def add_building_item(self, building: Building) -> BuildingItem:
@@ -604,14 +617,35 @@ class FactoryCanvas(QGraphicsView):
 
     def delete_selection(self) -> None:
         """Delete selected items."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
         selected_buildings: list[str] = []
         selected_belts: list[str] = []
+        selected_room_placements: list[str] = []
 
         for item in self._scene.selectedItems():
             if isinstance(item, BuildingItem):
                 selected_buildings.append(item.building.id)
             elif isinstance(item, BeltItem):
                 selected_belts.append(item.belt.id)
+            elif isinstance(item, RoomItem):
+                selected_room_placements.append(item.placement.id)
+
+        # Delete room placements
+        for placement_id in selected_room_placements:
+            placement = self.document.room_placements.get(placement_id)
+            if placement:
+                room = self.document.rooms.get(placement.room_id)
+                if room:
+                    from satisfactory_planner.ui.commands.room_commands import (
+                        DeleteRoomPlacementCommand,
+                    )
+
+                    room_cmd = DeleteRoomPlacementCommand(
+                        placement_id=placement_id,
+                        canvas=self,
+                    )
+                    self.command_stack.execute(room_cmd)
 
         if selected_buildings or selected_belts:
             for building_id in selected_buildings:
