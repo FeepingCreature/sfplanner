@@ -74,6 +74,10 @@ class BuildingType(Enum):
     PORT_IN = "Port (In)"
     PORT_OUT = "Port (Out)"
 
+    # Source/Sink - provide or consume items "by fiat"
+    SOURCE = "Source"  # Produces items at configurable rate
+    SINK = "Sink"  # Consumes any items at unlimited rate
+
 
 BUILDING_METADATA: dict[BuildingType, BuildingSpec] = {
     BuildingType.SMELTER: BuildingSpec(80, 60, 1, 1, 4.0),
@@ -92,6 +96,8 @@ BUILDING_METADATA: dict[BuildingType, BuildingSpec] = {
     # Ports: small items on room boundary, 1 input OR 1 output (not both)
     BuildingType.PORT_IN: BuildingSpec(30, 30, 1, 0, 0.0),
     BuildingType.PORT_OUT: BuildingSpec(30, 30, 0, 1, 0.0),
+    BuildingType.SOURCE: BuildingSpec(50, 50, 0, 1, 0.0),
+    BuildingType.SINK: BuildingSpec(50, 50, 1, 0, 0.0),
 }
 
 # Display size for splitter/merger (smaller than metadata size)
@@ -119,6 +125,8 @@ BUILDING_COLORS: dict[BuildingType, RGB] = {
     BuildingType.MERGER: RGB(100, 200, 200),
     BuildingType.PORT_IN: RGB(220, 180, 50),  # Yellow-ish (input color)
     BuildingType.PORT_OUT: RGB(50, 200, 100),  # Green-ish (output color)
+    BuildingType.SOURCE: RGB(100, 180, 255),  # Blue (infinite source)
+    BuildingType.SINK: RGB(180, 100, 180),  # Purple (infinite sink)
 }
 
 

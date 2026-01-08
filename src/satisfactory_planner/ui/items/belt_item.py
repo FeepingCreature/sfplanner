@@ -54,6 +54,7 @@ class BeltItem(QGraphicsPathItem):
         self.canvas = canvas
         self._show_flow_rate = False  # Controlled by toolbar toggle
         self._is_overcapacity = False  # Set by flow solver
+        self._utilization: float | None = None  # 0.0-1.0, for efficiency outline
 
         self._setup_flags()
         self._setup_appearance()
@@ -94,7 +95,22 @@ class BeltItem(QGraphicsPathItem):
         widget: QWidget | None = None,
     ) -> None:
         """Paint the belt with flow direction indicators."""
-        # Draw overcapacity underlay first (wider, behind)
+        # Draw utilization underlay first (wider, behind) - green to yellow to red
+        if self._utilization is not None and not self._is_overcapacity:
+            util = self._utilization
+            if util >= 0.9:
+                util_color = QColor(50, 200, 50, 120)  # Green - well utilized
+            elif util >= 0.5:
+                t = (util - 0.5) / 0.4
+                util_color = QColor(int(255 - t * 205), 200, 50, 120)
+            else:
+                util_color = QColor(200, 200, 50, 80)  # Yellow - underutilized
+            util_pen = QPen(util_color, self.pen().widthF() + 4)
+            util_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(util_pen)
+            painter.drawPath(self.path())
+
+        # Draw overcapacity underlay (wider, behind, red)
         if self._is_overcapacity:
             overcap_pen = QPen(QColor(255, 80, 80), self.pen().widthF() + 6)
             overcap_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
@@ -220,6 +236,11 @@ class BeltItem(QGraphicsPathItem):
     def set_overcapacity(self, overcapacity: bool) -> None:
         """Set overcapacity state for visual feedback."""
         self._is_overcapacity = overcapacity
+        self.update()
+
+    def set_utilization(self, utilization: float | None) -> None:
+        """Set belt utilization for efficiency outline."""
+        self._utilization = utilization
         self.update()
 
     def hoverEnterEvent(self, event: object) -> None:

@@ -50,6 +50,8 @@ BUILDING_INFO: dict[BuildingType, BuildingInfo] = {
     BuildingType.MINER_MK3: BuildingInfo("240/min base rate", "Extracts ore"),
     BuildingType.SPLITTER: BuildingInfo("1 → 3 split", "Divides belt"),
     BuildingType.MERGER: BuildingInfo("3 → 1 merge", "Combines belts"),
+    BuildingType.SOURCE: BuildingInfo("Infinite supply", "0 in → 1 out"),
+    BuildingType.SINK: BuildingInfo("Infinite demand", "1 in → 0 out"),
 }
 
 
@@ -379,6 +381,20 @@ class LibraryPanel(QWidget):
         self.tree.addTopLevelItem(logistics_item)
         logistics_item.setExpanded(True)
 
+        # Testing/Debug category
+        testing_item = QTreeWidgetItem(["Testing"])
+        testing_item.setFlags(testing_item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
+        testing_item.setFont(0, font)
+
+        for bt in [
+            BuildingType.SOURCE,
+            BuildingType.SINK,
+        ]:
+            testing_item.addChild(BuildingTreeItem(bt))
+
+        self.tree.addTopLevelItem(testing_item)
+        testing_item.setExpanded(True)
+
         # Blueprints category
         self._blueprints_category = QTreeWidgetItem(["Blueprints"])
         self._blueprints_category.setFlags(
@@ -453,16 +469,17 @@ class LibraryPanel(QWidget):
                 self._load_blueprints()
 
     def _on_item_clicked(self, item: QTreeWidgetItem, column: int) -> None:
-        """Handle item selection - attach to cursor."""
-        # Check for building type
+        """Handle item click - just for selection, drag to place."""
+        # Building types: drag to place (no click-to-place)
         building_type = item.data(0, Qt.ItemDataRole.UserRole)
         if building_type:
-            self.building_selected.emit(building_type)
+            # Don't emit - user must drag to place
             return
 
-        # Check for blueprint
+        # Check for blueprint - also drag only
         if isinstance(item, BlueprintTreeItem):
-            self.blueprint_selected.emit(item.room)
+            # Don't emit - user must drag to place
+            return
 
     def _start_drag(self, supported_actions: Qt.DropAction) -> None:
         """Start drag operation with building type or blueprint."""

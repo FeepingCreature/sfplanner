@@ -71,6 +71,10 @@ def _get_node_type(building_type: BuildingType) -> NodeType:
         return NodeType.PORT_IN
     if building_type == BuildingType.PORT_OUT:
         return NodeType.PORT_OUT
+    if building_type == BuildingType.SOURCE:
+        return NodeType.MINER  # Sources act like miners (infinite supply)
+    if building_type == BuildingType.SINK:
+        return NodeType.SINK  # Sinks consume everything
     return NodeType.PRODUCER
 
 
@@ -132,6 +136,8 @@ def _is_production_building(building_type: BuildingType) -> bool:
         BuildingType.MINER_MK3,
         BuildingType.PORT_IN,
         BuildingType.PORT_OUT,
+        BuildingType.SOURCE,
+        BuildingType.SINK,
     )
 
 

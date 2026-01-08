@@ -608,6 +608,20 @@ class MainWindow(QMainWindow):
         """
         self._mark_dirty(tab)
         self._update_warnings()
+        self._refresh_flow_visualization(tab)
+
+    def _refresh_flow_visualization(self, tab: DocumentTab) -> None:
+        """Refresh flow visualization after document changes."""
+        if not tab.canvas:
+            return
+
+        # Re-solve flows
+        tab.flow_solver = FlowSolver(tab.document)
+        tab.flow_solver.solve()
+
+        # Update visualization if enabled
+        if self.show_bottlenecks_action.isChecked() or self.show_flow_rates_action.isChecked():
+            tab.canvas.update_flow_visualization()
 
     def _update_warnings(self) -> None:
         """Update the warnings panel."""

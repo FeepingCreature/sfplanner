@@ -853,10 +853,16 @@ class FactoryCanvas(QGraphicsView):
 
         solved = flow_solver._solved_model
 
-        # Update belt overcapacity state
+        # Update belt overcapacity state and utilization
         for edge in solved.graph.edges.values():
             if edge.belt_id and edge.belt_id in self._belt_items:
-                self._belt_items[edge.belt_id].set_overcapacity(edge.is_overcapacity)
+                belt_item = self._belt_items[edge.belt_id]
+                belt_item.set_overcapacity(edge.is_overcapacity)
+                # Calculate utilization
+                if edge.capacity > 0:
+                    belt_item.set_utilization(edge.flow_rate / edge.capacity)
+                else:
+                    belt_item.set_utilization(None)
 
         # Update building efficiency
         for eff in solved.efficiencies.values():

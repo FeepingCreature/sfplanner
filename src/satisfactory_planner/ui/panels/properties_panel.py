@@ -296,10 +296,8 @@ class PropertiesPanel(QWidget):
                 self.stats_group.show()
                 self.belt_group.hide()
 
-                # Update stats
-                self.power_label.setText("- MW")  # TODO: Calculate from recipe
-                self.input_label.setText("-")
-                self.output_label.setText("-")
+                # Update stats from recipe
+                self._update_production_stats(building)
 
                 # Update efficiency from flow solver
                 self._update_efficiency_display(building.id)
@@ -479,6 +477,38 @@ class PropertiesPanel(QWidget):
             "Blueprint Saved",
             f"Blueprint '{room.name}' saved to library.",
         )
+
+    def _update_production_stats(self, building: object) -> None:
+        """Update input/output/power stats from recipe."""
+        from satisfactory_planner.core.models import Building
+
+        if not isinstance(building, Building):
+            return
+
+        if not building.recipe_id or building.recipe_id not in self.document.recipes:
+            self.power_label.setText("- MW")
+            self.input_label.setText("-")
+            self.output_label.setText("-")
+            return
+
+        recipe = self.document.recipes[building.recipe_id].scaled(building.clock_speed)
+
+        # Power
+        self.power_label.setText(f"{recipe.power_mw:.1f} MW")
+
+        # Inputs
+        if recipe.inputs:
+            input_strs = [f"{inp.item_id}: {inp.rate:.1f}/min" for inp in recipe.inputs]
+            self.input_label.setText("\n".join(input_strs))
+        else:
+            self.input_label.setText("-")
+
+        # Outputs
+        if recipe.outputs:
+            output_strs = [f"{out.item_id}: {out.rate:.1f}/min" for out in recipe.outputs]
+            self.output_label.setText("\n".join(output_strs))
+        else:
+            self.output_label.setText("-")
 
     def _update_efficiency_display(self, building_id: str) -> None:
         """Update the efficiency display for a building."""
