@@ -516,6 +516,28 @@ class Document:
         collect(self.rooms)
         return result
 
+    def find_building(self, building_id: str) -> Building | None:
+        """Find a building by ID, searching document and all rooms."""
+        # Check document first
+        if building_id in self.buildings:
+            return self.buildings[building_id]
+        # Search all rooms
+        for room in self.get_all_rooms():
+            if building_id in room.buildings:
+                return room.buildings[building_id]
+        return None
+
+    def find_belt(self, belt_id: str) -> Belt | None:
+        """Find a belt by ID, searching document and all rooms."""
+        # Check document first
+        if belt_id in self.belts:
+            return self.belts[belt_id]
+        # Search all rooms
+        for room in self.get_all_rooms():
+            if belt_id in room.belts:
+                return room.belts[belt_id]
+        return None
+
 
 def generate_id() -> str:
     """Generate a unique ID."""

@@ -328,9 +328,9 @@ class PropertiesPanel(QWidget):
         if len(self._selected_ids) == 1:
             item_id = self._selected_ids[0]
 
-            # Check if it's a building
-            if item_id in self.document.buildings:
-                building = self.document.buildings[item_id]
+            # Check if it's a building (search document and rooms)
+            building = self.document.find_building(item_id)
+            if building:
                 self.selection_label.setText(f"Building: {building.building_type.value}")
                 self.type_label.setText(building.building_type.value)
                 self.clock_spin.setValue(building.clock_speed * 100)
@@ -418,9 +418,8 @@ class PropertiesPanel(QWidget):
                 self.belt_group.hide()
                 self.room_group.hide()
 
-            # Check if it's a belt
-            elif item_id in self.document.belts:
-                belt = self.document.belts[item_id]
+            # Check if it's a belt (search document and rooms)
+            elif belt := self.document.find_belt(item_id):
                 self.selection_label.setText(f"Belt Mk.{belt.tier}")
 
                 # Set tier combo
