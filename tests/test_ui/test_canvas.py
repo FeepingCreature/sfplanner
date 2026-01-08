@@ -128,3 +128,63 @@ class TestFactoryCanvas:
         connected = list(doc.belts.values())[0]
         assert connected.source_building_id == b1.id
         assert connected.dest_building_id == b2.id
+
+    def test_room_redo_has_building_items(self, qtbot) -> None:  # type: ignore[no-untyped-def]
+        """After redo, room item should have building items visible."""
+        from satisfactory_planner.ui.commands import CreateRoomCommand
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        doc = Document()
+        stack = CommandStack(doc)
+        canvas = FactoryCanvas(doc, stack)
+        qtbot.addWidget(canvas)
+
+        # Place a building
+        building = Building(
+            id=generate_id(),
+            building_type=BuildingType.CONSTRUCTOR,
+            x=100,
+            y=100,
+        )
+        cmd = PlaceBuildingCommand(scene_room_id=None, building=building, canvas=canvas)
+        stack.execute(cmd)
+        building_id = building.id
+
+        # Create room around building
+        room_cmd = CreateRoomCommand(
+            parent_scene_room_id=None,
+            rect=(80, 80, 100, 100),
+            building_ids=(building_id,),
+            belt_ids=(),
+            original_crossing_belts=(),
+            canvas=canvas,
+        )
+        stack.execute(room_cmd)
+
+        # Verify room item exists and has building item
+        room_item = canvas._room_items.get(room_cmd.created_placement_id)
+        assert room_item is not None
+        assert isinstance(room_item, RoomItem)
+        assert building_id in room_item._building_items, "Building item missing after execute"
+
+        # Undo
+        stack.undo()
+
+        # Redo
+        stack.redo()
+
+        # Verify room item still has building item after redo
+        room_item_after = canvas._room_items.get(room_cmd.created_placement_id)
+        assert room_item_after is not None
+        assert isinstance(room_item_after, RoomItem)
+        assert building_id in room_item_after._building_items, (
+            f"Building item missing after redo. "
+            f"Room has buildings: {list(room_item_after.room.buildings.keys())}, "
+            f"RoomItem has items: {list(room_item_after._building_items.keys())}"
+        )
+
+        # Additional checks: building item should be in scene and visible
+        building_item = room_item_after._building_items[building_id]
+        assert building_item.scene() is not None, "Building item not in scene after redo"
+        assert building_item.parentItem() is room_item_after, "Building item parent is wrong"
+        assert building_item.isVisible(), "Building item not visible after redo"

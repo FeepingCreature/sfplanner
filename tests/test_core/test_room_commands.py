@@ -250,6 +250,15 @@ class TestCreateRoomCommand:
         assert room.buildings[building_id].x == 20
         assert room.buildings[building_id].y == 20
 
+        # Verify canvas state: room item should exist and have the building
+        assert room_cmd.created_placement_id in canvas.add_room_item.call_args_list[-1][0][0].id
+        # The room passed to add_room_item should have the building
+        last_call = canvas.add_room_item.call_args_list[-1]
+        passed_room = last_call[0][1]  # second positional arg is room
+        assert building_id in passed_room.buildings, (
+            f"Room passed to add_room_item missing building. Room has: {list(passed_room.buildings.keys())}"
+        )
+
     def test_create_room_with_crossing_belt_creates_port(self) -> None:
         """Crossing belts create ports at room boundary."""
         doc = Document()
