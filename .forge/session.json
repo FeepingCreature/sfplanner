@@ -1,0 +1,160 @@
+{
+  "active_files": [
+    "src/satisfactory_planner/core/persistence.py",
+    "CLAUDE.md",
+    "spikes/flowsim/detectors/__init__.py",
+    "spikes/flowsim/detectors/overcapacity.py",
+    "spikes/flowsim/detectors/info.py",
+    "docs/FLOWSIM_INTEGRATION_PLAN.md",
+    "spikes/flowsim/solver.py",
+    "src/satisfactory_planner/core/models.py",
+    "src/satisfactory_planner/ui/panels/warnings_panel.py",
+    "spikes/flowsim/detectors/underflow.py",
+    "spikes/flowsim/models.py",
+    "spikes/flowsim/builder.py",
+    "src/satisfactory_planner/core/flow_solver.py",
+    "spikes/flowsim/detectors/dangling.py"
+  ],
+  "request_log_entries": [
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767863503388.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767863503388.json",
+      "timestamp": 1767863503.3891551,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0988675,
+      "generation_id": "gen-1767863503-mmJJiKCK4KKTZq72lAFb"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767863509941.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767863509941.json",
+      "timestamp": 1767863509.9426844,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1588905,
+      "generation_id": "gen-1767863510-BO4Lzw2bZOxdQZRuac7D"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767863535746.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767863535746.json",
+      "timestamp": 1767863535.7472565,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.2610395,
+      "generation_id": "gen-1767863535-XcRUVgiu42yYsBJ3tS8D"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767863607772.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767863607772.json",
+      "timestamp": 1767863607.7726603,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.08216975,
+      "generation_id": "gen-1767863607-8nwN3CNz1CviHY99OsC7"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767863619145.json",
+      "response_file": "/tmp/forge_debug/response_1767863619145.json",
+      "timestamp": 1767863619.145926,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.003255,
+      "generation_id": "gen-1767863619-HXBlgM4ZzhTPnHpoO3Ke"
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "\u2705 Generated summaries for 78 files",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Hi! We just completed the flowsim spike! Can you load the complete src and flowsim, then write a markdown plan for how to integrate the flowsim with the regular code?"
+    },
+    {
+      "role": "assistant",
+      "content": "I'll load the src and flowsim directories to understand both codebases before writing the integration plan.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/core/models.py\", \"src/satisfactory_planner/core/flow_solver.py\", \"src/satisfactory_planner/core/persistence.py\", \"src/satisfactory_planner/ui/panels/warnings_panel.py\", \"spikes/flowsim/models.py\", \"spikes/flowsim/solver.py\", \"spikes/flowsim/builder.py\", \"spikes/flowsim/detectors/__init__.py\", \"spikes/flowsim/detectors/dangling.py\", \"spikes/flowsim/detectors/overcapacity.py\", \"spikes/flowsim/detectors/underflow.py\", \"spikes/flowsim/detectors/info.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01Nu12XE4gnfeT5p4rmoJS4V",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Nu12XE4gnfeT5p4rmoJS4V",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/core/models.py\", \"src/satisfactory_planner/core/flow_solver.py\", \"src/satisfactory_planner/core/persistence.py\", \"src/satisfactory_planner/ui/panels/warnings_panel.py\", \"spikes/flowsim/models.py\", \"spikes/flowsim/solver.py\", \"spikes/flowsim/builder.py\", \"spikes/flowsim/detectors/__init__.py\", \"spikes/flowsim/detectors/dangling.py\", \"spikes/flowsim/detectors/overcapacity.py\", \"spikes/flowsim/detectors/underflow.py\", \"spikes/flowsim/detectors/info.py\"], \"message\": \"Added 12 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"scratchpad\": \"Let me analyze the current state and what needs to be integrated.\\n\\n## Current State\\n\\n### src/satisfactory_planner/core/flow_solver.py (current, stubbed)\\n- `WarningType` enum - basic warning types\\n- `Warning` dataclass - simple warning with type, message, element_id, details\\n- `FlowSolver` class - basic validation, only checks disconnected belts\\n\\n### spikes/flowsim (the spike we want to integrate)\\n\\n**models.py**:\\n- `NodeType` enum - MINER, PORT_IN, PORT_OUT, SINK, PRODUCER, SPLITTER, MERGER\\n- `FlowPort` - item_id, rate, actual_rate\\n- `FlowNode` - represents nodes in flow graph\\n- `FlowEdge` - represents belts/connections\\n- `FlowGraph` - the computation graph\\n- `WarningType` enum - more complete than current\\n- `Warning` dataclass - includes causal chain (caused_by)\\n- `LimitingFactor` enum\\n- `BuildingEfficiency` dataclass\\n\\n**builder.py**:\\n- `FatalErrorType` enum - errors that prevent building graph\\n- `FatalError` dataclass\\n- `BuildResult` dataclass\\n- Local `Building`, `Belt`, `Document` dataclasses (spike-local)\\n- `build_flow_graph()` - converts document to FlowGraph\\n\\n**solver.py**:\\n- `SolvedModel` dataclass\\n- `solve_flows()` - LP solver using scipy\\n\\n**detectors/**:\\n- `detect_dangling_ports()` - from dangling.py\\n- `detect_overcapacity()` - from overcapacity.py\\n- `detect_underflow()` - from underflow.py\\n- `detect_spare_capacity()` - from info.py\\n- `detect_all_warnings()` - combines all\\n\\n## Key Differences\\n\\n1. **Building/Belt models**: The spike has its own local Building/Belt classes. Need to adapt builder to use src/core/models.py\\n\\n2. **BuildingType mapping**: The spike uses recipes.py BuildingType, but src has its own BuildingType\\n\\n3. **Recipe handling**: The spike has its own recipes.py, src uses persistence.py to load recipes\\n\\n4. **Warning types**: Need to unify - spike has more complete set\\n\\n5. **Dependencies**: scipy for LP solver\\n\\n## Integration Plan\\n\\n### Phase 1: Models\\n- Move FlowGraph, FlowNode, FlowEdge, FlowPort to core/flow_graph.py\\n- Move warning-related types to core/flow_solver.py (expand existing)\\n- Add LimitingFactor, BuildingEfficiency\\n\\n### Phase 2: Builder  \\n- Adapt builder.py to work with src/core/models.py Building/Belt/Document\\n- Map BuildingType properly\\n- Use document.recipes for recipe lookup\\n\\n### Phase 3: Solver\\n- Add scipy dependency to pyproject.toml\\n- Move solver.py to core/flow_solver.py (or flow_lp_solver.py)\\n\\n### Phase 4: Detectors\\n- Create core/detectors/ directory OR keep all in flow_solver.py\\n- Adapt to use unified models\\n\\n### Phase 5: Integration\\n- Update FlowSolver class to:\\n  1. Build FlowGraph from Document\\n  2. Run LP solver\\n  3. Run detectors\\n  4. Return warnings\\n\\n### Phase 6: UI\\n- Update warnings_panel.py to handle new warning types\\n- Add causal chain display\\n- Add efficiency display somewhere\\n\\n### Testing\\n- Port spike tests to tests/test_core/\\n\", \"conclusion\": \"I have a clear picture of both codebases. The spike has a complete flow simulation system with LP solver, while the current flow_solver.py is a stub. Integration involves:\\n1. Moving models (FlowGraph, FlowNode, etc.) to core\\n2. Adapting the builder to use existing Building/Belt/Document from models.py\\n3. Adding scipy dependency for LP solver\\n4. Creating a detectors module or consolidating\\n5. Updating FlowSolver to orchestrate build \u2192 solve \u2192 detect\\n6. Updating UI to show new warning types and causal chains\"}",
+            "name": "think"
+          },
+          "id": "toolu_vrtx_014L2rzDiKjiCL3zJMGtdUda",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_014L2rzDiKjiCL3zJMGtdUda",
+      "content": "{\"conclusion\": \"I have a clear picture of both codebases. The spike has a complete flow simulation system with LP solver, while the current flow_solver.py is a stub. Integration involves:\\n1. Moving models (FlowGraph, FlowNode, etc.) to core\\n2. Adapting the builder to use existing Building/Belt/Document from models.py\\n3. Adding scipy dependency for LP solver\\n4. Creating a detectors module or consolidating\\n5. Updating FlowSolver to orchestrate build \\u2192 solve \\u2192 detect\\n6. Updating UI to show new warning types and causal chains\", \"message\": \"Thought through 504 tokens, concluded.\", \"success\": true, \"think\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"docs/FLOWSIM_INTEGRATION_PLAN.md\", \"content\": \"# Flowsim Integration Plan\\n\\nThis document outlines how to integrate the `spikes/flowsim` prototype into the main `src/satisfactory_planner` codebase.\\n\\n## Overview\\n\\nThe flowsim spike implements a complete flow simulation system:\\n- **Builder**: Converts visual models (Building, Belt) \u2192 FlowGraph\\n- **Solver**: LP-based steady-state flow calculation using scipy\\n- **Detectors**: Modular warning detection (underflow, overcapacity, dangling, etc.)\\n\\nThe current `src/satisfactory_planner/core/flow_solver.py` is a stub with basic disconnected belt detection. We'll replace it with the full implementation.\\n\\n## Architecture Comparison\\n\\n### Current (Stub)\\n```\\nDocument \u2192 FlowSolver.solve() \u2192 list[Warning]\\n              \u2193\\n         Basic checks only\\n```\\n\\n### Target (Flowsim)\\n```\\nDocument \u2192 build_flow_graph() \u2192 FlowGraph\\n                                    \u2193\\n                              solve_flows() \u2192 SolvedModel\\n                                                  \u2193\\n                                          detect_all_warnings() \u2192 list[Warning]\\n```\\n\\n## Integration Steps\\n\\n### Phase 1: Add Dependencies\\n\\n**File: `pyproject.toml`**\\n```toml\\ndependencies = [\\n    ...\\n    \\\"scipy>=1.11.0\\\",\\n    \\\"numpy>=1.24.0\\\",\\n]\\n```\\n\\nThe LP solver uses `scipy.optimize.linprog` with the \\\"highs\\\" method.\\n\\n---\\n\\n### Phase 2: Add Flow Models\\n\\n**New file: `src/satisfactory_planner/core/flow_models.py`**\\n\\nCopy from `spikes/flowsim/models.py`:\\n- `NodeType` enum\\n- `FlowPort` dataclass\\n- `FlowNode` dataclass  \\n- `FlowEdge` dataclass\\n- `FlowGraph` dataclass\\n- `LimitingFactor` enum\\n- `BuildingEfficiency` dataclass\\n\\nKeep `WarningType` and `Warning` in the existing location but update them:\\n\\n**Update: `src/satisfactory_planner/core/flow_solver.py`**\\n\\nAdd new warning types from flowsim:\\n```python\\nclass WarningType(Enum):\\n    DISCONNECTED_BELT = \\\"disconnected_belt\\\"\\n    RESOURCE_UNDERFLOW = \\\"resource_underflow\\\"\\n    PRODUCTION_UNDERFLOW = \\\"production_underflow\\\"\\n    LEFTOVER_ITEMS = \\\"leftover_items\\\"\\n    BELT_OVERCAPACITY = \\\"belt_overcapacity\\\"\\n    ITEM_MISMATCH = \\\"item_mismatch\\\"  # NEW\\n```\\n\\nAdd causal chain to Warning:\\n```python\\n@dataclass\\nclass Warning:\\n    type: WarningType\\n    message: str\\n    element_id: str\\n    severity: float = 1.0  # NEW: 0.0-1.0 for sorting\\n    details: dict[str, object] | None = None\\n    caused_by: list[\\\"Warning\\\"] = field(default_factory=list)  # NEW\\n```\\n\\n---\\n\\n### Phase 3: Implement Graph Builder\\n\\n**New file: `src/satisfactory_planner/core/flow_builder.py`**\\n\\nAdapt `spikes/flowsim/builder.py` to use existing models:\\n\\nKey changes:\\n1. Remove the spike's local `Building`, `Belt`, `Document` dataclasses\\n2. Import from `satisfactory_planner.core.models` instead\\n3. Use the existing `Recipe` loading from persistence\\n\\n```python\\nfrom satisfactory_planner.core.models import (\\n    Building, Belt, Document, Room, BuildingType, BELT_CAPACITIES\\n)\\nfrom satisfactory_planner.core.persistence import load_all_recipes\\nfrom satisfactory_planner.core.flow_models import (\\n    FlowGraph, FlowNode, FlowEdge, FlowPort, NodeType\\n)\\n```\\n\\nMapping from core BuildingType to NodeType:\\n```python\\ndef _get_node_type(building_type: BuildingType) -> NodeType:\\n    if building_type in (BuildingType.MINER_MK1, BuildingType.MINER_MK2, BuildingType.MINER_MK3):\\n        return NodeType.MINER\\n    if building_type == BuildingType.SPLITTER:\\n        return NodeType.SPLITTER\\n    if building_type == BuildingType.MERGER:\\n        return NodeType.MERGER\\n    if building_type == BuildingType.PORT_IN:\\n        return NodeType.PORT_IN\\n    if building_type == BuildingType.PORT_OUT:\\n        return NodeType.PORT_OUT\\n    return NodeType.PRODUCER\\n```\\n\\nHandle Rooms (not in spike):\\n- Recursively build flow graphs for room contents\\n- Connect PORT_IN/PORT_OUT nodes to parent graph via room placements\\n\\n---\\n\\n### Phase 4: Implement LP Solver\\n\\n**New file: `src/satisfactory_planner/core/flow_lp_solver.py`**\\n\\nCopy `spikes/flowsim/solver.py` with adjustments:\\n1. Update imports to use `satisfactory_planner.core.flow_models`\\n2. Keep the same LP formulation (it's well-tested)\\n\\n```python\\nfrom satisfactory_planner.core.flow_models import (\\n    FlowGraph, FlowNode, NodeType, BuildingEfficiency, LimitingFactor\\n)\\n```\\n\\nThe solver returns `SolvedModel` which contains:\\n- `graph`: The FlowGraph (with computed actual_rate values)\\n- `flows`: Dict of edge_id \u2192 flow rate\\n- `efficiencies`: Dict of node_id \u2192 BuildingEfficiency\\n- `success`: Whether LP solved successfully\\n\\n---\\n\\n### Phase 5: Implement Warning Detectors\\n\\n**New directory: `src/satisfactory_planner/core/detectors/`**\\n\\nCopy detector modules from `spikes/flowsim/detectors/`:\\n\\n```\\nsrc/satisfactory_planner/core/detectors/\\n\u251c\u2500\u2500 __init__.py      # detect_all_warnings() + re-exports\\n\u251c\u2500\u2500 dangling.py      # detect_dangling_ports()\\n\u251c\u2500\u2500 overcapacity.py  # detect_overcapacity()\\n\u251c\u2500\u2500 underflow.py     # detect_underflow()\\n\u2514\u2500\u2500 info.py          # detect_spare_capacity()\\n```\\n\\nUpdate imports in each file to use the new module paths.\\n\\n---\\n\\n### Phase 6: Update FlowSolver Facade\\n\\n**Update: `src/satisfactory_planner/core/flow_solver.py`**\\n\\nReplace the stub implementation with orchestration:\\n\\n```python\\nfrom satisfactory_planner.core.flow_builder import build_flow_graph, FatalError\\nfrom satisfactory_planner.core.flow_lp_solver import solve_flows, SolvedModel\\nfrom satisfactory_planner.core.detectors import detect_all_warnings\\n\\nclass FlowSolver:\\n    def __init__(self, document: Document) -> None:\\n        self.document = document\\n        self._solved_model: SolvedModel | None = None\\n        self._fatal_errors: list[FatalError] = []\\n        \\n    def solve(self) -> list[Warning]:\\n        \\\"\\\"\\\"Analyze the factory and return warnings.\\\"\\\"\\\"\\n        # Step 1: Build flow graph\\n        build_result = build_flow_graph(self.document)\\n        \\n        if not build_result.success:\\n            # Convert fatal errors to warnings\\n            self._fatal_errors = build_result.errors\\n            return [\\n                Warning(\\n                    type=_fatal_error_to_warning_type(e.error_type),\\n                    message=e.message,\\n                    element_id=e.element_id,\\n                    severity=1.0,\\n                )\\n                for e in build_result.errors\\n            ]\\n        \\n        # Step 2: Solve flows\\n        self._solved_model = solve_flows(build_result.graph)\\n        \\n        if not self._solved_model.success:\\n            return [Warning(\\n                type=WarningType.DISCONNECTED_BELT,  # Generic error\\n                message=self._solved_model.message,\\n                element_id=\\\"\\\",\\n            )]\\n        \\n        # Step 3: Detect warnings\\n        return detect_all_warnings(self._solved_model)\\n    \\n    def get_flow_rate(self, belt_id: str) -> float | None:\\n        \\\"\\\"\\\"Get the calculated flow rate for a belt.\\\"\\\"\\\"\\n        if self._solved_model is None:\\n            return None\\n        return self._solved_model.flows.get(belt_id)\\n    \\n    def get_efficiency(self, building_id: str) -> BuildingEfficiency | None:\\n        \\\"\\\"\\\"Get efficiency info for a building.\\\"\\\"\\\"\\n        if self._solved_model is None:\\n            return None\\n        # Find node by building_id\\n        for eff in self._solved_model.efficiencies.values():\\n            if eff.building_id == building_id:\\n                return eff\\n        return None\\n```\\n\\n---\\n\\n### Phase 7: Update UI Integration\\n\\n**Update: `src/satisfactory_planner/ui/panels/warnings_panel.py`**\\n\\n1. Add new warning type icons:\\n```python\\nWARNING_ICONS = {\\n    WarningType.DISCONNECTED_BELT: \\\"\ud83d\udd0c\\\",\\n    WarningType.RESOURCE_UNDERFLOW: \\\"\ud83d\udcc9\\\",\\n    WarningType.PRODUCTION_UNDERFLOW: \\\"\u26a0\ufe0f\\\",\\n    WarningType.LEFTOVER_ITEMS: \\\"\ud83d\udce6\\\",\\n    WarningType.BELT_OVERCAPACITY: \\\"\ud83d\udeab\\\",\\n    WarningType.ITEM_MISMATCH: \\\"\u274c\\\",  # NEW\\n}\\n```\\n\\n2. Display causal chains as nested tree items:\\n```python\\ndef _add_warning_item(self, parent: QTreeWidgetItem, warning: Warning) -> None:\\n    item = QTreeWidgetItem([warning.message])\\n    item.setData(0, Qt.ItemDataRole.UserRole, warning.element_id)\\n    parent.addChild(item)\\n    \\n    # Add causal chain as children\\n    for cause in warning.caused_by:\\n        self._add_warning_item(item, cause)\\n```\\n\\n3. Sort warnings by severity (highest first)\\n\\n**Update: `src/satisfactory_planner/ui/panels/properties_panel.py`**\\n\\nAdd efficiency display for buildings:\\n```python\\ndef _show_building_properties(self, building: Building) -> None:\\n    # ... existing code ...\\n    \\n    # Add efficiency section\\n    efficiency = self.flow_solver.get_efficiency(building.id)\\n    if efficiency:\\n        self._add_label(f\\\"Duty Cycle: {efficiency.duty_cycle * 100:.1f}%\\\")\\n        self._add_label(f\\\"Status: {efficiency.limiting_details}\\\")\\n```\\n\\n**Update: `src/satisfactory_planner/ui/items/belt_item.py`**\\n\\nShow flow rate on belt hover/selection:\\n```python\\ndef paint(self, painter, option, widget):\\n    # ... existing rendering ...\\n    \\n    # Show flow rate if available\\n    flow_rate = self.canvas.flow_solver.get_flow_rate(self.belt.id)\\n    if flow_rate is not None:\\n        painter.drawText(midpoint, f\\\"{flow_rate:.1f}/min\\\")\\n```\\n\\n---\\n\\n### Phase 8: Handle Rooms\\n\\nThe spike doesn't handle rooms. We need to extend the builder:\\n\\n**In `flow_builder.py`:**\\n\\n```python\\ndef build_flow_graph(document: Document) -> BuildResult:\\n    \\\"\\\"\\\"Build flow graph from document, including rooms.\\\"\\\"\\\"\\n    graph = FlowGraph()\\n    errors: list[FatalError] = []\\n    \\n    # Build top-level buildings\\n    _build_scene(document, graph, errors)\\n    \\n    # Build each room placement\\n    for placement in document.room_placements.values():\\n        room = document.rooms.get(placement.room_id)\\n        if room:\\n            _build_room(room, placement, graph, errors)\\n    \\n    # ... validation passes ...\\n    \\n    return BuildResult(graph=graph, errors=errors)\\n\\ndef _build_room(room: Room, placement: RoomPlacement, \\n                graph: FlowGraph, errors: list[FatalError]) -> None:\\n    \\\"\\\"\\\"Build flow nodes for a room's contents.\\\"\\\"\\\"\\n    # Build internal buildings/belts\\n    _build_scene(room, graph, errors, offset=(placement.x, placement.y))\\n    \\n    # PORT_IN/PORT_OUT buildings become special nodes that\\n    # connect the room's internal graph to the external graph\\n```\\n\\n---\\n\\n## Testing Strategy\\n\\n### Unit Tests\\n\\nCopy and adapt tests from `spikes/flowsim/tests/`:\\n- `test_builder.py` \u2192 `tests/test_core/test_flow_builder.py`\\n- `test_solver.py` \u2192 `tests/test_core/test_flow_lp_solver.py`\\n- `test_*.py` (detectors) \u2192 `tests/test_core/test_detectors/`\\n\\nUpdate tests to use the real `Document`, `Building`, `Belt` models.\\n\\n### Integration Tests\\n\\nAdd tests in `tests/test_core/test_flow_solver.py`:\\n- End-to-end: Document \u2192 warnings\\n- Room handling\\n- Recipe scaling with clock speed\\n- Edge cases from the spike tests\\n\\n---\\n\\n## File Summary\\n\\n### New Files\\n- `src/satisfactory_planner/core/flow_models.py` - Flow graph models\\n- `src/satisfactory_planner/core/flow_builder.py` - Document \u2192 FlowGraph\\n- `src/satisfactory_planner/core/flow_lp_solver.py` - LP solver\\n- `src/satisfactory_planner/core/detectors/__init__.py` - Detector orchestration\\n- `src/satisfactory_planner/core/detectors/dangling.py`\\n- `src/satisfactory_planner/core/detectors/overcapacity.py`\\n- `src/satisfactory_planner/core/detectors/underflow.py`\\n- `src/satisfactory_planner/core/detectors/info.py`\\n\\n### Modified Files\\n- `pyproject.toml` - Add scipy, numpy dependencies\\n- `src/satisfactory_planner/core/__init__.py` - Export new types\\n- `src/satisfactory_planner/core/flow_solver.py` - Replace stub with orchestration\\n- `src/satisfactory_planner/ui/panels/warnings_panel.py` - Causal chain UI\\n- `src/satisfactory_planner/ui/panels/properties_panel.py` - Efficiency display\\n- `src/satisfactory_planner/ui/items/belt_item.py` - Flow rate display\\n\\n### Deleted (after integration)\\n- `spikes/flowsim/` - No longer needed\\n\\n---\\n\\n## Migration Checklist\\n\\n- [ ] Add scipy/numpy to dependencies\\n- [ ] Create `flow_models.py` with flow graph types\\n- [ ] Create `flow_builder.py` adapting spike builder\\n- [ ] Create `flow_lp_solver.py` with LP solver\\n- [ ] Create `detectors/` module with all detectors\\n- [ ] Update `FlowSolver` to orchestrate pipeline\\n- [ ] Add severity and caused_by to Warning\\n- [ ] Update warnings panel for causal chains\\n- [ ] Add efficiency display to properties panel\\n- [ ] Add flow rate display to belt items\\n- [ ] Migrate and update all spike tests\\n- [ ] Handle rooms in builder\\n- [ ] Manual testing of full flow\\n- [ ] Delete spike after verification\\n\\n---\\n\\n## Risks & Considerations\\n\\n1. **scipy dependency size**: ~30MB. Consider if this is acceptable for the packaged app.\\n\\n2. **Performance**: LP solving is O(n\u00b3) worst case. For large factories (1000+ nodes), may need caching or incremental solving.\\n\\n3. **Room graph stitching**: Connecting PORT_IN/PORT_OUT to parent graph needs careful handling of coordinate transforms.\\n\\n4. **Backward compatibility**: The new Warning format (with severity, caused_by) is a superset of the old format.\\n\"}",
+            "name": "write_file"
+          },
+          "id": "toolu_vrtx_01M2yGcnzPzzo23HvZkvL2pW",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01M2yGcnzPzzo23HvZkvL2pW",
+      "content": "{\"message\": \"Wrote 12843 bytes to docs/FLOWSIM_INTEGRATION_PLAN.md\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"message\": \"I've created a comprehensive integration plan at `docs/FLOWSIM_INTEGRATION_PLAN.md`.\\n\\n**Key highlights:**\\n\\n1. **Architecture**: The flowsim spike has a 3-phase pipeline (build \u2192 solve \u2192 detect) that will replace the current stub FlowSolver\\n\\n2. **8 Integration Phases**:\\n   - Phase 1: Add scipy/numpy dependencies\\n   - Phase 2: Create `flow_models.py` with FlowGraph, FlowNode, FlowEdge, etc.\\n   - Phase 3: Create `flow_builder.py` adapting the spike to use existing models\\n   - Phase 4: Create `flow_lp_solver.py` with the LP solver\\n   - Phase 5: Create `detectors/` module with all warning detectors\\n   - Phase 6: Update FlowSolver as orchestration facade\\n   - Phase 7: Update UI (warnings panel with causal chains, efficiency in properties, flow rates on belts)\\n   - Phase 8: Handle Rooms (not in spike - needs PORT_IN/PORT_OUT connection logic)\\n\\n3. **Key changes to existing code**:\\n   - Warning gets `severity` and `caused_by` fields\\n   - WarningType gets `ITEM_MISMATCH`\\n   - Warnings panel shows nested causal chains\\n   - Properties panel shows duty cycle/efficiency\\n   - Belt items can display flow rates\\n\\n4. **Risks noted**:\\n   - scipy is ~30MB (package size concern)\\n   - LP solving is O(n\u00b3) for large factories\\n   - Room graph stitching needs careful handling\\n\\nThe plan includes a migration checklist and testing strategy. Ready to start implementing when you are!\"}",
+            "name": "done"
+          },
+          "id": "toolu_vrtx_015Uk4TrkVDnmbRkJQc6BHPM",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_015Uk4TrkVDnmbRkJQc6BHPM",
+      "content": "{\"done\": true, \"message\": \"I've created a comprehensive integration plan at `docs/FLOWSIM_INTEGRATION_PLAN.md`.\\n\\n**Key highlights:**\\n\\n1. **Architecture**: The flowsim spike has a 3-phase pipeline (build \\u2192 solve \\u2192 detect) that will replace the current stub FlowSolver\\n\\n2. **8 Integration Phases**:\\n   - Phase 1: Add scipy/numpy dependencies\\n   - Phase 2: Create `flow_models.py` with FlowGraph, FlowNode, FlowEdge, etc.\\n   - Phase 3: Create `flow_builder.py` adapting the spike to use existing models\\n   - Phase 4: Create `flow_lp_solver.py` with the LP solver\\n   - Phase 5: Create `detectors/` module with all warning detectors\\n   - Phase 6: Update FlowSolver as orchestration facade\\n   - Phase 7: Update UI (warnings panel with causal chains, efficiency in properties, flow rates on belts)\\n   - Phase 8: Handle Rooms (not in spike - needs PORT_IN/PORT_OUT connection logic)\\n\\n3. **Key changes to existing code**:\\n   - Warning gets `severity` and `caused_by` fields\\n   - WarningType gets `ITEM_MISMATCH`\\n   - Warnings panel shows nested causal chains\\n   - Properties panel shows duty cycle/efficiency\\n   - Belt items can display flow rates\\n\\n4. **Risks noted**:\\n   - scipy is ~30MB (package size concern)\\n   - LP solving is O(n\\u00b3) for large factories\\n   - Room graph stitching needs careful handling\\n\\nThe plan includes a migration checklist and testing strategy. Ready to start implementing when you are!\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I've created a comprehensive integration plan at `docs/FLOWSIM_INTEGRATION_PLAN.md`.\n\n**Key highlights:**\n\n1. **Architecture**: The flowsim spike has a 3-phase pipeline (build \u2192 solve \u2192 detect) that will replace the current stub FlowSolver\n\n2. **8 Integration Phases**:\n   - Phase 1: Add scipy/numpy dependencies\n   - Phase 2: Create `flow_models.py` with FlowGraph, FlowNode, FlowEdge, etc.\n   - Phase 3: Create `flow_builder.py` adapting the spike to use existing models\n   - Phase 4: Create `flow_lp_solver.py` with the LP solver\n   - Phase 5: Create `detectors/` module with all warning detectors\n   - Phase 6: Update FlowSolver as orchestration facade\n   - Phase 7: Update UI (warnings panel with causal chains, efficiency in properties, flow rates on belts)\n   - Phase 8: Handle Rooms (not in spike - needs PORT_IN/PORT_OUT connection logic)\n\n3. **Key changes to existing code**:\n   - Warning gets `severity` and `caused_by` fields\n   - WarningType gets `ITEM_MISMATCH`\n   - Warnings panel shows nested causal chains\n   - Properties panel shows duty cycle/efficiency\n   - Belt items can display flow rates\n\n4. **Risks noted**:\n   - scipy is ~30MB (package size concern)\n   - LP solving is O(n\u00b3) for large factories\n   - Room graph stitching needs careful handling\n\nThe plan includes a migration checklist and testing strategy. Ready to start implementing when you are!"
+    }
+  ]
+}
