@@ -1,7 +1,8 @@
 {
   "active_files": [
     "src/satisfactory_planner/ui/main_window.py",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "src/satisfactory_planner/ui/items/room_port_item.py"
   ],
   "request_log_entries": [
     {
@@ -327,6 +328,60 @@
       "streaming": true,
       "actual_cost": 0.0973895,
       "generation_id": "gen-1767968274-9Ntp5ioGikIb9d1EVZ5S"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767968298389.json",
+      "response_file": "/tmp/forge_debug/response_1767968298389.json",
+      "timestamp": 1767968298.389861,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.00507,
+      "generation_id": "gen-1767968298-NGtUBUqtDMigp7uYvk9y"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1767968298389.json",
+      "response_file": "/tmp/forge_debug/response_1767968298389.json",
+      "timestamp": 1767968298.3903008,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.00195,
+      "generation_id": "gen-1767968298-JNGG779cPR8CJESFwzHq"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968354935.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968354935.json",
+      "timestamp": 1767968354.9360907,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.33004375,
+      "generation_id": "gen-1767968355-SPLvzOe8PqueJMZSzBt6"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968363468.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968363468.json",
+      "timestamp": 1767968363.4693115,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.036189,
+      "generation_id": "gen-1767968363-dtjF5ZFxMpEBDCWTN7fq"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968369649.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968369649.json",
+      "timestamp": 1767968369.6505835,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0381725,
+      "generation_id": "gen-1767968369-lQOHXOPViKNQYas0OiCJ"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968374146.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968374146.json",
+      "timestamp": 1767968374.1472223,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06049225,
+      "generation_id": "gen-1767968374-NeuSXTFOyYPC4p56Xg2o"
     }
   ],
   "messages": [
@@ -1145,6 +1200,109 @@
         {
           "commit": "90c46751c0da",
           "message": "Committed: 2 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Generated summaries for 88 files",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Great! Okay, here's a super odd issue. When we drag the out port in a room around, it leaves a trail behind like we're creating a belt. No such issue happens with the in port."
+    },
+    {
+      "role": "assistant",
+      "content": "Ah, interesting! The PORT_OUT is being treated as having an output port that can start a belt connection. Let me find where belt dragging starts and check how it handles room ports:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"start_drag|PORT_OUT|is_output.*port\", \"file\": \"src/satisfactory_planner/ui/items/port_item.py\", \"context_before\": 5, \"context_after\": 5}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01BPsxxdikky96vYXDP3A2WQ",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BPsxxdikky96vYXDP3A2WQ",
+      "content": "{\"message\": \"No matches found for pattern: start_drag|PORT_OUT|is_output.*port\", \"snippets\": [], \"success\": true, \"total_matches\": 0}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"context_after\": 5,\n  \"context_before\": 5,\n  \"file\": \"src/satisfactory_planner/ui/items/port_item.py\",\n  \"pattern\": \"start_drag|PORT_OUT|is_output.*port\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"No matches found for pattern: start_drag|PORT_OUT|is_output.*port\",\n  \"snippets\": [],\n  \"success\": true,\n  \"total_matches\": 0\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me look at where belt dragging starts - it's likely in the building item or port item mouse handling:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"mousePressEvent|start_drag|is_output\", \"file\": \"src/satisfactory_planner/ui/items/building_item.py\", \"context_before\": 3, \"context_after\": 10}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01K4FykySvXsRqSaq1Sz4hbH",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01K4FykySvXsRqSaq1Sz4hbH",
+      "content": "{\"message\": \"Found 2 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:352 \\u2500\\u2500\\n     349 |             painter.drawRect(rect.adjusted(-2, -2, 2, 2))\\n     350 |             painter.restore()\\n     351 | \\n>>>  352 |     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n     353 |         \\\"\\\"\\\"Track drag start.\\\"\\\"\\\"\\n     354 |         self._drag_start_pos = self.pos()\\n     355 |         self._drag_start_rotation = self.building.rotation\\n     356 |         self._is_dragging = True\\n     357 | \\n     358 |         # Enforce scene-local selection before Qt handles selection\\n     359 |         self.canvas.on_item_clicked(self)\\n     360 | \\n     361 |         # Let Qt handle selection changes FIRST (e.g., clicking unselected item\\n     362 |         # clears old selection), then compute offsets based on new selection\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:363 \\u2500\\u2500\\n     360 | \\n     361 |         # Let Qt handle selection changes FIRST (e.g., clicking unselected item\\n     362 |         # clears old selection), then compute offsets based on new selection\\n>>>  363 |         super().mousePressEvent(event)\\n     364 | \\n     365 |         # For multi-select drag: compute offset from this item's position\\n     366 |         # All other selected items will move by the same delta (not snap individually)\\n     367 |         self._multi_drag_offsets.clear()\\n     368 |         for item in self.scene().selectedItems():\\n     369 |             if isinstance(item, BuildingItem) and item is not self:\\n     370 |                 # Store offset from this building's current position\\n     371 |                 self._multi_drag_offsets[item.building.id] = item.pos() - self.pos()\\n     372 | \\n     373 |     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\", \"success\": true, \"total_matches\": 2}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"context_after\": 10,\n  \"context_before\": 3,\n  \"file\": \"src/satisfactory_planner/ui/items/building_item.py\",\n  \"pattern\": \"mousePressEvent|start_drag|is_output\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 2 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:352 \\u2500\\u2500\\n     349 |             painter.drawRect(rect.adjusted(-2, -2, 2, 2))\\n     350 |             painter.restore()\\n     351 | \\n>>>  352 |     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n     353 |         \\\"\\\"\\\"Track drag start.\\\"\\\"\\\"\\n     354 |         self._drag_start_pos = self.pos()\\n     355 |         self._drag_start_rotation = self.building.rotation\\n     356 |         self._is_dragging = True\\n     357 | \\n     358 |         # Enforce scene-local selection before Qt handles selection\\n     359 |         self.canvas.on_item_clicked(self)\\n     360 | \\n     361 |         # Let Qt handle selection changes FIRST (e.g., clicking unselected item\\n     362 |         # clears old selection), then compute offsets based on new selection\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:363 \\u2500\\u2500\\n     360 | \\n     361 |         # Let Qt handle selection changes FIRST (e.g., clicking unselected item\\n     362 |         # clears old selection), then compute offsets based on new selection\\n>>>  363 |         super().mousePressEvent(event)\\n     364 | \\n     365 |         # For multi-select drag: compute offset from this item's position\\n     366 |         # All other selected items will move by the same delta (not snap individually)\\n     367 |         self._multi_drag_offsets.clear()\\n     368 |         for item in self.scene().selectedItems():\\n     369 |             if isinstance(item, BuildingItem) and item is not self:\\n     370 |                 # Store offset from this building's current position\\n     371 |                 self._multi_drag_offsets[item.building.id] = item.pos() - self.pos()\\n     372 | \\n     373 |     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\",\n  \"success\": true,\n  \"total_matches\": 2\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me check the RoomPortItem - that's likely where the mouse handling for port items inside rooms happens:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/items/room_port_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01EWFDwqtzXgqAHufVEGiXWD",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01EWFDwqtzXgqAHufVEGiXWD",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/items/room_port_item.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the problem! In `RoomPortItem.mousePressEvent()`:\n\n```python\ndef mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n    \"\"\"Handle mouse press - start belt from output port, or drag.\"\"\"\n    if event.button() == Qt.MouseButton.LeftButton and self.is_output:\n        # Start belt drag from output port\n        scene_pos = self.scenePos()\n        self.canvas.start_belt_drag(self.building.id, self.port_index, scene_pos)\n        event.accept()\n        return\n```\n\nThe PORT_OUT building (`is_output=True`) is starting a belt drag when clicked! But PORT_OUT is the port that represents an *output from the room* - its internal connector is actually an INPUT (it receives items from inside the room to send outside). The belt connection should NOT be started from it.\n\nThe issue is semantic confusion:\n- `is_output` means \"this port is for OUTPUT from the room\" (PORT_OUT)\n- But the internal connector of PORT_OUT is an INPUT (receives from inside)\n- Only PORT_IN's internal connector is an OUTPUT (sends to inside)\n\nSo the logic is backwards. We should start belt drag from PORT_IN (which has an output connector inside the room), not PORT_OUT.\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle mouse press - start belt from output port, or drag.\"\"\"\n        if event.button() == Qt.MouseButton.LeftButton and self.is_output:\n            # Start belt drag from output port\n            scene_pos = self.scenePos()\n            self.canvas.start_belt_drag(self.building.id, self.port_index, scene_pos)\n            event.accept()\n            return\n        # Let BuildingItem handle selection and drag\n        super().mousePressEvent(event)\n</search>\n<replace>\n    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle mouse press - start belt from internal output port, or drag.\n\n        PORT_IN has an internal OUTPUT (sends items into the room) - can start belt.\n        PORT_OUT has an internal INPUT (receives items from room) - cannot start belt.\n        \"\"\"\n        if event.button() == Qt.MouseButton.LeftButton and not self.is_output:\n            # PORT_IN: start belt drag from its internal output connector\n            scene_pos = self.scenePos()\n            self.canvas.start_belt_drag(self.building.id, 0, scene_pos)\n            event.accept()\n            return\n        # Let BuildingItem handle selection and drag\n        super().mousePressEvent(event)\n</replace>\n</edit>\n\n<commit message=\"Fix belt drag from room ports: PORT_IN has output, not PORT_OUT\n\nPORT_OUT represents output FROM the room, but its internal connector\nis an INPUT (receives items from inside). PORT_IN's internal connector\nis an OUTPUT (sends items into the room). Fixed the logic so only\nPORT_IN starts belt drag.\"/>\n\nDone! The fix:\n\n- **PORT_OUT** = \"output from room\" \u2192 internal connector is an **INPUT** (receives from inside)\n- **PORT_IN** = \"input to room\" \u2192 internal connector is an **OUTPUT** (sends into room)\n\nSo we should only start belt drag from PORT_IN (`not self.is_output`), not PORT_OUT.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "commit": "8fc73f43a28f",
+          "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],
