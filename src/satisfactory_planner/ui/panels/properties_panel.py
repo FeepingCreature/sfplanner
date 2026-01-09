@@ -535,7 +535,8 @@ class PropertiesPanel(QWidget):
 
         if len(self._selected_ids) == 1:
             belt_id = self._selected_ids[0]
-            belt = self.document.belts.get(belt_id)
+            # Use find_belt to search document AND rooms
+            belt = self.document.find_belt(belt_id)
             if belt:
                 new_tier = self.tier_combo.currentData()
                 if new_tier and new_tier != belt.tier:
