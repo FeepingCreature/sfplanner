@@ -372,6 +372,10 @@ class Building:
             # top (traveling down), left (traveling right), bottom (traveling up)
             directions = [math.pi / 2, 0.0, -math.pi / 2]
             base_dir = directions[index] if index < len(directions) else 0.0
+        elif self.building_type == BuildingType.PORT_OUT:
+            # PORT_OUT input is on the right edge of the building, facing left
+            # Belt travels LEFT to enter (from interior of room toward room edge)
+            base_dir = math.pi  # traveling left
         else:
             base_dir = 0.0  # traveling right, into left side
 

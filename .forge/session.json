@@ -1790,6 +1790,15 @@
       "streaming": true,
       "actual_cost": 0.605035,
       "generation_id": "gen-1767966108-yAk1f4UFn01A0Z2iLiUu"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767966206981.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767966206981.json",
+      "timestamp": 1767966206.9833906,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.6121875,
+      "generation_id": "gen-1767966207-bUTMne950Q3Ux7FUGNLv"
     }
   ],
   "messages": [
@@ -7459,6 +7468,50 @@
         },
         {
           "commit": "958803f20ff4",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 2a0f5da2",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Great! And a belt attaching to PORT_OUT inside the room also has to approach it from the correct direction (it's the wrong way around rn)."
+    },
+    {
+      "role": "assistant",
+      "content": "The belt direction for PORT_OUT's input is wrong. Looking at `Building.input_port_direction`, PORT_OUT falls through to the default case which returns `0.0` (traveling right). But since we moved the input to the right edge facing left, the belt should approach from the left (traveling right is correct for entering from the left side).\n\nWait, but the port is now at `(w, h/2, 180)` - right edge, facing left. The belt should travel RIGHT to enter it. Let me check if the rotation is being applied correctly:\n\n<edit file=\"src/satisfactory_planner/core/models.py\">\n<search>\n    def input_port_direction(self, index: int) -> float:\n        \"\"\"Get direction (radians) a belt is TRAVELING when it enters this input port.\"\"\"\n        if self.building_type == BuildingType.SPLITTER:\n            base_dir = 0.0  # traveling right, into left side\n        elif self.building_type == BuildingType.MERGER:\n            # top (traveling down), left (traveling right), bottom (traveling up)\n            directions = [math.pi / 2, 0.0, -math.pi / 2]\n            base_dir = directions[index] if index < len(directions) else 0.0\n        else:\n            base_dir = 0.0  # traveling right, into left side\n\n        return self._rotate_direction(base_dir)\n</search>\n<replace>\n    def input_port_direction(self, index: int) -> float:\n        \"\"\"Get direction (radians) a belt is TRAVELING when it enters this input port.\"\"\"\n        if self.building_type == BuildingType.SPLITTER:\n            base_dir = 0.0  # traveling right, into left side\n        elif self.building_type == BuildingType.MERGER:\n            # top (traveling down), left (traveling right), bottom (traveling up)\n            directions = [math.pi / 2, 0.0, -math.pi / 2]\n            base_dir = directions[index] if index < len(directions) else 0.0\n        elif self.building_type == BuildingType.PORT_OUT:\n            # PORT_OUT input is on the right edge of the building, facing left\n            # Belt travels LEFT to enter (from interior of room toward room edge)\n            base_dir = math.pi  # traveling left\n        else:\n            base_dir = 0.0  # traveling right, into left side\n\n        return self._rotate_direction(base_dir)\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Fix PORT_OUT input belt direction - belt should travel left toward room edge\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/core/models.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/models.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_urre1h5m\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_urre1h5m\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_urre1h5m\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_urre1h5m\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "4c1370dcfbb6",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
