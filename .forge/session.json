@@ -1,6 +1,5 @@
 {
   "active_files": [
-    "src/satisfactory_planner/ui/items/building_item.py",
     "src/satisfactory_planner/ui/items/room_port_item.py",
     "src/satisfactory_planner/ui/items/room_item.py",
     "src/satisfactory_planner/core/models.py",
@@ -1617,6 +1616,24 @@
       "streaming": true,
       "actual_cost": 0.1283195,
       "generation_id": "gen-1767964457-UrosjCKjBYiAIWWYnlm9"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767964571592.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767964571592.json",
+      "timestamp": 1767964571.5943222,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.43970625,
+      "generation_id": "gen-1767964571-PcDdKuc51VfXg9KV4vHS"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767964588963.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767964588963.json",
+      "timestamp": 1767964588.9646742,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.42165875,
+      "generation_id": "gen-1767964589-aQcoArSovTJngCZpRBQk"
     }
   ],
   "messages": [
@@ -6513,6 +6530,70 @@
         {
           "commit": "d1d26d8c53b7",
           "message": "Committed: 2 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 66305688",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Coulda just said \"I don't know why it does that\", lol.\n\nTry to step through the logic for a 90 degree rotated IN PORT snapping to the top of a room?"
+    },
+    {
+      "role": "assistant",
+      "content": "You're right, let me trace through it properly:\n\n**90\u00b0 rotated IN PORT snapping to top edge:**\n\n1. `snap_port_to_room_edge` is called with `target_x`, `target_y`\n2. `base_w, base_h = 20, 40` (LOGISTICS_DISPLAY_SIZE // 2, LOGISTICS_DISPLAY_SIZE)\n3. Distance calculation uses `center_x = target_x + 10, center_y = target_y + 20`\n4. If closest to top, we hit the `dist_top` branch\n5. `w, h = base_h, base_w = 40, 20` (swapped for rotation)\n6. `clamped_x = max(0, min(target_x, room_width - 40))`\n7. **Return `(clamped_x, 0, \"top\")`** - y=0 is correct!\n\nWait, that looks right. The y is 0 for top edge. Let me check if there's something else offsetting it...\n\nOh! The issue might be in `RoomPortItem._snap_to_edge_with_rotation` or how BuildingItem handles rotation. When Qt rotates around center, a 90\u00b0 rotation of a 20x40 rect means the visual bounds shift.\n\nActually, I think I see it now. The `_get_rotated_display_size()` returns `(40, 20)` for 90\u00b0 rotation, but then `boundingRect()` in BuildingItem calls `_get_display_size()` which returns the BASE size `(20, 40)` - and THEN applies rotation transform. So there's a mismatch.\n\nThe snapping thinks the visual size is 40x20, but the actual Qt item thinks it's 20x40 rotated by painter, which shifts the origin.\n\nLet me check `Room.input_port_pos` too - it uses `port.height` which is the METADATA height, not display size:\n\n```python\ndef input_port_pos(self, index: int) -> tuple[float, float]:\n    port = self.get_port_by_index(index, is_output=False)\n    if port:\n        return (port.x, port.y + port.height / 2)  # Uses metadata height!\n```\n\nThat's wrong - it should use the rotated display size. Let me fix that:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"src/satisfactory_planner/ui/items/building_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01HWuZVHSG84LWwtd9iKcZ2x",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01HWuZVHSG84LWwtd9iKcZ2x",
+      "content": "{\"action\": \"update_context\", \"add\": [], \"message\": \"Added 0 files, removed 1 files from context\", \"remove\": [\"src/satisfactory_planner/ui/items/building_item.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "You're right, let me trace through more carefully.\n\n**The real issue**: When BuildingItem paints, it rotates the painter around the center. But the `setPos()` is for the top-left corner of the UNROTATED rect. So a 20x40 building at (0,0) rotated 90\u00b0 around its center (10, 20) will visually appear shifted.\n\nThe snapping returns `(clamped_x, 0, \"top\")` - so `y=0`. But the building is 20x40 and rotates around `(10, 20)`. After rotation, the visual top is NOT at y=0 anymore - it's offset by the rotation transform.\n\nThe fix should be in one of two places:\n1. Adjust the snap position to compensate for rotation offset\n2. Change how BuildingItem handles rotation origin\n\nActually wait - looking at `_get_room_port_position`, it uses `building._get_rotated_display_size()` which returns `(40, 20)` for 90\u00b0 rotation. Then it does `y = building.y` for top edge. But `building.y` is the UNROTATED top-left, not the visual top after rotation.\n\nFor a 90\u00b0 rotation around center, if original rect is (0, 0, 20, 40), the center is (10, 20). After 90\u00b0 CW rotation, the visual rect becomes something like (-10, 10, 40, 20) relative to original position.\n\nI think the simplest fix is: for PORT buildings on top/bottom edges, offset the y position to account for rotation. Let me check what offset is needed:\n\n- Original center: `(base_w/2, base_h/2)` = `(10, 20)`  \n- After 90\u00b0 rotation, visual size is `(40, 20)`, so visual center should be at `(20, 10)`\n- Offset = `10 - 20 = -10` for y\n\nSo for top edge, instead of `y=0`, we need `y = (base_h - base_w) / 2 = (40-20)/2 = 10`... no wait that puts it DOWN, making the problem worse.\n\nHonestly, I'm confusing myself. Let me just try removing the half-height offset and see:\n\n<edit file=\"src/satisfactory_planner/core/models.py\">\n<search>\n    elif min_dist == dist_top:\n        # Rotated 90\u00b0, visual dimensions swap: w=base_h, h=base_w\n        w, h = base_h, base_w\n        clamped_x = max(0, min(target_x, room_width - w))\n        return (clamped_x, 0, \"top\")\n    else:  # dist_bottom\n        # Rotated 270\u00b0, visual dimensions swap: w=base_h, h=base_w\n        w, h = base_h, base_w\n        clamped_x = max(0, min(target_x, room_width - w))\n        return (clamped_x, room_height - h, \"bottom\")\n</search>\n<replace>\n    elif min_dist == dist_top:\n        # Rotated 90\u00b0, visual dimensions swap: w=base_h, h=base_w\n        w, h = base_h, base_w\n        # Offset to compensate for rotation around center\n        # Original center.y = base_h/2, rotated center.y = base_w/2\n        # Offset = base_w/2 - base_h/2 = (base_w - base_h) / 2\n        y_offset = (base_w - base_h) / 2\n        clamped_x = max(0, min(target_x, room_width - w))\n        return (clamped_x, y_offset, \"top\")\n    else:  # dist_bottom\n        # Rotated 270\u00b0, visual dimensions swap: w=base_h, h=base_w\n        w, h = base_h, base_w\n        # Same offset logic, but from bottom\n        y_offset = (base_w - base_h) / 2\n        clamped_x = max(0, min(target_x, room_width - w))\n        return (clamped_x, room_height - h - y_offset, \"bottom\")\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Fix PORT snapping offset for rotated buildings on top/bottom edges\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/core/models.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/models.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_kgvlnfjo\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_kgvlnfjo\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_kgvlnfjo\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_kgvlnfjo\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "6049643fdc9f",
+          "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],
