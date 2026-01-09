@@ -142,6 +142,13 @@ def _build_flow_ports(
         outputs.append(FlowPort(item_id=building.item_id, rate=rate))
         return inputs, outputs
 
+    # PORT_IN/PORT_OUT: pass-through with 1 input and 1 output
+    # Item type is determined by connected belts (like splitters/mergers)
+    if building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
+        inputs.append(FlowPort(item_id=None, rate=0))
+        outputs.append(FlowPort(item_id=None, rate=0))
+        return inputs, outputs
+
     if building.recipe_id and building.recipe_id in recipes:
         recipe = recipes[building.recipe_id].scaled(building.clock_speed)
         for item_rate in recipe.inputs:
@@ -341,10 +348,9 @@ def _propagate_item_types(graph: FlowGraph) -> None:
     Convergence: Each iteration must make progress (set at least one item_id).
     With N logistics nodes, we converge in at most N iterations.
     """
-    # Count logistics nodes for convergence check
-    logistics_count = sum(
-        1 for n in graph.nodes.values() if n.node_type in (NodeType.SPLITTER, NodeType.MERGER)
-    )
+    # Count logistics nodes for convergence check (includes PORT_IN/PORT_OUT)
+    logistics_types = (NodeType.SPLITTER, NodeType.MERGER, NodeType.PORT_IN, NodeType.PORT_OUT)
+    logistics_count = sum(1 for n in graph.nodes.values() if n.node_type in logistics_types)
 
     # Iterate until no more changes
     changed = True
@@ -416,7 +422,7 @@ def _propagate_item_types(graph: FlowGraph) -> None:
                             port.rate = 100000.0  # High capacity
                             changed = True
 
-            elif node.node_type == NodeType.MERGER:
+            elif node.node_type in (NodeType.MERGER, NodeType.PORT_IN, NodeType.PORT_OUT):
                 # Get item type from any incoming edge that has one
                 incoming = graph.get_incoming_edges(node.id)
                 item_id = None
