@@ -1016,6 +1016,8 @@ class FactoryCanvas(QGraphicsView):
 
         flow_solver = main_window.current_tab.flow_solver
         if not flow_solver or not flow_solver._solved_model:
+            # No flow data - clear all visualizations
+            self._clear_flow_visualization()
             return
 
         solved = flow_solver._solved_model
@@ -1116,6 +1118,31 @@ class FactoryCanvas(QGraphicsView):
         for icon in self._warning_icons:
             self._scene.removeItem(icon)
         self._warning_icons.clear()
+
+    def _clear_flow_visualization(self) -> None:
+        """Clear all flow visualization state from items."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        # Clear top-level belts
+        for belt_item in self._belt_items.values():
+            belt_item.set_overcapacity(False)
+            belt_item.set_utilization(None)
+
+        # Clear top-level buildings
+        for building_item in self._building_items.values():
+            building_item.set_efficiency(None)
+
+        # Clear items inside room placements
+        for room_item in self._room_items.values():
+            if isinstance(room_item, RoomItem):
+                for belt_item in room_item._belt_items.values():
+                    belt_item.set_overcapacity(False)
+                    belt_item.set_utilization(None)
+                for building_item in room_item._building_items.values():
+                    building_item.set_efficiency(None)
+
+        # Clear warning icons
+        self.clear_warning_icons()
 
     def _refresh_all_room_items(self, room_id: str) -> None:
         """Refresh all RoomItems displaying the given room."""
