@@ -35,16 +35,17 @@ ruff format src/
 
 ## Port Rendering Model
 
-**Ports are puzzle pieces** - Input and output ports should look like matching puzzle pieces that fit together:
-- **Output ports** (green): Half-circle facing outward from building, belt starts here
-- **Input ports** (yellow): Half-circle facing outward from building, belt ends here
-- Both face the same direction (outward) so when you connect them, they visually "dock"
+**Ports are puzzle pieces** - Input and output ports are complementary shapes that fit together:
+- **Output ports** (green): Half-circle curving OUTWARD (the "tab") - something to grab from
+- **Input ports** (yellow): Half-circle curving INWARD (the "blank") - a receptacle to receive into
+
+They face **opposite directions** so they interlock when connected, like puzzle pieces.
 
 The angle parameter to `draw_half_circle_path()` is the direction the curved part faces:
-- A port on the LEFT edge of a building faces LEFT (angle=180)
-- A port on the RIGHT edge of a building faces RIGHT (angle=0)
+- Output on RIGHT edge: curves RIGHT (angle=0) - protruding outward
+- Input on LEFT edge: curves RIGHT (angle=0) - opening inward to receive from left
 
-This means belts flow INTO input ports and OUT OF output ports, with the half-circles acting as connectors.
+When a belt connects output→input, both half-circles face the same direction (toward the input), creating a visual "handoff".
 
 ## Qt Gotchas
 
