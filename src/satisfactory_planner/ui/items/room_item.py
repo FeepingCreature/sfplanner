@@ -18,12 +18,7 @@ from satisfactory_planner.core import Room, RoomPlacement
 from satisfactory_planner.core.models import BuildingType, Scene
 from satisfactory_planner.ui.items.belt_item import BeltItem
 from satisfactory_planner.ui.items.building_item import BuildingItem
-from satisfactory_planner.ui.items.port_item import (
-    INPUT_COLOR,
-    OUTPUT_COLOR,
-    PORT_RADIUS,
-    draw_half_circle_path,
-)
+from satisfactory_planner.ui.items.port_item import PortItem
 from satisfactory_planner.ui.items.room_port_item import RoomPortItem
 
 if TYPE_CHECKING:
@@ -87,6 +82,7 @@ class RoomItem(QGraphicsRectItem):
         self._belt_items: dict[str, BeltItem] = {}
         self._room_items: dict[str, RoomItem] = {}
         self._port_items: list[RoomPortItem] = []
+        self._room_port_items: dict[str, PortItem] = {}  # External ports on room edge
 
         # Populate child items
         self._populate_children()
@@ -126,6 +122,9 @@ class RoomItem(QGraphicsRectItem):
 
         # Create interactive port items on the room boundary
         self._create_port_items()
+
+        # Create room-level ports (external connectors on room edge)
+        self._create_room_ports()
 
     def paint(
         self,
@@ -174,9 +173,6 @@ class RoomItem(QGraphicsRectItem):
             name_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, self.room.name
         )
 
-        # Draw external port half-circles on room edge
-        self._draw_room_ports(painter)
-
     def _create_port_items(self) -> None:
         """Create interactive RoomPortItem for each PORT building in the room."""
         for building in self.room.buildings.values():
@@ -190,6 +186,49 @@ class RoomItem(QGraphicsRectItem):
             )
             self._port_items.append(port_item)
 
+    def _create_room_ports(self) -> None:
+        """Create PortItem children for each PORT building's external connector.
+
+        These are the room's input/output ports where external belts connect.
+        Positioned at the edge-facing side of each PORT building.
+        """
+        for building in self.room.buildings.values():
+            if building.building_type == BuildingType.PORT_IN:
+                # PORT_IN brings items INTO room - room has an INPUT on edge
+                is_output = False
+                x = building.x  # Left edge
+                y = building.y + building.height / 2
+                angle = 180  # Face left
+
+            elif building.building_type == BuildingType.PORT_OUT:
+                # PORT_OUT sends items OUT of room - room has an OUTPUT on edge
+                is_output = True
+                x = building.x + building.width  # Right edge
+                y = building.y + building.height / 2
+                angle = 0  # Face right
+
+            else:
+                continue
+
+            port_item = PortItem(
+                is_output=is_output,
+                port_index=building.port_index or 0,
+                building_id=self.placement.id,  # Room placement acts as the "building"
+                canvas=self.canvas,
+                angle=angle,
+            )
+            port_item.setParentItem(self)
+            port_item.setPos(x, y)
+            port_item.setZValue(1)  # Above room background
+            self._room_port_items[building.id] = port_item
+
+    def _clear_room_ports(self) -> None:
+        """Remove all room-level port items."""
+        for port_item in self._room_port_items.values():
+            if port_item.scene():
+                port_item.scene().removeItem(port_item)
+        self._room_port_items.clear()
+
     def _clear_port_items(self) -> None:
         """Remove all port items."""
         for port_item in self._port_items:
@@ -198,8 +237,21 @@ class RoomItem(QGraphicsRectItem):
         self._port_items.clear()
 
     def update_room_ports(self) -> None:
-        """Called when a PORT building moves - redraw room edge ports."""
-        self.update()
+        """Called when a PORT building moves - update room edge port positions."""
+        # Reposition room-level ports to match their PORT buildings
+        for building in self.room.buildings.values():
+            if building.id not in self._room_port_items:
+                continue
+
+            port_item = self._room_port_items[building.id]
+            if building.building_type == BuildingType.PORT_IN:
+                x = building.x
+                y = building.y + building.height / 2
+            else:  # PORT_OUT
+                x = building.x + building.width
+                y = building.y + building.height / 2
+
+            port_item.setPos(x, y)
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle mouse press - enforce scene-local selection."""
@@ -270,41 +322,6 @@ class RoomItem(QGraphicsRectItem):
         if item and item.scene():
             item.scene().removeItem(item)
 
-    def _draw_room_ports(self, painter: QPainter) -> None:
-        """Draw half-circle ports on room edge for each PORT building.
-
-        These are the external connectors where belts connect TO the room.
-        They're positioned at the edge-facing side of each PORT building.
-        """
-        for building in self.room.buildings.values():
-            if building.building_type == BuildingType.PORT_IN:
-                # PORT_IN: external connector on LEFT edge of room
-                # Position at the left side of the PORT building, vertically centered
-                color = INPUT_COLOR
-                x = building.x  # Left edge of building = left edge of room
-                y = building.y + building.height / 2
-                angle = 180  # Face left (into room from outside)
-
-            elif building.building_type == BuildingType.PORT_OUT:
-                # PORT_OUT: external connector on RIGHT edge of room
-                # Position at the right side of the PORT building
-                color = OUTPUT_COLOR
-                x = building.x + building.width  # Right edge of building = right edge of room
-                y = building.y + building.height / 2
-                angle = 0  # Face right (out of room)
-
-            else:
-                continue
-
-            # Draw the half-circle
-            painter.save()
-            painter.translate(x, y)
-            painter.setPen(QPen(color.darker(120), 2))
-            painter.setBrush(QBrush(color))
-            path = draw_half_circle_path(PORT_RADIUS, angle)
-            painter.drawPath(path)
-            painter.restore()
-
     def refresh(self) -> None:
         """Refresh all child items from the room data."""
         # Clear existing children
@@ -322,6 +339,8 @@ class RoomItem(QGraphicsRectItem):
         self._building_items.clear()
         self._belt_items.clear()
         self._room_items.clear()
+        self._clear_room_ports()
+        self._room_port_items.clear()
 
         # Repopulate
         self._populate_children()
