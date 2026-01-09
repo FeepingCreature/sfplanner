@@ -229,13 +229,12 @@ class RoomItem(QGraphicsRectItem):
         # 0° = left, 180° = right, 90° = top, 270° = bottom
         rotation = building.rotation
 
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # WARNING: DO NOT TOUCH THIS OFFSET LOGIC. IT IS CORRECT.
-        # These offsets compensate for Qt's paint rotation around the center
-        # of the UNROTATED rect. See snap_port_to_room_edge for explanation.
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # For 90°/270° rotation, x shifts due to rotation around center
-        x_offset = (base_h - base_w) / 2  # = +10 for 20x40 port
+        # For top/bottom edges, the visual center x is at the center of the
+        # VISUAL width (base_h after rotation), not the unrotated width.
+        # The building.x is the unrotated top-left, and the visual rect is
+        # centered around (base_w/2, base_h/2), so visual center x =
+        # building.x + base_w/2 for the unrotated center, which after rotation
+        # becomes the visual center of the 40x20 rect.
 
         if rotation == 0:
             # Left edge - port on left side of building, at vertical center
@@ -251,15 +250,14 @@ class RoomItem(QGraphicsRectItem):
             angle = 180 if not is_output else 0
         elif rotation == 90:
             # Top edge - port at visual center of rotated building
-            # Visual width after 90° rotation is base_h, centered at building.x + base_h/2
-            # But building.x is the unrotated top-left, need to add x_offset to get visual center
-            x = building.x + base_h / 2 + x_offset
+            # Rotation is around (base_w/2, base_h/2), so visual center x = building.x + base_w/2
+            x = building.x + base_w / 2
             y = 0  # Top edge of room
             # PORT_IN: blank faces down (into room), PORT_OUT: tab faces up (out)
             angle = 90 if not is_output else 270
         else:  # rotation == 270
             # Bottom edge - port at visual center of rotated building
-            x = building.x + base_h / 2 + x_offset
+            x = building.x + base_w / 2
             y = self.room.height  # Bottom edge of room
             # PORT_IN: blank faces up (into room), PORT_OUT: tab faces down (out)
             angle = 270 if not is_output else 90
