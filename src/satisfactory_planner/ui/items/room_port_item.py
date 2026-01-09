@@ -158,6 +158,8 @@ class RoomPortItem(BuildingItem):
             new_pos = self.pos()
             self._edge = self._determine_edge((new_pos.x(), new_pos.y()))
             self.update()
+            # Notify room to redraw its edge ports
+            self.room_item.update_room_ports()
         # Let BuildingItem update model position and belts
         return super().itemChange(change, value)
 

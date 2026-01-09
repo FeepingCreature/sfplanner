@@ -18,6 +18,12 @@ from satisfactory_planner.core import Room, RoomPlacement
 from satisfactory_planner.core.models import BuildingType, Scene
 from satisfactory_planner.ui.items.belt_item import BeltItem
 from satisfactory_planner.ui.items.building_item import BuildingItem
+from satisfactory_planner.ui.items.port_item import (
+    INPUT_COLOR,
+    OUTPUT_COLOR,
+    PORT_RADIUS,
+    draw_half_circle_path,
+)
 from satisfactory_planner.ui.items.room_port_item import RoomPortItem
 
 if TYPE_CHECKING:
@@ -168,6 +174,9 @@ class RoomItem(QGraphicsRectItem):
             name_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, self.room.name
         )
 
+        # Draw external port half-circles on room edge
+        self._draw_room_ports(painter)
+
     def _create_port_items(self) -> None:
         """Create interactive RoomPortItem for each PORT building in the room."""
         for building in self.room.buildings.values():
@@ -187,6 +196,10 @@ class RoomItem(QGraphicsRectItem):
             if port_item.scene():
                 port_item.scene().removeItem(port_item)
         self._port_items.clear()
+
+    def update_room_ports(self) -> None:
+        """Called when a PORT building moves - redraw room edge ports."""
+        self.update()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle mouse press - enforce scene-local selection."""
@@ -256,6 +269,41 @@ class RoomItem(QGraphicsRectItem):
         item = self._belt_items.pop(belt_id, None)
         if item and item.scene():
             item.scene().removeItem(item)
+
+    def _draw_room_ports(self, painter: QPainter) -> None:
+        """Draw half-circle ports on room edge for each PORT building.
+
+        These are the external connectors where belts connect TO the room.
+        They're positioned at the edge-facing side of each PORT building.
+        """
+        for building in self.room.buildings.values():
+            if building.building_type == BuildingType.PORT_IN:
+                # PORT_IN: external connector on LEFT edge of room
+                # Position at the left side of the PORT building, vertically centered
+                color = INPUT_COLOR
+                x = building.x  # Left edge of building = left edge of room
+                y = building.y + building.height / 2
+                angle = 180  # Face left (into room from outside)
+
+            elif building.building_type == BuildingType.PORT_OUT:
+                # PORT_OUT: external connector on RIGHT edge of room
+                # Position at the right side of the PORT building
+                color = OUTPUT_COLOR
+                x = building.x + building.width  # Right edge of building = right edge of room
+                y = building.y + building.height / 2
+                angle = 0  # Face right (out of room)
+
+            else:
+                continue
+
+            # Draw the half-circle
+            painter.save()
+            painter.translate(x, y)
+            painter.setPen(QPen(color.darker(120), 2))
+            painter.setBrush(QBrush(color))
+            path = draw_half_circle_path(PORT_RADIUS, angle)
+            painter.drawPath(path)
+            painter.restore()
 
     def refresh(self) -> None:
         """Refresh all child items from the room data."""
