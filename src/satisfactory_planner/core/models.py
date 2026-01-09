@@ -227,10 +227,11 @@ class Building:
 
     def _get_display_size(self) -> tuple[int, int]:
         """Get display size - smaller for logistics buildings."""
-        # Splitter/Merger display at smaller square size
+        # Splitter/Merger/PORT display at smaller size
         if self.building_type in (BuildingType.SPLITTER, BuildingType.MERGER):
             return (LOGISTICS_DISPLAY_SIZE, LOGISTICS_DISPLAY_SIZE)
-        # PORT_IN/PORT_OUT use their actual spec dimensions (half-width)
+        if self.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
+            return (LOGISTICS_DISPLAY_SIZE // 2, LOGISTICS_DISPLAY_SIZE)
         return (self.width, self.height)
 
     def get_port_layout(

@@ -226,7 +226,12 @@ class BuildingItem(QGraphicsRectItem):
         # Draw the building name and recipe (always upright, centered)
         painter.setPen(QPen(QColor(255, 255, 255)))
         font = QFont()
-        is_small = self.building.building_type in (BuildingType.SPLITTER, BuildingType.MERGER)
+        is_small = self.building.building_type in (
+            BuildingType.SPLITTER,
+            BuildingType.MERGER,
+            BuildingType.PORT_IN,
+            BuildingType.PORT_OUT,
+        )
         font.setPointSize(7 if is_small else 8)
         painter.setFont(font)
 
@@ -237,6 +242,10 @@ class BuildingItem(QGraphicsRectItem):
             name = "SPL"
         elif self.building.building_type == BuildingType.MERGER:
             name = "MRG"
+        elif self.building.building_type == BuildingType.PORT_IN:
+            name = "IN"
+        elif self.building.building_type == BuildingType.PORT_OUT:
+            name = "OUT"
 
         # Get recipe name if available (skip for logistics)
         recipe_text = ""

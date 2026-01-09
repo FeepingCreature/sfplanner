@@ -110,11 +110,24 @@ class RoomPortItem(BuildingItem):
         pass
 
     def _snap_to_edge_with_rotation(self, pos: QPointF) -> tuple[QPointF, int]:
-        """Snap to nearest room edge and return position + rotation."""
+        """Snap to nearest room edge and return position + rotation.
+
+        Rotation orients the PORT so its connector faces INTO the room:
+        - Left edge: 0° (port faces right, into room)
+        - Right edge: 180° (port faces left, into room)
+        - Top edge: 90° (port faces down, into room)
+        - Bottom edge: 270° (port faces up, into room)
+        """
         room = self.room_item.room
         x, y, edge = snap_port_to_room_edge(
             self.building.building_type, room.width, room.height, pos.x(), pos.y()
         )
-        # Top/bottom edges need 90° rotation
-        rotation = 90 if edge in ("top", "bottom") else 0
+        # Rotate so port connector faces into the room
+        edge_rotations = {
+            "left": 0,
+            "right": 180,
+            "top": 90,
+            "bottom": 270,
+        }
+        rotation = edge_rotations.get(edge, 0)
         return QPointF(x, y), rotation
