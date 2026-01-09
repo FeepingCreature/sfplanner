@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsSceneMouseEvent,
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 INPUT_COLOR = QColor(220, 180, 50)  # Yellow for inputs
 OUTPUT_COLOR = QColor(50, 200, 100)  # Green for outputs
 
-PORT_RADIUS = 8  # Radius of the half-circle
+PORT_RADIUS = 6  # Radius of the port circle
 
 
 class PortItem(QGraphicsItem):
@@ -64,38 +64,20 @@ class PortItem(QGraphicsItem):
         option: QStyleOptionGraphicsItem,
         widget: QWidget | None = None,
     ) -> None:
-        """Paint the port as a half-circle facing the connection direction."""
+        """Paint the port as a filled circle."""
         color = OUTPUT_COLOR if self.is_output else INPUT_COLOR
-
-        painter.save()
-
-        # Rotate to face the right direction
-        painter.rotate(self.angle)
 
         # Scale up if hovered or targeted during belt drag
         if self._hovered or self._drag_target:
-            painter.scale(1.3, 1.3)
-            painter.setPen(QPen(QColor(255, 255, 255), 3))
+            painter.setPen(QPen(QColor(255, 255, 255), 2))
             painter.setBrush(QBrush(color.lighter(130)))
+            r = PORT_RADIUS * 1.3
         else:
-            painter.setPen(QPen(color.darker(120), 2))
+            painter.setPen(QPen(color.darker(120), 1.5))
             painter.setBrush(QBrush(color))
+            r = PORT_RADIUS
 
-        # Draw half-circle - curved side faces the belt connection
-        # Both input and output have the curved part facing away from the building
-        # (toward where the belt connects)
-        path = QPainterPath()
-        r = PORT_RADIUS
-
-        # Half-circle facing right (toward belt connection)
-        # The angle rotation already handles the direction
-        path.moveTo(0, -r)
-        path.arcTo(-r, -r, r * 2, r * 2, 90, -180)
-        path.closeSubpath()
-
-        painter.drawPath(path)
-
-        painter.restore()
+        painter.drawEllipse(QRectF(-r, -r, r * 2, r * 2))
 
     def hoverLeaveEvent(self, event: object) -> None:
         """Remove highlight."""
