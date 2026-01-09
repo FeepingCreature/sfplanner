@@ -24,6 +24,36 @@ OUTPUT_COLOR = QColor(50, 200, 100)  # Green for outputs
 PORT_RADIUS = 8  # Radius of the half-circle
 
 
+def draw_half_circle_path(radius: float, angle: float = 0) -> QPainterPath:
+    """Create a half-circle path facing the given angle.
+
+    Args:
+        radius: Radius of the half-circle
+        angle: Direction the curved side faces (degrees, 0=right, 90=down, 180=left, 270=up)
+
+    Returns:
+        QPainterPath for the half-circle, centered at origin with flat edge at origin.
+    """
+    path = QPainterPath()
+    r = radius
+
+    # Base half-circle facing right (curved side to the right)
+    # Then we rotate by angle
+    path.moveTo(0, -r)
+    path.arcTo(-r, -r, r * 2, r * 2, 90, -180)
+    path.closeSubpath()
+
+    # Apply rotation if needed
+    if angle != 0:
+        from PySide6.QtGui import QTransform
+
+        transform = QTransform()
+        transform.rotate(angle)
+        path = transform.map(path)
+
+    return path
+
+
 class PortItem(QGraphicsItem):
     """A clickable port for connecting belts with directional arrow."""
 
@@ -81,16 +111,8 @@ class PortItem(QGraphicsItem):
             painter.setPen(QPen(color.darker(120), 1.5))
             painter.setBrush(QBrush(color))
 
-        # Draw half-circle facing outward (right by default, then rotated)
-        # Curved side faces the belt connection point
-        path = QPainterPath()
-        r = PORT_RADIUS
-
-        # Half-circle facing right (toward belt connection)
-        path.moveTo(0, -r)
-        path.arcTo(-r, -r, r * 2, r * 2, 90, -180)
-        path.closeSubpath()
-
+        # Draw half-circle facing the connection direction
+        path = draw_half_circle_path(PORT_RADIUS)
         painter.drawPath(path)
 
         painter.restore()

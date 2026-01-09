@@ -10,7 +10,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsObject,
@@ -20,6 +20,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from satisfactory_planner.ui.items.port_item import (
+    INPUT_COLOR,
+    OUTPUT_COLOR,
+    draw_half_circle_path,
+)
+
 if TYPE_CHECKING:
     from satisfactory_planner.ui.canvas import FactoryCanvas
     from satisfactory_planner.ui.items.room_item import RoomItem
@@ -27,8 +33,6 @@ if TYPE_CHECKING:
 
 # Port visual constants
 HALF_CIRCLE_RADIUS = 10  # Radius of the half-circle on room edge
-INPUT_COLOR = QColor(220, 180, 50)  # Yellow for inputs
-OUTPUT_COLOR = QColor(50, 200, 100)  # Green for outputs
 
 
 class EdgeSide(Enum):
@@ -177,53 +181,20 @@ class RoomPortItem(QGraphicsObject):
             painter.setPen(QPen(color.darker(120), 2))
             painter.setBrush(QBrush(color))
 
-        path = QPainterPath()
-        r = HALF_CIRCLE_RADIUS
-
-        # Determine arc direction based on edge and port type
-        # Output = face outward (curved side outside room)
-        # Input = face inward (curved side inside room)
-        if side == "left":
-            if self.is_output:
-                # Curved side faces left (outside)
-                path.moveTo(0, -r)
-                path.arcTo(-r, -r, r * 2, r * 2, 90, 180)
-            else:
-                # Curved side faces right (inside)
-                path.moveTo(0, -r)
-                path.arcTo(-r, -r, r * 2, r * 2, 90, -180)
-            path.closeSubpath()
-        elif side == "right":
-            if self.is_output:
-                # Curved side faces right (outside)
-                path.moveTo(0, -r)
-                path.arcTo(-r, -r, r * 2, r * 2, 90, -180)
-            else:
-                # Curved side faces left (inside)
-                path.moveTo(0, -r)
-                path.arcTo(-r, -r, r * 2, r * 2, 90, 180)
-            path.closeSubpath()
-        elif side == "top":
-            if self.is_output:
-                # Curved side faces up (outside)
-                path.moveTo(-r, 0)
-                path.arcTo(-r, -r, r * 2, r * 2, 180, 180)
-            else:
-                # Curved side faces down (inside)
-                path.moveTo(-r, 0)
-                path.arcTo(-r, -r, r * 2, r * 2, 180, -180)
-            path.closeSubpath()
-        else:  # bottom
-            if self.is_output:
-                # Curved side faces down (outside)
-                path.moveTo(-r, 0)
-                path.arcTo(-r, -r, r * 2, r * 2, 180, -180)
-            else:
-                # Curved side faces up (inside)
-                path.moveTo(-r, 0)
-                path.arcTo(-r, -r, r * 2, r * 2, 180, 180)
-            path.closeSubpath()
-
+        # Determine angle based on edge and port type
+        # Output = face outward, Input = face inward
+        angle_map = {
+            ("left", True): 180,  # Output on left edge -> face left (outside)
+            ("left", False): 0,  # Input on left edge -> face right (inside)
+            ("right", True): 0,  # Output on right edge -> face right (outside)
+            ("right", False): 180,  # Input on right edge -> face left (inside)
+            ("top", True): 270,  # Output on top edge -> face up (outside)
+            ("top", False): 90,  # Input on top edge -> face down (inside)
+            ("bottom", True): 90,  # Output on bottom edge -> face down (outside)
+            ("bottom", False): 270,  # Input on bottom edge -> face up (inside)
+        }
+        angle = angle_map.get((side, self.is_output), 0)
+        path = draw_half_circle_path(HALF_CIRCLE_RADIUS, angle)
         painter.drawPath(path)
 
     def set_drag_target(self, is_target: bool) -> None:
