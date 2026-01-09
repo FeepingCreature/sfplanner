@@ -785,7 +785,7 @@ def snap_port_to_room_edge(
     else:  # dist_bottom
         # Rotated 270°, visual dimensions swap: w=base_h, h=base_w
         w, h = base_h, base_w
-        # Same offset but inverted for bottom edge
+        # For bottom edge, offset in opposite direction from top
         y_offset = (base_h - base_w) / 2
         clamped_x = max(0, min(target_x, room_width - w))
-        return (clamped_x, room_height - h + y_offset, "bottom")
+        return (clamped_x, room_height - h - y_offset, "bottom")
