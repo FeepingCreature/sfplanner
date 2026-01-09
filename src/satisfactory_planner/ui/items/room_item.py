@@ -203,8 +203,8 @@ class RoomItem(QGraphicsRectItem):
         Note: These ports connect to the PARENT scene (where the room is placed),
         not inside the room. So scene_room_id is the parent's room id (or None for document).
         """
-        # Parent scene's room id (None if parent is Document)
-        parent_scene_room_id: str | None = getattr(self.parent_scene, "id", None)
+        # Get parent scene's room id from the Scene protocol
+        parent_scene_room_id = self.parent_scene.scene_room_id
 
         for building in self.room.buildings.values():
             if building.building_type not in (BuildingType.PORT_IN, BuildingType.PORT_OUT):

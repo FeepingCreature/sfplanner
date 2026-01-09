@@ -136,8 +136,8 @@ class BuildingItem(QGraphicsRectItem):
         # Get port layout from the building model
         input_layout, output_layout = self.building.get_port_layout()
 
-        # Determine scene_room_id: None for Document, room.id for Room
-        scene_room_id: str | None = getattr(self._scene, "id", None)
+        # Get scene_room_id from the Scene protocol
+        scene_room_id = self._scene.scene_room_id
 
         # Create input ports
         for i, (px, py, base_angle) in enumerate(input_layout):

@@ -22,6 +22,11 @@ class Scene(Protocol):
     buildings: dict[str, Building]
     belts: dict[str, Belt]
 
+    @property
+    def scene_room_id(self) -> str | None:
+        """Return room ID if this is a Room, None if this is a Document."""
+        ...
+
     def add_building(self, building: Building) -> None: ...
     def remove_building(self, building_id: str) -> Building | None: ...
     def add_belt(self, belt: Belt) -> None: ...
@@ -466,6 +471,11 @@ class Room:
     belts: dict[str, Belt] = field(default_factory=dict)
     rooms: dict[str, Room] = field(default_factory=dict)  # Nested rooms
 
+    @property
+    def scene_room_id(self) -> str | None:
+        """Return this room's ID (implements Scene protocol)."""
+        return self.id
+
     def add_building(self, building: Building) -> None:
         """Add a building to this room."""
         self.buildings[building.id] = building
@@ -708,6 +718,11 @@ class Document:
     # Rooms and their placements
     rooms: dict[str, Room] = field(default_factory=dict)  # Room definitions
     room_placements: dict[str, RoomPlacement] = field(default_factory=dict)  # Where rooms appear
+
+    @property
+    def scene_room_id(self) -> str | None:
+        """Return None for document root (implements Scene protocol)."""
+        return None
 
     def add_building(self, building: Building) -> None:
         """Add a building to the document."""
