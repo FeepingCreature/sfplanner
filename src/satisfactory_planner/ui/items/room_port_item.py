@@ -124,11 +124,7 @@ class RoomPortItem(BuildingItem):
             self.building.building_type, room.width, room.height, pos.x(), pos.y()
         )
         # Rotate so port connector faces into the room
-        edge_rotations = {
-            "left": 0,
-            "right": 180,
-            "top": 90,
-            "bottom": 270,
-        }
-        rotation = edge_rotations.get(edge, 0)
+        from satisfactory_planner.core.port_geometry import EDGE_ROTATIONS
+
+        rotation = EDGE_ROTATIONS.get(edge, 0)
         return QPointF(x, y), rotation

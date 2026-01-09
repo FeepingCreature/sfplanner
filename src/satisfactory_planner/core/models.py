@@ -821,11 +821,16 @@ def snap_port_to_room_edge(
     Returns:
         (x, y, edge) where edge is 'left', 'right', 'top', or 'bottom'
     """
-    # Base display size for PORT buildings (before rotation)
-    base_w, base_h = LOGISTICS_DISPLAY_SIZE // 2, LOGISTICS_DISPLAY_SIZE
+    from satisfactory_planner.core.port_geometry import (
+        PORT_BASE_HEIGHT,
+        PORT_BASE_WIDTH,
+        get_rotated_dimensions,
+        get_rotation_y_offset,
+    )
 
     # Calculate distances to each edge (from approximate center)
-    center_x, center_y = target_x + base_w / 2, target_y + base_h / 2
+    center_x = target_x + PORT_BASE_WIDTH / 2
+    center_y = target_y + PORT_BASE_HEIGHT / 2
     dist_left = abs(center_x)
     dist_right = abs(center_x - room_width)
     dist_top = abs(center_y)
@@ -833,36 +838,30 @@ def snap_port_to_room_edge(
 
     min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
 
-    # On left/right edges: use normal orientation (base_w x base_h)
-    # On top/bottom edges: rotated 90°/270°, so visual size is (base_h x base_w)
     if min_dist == dist_left:
-        w, h = base_w, base_h
+        w, h = get_rotated_dimensions(0)
         clamped_y = max(0, min(target_y, room_height - h))
         return (0, clamped_y, "left")
     elif min_dist == dist_right:
-        w, h = base_w, base_h
+        w, h = get_rotated_dimensions(180)
         clamped_y = max(0, min(target_y, room_height - h))
         return (room_width - w, clamped_y, "right")
     elif min_dist == dist_top:
-        # Rotated 90°, visual dimensions swap: w=base_h, h=base_w
-        w, h = base_h, base_w
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         # WARNING: DO NOT TOUCH THIS OFFSET LOGIC. IT IS CORRECT.
-        # The y_offset compensates for Qt's paint rotation around (base_w/2, base_h/2).
-        # When a 20x40 rect rotates 90° around its center (10, 20), the visual
-        # top-left shifts. This offset makes the VISUAL rect sit on the edge.
+        # See port_geometry.get_rotation_y_offset() for explanation.
         # It took many painful iterations to get this right. LEAVE IT ALONE.
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        y_offset = (base_w - base_h) / 2
+        w, h = get_rotated_dimensions(90)
+        y_offset = get_rotation_y_offset()
         clamped_x = max(0, min(target_x, room_width - w))
         return (clamped_x, y_offset, "top")
     else:  # dist_bottom
-        # Rotated 270°, visual dimensions swap: w=base_h, h=base_w
-        w, h = base_h, base_w
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         # WARNING: DO NOT TOUCH THIS OFFSET LOGIC. IT IS CORRECT.
-        # Same rotation compensation as top edge. See comment above.
+        # See port_geometry.get_rotation_y_offset() for explanation.
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        y_offset = (base_w - base_h) / 2
+        w, h = get_rotated_dimensions(270)
+        y_offset = get_rotation_y_offset()
         clamped_x = max(0, min(target_x, room_width - w))
         return (clamped_x, room_height - h + y_offset, "bottom")
