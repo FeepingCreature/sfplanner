@@ -244,18 +244,15 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                     inequality_rows.append(row)
                     inequality_rhs.append(node.inputs[i].rate)
 
-        elif node.node_type == NodeType.PORT_OUT:
-            # Port outputs just pass through
-            pass
-
-        elif node.node_type == NodeType.PORT_IN:
-            # External input: output = specified rate
-            for i, out_edge in enumerate(outgoing):
-                if i < len(node.outputs):
-                    row = [0.0] * n_edges
-                    row[edge_to_idx[out_edge.id]] = 1.0
-                    equality_rows.append(row)
-                    equality_rhs.append(node.outputs[i].rate)
+        elif node.node_type in (NodeType.PORT_IN, NodeType.PORT_OUT) and incoming and outgoing:
+            # Ports are pass-through: sum(inputs) = sum(outputs)
+            row = [0.0] * n_edges
+            for in_edge in incoming:
+                row[edge_to_idx[in_edge.id]] = 1.0
+            for out_edge in outgoing:
+                row[edge_to_idx[out_edge.id]] = -1.0
+            equality_rows.append(row)
+            equality_rhs.append(0.0)
 
     # Objective: maximize total flow (minimize negative flow)
     c = [-1.0] * n_edges
