@@ -141,16 +141,28 @@ class RoomPortItem(BuildingItem):
             painter.setPen(QPen(color.darker(120), 2))
             painter.setBrush(QBrush(color))
 
-        # External half-circle faces AWAY from room
-        angle_map = {
-            EdgeSide.LEFT: 180,  # Face left (outside)
-            EdgeSide.RIGHT: 0,  # Face right (outside)
-            EdgeSide.TOP: 270,  # Face up (outside)
-            EdgeSide.BOTTOM: 90,  # Face down (outside)
-        }
-        angle = angle_map.get(self._edge, 0)
+        w, h = self._get_display_size()
+
+        # External half-circle faces AWAY from room, positioned on the edge-facing side
+        # For PORT_IN on left edge: external circle is on LEFT side of building (x=0)
+        # For PORT_OUT on right edge: external circle is on RIGHT side of building (x=w)
+        painter.save()
+        if self._edge == EdgeSide.LEFT:
+            painter.translate(0, h / 2)
+            angle = 180  # Face left (outside)
+        elif self._edge == EdgeSide.RIGHT:
+            painter.translate(w, h / 2)
+            angle = 0  # Face right (outside)
+        elif self._edge == EdgeSide.TOP:
+            painter.translate(w / 2, 0)
+            angle = 270  # Face up (outside)
+        else:  # BOTTOM
+            painter.translate(w / 2, h)
+            angle = 90  # Face down (outside)
+
         path = draw_half_circle_path(PORT_RADIUS, angle)
         painter.drawPath(path)
+        painter.restore()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle mouse press - start belt from external half-circle, or drag."""
@@ -193,24 +205,40 @@ class RoomPortItem(BuildingItem):
         return super().itemChange(change, value)
 
     def _snap_to_edge(self, pos: QPointF) -> QPointF:
-        """Snap a position to the nearest room edge."""
+        """Snap a position to the nearest room edge.
+
+        The building is positioned so it sits ON the edge (straddling it),
+        with its edge-facing side aligned to the room boundary.
+        """
         room = self.room_item.room
+        w, h = self._get_display_size()
         x, y = pos.x(), pos.y()
 
-        # Calculate distances to each edge
-        dist_left = abs(x)
-        dist_right = abs(x - room.width)
-        dist_top = abs(y)
-        dist_bottom = abs(y - room.height)
+        # Calculate distances to each edge (from building center)
+        center_x, center_y = x + w / 2, y + h / 2
+        dist_left = abs(center_x)
+        dist_right = abs(center_x - room.width)
+        dist_top = abs(center_y)
+        dist_bottom = abs(center_y - room.height)
 
         min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
 
-        # Clamp y/x to room bounds and snap to nearest edge
+        # Snap to edge, positioning so building straddles the edge
+        # For left/right edges: building's left/right side aligns with edge
+        # For top/bottom edges: building's top/bottom side aligns with edge
         if min_dist == dist_left:
-            return QPointF(0, max(0, min(y, room.height)))
+            # Left edge: x=0 means left side of building is on edge
+            clamped_y = max(0, min(y, room.height - h))
+            return QPointF(0, clamped_y)
         elif min_dist == dist_right:
-            return QPointF(room.width, max(0, min(y, room.height)))
+            # Right edge: right side of building on edge, so x = room.width - w
+            clamped_y = max(0, min(y, room.height - h))
+            return QPointF(room.width - w, clamped_y)
         elif min_dist == dist_top:
-            return QPointF(max(0, min(x, room.width)), 0)
+            # Top edge: y=0 means top side of building is on edge
+            clamped_x = max(0, min(x, room.width - w))
+            return QPointF(clamped_x, 0)
         else:  # dist_bottom
-            return QPointF(max(0, min(x, room.width)), room.height)
+            # Bottom edge: bottom side of building on edge, so y = room.height - h
+            clamped_x = max(0, min(x, room.width - w))
+            return QPointF(clamped_x, room.height - h)
