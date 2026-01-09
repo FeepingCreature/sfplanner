@@ -32,6 +32,7 @@ class BeltConnector:
         self._is_connecting = False
         self._connect_start_building: str | None = None
         self._connect_start_port: int = 0
+        self._connect_scene_room_id: str | None = None  # Scene context for the connection
         self._drag_preview: QGraphicsPathItem | None = None
         self._drag_start_pos: QPointF | None = None
         self._drag_start_dir: float = 0
@@ -42,10 +43,21 @@ class BeltConnector:
         """Return whether a belt connection is in progress."""
         return self._is_connecting
 
-    def start_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:
+    def start_drag(
+        self,
+        building_id: str,
+        port_index: int,
+        start_pos: QPointF,
+        scene_room_id: str | None = None,
+    ) -> None:
         """Start dragging a belt connection from an output port.
 
-        The building_id can be either a Building ID or a RoomPlacement ID.
+        Args:
+            building_id: Building ID or RoomPlacement ID
+            port_index: Which output port
+            start_pos: Scene position to start drag from
+            scene_room_id: None for document root, or room ID for buildings inside a room
+
         If the port already has a belt, delete it first (implicit replacement).
         """
         # Check if output port is already connected - if so, delete existing belt
@@ -64,6 +76,7 @@ class BeltConnector:
         self._is_connecting = True
         self._connect_start_building = building_id
         self._connect_start_port = port_index
+        self._connect_scene_room_id = scene_room_id
         self._drag_start_pos = start_pos
         self.canvas.setCursor(Qt.CursorShape.CrossCursor)
 
@@ -176,23 +189,10 @@ class BeltConnector:
                 dest_building_id=dest_building_id,
                 dest_port_index=dest_port_index,
             )
-            # Find the source item - check top-level buildings first, then rooms
-            source_item = self.canvas._building_items.get(self._connect_start_building)
-            scene_room_id: str | None = None
-            if source_item:
-                scene_room_id = self.canvas.get_scene_for_item(source_item)
-            else:
-                # Building might be inside a room - search room items
-                from satisfactory_planner.ui.items.room_item import RoomItem
-
-                for room_item in self.canvas._room_items.values():
-                    if (
-                        isinstance(room_item, RoomItem)
-                        and self._connect_start_building in room_item._building_items
-                    ):
-                        scene_room_id = room_item.room.id
-                        break
-            cmd = ConnectBeltCommand(scene_room_id=scene_room_id, belt=belt, canvas=self.canvas)
+            # Use scene_room_id captured at drag start - no item searching required
+            cmd = ConnectBeltCommand(
+                scene_room_id=self._connect_scene_room_id, belt=belt, canvas=self.canvas
+            )
             self.canvas.command_stack.execute(cmd)
 
         self._cleanup()

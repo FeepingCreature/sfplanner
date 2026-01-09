@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import (
     QGraphicsItem,
+    QGraphicsSceneMouseEvent,
 )
 
 from satisfactory_planner.core.models import Building, BuildingType, snap_port_to_room_edge
@@ -74,8 +75,21 @@ class RoomPortItem(BuildingItem):
         self._is_drag_target = is_target
         self.update()
 
-    # No custom mousePressEvent needed - BuildingItem handles selection/drag,
-    # and the port's PortItem handles belt connections.
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """Handle press - for output ports, start belt drag with room context."""
+        from PySide6.QtCore import Qt
+
+        if event.button() == Qt.MouseButton.LeftButton and self.is_output:
+            # RoomPortItem is inside a room, so scene_room_id is the room's id
+            self.canvas.start_belt_drag(
+                self.building.id,
+                self.port_index,
+                self.scenePos(),
+                self.room_item.room.id,
+            )
+            event.accept()
+        else:
+            super().mousePressEvent(event)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Handle item changes - snap to room edge instead of grid."""

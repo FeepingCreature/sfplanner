@@ -828,9 +828,15 @@ class FactoryCanvas(QGraphicsView):
 
     # === Belt connection (delegated) ===
 
-    def start_belt_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:
+    def start_belt_drag(
+        self,
+        building_id: str,
+        port_index: int,
+        start_pos: QPointF,
+        scene_room_id: str | None = None,
+    ) -> None:
         """Start dragging a belt connection from an output port."""
-        self._belt_connector.start_drag(building_id, port_index, start_pos)
+        self._belt_connector.start_drag(building_id, port_index, start_pos, scene_room_id)
 
     def is_dragging_belt(self) -> bool:
         """Return True if currently dragging a belt connection."""

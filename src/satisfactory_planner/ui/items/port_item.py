@@ -123,8 +123,27 @@ class PortItem(QGraphicsItem):
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle press to start belt drag from output port."""
         if event.button() == Qt.MouseButton.LeftButton and self.is_output:
-            # Start dragging a connection from output
-            self.canvas.start_belt_drag(self.building_id, self.port_index, self.scenePos())
+            # Get scene_room_id from parent BuildingItem if available
+            scene_room_id: str | None = None
+            parent = self.parentItem()
+            if parent is not None:
+                from satisfactory_planner.ui.items.building_item import BuildingItem
+                from satisfactory_planner.ui.items.room_item import RoomItem
+
+                if isinstance(parent, BuildingItem) and parent.building_scene is not None:
+                    # Parent is a BuildingItem - check if it's inside a room
+                    scene = parent.building_scene
+                    # If scene is a Room (not Document), find the room_id
+                    if hasattr(scene, "id"):
+                        # It's a Room object, use its id directly
+                        scene_room_id = scene.id
+                elif isinstance(parent, RoomItem):
+                    # Port is directly inside a RoomItem
+                    scene_room_id = parent.room.id
+
+            self.canvas.start_belt_drag(
+                self.building_id, self.port_index, self.scenePos(), scene_room_id
+            )
             event.accept()
         else:
             super().mousePressEvent(event)
