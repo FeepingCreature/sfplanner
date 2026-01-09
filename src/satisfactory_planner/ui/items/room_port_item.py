@@ -14,7 +14,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QBrush, QColor, QPainter, QPen
+from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsSceneMouseEvent,
@@ -22,14 +22,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from satisfactory_planner.core.models import Building, BuildingType
+from satisfactory_planner.core.models import Building, BuildingType, snap_port_to_room_edge
 from satisfactory_planner.ui.items.building_item import BuildingItem
-from satisfactory_planner.ui.items.port_item import (
-    INPUT_COLOR,
-    OUTPUT_COLOR,
-    PORT_RADIUS,
-    draw_half_circle_path,
-)
 
 if TYPE_CHECKING:
     from satisfactory_planner.ui.canvas import FactoryCanvas
@@ -119,50 +113,13 @@ class RoomPortItem(BuildingItem):
         option: QStyleOptionGraphicsItem,
         widget: QWidget | None = None,
     ) -> None:
-        """Paint external half-circle, then let BuildingItem paint the rest."""
-        # Draw external half-circle on room edge first
-        color = OUTPUT_COLOR if self.is_output else INPUT_COLOR
-        self._draw_external_half_circle(painter, color)
-
-        # Let BuildingItem paint the building body and internal ports
+        """Let BuildingItem paint the building - ports look like any other building."""
         super().paint(painter, option, widget)
 
     def set_drag_target(self, is_target: bool) -> None:
         """Set whether this port is being targeted for a belt connection."""
         self._is_drag_target = is_target
         self.update()
-
-    def _draw_external_half_circle(self, painter: QPainter, color: QColor) -> None:
-        """Draw the external half-circle on the room edge."""
-        if hasattr(self, "_is_drag_target") and self._is_drag_target:
-            painter.setPen(QPen(QColor(255, 255, 255), 3))
-            painter.setBrush(QBrush(color.lighter(130)))
-        else:
-            painter.setPen(QPen(color.darker(120), 2))
-            painter.setBrush(QBrush(color))
-
-        w, h = self._get_display_size()
-
-        # External half-circle faces AWAY from room, positioned on the edge-facing side
-        # For PORT_IN on left edge: external circle is on LEFT side of building (x=0)
-        # For PORT_OUT on right edge: external circle is on RIGHT side of building (x=w)
-        painter.save()
-        if self._edge == EdgeSide.LEFT:
-            painter.translate(0, h / 2)
-            angle = 180  # Face left (outside)
-        elif self._edge == EdgeSide.RIGHT:
-            painter.translate(w, h / 2)
-            angle = 0  # Face right (outside)
-        elif self._edge == EdgeSide.TOP:
-            painter.translate(w / 2, 0)
-            angle = 270  # Face up (outside)
-        else:  # BOTTOM
-            painter.translate(w / 2, h)
-            angle = 90  # Face down (outside)
-
-        path = draw_half_circle_path(PORT_RADIUS, angle)
-        painter.drawPath(path)
-        painter.restore()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle mouse press - start belt from external half-circle, or drag."""
@@ -205,40 +162,9 @@ class RoomPortItem(BuildingItem):
         return super().itemChange(change, value)
 
     def _snap_to_edge(self, pos: QPointF) -> QPointF:
-        """Snap a position to the nearest room edge.
-
-        The building is positioned so it sits ON the edge (straddling it),
-        with its edge-facing side aligned to the room boundary.
-        """
+        """Snap a position to the nearest room edge using shared utility."""
         room = self.room_item.room
-        w, h = self._get_display_size()
-        x, y = pos.x(), pos.y()
-
-        # Calculate distances to each edge (from building center)
-        center_x, center_y = x + w / 2, y + h / 2
-        dist_left = abs(center_x)
-        dist_right = abs(center_x - room.width)
-        dist_top = abs(center_y)
-        dist_bottom = abs(center_y - room.height)
-
-        min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
-
-        # Snap to edge, positioning so building straddles the edge
-        # For left/right edges: building's left/right side aligns with edge
-        # For top/bottom edges: building's top/bottom side aligns with edge
-        if min_dist == dist_left:
-            # Left edge: x=0 means left side of building is on edge
-            clamped_y = max(0, min(y, room.height - h))
-            return QPointF(0, clamped_y)
-        elif min_dist == dist_right:
-            # Right edge: right side of building on edge, so x = room.width - w
-            clamped_y = max(0, min(y, room.height - h))
-            return QPointF(room.width - w, clamped_y)
-        elif min_dist == dist_top:
-            # Top edge: y=0 means top side of building is on edge
-            clamped_x = max(0, min(x, room.width - w))
-            return QPointF(clamped_x, 0)
-        else:  # dist_bottom
-            # Bottom edge: bottom side of building on edge, so y = room.height - h
-            clamped_x = max(0, min(x, room.width - w))
-            return QPointF(clamped_x, room.height - h)
+        x, y, _edge = snap_port_to_room_edge(
+            self.building.building_type, room.width, room.height, pos.x(), pos.y()
+        )
+        return QPointF(x, y)

@@ -7,6 +7,7 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from satisfactory_planner.core.models import BUILDING_METADATA, snap_port_to_room_edge
 from satisfactory_planner.ui.commands.base import Command, get_scene
 
 if TYPE_CHECKING:
@@ -258,13 +259,16 @@ class CreateRoomCommand(Command):
                 if not source_building:
                     continue
 
-                # Position port ON the room edge (x=room_w for right edge)
-                # y is centered on the source building
-                port_y = source_building.y + source_building.height / 2
+                # Position port on right edge, centered on source building
+                port_height = BUILDING_METADATA[BuildingType.PORT_OUT].height
+                target_y = source_building.y + source_building.height / 2 - port_height / 2
+                port_x, port_y, _edge = snap_port_to_room_edge(
+                    BuildingType.PORT_OUT, room_w, room.height, room_w, target_y
+                )
                 port = Building(
                     id=port_id,
                     building_type=BuildingType.PORT_OUT,
-                    x=room_w,  # Right edge - ON the edge
+                    x=port_x,
                     y=port_y,
                     rotation=0,
                     port_index=output_port_index,
@@ -305,13 +309,16 @@ class CreateRoomCommand(Command):
                 if not dest_building:
                     continue
 
-                # Position port ON the room edge (x=0 for left edge)
-                # y is centered on the dest building
-                port_y = dest_building.y + dest_building.height / 2
+                # Position port on left edge, centered on dest building
+                port_height = BUILDING_METADATA[BuildingType.PORT_IN].height
+                target_y = dest_building.y + dest_building.height / 2 - port_height / 2
+                port_x, port_y, _edge = snap_port_to_room_edge(
+                    BuildingType.PORT_IN, room_w, room.height, 0, target_y
+                )
                 port = Building(
                     id=port_id,
                     building_type=BuildingType.PORT_IN,
-                    x=0,  # Left edge - ON the edge
+                    x=port_x,
                     y=port_y,
                     rotation=0,
                     port_index=input_port_index,

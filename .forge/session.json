@@ -2,6 +2,7 @@
   "active_files": [
     "src/satisfactory_planner/ui/items/room_item.py",
     "src/satisfactory_planner/core/models.py",
+    "src/satisfactory_planner/ui/commands/room_commands.py",
     "src/satisfactory_planner/ui/items/room_port_item.py",
     "src/satisfactory_planner/ui/canvas/selection_manager.py",
     "src/satisfactory_planner/ui/items/building_item.py"
@@ -1167,6 +1168,51 @@
       "streaming": true,
       "actual_cost": 0.114651,
       "generation_id": "gen-1767962231-HYFi7OkpAF76p7UUo7u3"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767962437546.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767962437546.json",
+      "timestamp": 1767962437.5475698,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.12779975,
+      "generation_id": "gen-1767962437-Vt8aQxkEKBP54ah51djl"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767962454623.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767962454623.json",
+      "timestamp": 1767962454.6244662,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.12109975,
+      "generation_id": "gen-1767962454-fe83wLbKzFdgPwlPYmJy"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767962461561.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767962461561.json",
+      "timestamp": 1767962461.562377,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.051309,
+      "generation_id": "gen-1767962461-kzQMue1g6EUczIZ3Lnte"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767962468083.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767962468083.json",
+      "timestamp": 1767962468.0844595,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06822675,
+      "generation_id": "gen-1767962468-CzpK2VENNNLmFwYTF9ov"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767962485547.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767962485547.json",
+      "timestamp": 1767962485.548973,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.17706125,
+      "generation_id": "gen-1767962485-1bNMDGqwYPIRNlYaxKYx"
     }
   ],
   "messages": [
@@ -4496,6 +4542,273 @@
         {
           "commit": "fd5120643292",
           "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 0337754d",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "- Port snapping works! But the port placement created when making a room is still on the outside of the right edge instead of the inside. Can this share code with edge snapping?\n- The IN PORT outside-room (in) port is still drawn on the outside of the edge facing outwards, instead of the inside facing inwards.\n- The OUT PORT in-room (out) port is also facing away from the building instead of inwards as it should as a receiving port.\n\nThese ports are supposed to have no special appearance. They're supposed to look exactly like ports on any other item."
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issues now. Let me trace through:\n\n1. **Initial port placement** - When creating a room with crossing belts, ports are placed in `room_commands.py` but don't use the edge-snapping logic\n2. **The internal ports** - The `get_port_layout()` in models.py defines where PortItems go, but the angles seem wrong for PORT_IN/PORT_OUT\n\nThe key insight: PORT buildings should use standard port layout like any other building. The problem is `get_port_layout()` has special cases for PORT_IN/PORT_OUT that are wrong.\n\nLet me fix all issues:\n\n<edit file=\"src/satisfactory_planner/core/models.py\">\n<search>\n        elif self.building_type == BuildingType.PORT_IN:\n            # PORT_IN: brings items INTO the room\n            # Building sits on room edge with output facing INTO room (right)\n            # Output on right edge, facing right (into room)\n            outputs.append((w, h / 2, 0))  # right edge, center, face right\n\n        elif self.building_type == BuildingType.PORT_OUT:\n            # PORT_OUT: sends items OUT of the room\n            # Building sits on room edge with input facing INTO room (left side of building)\n            # Input on left edge, facing left (from room interior)\n            inputs.append((0, h / 2, 180))  # left edge, center, face left (into room)\n</search>\n<replace>\n        elif self.building_type == BuildingType.PORT_IN:\n            # PORT_IN: brings items INTO the room (0 inputs, 1 output)\n            # Building sits on LEFT room edge, output faces RIGHT (into room)\n            # Standard layout: output on right edge, faces right\n            outputs.append((w, h / 2, 0))  # right edge, center, face right\n\n        elif self.building_type == BuildingType.PORT_OUT:\n            # PORT_OUT: sends items OUT of the room (1 input, 0 outputs)\n            # Building sits on RIGHT room edge, input faces LEFT (from room interior)\n            # Standard layout: input on left edge, faces right (belt travels right into it)\n            inputs.append((0, h / 2, 0))  # left edge, center, face right (belt enters from left)\n</replace>\n</edit>\n\nNow fix the initial port placement in room_commands.py to use proper edge positioning:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"PORT_OUT.*x.*=|_handle_crossing_belts\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_014JTqPaiM8qLJn7JfpHijA9",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/core/models.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/models.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_014JTqPaiM8qLJn7JfpHijA9",
+      "content": "{\"message\": \"Found 3 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:172 \\u2500\\u2500\\n     169 |         self.canvas.add_room_item(placement, room)\\n     170 | \\n     171 |         # Handle crossing belts (same logic for execute and redo - fully deterministic)\\n>>>  172 |         self._handle_crossing_belts(document, parent, room, x, y)\\n     173 |         self.canvas.notify_mutation()\\n     174 | \\n     175 |     def undo(self, document: Document) -> None:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:213 \\u2500\\u2500\\n     210 | \\n     211 |         self.canvas.notify_mutation()\\n     212 | \\n>>>  213 |     def _handle_crossing_belts(\\n     214 |         self,\\n     215 |         document: Document,\\n     216 |         parent: Scene,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/room_port_item.py:148 \\u2500\\u2500\\n     145 | \\n     146 |         # External half-circle faces AWAY from room, positioned on the edge-facing side\\n     147 |         # For PORT_IN on left edge: external circle is on LEFT side of building (x=0)\\n>>>  148 |         # For PORT_OUT on right edge: external circle is on RIGHT side of building (x=w)\\n     149 |         painter.save()\\n     150 |         if self._edge == EdgeSide.LEFT:\\n     151 |             painter.translate(0, h / 2)\", \"success\": true, \"total_matches\": 3}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"PORT_OUT.*x.*=|_handle_crossing_belts\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 3 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:172 \\u2500\\u2500\\n     169 |         self.canvas.add_room_item(placement, room)\\n     170 | \\n     171 |         # Handle crossing belts (same logic for execute and redo - fully deterministic)\\n>>>  172 |         self._handle_crossing_belts(document, parent, room, x, y)\\n     173 |         self.canvas.notify_mutation()\\n     174 | \\n     175 |     def undo(self, document: Document) -> None:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:213 \\u2500\\u2500\\n     210 | \\n     211 |         self.canvas.notify_mutation()\\n     212 | \\n>>>  213 |     def _handle_crossing_belts(\\n     214 |         self,\\n     215 |         document: Document,\\n     216 |         parent: Scene,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/room_port_item.py:148 \\u2500\\u2500\\n     145 | \\n     146 |         # External half-circle faces AWAY from room, positioned on the edge-facing side\\n     147 |         # For PORT_IN on left edge: external circle is on LEFT side of building (x=0)\\n>>>  148 |         # For PORT_OUT on right edge: external circle is on RIGHT side of building (x=w)\\n     149 |         painter.save()\\n     150 |         if self._edge == EdgeSide.LEFT:\\n     151 |             painter.translate(0, h / 2)\",\n  \"success\": true,\n  \"total_matches\": 3\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me look at the `_handle_crossing_belts` code to see where ports are initially positioned:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/commands/room_commands.py\", \"line\": 213, \"context\": 60}",
+            "name": "get_lines"
+          },
+          "id": "toolu_vrtx_01S3kGAo1H3kaowJX7XVW1dv",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01S3kGAo1H3kaowJX7XVW1dv",
+      "content": "{\"content\": \"     153 |         # Add room to document\\n     154 |         document.rooms[room.id] = room\\n     155 | \\n     156 |         # Create placement - must exist before handling crossing belts\\n     157 |         # because external belts reference the placement as a building\\n     158 |         placement = RoomPlacement(\\n     159 |             id=self.created_placement_id,\\n     160 |             room_id=room.id,\\n     161 |             x=x,\\n     162 |             y=y,\\n     163 |             parent_room_id=self.parent_scene_room_id,\\n     164 |         )\\n     165 |         document.room_placements[placement.id] = placement\\n     166 | \\n     167 |         # Add room item to canvas - must exist before crossing belts\\n     168 |         # so that belt items can look up the placement\\n     169 |         self.canvas.add_room_item(placement, room)\\n     170 | \\n     171 |         # Handle crossing belts (same logic for execute and redo - fully deterministic)\\n     172 |         self._handle_crossing_belts(document, parent, room, x, y)\\n     173 |         self.canvas.notify_mutation()\\n     174 | \\n     175 |     def undo(self, document: Document) -> None:\\n     176 |         parent = get_scene(document, self.parent_scene_room_id)\\n     177 |         x, y, _w, _h = self.rect\\n     178 | \\n     179 |         # Get the room\\n     180 |         room = document.rooms.get(self.created_room_id)\\n     181 |         if not room:\\n     182 |             logger.warning(f\\\"CreateRoomCommand.undo: room {self.created_room_id} not found\\\")\\n     183 |             return\\n     184 | \\n     185 |         # Remove room item from canvas\\n     186 |         self.canvas.remove_room_item(self.created_placement_id)\\n     187 | \\n     188 |         # Move buildings back to parent scene (restore absolute coords)\\n     189 |         for building_id in self.building_ids:\\n     190 |             building = room.remove_building(building_id)\\n     191 |             if building:\\n     192 |                 building.x += x\\n     193 |                 building.y += y\\n     194 |                 parent.add_building(building)\\n     195 |                 self.canvas.add_building_item(building)\\n     196 | \\n     197 |         # Move belts back to parent scene\\n     198 |         for belt_id in self.belt_ids:\\n     199 |             belt = room.remove_belt(belt_id)\\n     200 |             if belt:\\n     201 |                 parent.add_belt(belt)\\n     202 |                 self.canvas.add_belt_item(belt)\\n     203 | \\n     204 |         # Restore crossing belts and remove created ports\\n     205 |         self._undo_crossing_belts(document, parent, room)\\n     206 | \\n     207 |         # Remove room and placement from document\\n     208 |         document.rooms.pop(self.created_room_id, None)\\n     209 |         document.room_placements.pop(self.created_placement_id, None)\\n     210 | \\n     211 |         self.canvas.notify_mutation()\\n     212 | \\n>>>  213 |     def _handle_crossing_belts(\\n     214 |         self,\\n     215 |         document: Document,\\n     216 |         parent: Scene,\\n     217 |         room: Room,\\n     218 |         room_x: float,\\n     219 |         room_y: float,\\n     220 |     ) -> None:\\n     221 |         \\\"\\\"\\\"Handle belts that cross the room boundary by creating ports.\\n     222 | \\n     223 |         Uses pre-generated IDs from crossing_belt_port_ids - fully deterministic.\\n     224 |         Creates:\\n     225 |         - A port building inside the room (PORT_IN or PORT_OUT) with port_index\\n     226 |         - An internal belt connecting the port to the building inside the room\\n     227 |         - An external belt connecting the outside building to the RoomPlacement\\n     228 | \\n     229 |         External belts reference the RoomPlacement's ID as the building_id,\\n     230 |         treating the room as a building with ports.\\n     231 |         \\\"\\\"\\\"\\n     232 |         from satisfactory_planner.core.models import Belt as BeltModel\\n     233 |         from satisfactory_planner.core.models import Building, BuildingType\\n     234 | \\n     235 |         room_w = self.rect[2]\\n     236 | \\n     237 |         # Track port indices for each direction\\n     238 |         input_port_index = 0\\n     239 |         output_port_index = 0\\n     240 | \\n     241 |         for (\\n     242 |             crossing_belt_id,\\n     243 |             port_id,\\n     244 |             internal_belt_id,\\n     245 |             external_belt_id,\\n     246 |         ) in self.crossing_belt_port_ids:\\n     247 |             belt = parent.belts.get(crossing_belt_id)\\n     248 |             if not belt:\\n     249 |                 continue\\n     250 | \\n     251 |             # Determine direction: is source inside or outside?\\n     252 |             source_inside = belt.source_building_id in self.building_ids\\n     253 |             dest_inside = belt.dest_building_id in self.building_ids\\n     254 | \\n     255 |             if source_inside and not dest_inside:\\n     256 |                 # Output: source is inside room, create PORT_OUT\\n     257 |                 source_building = room.buildings.get(belt.source_building_id)\\n     258 |                 if not source_building:\\n     259 |                     continue\\n     260 | \\n     261 |                 # Position port ON the room edge (x=room_w for right edge)\\n     262 |                 # y is centered on the source building\\n     263 |                 port_y = source_building.y + source_building.height / 2\\n     264 |                 port = Building(\\n     265 |                     id=port_id,\\n     266 |                     building_type=BuildingType.PORT_OUT,\\n     267 |                     x=room_w,  # Right edge - ON the edge\\n     268 |                     y=port_y,\\n     269 |                     rotation=0,\\n     270 |                     port_index=output_port_index,\\n     271 |                 )\\n     272 |                 room.add_building(port)\\n     273 | \", \"filepath\": \"src/satisfactory_planner/ui/commands/room_commands.py\", \"range\": \"153-273\", \"success\": true, \"target_line\": 213, \"total_lines\": 702}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue now! Looking at line 267, PORT_OUT is placed at `x=room_w` (the right edge), but since the building has width 20, it should be `x=room_w - 20` to sit inside the edge.\n\nLet me also check for PORT_IN placement and fix everything:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/commands/room_commands.py\", \"line\": 290, \"context\": 40}",
+            "name": "get_lines"
+          },
+          "id": "toolu_vrtx_01Tt26udvt5yWXhzJ8vpRgKE",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Tt26udvt5yWXhzJ8vpRgKE",
+      "content": "{\"content\": \"     250 | \\n     251 |             # Determine direction: is source inside or outside?\\n     252 |             source_inside = belt.source_building_id in self.building_ids\\n     253 |             dest_inside = belt.dest_building_id in self.building_ids\\n     254 | \\n     255 |             if source_inside and not dest_inside:\\n     256 |                 # Output: source is inside room, create PORT_OUT\\n     257 |                 source_building = room.buildings.get(belt.source_building_id)\\n     258 |                 if not source_building:\\n     259 |                     continue\\n     260 | \\n     261 |                 # Position port ON the room edge (x=room_w for right edge)\\n     262 |                 # y is centered on the source building\\n     263 |                 port_y = source_building.y + source_building.height / 2\\n     264 |                 port = Building(\\n     265 |                     id=port_id,\\n     266 |                     building_type=BuildingType.PORT_OUT,\\n     267 |                     x=room_w,  # Right edge - ON the edge\\n     268 |                     y=port_y,\\n     269 |                     rotation=0,\\n     270 |                     port_index=output_port_index,\\n     271 |                 )\\n     272 |                 room.add_building(port)\\n     273 | \\n     274 |                 # Belt inside room: from source to port\\n     275 |                 inside_belt = BeltModel(\\n     276 |                     id=internal_belt_id,\\n     277 |                     tier=belt.tier,\\n     278 |                     source_building_id=belt.source_building_id,\\n     279 |                     source_port_index=belt.source_port_index,\\n     280 |                     dest_building_id=port_id,\\n     281 |                     dest_port_index=0,\\n     282 |                     item_id=belt.item_id,\\n     283 |                 )\\n     284 |                 room.add_belt(inside_belt)\\n     285 | \\n     286 |                 # External belt: from RoomPlacement (as building) to original destination\\n     287 |                 # The RoomPlacement's output port corresponds to this PORT_OUT's port_index\\n     288 |                 external_belt = BeltModel(\\n     289 |                     id=external_belt_id,\\n>>>  290 |                     tier=belt.tier,\\n     291 |                     source_building_id=self.created_placement_id,  # Room as building\\n     292 |                     source_port_index=output_port_index,\\n     293 |                     dest_building_id=belt.dest_building_id,\\n     294 |                     dest_port_index=belt.dest_port_index,\\n     295 |                     item_id=belt.item_id,\\n     296 |                 )\\n     297 |                 parent.add_belt(external_belt)\\n     298 |                 self.canvas.add_belt_item(external_belt)\\n     299 | \\n     300 |                 output_port_index += 1\\n     301 | \\n     302 |             elif dest_inside and not source_inside:\\n     303 |                 # Input: dest is inside room, create PORT_IN\\n     304 |                 dest_building = room.buildings.get(belt.dest_building_id)\\n     305 |                 if not dest_building:\\n     306 |                     continue\\n     307 | \\n     308 |                 # Position port ON the room edge (x=0 for left edge)\\n     309 |                 # y is centered on the dest building\\n     310 |                 port_y = dest_building.y + dest_building.height / 2\\n     311 |                 port = Building(\\n     312 |                     id=port_id,\\n     313 |                     building_type=BuildingType.PORT_IN,\\n     314 |                     x=0,  # Left edge - ON the edge\\n     315 |                     y=port_y,\\n     316 |                     rotation=0,\\n     317 |                     port_index=input_port_index,\\n     318 |                 )\\n     319 |                 room.add_building(port)\\n     320 | \\n     321 |                 # Belt inside room: from port to destination\\n     322 |                 inside_belt = BeltModel(\\n     323 |                     id=internal_belt_id,\\n     324 |                     tier=belt.tier,\\n     325 |                     source_building_id=port_id,\\n     326 |                     source_port_index=0,\\n     327 |                     dest_building_id=belt.dest_building_id,\\n     328 |                     dest_port_index=belt.dest_port_index,\\n     329 |                     item_id=belt.item_id,\\n     330 |                 )\", \"filepath\": \"src/satisfactory_planner/ui/commands/room_commands.py\", \"range\": \"250-330\", \"success\": true, \"target_line\": 290, \"total_lines\": 702}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I see the issues clearly:\n\n1. **PORT_OUT at `x=room_w`** - Should be `x=room_w - port_width` to be INSIDE\n2. **PORT_IN at `x=0`** - This is correct (left edge)\n3. **The external half-circle and port directions** - RoomPortItem is drawing extra stuff when it should just let BuildingItem handle ports normally\n\nLet me fix all of these:\n\n<edit file=\"src/satisfactory_planner/ui/commands/room_commands.py\">\n<search>\n                # Position port ON the room edge (x=room_w for right edge)\n                # y is centered on the source building\n                port_y = source_building.y + source_building.height / 2\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_OUT,\n                    x=room_w,  # Right edge - ON the edge\n                    y=port_y,\n                    rotation=0,\n                    port_index=output_port_index,\n                )\n</search>\n<replace>\n                # Position port ON the room edge\n                # PORT_OUT sits at right edge: x = room_w - port_width\n                # y is centered on the source building (offset by half port height)\n                port_width = BUILDING_METADATA[BuildingType.PORT_OUT].width\n                port_height = BUILDING_METADATA[BuildingType.PORT_OUT].height\n                port_y = source_building.y + source_building.height / 2 - port_height / 2\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_OUT,\n                    x=room_w - port_width,  # Right edge - inside room\n                    y=port_y,\n                    rotation=0,\n                    port_index=output_port_index,\n                )\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/commands/room_commands.py\">\n<search>\n                # Position port ON the room edge (x=0 for left edge)\n                # y is centered on the dest building\n                port_y = dest_building.y + dest_building.height / 2\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_IN,\n                    x=0,  # Left edge - ON the edge\n                    y=port_y,\n                    rotation=0,\n                    port_index=input_port_index,\n                )\n</search>\n<replace>\n                # Position port ON the room edge\n                # PORT_IN sits at left edge: x = 0\n                # y is centered on the dest building (offset by half port height)\n                port_height = BUILDING_METADATA[BuildingType.PORT_IN].height\n                port_y = dest_building.y + dest_building.height / 2 - port_height / 2\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_IN,\n                    x=0,  # Left edge - ON the edge\n                    y=port_y,\n                    rotation=0,\n                    port_index=input_port_index,\n                )\n</replace>\n</edit>\n\nNow I need to add the import for BUILDING_METADATA:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"^from satisfactory_planner.core\", \"file\": \"src/satisfactory_planner/ui/commands/room_commands.py\"}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01Y5R6Amb2AAnKngUx4kG8Fy",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/room_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/room_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/room_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/room_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Y5R6Amb2AAnKngUx4kG8Fy",
+      "content": "{\"message\": \"No matches found for pattern: ^from satisfactory_planner.core\", \"snippets\": [], \"success\": true, \"total_matches\": 0}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"file\": \"src/satisfactory_planner/ui/commands/room_commands.py\",\n  \"pattern\": \"^from satisfactory_planner.core\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"No matches found for pattern: ^from satisfactory_planner.core\",\n  \"snippets\": [],\n  \"success\": true,\n  \"total_matches\": 0\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "We need a way to snap ports to the room anyways so we can call it when resizing the room.",
+      "_mid_turn": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good point! Let me create a shared utility function that both `RoomPortItem._snap_to_edge` and `_handle_crossing_belts` can use:\n\n<edit file=\"src/satisfactory_planner/core/models.py\">\n<search>\ndef generate_id() -> str:\n    \"\"\"Generate a unique ID.\"\"\"\n    return str(uuid.uuid4())[:8]\n</search>\n<replace>\ndef generate_id() -> str:\n    \"\"\"Generate a unique ID.\"\"\"\n    return str(uuid.uuid4())[:8]\n\n\ndef snap_port_to_room_edge(\n    port_type: BuildingType,\n    room_width: float,\n    room_height: float,\n    target_x: float,\n    target_y: float,\n) -> tuple[float, float, str]:\n    \"\"\"Snap a port building position to the nearest room edge.\n\n    Args:\n        port_type: BuildingType.PORT_IN or PORT_OUT\n        room_width: Width of the room\n        room_height: Height of the room\n        target_x: Desired x position (building top-left)\n        target_y: Desired y position (building top-left)\n\n    Returns:\n        (x, y, edge) where edge is 'left', 'right', 'top', or 'bottom'\n    \"\"\"\n    spec = BUILDING_METADATA[port_type]\n    w, h = spec.width, spec.height\n\n    # Calculate distances to each edge (from building center)\n    center_x, center_y = target_x + w / 2, target_y + h / 2\n    dist_left = abs(center_x)\n    dist_right = abs(center_x - room_width)\n    dist_top = abs(center_y)\n    dist_bottom = abs(center_y - room_height)\n\n    min_dist = min(dist_left, dist_right, dist_top, dist_bottom)\n\n    # Snap to edge, positioning so building sits ON the edge\n    if min_dist == dist_left:\n        clamped_y = max(0, min(target_y, room_height - h))\n        return (0, clamped_y, \"left\")\n    elif min_dist == dist_right:\n        clamped_y = max(0, min(target_y, room_height - h))\n        return (room_width - w, clamped_y, \"right\")\n    elif min_dist == dist_top:\n        clamped_x = max(0, min(target_x, room_width - w))\n        return (clamped_x, 0, \"top\")\n    else:  # dist_bottom\n        clamped_x = max(0, min(target_x, room_width - w))\n        return (clamped_x, room_height - h, \"bottom\")\n</replace>\n</edit>\n\nNow update room_commands.py to use this utility and add the import:\n\n<edit file=\"src/satisfactory_planner/ui/commands/room_commands.py\">\n<search>\nfrom satisfactory_planner.ui.commands.base import Command, get_scene\n</search>\n<replace>\nfrom satisfactory_planner.core.models import BUILDING_METADATA, snap_port_to_room_edge\nfrom satisfactory_planner.ui.commands.base import Command, get_scene\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/commands/room_commands.py\">\n<search>\n                # Position port ON the room edge\n                # PORT_OUT sits at right edge: x = room_w - port_width\n                # y is centered on the source building (offset by half port height)\n                port_width = BUILDING_METADATA[BuildingType.PORT_OUT].width\n                port_height = BUILDING_METADATA[BuildingType.PORT_OUT].height\n                port_y = source_building.y + source_building.height / 2 - port_height / 2\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_OUT,\n                    x=room_w - port_width,  # Right edge - inside room\n                    y=port_y,\n                    rotation=0,\n                    port_index=output_port_index,\n                )\n</search>\n<replace>\n                # Position port on right edge, centered on source building\n                port_height = BUILDING_METADATA[BuildingType.PORT_OUT].height\n                target_y = source_building.y + source_building.height / 2 - port_height / 2\n                port_x, port_y, _edge = snap_port_to_room_edge(\n                    BuildingType.PORT_OUT, room_w, room.height, room_w, target_y\n                )\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_OUT,\n                    x=port_x,\n                    y=port_y,\n                    rotation=0,\n                    port_index=output_port_index,\n                )\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/commands/room_commands.py\">\n<search>\n                # Position port ON the room edge\n                # PORT_IN sits at left edge: x = 0\n                # y is centered on the dest building (offset by half port height)\n                port_height = BUILDING_METADATA[BuildingType.PORT_IN].height\n                port_y = dest_building.y + dest_building.height / 2 - port_height / 2\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_IN,\n                    x=0,  # Left edge - ON the edge\n                    y=port_y,\n                    rotation=0,\n                    port_index=input_port_index,\n                )\n</search>\n<replace>\n                # Position port on left edge, centered on dest building\n                port_height = BUILDING_METADATA[BuildingType.PORT_IN].height\n                target_y = dest_building.y + dest_building.height / 2 - port_height / 2\n                port_x, port_y, _edge = snap_port_to_room_edge(\n                    BuildingType.PORT_IN, room_w, room.height, 0, target_y\n                )\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_IN,\n                    x=port_x,\n                    y=port_y,\n                    rotation=0,\n                    port_index=input_port_index,\n                )\n</replace>\n</edit>\n\nNow update RoomPortItem to use the shared utility:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\nfrom satisfactory_planner.core.models import Building, BuildingType\n</search>\n<replace>\nfrom satisfactory_planner.core.models import Building, BuildingType, snap_port_to_room_edge\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n    def _snap_to_edge(self, pos: QPointF) -> QPointF:\n        \"\"\"Snap a position to the nearest room edge.\n\n        The building is positioned so it sits ON the edge (straddling it),\n        with its edge-facing side aligned to the room boundary.\n        \"\"\"\n        room = self.room_item.room\n        w, h = self._get_display_size()\n        x, y = pos.x(), pos.y()\n\n        # Calculate distances to each edge (from building center)\n        center_x, center_y = x + w / 2, y + h / 2\n        dist_left = abs(center_x)\n        dist_right = abs(center_x - room.width)\n        dist_top = abs(center_y)\n        dist_bottom = abs(center_y - room.height)\n\n        min_dist = min(dist_left, dist_right, dist_top, dist_bottom)\n\n        # Snap to edge, positioning so building straddles the edge\n        # For left/right edges: building's left/right side aligns with edge\n        # For top/bottom edges: building's top/bottom side aligns with edge\n        if min_dist == dist_left:\n            # Left edge: x=0 means left side of building is on edge\n            clamped_y = max(0, min(y, room.height - h))\n            return QPointF(0, clamped_y)\n        elif min_dist == dist_right:\n            # Right edge: right side of building on edge, so x = room.width - w\n            clamped_y = max(0, min(y, room.height - h))\n            return QPointF(room.width - w, clamped_y)\n        elif min_dist == dist_top:\n            # Top edge: y=0 means top side of building is on edge\n            clamped_x = max(0, min(x, room.width - w))\n            return QPointF(clamped_x, 0)\n        else:  # dist_bottom\n            # Bottom edge: bottom side of building on edge, so y = room.height - h\n            clamped_x = max(0, min(x, room.width - w))\n            return QPointF(clamped_x, room.height - h)\n</search>\n<replace>\n    def _snap_to_edge(self, pos: QPointF) -> QPointF:\n        \"\"\"Snap a position to the nearest room edge using shared utility.\"\"\"\n        room = self.room_item.room\n        x, y, _edge = snap_port_to_room_edge(\n            self.building.building_type, room.width, room.height, pos.x(), pos.y()\n        )\n        return QPointF(x, y)\n</replace>\n</edit>\n\nNow let's remove the external half-circle drawing entirely - ports should look like any other building's ports:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n    def paint(\n        self,\n        painter: QPainter,\n        option: QStyleOptionGraphicsItem,\n        widget: QWidget | None = None,\n    ) -> None:\n        \"\"\"Paint external half-circle, then let BuildingItem paint the rest.\"\"\"\n        # Draw external half-circle on room edge first\n        color = OUTPUT_COLOR if self.is_output else INPUT_COLOR\n        self._draw_external_half_circle(painter, color)\n\n        # Let BuildingItem paint the building body and internal ports\n        super().paint(painter, option, widget)\n</search>\n<replace>\n    def paint(\n        self,\n        painter: QPainter,\n        option: QStyleOptionGraphicsItem,\n        widget: QWidget | None = None,\n    ) -> None:\n        \"\"\"Let BuildingItem paint the building - ports look like any other building.\"\"\"\n        super().paint(painter, option, widget)\n</replace>\n</edit>\n\nRemove the unused imports and `_draw_external_half_circle` method:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\nfrom satisfactory_planner.ui.items.port_item import (\n    INPUT_COLOR,\n    OUTPUT_COLOR,\n    PORT_RADIUS,\n    draw_half_circle_path,\n)\n</search>\n<replace>\nfrom satisfactory_planner.ui.items.port_item import PORT_RADIUS\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n    def set_drag_target(self, is_target: bool) -> None:\n        \"\"\"Set whether this port is being targeted for a belt connection.\"\"\"\n        self._is_drag_target = is_target\n        self.update()\n\n    def _draw_external_half_circle(self, painter: QPainter, color: QColor) -> None:\n        \"\"\"Draw the external half-circle on the room edge.\"\"\"\n        if hasattr(self, \"_is_drag_target\") and self._is_drag_target:\n            painter.setPen(QPen(QColor(255, 255, 255), 3))\n            painter.setBrush(QBrush(color.lighter(130)))\n        else:\n            painter.setPen(QPen(color.darker(120), 2))\n            painter.setBrush(QBrush(color))\n\n        w, h = self._get_display_size()\n\n        # External half-circle faces AWAY from room, positioned on the edge-facing side\n        # For PORT_IN on left edge: external circle is on LEFT side of building (x=0)\n        # For PORT_OUT on right edge: external circle is on RIGHT side of building (x=w)\n        painter.save()\n        if self._edge == EdgeSide.LEFT:\n            painter.translate(0, h / 2)\n            angle = 180  # Face left (outside)\n        elif self._edge == EdgeSide.RIGHT:\n            painter.translate(w, h / 2)\n            angle = 0  # Face right (outside)\n        elif self._edge == EdgeSide.TOP:\n            painter.translate(w / 2, 0)\n            angle = 270  # Face up (outside)\n        else:  # BOTTOM\n            painter.translate(w / 2, h)\n            angle = 90  # Face down (outside)\n\n        path = draw_half_circle_path(PORT_RADIUS, angle)\n        painter.drawPath(path)\n        painter.restore()\n</search>\n<replace>\n    def set_drag_target(self, is_target: bool) -> None:\n        \"\"\"Set whether this port is being targeted for a belt connection.\"\"\"\n        self._is_drag_target = is_target\n        self.update()\n</replace>\n</edit>\n\nAlso remove unused imports at top of file:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\nfrom PySide6.QtGui import QBrush, QColor, QPainter, QPen\n</search>\n<replace>\nfrom PySide6.QtGui import QPainter\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Refactor port snapping to shared utility, remove special port rendering\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/core/models.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/models.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/room_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/room_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/room_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/room_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/room_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/room_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nFound 1 error (1 fixed, 0 remaining).\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ilwj17xc\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ilwj17xc\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "output": "ruff check --fix src/ tests/ spikes/\nFound 1 error (1 fixed, 0 remaining).\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ilwj17xc\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ilwj17xc\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "files_modified",
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "df135f96b7c3",
+          "message": "Committed: 3 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

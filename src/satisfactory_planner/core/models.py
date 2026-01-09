@@ -268,16 +268,16 @@ class Building:
             outputs.append((w, h / 2, 0))  # right edge, face right (out)
 
         elif self.building_type == BuildingType.PORT_IN:
-            # PORT_IN: brings items INTO the room
-            # Building sits on room edge with output facing INTO room (right)
-            # Output on right edge, facing right (into room)
+            # PORT_IN: brings items INTO the room (0 inputs, 1 output)
+            # Building sits on LEFT room edge, output faces RIGHT (into room)
+            # Standard layout: output on right edge, faces right
             outputs.append((w, h / 2, 0))  # right edge, center, face right
 
         elif self.building_type == BuildingType.PORT_OUT:
-            # PORT_OUT: sends items OUT of the room
-            # Building sits on room edge with input facing INTO room (left side of building)
-            # Input on left edge, facing left (from room interior)
-            inputs.append((0, h / 2, 180))  # left edge, center, face left (into room)
+            # PORT_OUT: sends items OUT of the room (1 input, 0 outputs)
+            # Building sits on RIGHT room edge, input faces LEFT (from room interior)
+            # Standard layout: input on left edge, faces right (belt travels right into it)
+            inputs.append((0, h / 2, 0))  # left edge, center, face right (belt enters from left)
 
         else:
             # Standard layout: inputs on left edge, outputs on right edge
@@ -708,3 +708,49 @@ class Document:
 def generate_id() -> str:
     """Generate a unique ID."""
     return str(uuid.uuid4())[:8]
+
+
+def snap_port_to_room_edge(
+    port_type: BuildingType,
+    room_width: float,
+    room_height: float,
+    target_x: float,
+    target_y: float,
+) -> tuple[float, float, str]:
+    """Snap a port building position to the nearest room edge.
+
+    Args:
+        port_type: BuildingType.PORT_IN or PORT_OUT
+        room_width: Width of the room
+        room_height: Height of the room
+        target_x: Desired x position (building top-left)
+        target_y: Desired y position (building top-left)
+
+    Returns:
+        (x, y, edge) where edge is 'left', 'right', 'top', or 'bottom'
+    """
+    spec = BUILDING_METADATA[port_type]
+    w, h = spec.width, spec.height
+
+    # Calculate distances to each edge (from building center)
+    center_x, center_y = target_x + w / 2, target_y + h / 2
+    dist_left = abs(center_x)
+    dist_right = abs(center_x - room_width)
+    dist_top = abs(center_y)
+    dist_bottom = abs(center_y - room_height)
+
+    min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
+
+    # Snap to edge, positioning so building sits ON the edge
+    if min_dist == dist_left:
+        clamped_y = max(0, min(target_y, room_height - h))
+        return (0, clamped_y, "left")
+    elif min_dist == dist_right:
+        clamped_y = max(0, min(target_y, room_height - h))
+        return (room_width - w, clamped_y, "right")
+    elif min_dist == dist_top:
+        clamped_x = max(0, min(target_x, room_width - w))
+        return (clamped_x, 0, "top")
+    else:  # dist_bottom
+        clamped_x = max(0, min(target_x, room_width - w))
+        return (clamped_x, room_height - h, "bottom")
