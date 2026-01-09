@@ -167,8 +167,9 @@ class RoomPortItem(QGraphicsObject):
         building_rect = QRectF(0, -BUILDING_HEIGHT / 2, BUILDING_WIDTH, BUILDING_HEIGHT)
         self._draw_half_building(painter, building_rect)
 
-        # Internal port nub on the far side of building
-        self._draw_port_nub(painter, QPointF(BUILDING_WIDTH, 0), color)
+        # Internal half-circle on far side - opposite color (input<->output swap)
+        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
+        self._draw_internal_half_circle(painter, QPointF(BUILDING_WIDTH, 0), internal_color, "left")
 
     def _paint_right_edge(self, painter: QPainter, color: QColor) -> None:
         """Paint port on right edge: building left, half-circle right."""
@@ -181,8 +182,11 @@ class RoomPortItem(QGraphicsObject):
         )
         self._draw_half_building(painter, building_rect)
 
-        # Internal port nub on the far side of building
-        self._draw_port_nub(painter, QPointF(-BUILDING_WIDTH, 0), color)
+        # Internal half-circle on far side - opposite color (input<->output swap)
+        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
+        self._draw_internal_half_circle(
+            painter, QPointF(-BUILDING_WIDTH, 0), internal_color, "right"
+        )
 
     def _paint_top_edge(self, painter: QPainter, color: QColor) -> None:
         """Paint port on top edge: half-circle top, building bottom."""
@@ -193,8 +197,9 @@ class RoomPortItem(QGraphicsObject):
         building_rect = QRectF(-BUILDING_HEIGHT / 2, 0, BUILDING_HEIGHT, BUILDING_WIDTH)
         self._draw_half_building(painter, building_rect)
 
-        # Internal port nub on the far side of building
-        self._draw_port_nub(painter, QPointF(0, BUILDING_WIDTH), color)
+        # Internal half-circle on far side - opposite color (input<->output swap)
+        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
+        self._draw_internal_half_circle(painter, QPointF(0, BUILDING_WIDTH), internal_color, "top")
 
     def _paint_bottom_edge(self, painter: QPainter, color: QColor) -> None:
         """Paint port on bottom edge: building top, half-circle bottom."""
@@ -207,8 +212,11 @@ class RoomPortItem(QGraphicsObject):
         )
         self._draw_half_building(painter, building_rect)
 
-        # Internal port nub on the far side of building
-        self._draw_port_nub(painter, QPointF(0, -BUILDING_WIDTH), color)
+        # Internal half-circle on far side - opposite color (input<->output swap)
+        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
+        self._draw_internal_half_circle(
+            painter, QPointF(0, -BUILDING_WIDTH), internal_color, "bottom"
+        )
 
     def _draw_half_circle(self, painter: QPainter, color: QColor, side: str) -> None:
         """Draw the half-circle on the room edge."""
@@ -280,11 +288,43 @@ class RoomPortItem(QGraphicsObject):
         # Draw rounded rectangle for building body
         painter.drawRoundedRect(rect, 4, 4)
 
-    def _draw_port_nub(self, painter: QPainter, pos: QPointF, color: QColor) -> None:
-        """Draw a small port nub where internal belts connect."""
+    def _draw_internal_half_circle(
+        self, painter: QPainter, pos: QPointF, color: QColor, side: str
+    ) -> None:
+        """Draw a half-circle on the internal side where belts connect.
+
+        The color is opposite from the external half-circle because:
+        - External input (yellow) connects to internal output (green)
+        - External output (green) connects to internal input (yellow)
+        """
         painter.setPen(QPen(color.darker(120), 1.5))
         painter.setBrush(QBrush(color))
-        painter.drawEllipse(pos, CONNECTOR_RADIUS, CONNECTOR_RADIUS)
+
+        path = QPainterPath()
+        r = CONNECTOR_RADIUS + 2  # Slightly larger than old nub
+
+        if side == "left":
+            # Half-circle facing right (inside room, opposite of external left)
+            path.moveTo(pos.x(), pos.y() - r)
+            path.arcTo(pos.x() - r, pos.y() - r, r * 2, r * 2, 90, -180)
+            path.closeSubpath()
+        elif side == "right":
+            # Half-circle facing left (inside room, opposite of external right)
+            path.moveTo(pos.x(), pos.y() - r)
+            path.arcTo(pos.x() - r, pos.y() - r, r * 2, r * 2, 90, 180)
+            path.closeSubpath()
+        elif side == "top":
+            # Half-circle facing down (inside room, opposite of external top)
+            path.moveTo(pos.x() - r, pos.y())
+            path.arcTo(pos.x() - r, pos.y() - r, r * 2, r * 2, 180, -180)
+            path.closeSubpath()
+        else:  # bottom
+            # Half-circle facing up (inside room, opposite of external bottom)
+            path.moveTo(pos.x() - r, pos.y())
+            path.arcTo(pos.x() - r, pos.y() - r, r * 2, r * 2, 180, 180)
+            path.closeSubpath()
+
+        painter.drawPath(path)
 
     def set_drag_target(self, is_target: bool) -> None:
         """Set whether this port is being targeted for a belt connection."""
