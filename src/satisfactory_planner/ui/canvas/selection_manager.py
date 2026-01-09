@@ -78,6 +78,7 @@ class SelectionManager:
         """Get the scene (Document or Room) that an item belongs to."""
         from satisfactory_planner.ui.items.belt_item import BeltItem
         from satisfactory_planner.ui.items.room_item import RoomItem
+        from satisfactory_planner.ui.items.room_port_item import RoomPortItem
 
         if isinstance(item, BuildingItem):
             return item.building_scene
@@ -88,6 +89,9 @@ class SelectionManager:
             return self.canvas.document
         elif isinstance(item, RoomItem):
             return item.parent_scene
+        elif isinstance(item, RoomPortItem):
+            # Port belongs to the room it's on
+            return item.room_item.room
         return None
 
     def clear_selection_in_other_scenes(self, current_scene: Scene) -> None:

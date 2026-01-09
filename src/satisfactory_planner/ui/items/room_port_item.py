@@ -92,6 +92,7 @@ class RoomPortItem(QGraphicsObject):
 
         # Drag state
         self._is_dragging = False
+        self._drag_start_pos: QPointF | None = None
 
     def _determine_edge(self, local_pos: tuple[float, float]) -> EdgeSide:
         """Determine which room edge this port is on."""
@@ -295,14 +296,20 @@ class RoomPortItem(QGraphicsObject):
                 event.accept()
                 return
             else:
-                # Start dragging the port
+                # Enforce scene-local selection before handling
+                self.canvas.on_item_clicked(self)
+                # Track drag start for undo
+                self._drag_start_pos = self.pos()
                 self._is_dragging = True
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
-        """Handle mouse release - end port drag."""
-        if event.button() == Qt.MouseButton.LeftButton:
+        """Handle mouse release - end port drag, create command if moved."""
+        if event.button() == Qt.MouseButton.LeftButton and self._is_dragging:
             self._is_dragging = False
+            # TODO: Create move command for undo/redo if position changed
+            # For now, model is already updated in itemChange
+            self._drag_start_pos = None
         super().mouseReleaseEvent(event)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
