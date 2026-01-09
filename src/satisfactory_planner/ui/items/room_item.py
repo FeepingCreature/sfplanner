@@ -214,35 +214,46 @@ class RoomItem(QGraphicsRectItem):
     def _get_room_port_position(self, building: Building) -> tuple[float, float, float]:
         """Get room port position and angle based on PORT building position/rotation.
 
-        Returns (x, y, angle) for the room's external port.
+        Returns (x, y, angle) for the room's external port (the PortItem on room edge).
+
+        Port angles follow the puzzle piece model:
+        - Output ports (tabs): half-circle curves OUTWARD from room
+        - Input ports (blanks): half-circle curves INWARD into room
+
+        The angle is where the curved part faces.
         """
-        # Use building rotation to determine which edge it's on
-        # 0° = left/right edge, 90° = top/bottom edge
-        is_rotated = building.rotation == 90
+        w, h = building._get_rotated_display_size()
         is_output = building.building_type == BuildingType.PORT_OUT
 
-        if is_rotated:
-            # Top/bottom edge - port is at top or bottom of building
-            x = building.x + building.width / 2
-            if is_output:
-                # PORT_OUT on bottom edge
-                y = building.y + building.height
-                angle = 90  # Face down
-            else:
-                # PORT_IN on top edge
-                y = building.y
-                angle = 270  # Face up
-        else:
-            # Left/right edge - port is at left or right of building
-            y = building.y + building.height / 2
-            if is_output:
-                # PORT_OUT on right edge
-                x = building.x + building.width
-                angle = 0  # Face right
-            else:
-                # PORT_IN on left edge
-                x = building.x
-                angle = 180  # Face left
+        # Use building rotation to determine which edge it's on
+        # 0° = left, 180° = right, 90° = top, 270° = bottom
+        rotation = building.rotation
+
+        if rotation == 0:
+            # Left edge - port on left side of building
+            x = building.x
+            y = building.y + h / 2
+            # PORT_IN: blank faces right (into room), PORT_OUT: tab faces left (out)
+            angle = 0 if not is_output else 180
+        elif rotation == 180:
+            # Right edge - port on right side of building
+            x = building.x + w
+            y = building.y + h / 2
+            # PORT_IN: blank faces left (into room), PORT_OUT: tab faces right (out)
+            angle = 180 if not is_output else 0
+        elif rotation == 90:
+            # Top edge - port on top of building
+            x = building.x + w / 2
+            y = building.y
+            # PORT_IN: blank faces down (into room), PORT_OUT: tab faces up (out)
+            angle = 90 if not is_output else 270
+        else:  # rotation == 270
+            # Bottom edge - port on bottom of building
+            x = building.x + w / 2
+            y = building.y + h
+            # PORT_IN: blank faces up (into room), PORT_OUT: tab faces down (out)
+            angle = 270 if not is_output else 90
+
         return (x, y, angle)
 
     def _clear_room_ports(self) -> None:

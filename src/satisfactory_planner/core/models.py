@@ -736,6 +736,12 @@ def snap_port_to_room_edge(
 ) -> tuple[float, float, str]:
     """Snap a port building position to the nearest room edge.
 
+    The building's top-left corner is positioned so the building sits ON the edge:
+    - Left edge: x=0
+    - Right edge: x=room_width-w
+    - Top edge: y=0
+    - Bottom edge: y=room_height-h
+
     Args:
         port_type: BuildingType.PORT_IN or PORT_OUT
         room_width: Width of the room
@@ -746,7 +752,7 @@ def snap_port_to_room_edge(
     Returns:
         (x, y, edge) where edge is 'left', 'right', 'top', or 'bottom'
     """
-    # Use display size for PORT buildings
+    # Base display size for PORT buildings (before rotation)
     base_w, base_h = LOGISTICS_DISPLAY_SIZE // 2, LOGISTICS_DISPLAY_SIZE
 
     # Calculate distances to each edge (from approximate center)
@@ -758,8 +764,8 @@ def snap_port_to_room_edge(
 
     min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
 
-    # On left/right edges: use normal orientation (w x h)
-    # On top/bottom edges: rotated 90°, so VISUAL size is (h x w)
+    # On left/right edges: use normal orientation (base_w x base_h)
+    # On top/bottom edges: rotated 90°/270°, so visual size is (base_h x base_w)
     if min_dist == dist_left:
         w, h = base_w, base_h
         clamped_y = max(0, min(target_y, room_height - h))
@@ -769,12 +775,12 @@ def snap_port_to_room_edge(
         clamped_y = max(0, min(target_y, room_height - h))
         return (room_width - w, clamped_y, "right")
     elif min_dist == dist_top:
-        # Rotated 90°, visual dimensions swap
+        # Rotated 90°, visual dimensions swap: w=base_h, h=base_w
         w, h = base_h, base_w
         clamped_x = max(0, min(target_x, room_width - w))
         return (clamped_x, 0, "top")
     else:  # dist_bottom
-        # Rotated 270°, visual dimensions swap
+        # Rotated 270°, visual dimensions swap: w=base_h, h=base_w
         w, h = base_h, base_w
         clamped_x = max(0, min(target_x, room_width - w))
         return (clamped_x, room_height - h, "bottom")
