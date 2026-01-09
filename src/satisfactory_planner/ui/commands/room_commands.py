@@ -151,13 +151,11 @@ class CreateRoomCommand(Command):
                 room.add_belt(belt)
                 self.canvas.remove_belt_item(belt_id)
 
-        # Handle crossing belts (same logic for execute and redo - fully deterministic)
-        self._handle_crossing_belts(document, parent, room, x, y)
-
         # Add room to document
         document.rooms[room.id] = room
 
-        # Create placement
+        # Create placement - must exist before handling crossing belts
+        # because external belts reference the placement as a building
         placement = RoomPlacement(
             id=self.created_placement_id,
             room_id=room.id,
@@ -167,8 +165,12 @@ class CreateRoomCommand(Command):
         )
         document.room_placements[placement.id] = placement
 
-        # Add room item to canvas
+        # Add room item to canvas - must exist before crossing belts
+        # so that belt items can look up the placement
         self.canvas.add_room_item(placement, room)
+
+        # Handle crossing belts (same logic for execute and redo - fully deterministic)
+        self._handle_crossing_belts(document, parent, room, x, y)
         self.canvas.notify_mutation()
 
     def undo(self, document: Document) -> None:
