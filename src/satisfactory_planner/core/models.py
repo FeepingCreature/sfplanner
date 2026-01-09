@@ -228,20 +228,27 @@ class Building:
     def _get_display_size(self) -> tuple[int, int]:
         """Get display size - smaller for logistics buildings.
 
-        For rotated PORT buildings, this returns the VISUAL size (after rotation),
-        so width/height are swapped for 90°/270° rotations.
+        Returns the BASE size before rotation. The painter handles visual rotation.
+        For bounding/snapping calculations that need rotated dimensions, use
+        _get_rotated_display_size() instead.
         """
         # Splitter/Merger display at smaller square size
         if self.building_type in (BuildingType.SPLITTER, BuildingType.MERGER):
             return (LOGISTICS_DISPLAY_SIZE, LOGISTICS_DISPLAY_SIZE)
-        # PORT_IN/PORT_OUT use small display size, swap for rotation
+        # PORT_IN/PORT_OUT use small display size
         if self.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
-            base_w, base_h = LOGISTICS_DISPLAY_SIZE // 2, LOGISTICS_DISPLAY_SIZE
-            # Swap dimensions for 90°/270° rotation (top/bottom edges)
-            if self.rotation in (90, 270):
-                return (base_h, base_w)
-            return (base_w, base_h)
+            return (LOGISTICS_DISPLAY_SIZE // 2, LOGISTICS_DISPLAY_SIZE)
         return (self.width, self.height)
+
+    def _get_rotated_display_size(self) -> tuple[int, int]:
+        """Get display size accounting for rotation (for bounding/snapping).
+
+        For 90°/270° rotations, width and height are swapped.
+        """
+        w, h = self._get_display_size()
+        if self.rotation in (90, 270):
+            return (h, w)
+        return (w, h)
 
     def get_port_layout(
         self,
@@ -739,8 +746,8 @@ def snap_port_to_room_edge(
     Returns:
         (x, y, edge) where edge is 'left', 'right', 'top', or 'bottom'
     """
-    spec = BUILDING_METADATA[port_type]
-    base_w, base_h = spec.width, spec.height
+    # Use display size for PORT buildings
+    base_w, base_h = LOGISTICS_DISPLAY_SIZE // 2, LOGISTICS_DISPLAY_SIZE
 
     # Calculate distances to each edge (from approximate center)
     center_x, center_y = target_x + base_w / 2, target_y + base_h / 2
@@ -752,7 +759,7 @@ def snap_port_to_room_edge(
     min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
 
     # On left/right edges: use normal orientation (w x h)
-    # On top/bottom edges: rotated 90°, so effective size is (h x w)
+    # On top/bottom edges: rotated 90°, so VISUAL size is (h x w)
     if min_dist == dist_left:
         w, h = base_w, base_h
         clamped_y = max(0, min(target_y, room_height - h))
@@ -762,12 +769,12 @@ def snap_port_to_room_edge(
         clamped_y = max(0, min(target_y, room_height - h))
         return (room_width - w, clamped_y, "right")
     elif min_dist == dist_top:
-        # Rotated 90°, so width/height swap for clamping
+        # Rotated 90°, visual dimensions swap
         w, h = base_h, base_w
         clamped_x = max(0, min(target_x, room_width - w))
         return (clamped_x, 0, "top")
     else:  # dist_bottom
-        # Rotated 270°, so width/height swap for clamping
+        # Rotated 270°, visual dimensions swap
         w, h = base_h, base_w
         clamped_x = max(0, min(target_x, room_width - w))
         return (clamped_x, room_height - h, "bottom")
