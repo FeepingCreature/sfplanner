@@ -99,9 +99,6 @@ class PortItem(QGraphicsItem):
 
         painter.save()
 
-        # Rotate to face the right direction
-        painter.rotate(self.angle)
-
         # Scale up if hovered or targeted during belt drag
         if self._hovered or self._drag_target:
             painter.scale(1.3, 1.3)
@@ -112,7 +109,8 @@ class PortItem(QGraphicsItem):
             painter.setBrush(QBrush(color))
 
         # Draw half-circle facing the connection direction
-        path = draw_half_circle_path(PORT_RADIUS)
+        # The angle is passed to draw_half_circle_path which handles rotation
+        path = draw_half_circle_path(PORT_RADIUS, self.angle)
         painter.drawPath(path)
 
         painter.restore()
