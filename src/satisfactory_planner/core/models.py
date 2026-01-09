@@ -92,8 +92,9 @@ BUILDING_METADATA: dict[BuildingType, BuildingSpec] = {
     # Ports: from INSIDE the room's perspective
     # PORT_IN brings items into room = source inside (0 inputs, 1 output)
     # PORT_OUT sends items out of room = sink inside (1 input, 0 outputs)
-    BuildingType.PORT_IN: BuildingSpec(30, 30, 0, 1, 0.0),
-    BuildingType.PORT_OUT: BuildingSpec(30, 30, 1, 0, 0.0),
+    # Half-width because they sit ON the room edge
+    BuildingType.PORT_IN: BuildingSpec(20, 40, 0, 1, 0.0),
+    BuildingType.PORT_OUT: BuildingSpec(20, 40, 1, 0, 0.0),
     BuildingType.SOURCE: BuildingSpec(50, 50, 0, 1, 0.0),
     BuildingType.SINK: BuildingSpec(50, 50, 1, 0, 0.0),
 }
@@ -225,15 +226,11 @@ class Building:
         return BUILDING_METADATA[self.building_type].num_outputs
 
     def _get_display_size(self) -> tuple[int, int]:
-        """Get display size - smaller for logistics and ports."""
-        # Splitter/Merger/Ports display at smaller size
-        if self.building_type in (
-            BuildingType.SPLITTER,
-            BuildingType.MERGER,
-            BuildingType.PORT_IN,
-            BuildingType.PORT_OUT,
-        ):
+        """Get display size - smaller for logistics buildings."""
+        # Splitter/Merger display at smaller square size
+        if self.building_type in (BuildingType.SPLITTER, BuildingType.MERGER):
             return (LOGISTICS_DISPLAY_SIZE, LOGISTICS_DISPLAY_SIZE)
+        # PORT_IN/PORT_OUT use their actual spec dimensions (half-width)
         return (self.width, self.height)
 
     def get_port_layout(
@@ -269,6 +266,18 @@ class Building:
             inputs.append((0, h / 2, 0))  # left edge, face right (into)
             inputs.append((w / 2, h, 270))  # bottom edge, face up (into)
             outputs.append((w, h / 2, 0))  # right edge, face right (out)
+
+        elif self.building_type == BuildingType.PORT_IN:
+            # PORT_IN: brings items INTO the room
+            # Building sits on room edge with output facing INTO room (right)
+            # Output on right edge, facing right (into room)
+            outputs.append((w, h / 2, 0))  # right edge, center, face right
+
+        elif self.building_type == BuildingType.PORT_OUT:
+            # PORT_OUT: sends items OUT of the room
+            # Building sits on room edge with input facing INTO room (left side of building)
+            # Input on left edge, facing left (from room interior)
+            inputs.append((0, h / 2, 180))  # left edge, center, face left (into room)
 
         else:
             # Standard layout: inputs on left edge, outputs on right edge
