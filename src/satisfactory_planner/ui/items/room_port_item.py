@@ -91,6 +91,13 @@ class RoomPortItem(BuildingItem):
         # Z-value above room background but below regular buildings
         self.setZValue(0.5)
 
+        # Remove the PortItem children created by BuildingItem - we render our own ports
+        for port in self._input_ports + self._output_ports:
+            if port.scene():
+                port.scene().removeItem(port)
+        self._input_ports.clear()
+        self._output_ports.clear()
+
     def _determine_edge(self, local_pos: tuple[float, float]) -> EdgeSide:
         """Determine which room edge this port is on."""
         x, y = local_pos
@@ -289,15 +296,34 @@ class RoomPortItem(BuildingItem):
         super().hoverLeaveEvent(event)
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
-        """Handle mouse press - start belt connection or drag port."""
-        if event.button() == Qt.MouseButton.LeftButton and self.is_output:
-            # Start belt drag from this output port
-            scene_pos = self.scenePos()
-            self.canvas.start_belt_drag(self.placement_id, self.port_index, scene_pos)
-            event.accept()
-            return
+        """Handle mouse press - start belt connection from half-circle, or drag port."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            # Check if click is on the half-circle (external connector) area
+            local_pos = event.pos()
+            if self._is_on_half_circle(local_pos) and self.is_output:
+                # Start belt drag from output port's external connector
+                scene_pos = self.scenePos()
+                self.canvas.start_belt_drag(self.building.id, self.port_index, scene_pos)
+                event.accept()
+                return
         # Let BuildingItem handle selection and drag tracking
         super().mousePressEvent(event)
+
+    def _is_on_half_circle(self, pos: QPointF) -> bool:
+        """Check if a local position is on the half-circle area (not building body)."""
+        r = PORT_RADIUS
+        x, y = pos.x(), pos.y()
+
+        if self._edge == EdgeSide.LEFT:
+            # Half-circle is at x <= 0 for output, or we check the external side
+            return x < r if self.is_output else x < 0
+        elif self._edge == EdgeSide.RIGHT:
+            # Half-circle is at x >= 0 for output
+            return x > -r if self.is_output else x > 0
+        elif self._edge == EdgeSide.TOP:
+            return y < r if self.is_output else y < 0
+        else:  # BOTTOM
+            return y > -r if self.is_output else y > 0
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Handle item changes - snap to room edge instead of grid."""
