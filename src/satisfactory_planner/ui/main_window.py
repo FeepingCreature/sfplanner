@@ -113,12 +113,12 @@ class MainWindow(QMainWindow):
         self.library_panel.building_selected.connect(self._on_building_selected)
         self.library_panel.blueprint_selected.connect(self._on_blueprint_selected)
 
-        # Connect properties panel blueprint save to refresh library
-        self.properties_panel.blueprint_saved.connect(self.library_panel.refresh_blueprints)
-
         # Properties panel - right (larger, should expand)
         dummy_doc = Document()
         self.properties_panel = PropertiesPanel(dummy_doc, CommandStack(dummy_doc))
+
+        # Connect properties panel blueprint save to refresh library
+        self.properties_panel.blueprint_saved.connect(self.library_panel.refresh_blueprints)
         props_dock = ads.CDockWidget("Properties")
         props_dock.setWidget(self.properties_panel)
         self.dock_manager.addDockWidget(ads.DockWidgetArea.RightDockWidgetArea, props_dock)
