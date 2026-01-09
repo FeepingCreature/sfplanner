@@ -606,6 +606,7 @@ class MainWindow(QMainWindow):
         self._mark_dirty(tab)
         self._update_warnings()
         self._refresh_flow_visualization(tab)
+        self._update_undo_redo_state()
 
     def _refresh_flow_visualization(self, tab: DocumentTab) -> None:
         """Refresh flow visualization after document changes."""
