@@ -1,11 +1,11 @@
-"""Graphics item for room ports - interactive belt connection points on room boundaries.
+"""Graphics item for room ports - PORT buildings that sit on room edges.
 
 Extends BuildingItem with:
 1. Edge snapping instead of grid snapping
-2. External half-circle on room edge (for outside belt connections)
-3. Belt drag initiation from external half-circle
+2. Notifies RoomItem to redraw its edge ports when moved
 
 The internal connector and building body are handled by BuildingItem.
+The external port half-circles are drawn by RoomItem.
 """
 
 from __future__ import annotations
@@ -14,12 +14,9 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsSceneMouseEvent,
-    QStyleOptionGraphicsItem,
-    QWidget,
 )
 
 from satisfactory_planner.core.models import Building, BuildingType, snap_port_to_room_edge
@@ -40,12 +37,11 @@ class EdgeSide(Enum):
 
 
 class RoomPortItem(BuildingItem):
-    """Port on a room boundary - extends BuildingItem with edge snapping.
+    """PORT building on a room boundary - extends BuildingItem with edge snapping.
 
     Adds:
-    - External half-circle on room edge (for belt connections from outside)
     - Edge snapping instead of grid snapping
-    - Belt drag from external connector
+    - Notifies RoomItem when moved so it can redraw edge ports
     """
 
     def __init__(
@@ -106,15 +102,6 @@ class RoomPortItem(BuildingItem):
     def placement_id(self) -> str:
         """Get the room placement ID this port belongs to."""
         return self.room_item.placement.id
-
-    def paint(
-        self,
-        painter: QPainter,
-        option: QStyleOptionGraphicsItem,
-        widget: QWidget | None = None,
-    ) -> None:
-        """Let BuildingItem paint the building - ports look like any other building."""
-        super().paint(painter, option, widget)
 
     def set_drag_target(self, is_target: bool) -> None:
         """Set whether this port is being targeted for a belt connection."""
