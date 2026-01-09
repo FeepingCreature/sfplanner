@@ -233,7 +233,7 @@ def _resolve_belt_endpoint(
     building_id: str,
     port_index: int,
     is_output: bool,
-) -> tuple[str, int]:
+) -> tuple[str, int, str | None]:
     """Resolve a belt endpoint, translating RoomPlacement references to PORT buildings.
 
     When a belt connects to a RoomPlacement (room acting as a building), we need to
@@ -246,18 +246,19 @@ def _resolve_belt_endpoint(
         is_output: True if this is the source (output) side of a belt
 
     Returns:
-        Tuple of (resolved_building_id, resolved_port_index)
+        Tuple of (resolved_building_id, resolved_port_index, placement_id_or_none)
+        The placement_id is returned so caller can create composite node IDs.
     """
     # Check if this is a room placement
     placement = document.room_placements.get(building_id)
     if placement is None:
         # It's a regular building, return as-is
-        return (building_id, port_index)
+        return (building_id, port_index, None)
 
     # It's a room placement - find the corresponding PORT building
     room = document.rooms.get(placement.room_id)
     if room is None:
-        return (building_id, port_index)
+        return (building_id, port_index, None)
 
     # For output side of belt (source), we connect to room's input port (PORT_IN)
     # For input side of belt (dest), we connect to room's output port (PORT_OUT)
@@ -266,11 +267,11 @@ def _resolve_belt_endpoint(
     #   - Belt coming FROM room: source is room, dest is outside → connects to PORT_OUT inside
     port = room.get_port_by_index(port_index, is_output=is_output)
     if port is None:
-        return (building_id, port_index)
+        return (building_id, port_index, None)
 
-    # Return the PORT building ID - the port_index on PORT buildings is always 0
-    # (they have exactly one input or one output)
-    return (port.id, 0)
+    # Return the PORT building ID and the placement ID for composite key creation
+    # The port_index on PORT buildings is always 0 (they have exactly one input or one output)
+    return (port.id, 0, placement.id)
 
 
 def build_flow_graph(document: Document, recipes: dict[str, Recipe]) -> BuildResult:
@@ -564,10 +565,11 @@ def _build_scene(
         assert belt.dest_building_id is not None
 
         # Resolve room placement references to PORT buildings
-        source_building_id, source_port_idx = _resolve_belt_endpoint(
+        # Returns (building_id, port_index, placement_id_if_room)
+        source_building_id, source_port_idx, source_placement_id = _resolve_belt_endpoint(
             document, belt.source_building_id, belt.source_port_index, is_output=True
         )
-        dest_building_id, dest_port_idx = _resolve_belt_endpoint(
+        dest_building_id, dest_port_idx, dest_placement_id = _resolve_belt_endpoint(
             document, belt.dest_building_id, belt.dest_port_index, is_output=False
         )
 
@@ -612,10 +614,16 @@ def _build_scene(
         item_id = source_item_id or dest_item_id
 
         # Use composite node IDs for buildings in room placements
-        source_node_id = _make_node_id(source_building_id, placement_id)
-        dest_node_id = _make_node_id(dest_building_id, placement_id)
+        # For endpoints resolved to room PORTs, use the placement_id from resolution
+        # For regular buildings in the current scene, use the scene's placement_id
+        source_node_id = _make_node_id(
+            source_building_id, source_placement_id if source_placement_id else placement_id
+        )
+        dest_node_id = _make_node_id(
+            dest_building_id, dest_placement_id if dest_placement_id else placement_id
+        )
 
-        # Belt ID also uses composite key for belts inside rooms
+        # Belt ID uses the current scene's placement_id (belts belong to their scene)
         edge_belt_id = _make_node_id(belt_id, placement_id)
 
         edge = FlowEdge(
