@@ -434,6 +434,10 @@ class LibraryPanel(QWidget):
     def refresh_blueprints(self) -> None:
         """Refresh the blueprints list from disk."""
         self._load_blueprints()
+        # Ensure the tree is visually updated
+        if self._blueprints_category:
+            self._blueprints_category.setExpanded(True)
+        self.tree.update()
 
     def _on_context_menu(self, pos: QPoint) -> None:
         """Show context menu for blueprint items."""
