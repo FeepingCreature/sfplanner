@@ -574,6 +574,15 @@
       "streaming": true,
       "actual_cost": 0.38571125,
       "generation_id": "gen-1767969111-ftculhjeDEvBnHlrxZMg"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767969159005.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767969159005.json",
+      "timestamp": 1767969159.006272,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0838305,
+      "generation_id": "gen-1767969159-0LbYJiUPfMySgqrRPth4"
     }
   ],
   "messages": [
@@ -2033,6 +2042,89 @@
         {
           "commit": "8846360bc172",
           "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 4b26655c",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Thanks! It's a bit awkward to do it like that... put it on the canvas as a property instead?"
+    },
+    {
+      "role": "assistant",
+      "content": "Good idea! Let me add it as a property on the canvas and wire it up:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n        # Clipboard\n        self._clipboard_buildings: list[Building] = []\n        self._clipboard_belts: list[Belt] = []\n        self._clipboard_room_ids: list[str] = []\n</search>\n<replace>\n        # Clipboard\n        self._clipboard_buildings: list[Building] = []\n        self._clipboard_belts: list[Belt] = []\n        self._clipboard_room_ids: list[str] = []\n\n        # Default belt tier for new connections\n        self._default_belt_tier: int = 1\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    @property\n    def grid_size(self) -> int:\n        return self._grid_size\n</search>\n<replace>\n    @property\n    def grid_size(self) -> int:\n        return self._grid_size\n\n    @property\n    def default_belt_tier(self) -> int:\n        return self._default_belt_tier\n\n    def set_default_belt_tier(self, tier: int) -> None:\n        \"\"\"Set the default belt tier for new connections.\"\"\"\n        self._default_belt_tier = tier\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/belt_connector.py\">\n<search>\n    def complete(self, dest_building_id: str, dest_port_index: int) -> None:\n        \"\"\"Complete a belt connection to an input port.\"\"\"\n        if self._is_connecting and self._connect_start_building:\n            # Get belt tier from toolbar (1-indexed from combo box)\n            tier = 1\n            main_window = self.canvas.window()\n            if hasattr(main_window, 'belt_tier_combo'):\n                tier = main_window.belt_tier_combo.currentIndex() + 1\n            \n            belt = Belt(\n</search>\n<replace>\n    def complete(self, dest_building_id: str, dest_port_index: int) -> None:\n        \"\"\"Complete a belt connection to an input port.\"\"\"\n        if self._is_connecting and self._connect_start_building:\n            belt = Belt(\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/belt_connector.py\">\n<search>\n            belt = Belt(\n                id=generate_id(),\n                tier=tier,\n</search>\n<replace>\n            belt = Belt(\n                id=generate_id(),\n                tier=self.canvas.default_belt_tier,\n</replace>\n</edit>\n\nNow wire up the main window toolbar to the canvas property:\n\n<edit file=\"src/satisfactory_planner/ui/main_window.py\">\n<search>\n        self.belt_tier_combo.setToolTip(\"Default belt tier for new connections\")\n        self.belt_tier_combo.setCurrentIndex(0)\n        # TODO: Wire up to canvas default belt tier\n        toolbar.addWidget(self.belt_tier_combo)\n</search>\n<replace>\n        self.belt_tier_combo.setToolTip(\"Default belt tier for new connections\")\n        self.belt_tier_combo.setCurrentIndex(0)\n        self.belt_tier_combo.currentIndexChanged.connect(self._on_belt_tier_changed)\n        toolbar.addWidget(self.belt_tier_combo)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/main_window.py\">\n<search>\n    def _on_grid_size_changed(self, text: str) -> None:\n        \"\"\"Handle grid size dropdown change.\"\"\"\n        try:\n            size = int(text)\n            for tab in self.tabs:\n                if tab.canvas:\n                    tab.canvas._grid_size = size\n        except ValueError:\n            pass\n</search>\n<replace>\n    def _on_grid_size_changed(self, text: str) -> None:\n        \"\"\"Handle grid size dropdown change.\"\"\"\n        try:\n            size = int(text)\n            for tab in self.tabs:\n                if tab.canvas:\n                    tab.canvas._grid_size = size\n        except ValueError:\n            pass\n\n    def _on_belt_tier_changed(self, index: int) -> None:\n        \"\"\"Handle belt tier dropdown change.\"\"\"\n        tier = index + 1  # Combo is 0-indexed, tiers are 1-indexed\n        for tab in self.tabs:\n            if tab.canvas:\n                tab.canvas.set_default_belt_tier(tier)\n</replace>\n</edit>\n\n<commit message=\"Add default_belt_tier property to canvas\n\n- Added _default_belt_tier property to FactoryCanvas\n- Belt connector uses canvas.default_belt_tier instead of reaching into main window\n- Main window belt_tier_combo updates all canvases when changed\"/>\n\nDone! The canvas now has a `default_belt_tier` property, and the toolbar combo box updates it for all tabs when changed. Much cleaner!",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/belt_connector.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/belt_connector.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/belt_connector.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/belt_connector.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/main_window.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/main_window.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/main_window.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/main_window.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "commit": "433c4eafd4d2",
+          "message": "Committed: 3 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

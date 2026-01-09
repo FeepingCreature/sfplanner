@@ -114,6 +114,9 @@ class FactoryCanvas(QGraphicsView):
         self._clipboard_belts: list[Belt] = []
         self._clipboard_room_ids: list[str] = []
 
+        # Default belt tier for new connections
+        self._default_belt_tier: int = 1
+
         # Initialize managers BEFORE _setup_scene (which uses _selection)
         from satisfactory_planner.ui.canvas.belt_connector import BeltConnector
         from satisfactory_planner.ui.canvas.drawing_tools import DrawingTools
@@ -172,6 +175,14 @@ class FactoryCanvas(QGraphicsView):
     @property
     def grid_size(self) -> int:
         return self._grid_size
+
+    @property
+    def default_belt_tier(self) -> int:
+        return self._default_belt_tier
+
+    def set_default_belt_tier(self, tier: int) -> None:
+        """Set the default belt tier for new connections."""
+        self._default_belt_tier = tier
 
     @property
     def tool_mode(self) -> ToolMode:

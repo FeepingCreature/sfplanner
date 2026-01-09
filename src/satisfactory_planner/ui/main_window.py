@@ -318,7 +318,7 @@ class MainWindow(QMainWindow):
         self.belt_tier_combo.addItems(["Mk.1", "Mk.2", "Mk.3", "Mk.4", "Mk.5", "Mk.6"])
         self.belt_tier_combo.setToolTip("Default belt tier for new connections")
         self.belt_tier_combo.setCurrentIndex(0)
-        # TODO: Wire up to canvas default belt tier
+        self.belt_tier_combo.currentIndexChanged.connect(self._on_belt_tier_changed)
         toolbar.addWidget(self.belt_tier_combo)
 
         toolbar.addSeparator()
@@ -716,6 +716,13 @@ class MainWindow(QMainWindow):
                     tab.canvas._grid_size = size
         except ValueError:
             pass
+
+    def _on_belt_tier_changed(self, index: int) -> None:
+        """Handle belt tier dropdown change."""
+        tier = index + 1  # Combo is 0-indexed, tiers are 1-indexed
+        for tab in self.tabs:
+            if tab.canvas:
+                tab.canvas.set_default_belt_tier(tier)
 
     def _toggle_room_creation(self, checked: bool) -> None:
         """Toggle room creation mode on current canvas."""

@@ -168,15 +168,9 @@ class BeltConnector:
     def complete(self, dest_building_id: str, dest_port_index: int) -> None:
         """Complete a belt connection to an input port."""
         if self._is_connecting and self._connect_start_building:
-            # Get belt tier from toolbar (1-indexed from combo box)
-            tier = 1
-            main_window = self.canvas.window()
-            if hasattr(main_window, 'belt_tier_combo'):
-                tier = main_window.belt_tier_combo.currentIndex() + 1
-            
             belt = Belt(
                 id=generate_id(),
-                tier=tier,
+                tier=self.canvas.default_belt_tier,
                 source_building_id=self._connect_start_building,
                 source_port_index=self._connect_start_port,
                 dest_building_id=dest_building_id,
