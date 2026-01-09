@@ -281,13 +281,12 @@ class RoomPortItem(QGraphicsObject):
         room = self.room_item.room
         port_type = BuildingType.PORT_OUT if self.is_output else BuildingType.PORT_IN
 
-        # Find the port building
+        # Find the port building and update its position
         for building in room.buildings.values():
             if building.building_type == port_type and building.port_index == self.port_index:
-                # Update building position (offset by half the building size)
-                w, h = building._get_display_size()
-                building.x = new_pos.x() - w / 2
-                building.y = new_pos.y() - h / 2
+                # Port position IS the edge position (no offset needed)
+                building.x = new_pos.x()
+                building.y = new_pos.y()
                 break
 
         # Update belts connected to this port

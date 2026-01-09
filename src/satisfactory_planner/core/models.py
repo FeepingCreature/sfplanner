@@ -514,8 +514,8 @@ class Room:
         """Get position of input port by index (in room-local coordinates)."""
         port = self.get_port_by_index(index, is_output=False)
         if port:
-            # Port position is at the port building's location on the room edge
-            return (port.x, port.y + port.height / 2)
+            # Port x,y is directly ON the room edge
+            return (port.x, port.y)
         # Fallback: distribute evenly on left edge
         spacing = self.height / (self.num_inputs + 1) if self.num_inputs > 0 else self.height / 2
         return (0, spacing * (index + 1))
@@ -524,8 +524,8 @@ class Room:
         """Get position of output port by index (in room-local coordinates)."""
         port = self.get_port_by_index(index, is_output=True)
         if port:
-            # Port position is at the port building's location on the room edge
-            return (port.x + port.width, port.y + port.height / 2)
+            # Port x,y is directly ON the room edge
+            return (port.x, port.y)
         # Fallback: distribute evenly on right edge
         spacing = self.height / (self.num_outputs + 1) if self.num_outputs > 0 else self.height / 2
         return (self.width, spacing * (index + 1))

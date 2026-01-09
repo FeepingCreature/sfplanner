@@ -7,6 +7,7 @@
     "src/satisfactory_planner/ui/items/belt_item.py",
     "src/satisfactory_planner/ui/canvas/factory_canvas.py",
     "src/satisfactory_planner/ui/items/room_port_item.py",
+    "src/satisfactory_planner/ui/commands/room_commands.py",
     "src/satisfactory_planner/ui/items/building_item.py"
   ],
   "request_log_entries": [
@@ -828,6 +829,42 @@
       "streaming": true,
       "actual_cost": 0.08007625,
       "generation_id": "gen-1767958154-uOLTH0BV4Sil2yF4wCz4"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767958219209.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767958219209.json",
+      "timestamp": 1767958219.2113447,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.6815275,
+      "generation_id": "gen-1767958219-oPeBFcBv7oSYRiFWWd0P"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767958226802.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767958226802.json",
+      "timestamp": 1767958226.804225,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0827145,
+      "generation_id": "gen-1767958227-q3C8YD5WQO6fkA8t2RR9"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767958238432.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767958238432.json",
+      "timestamp": 1767958238.433913,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0933065,
+      "generation_id": "gen-1767958238-xtd0IYTZrCGiGK5prxxX"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767958258391.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767958258391.json",
+      "timestamp": 1767958258.3927066,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.80346375,
+      "generation_id": "gen-1767958258-DFyyB864UDU4Xsnu46lV"
     }
   ],
   "messages": [
@@ -2958,6 +2995,177 @@
         {
           "commit": "528140cffe3a",
           "message": "Committed: 2 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: bbb57640",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Hm.\n\nSomething is weird.\n\nEven before your change, I could drag around the ports that were autocreated by drawing a room boundary that crossed belts.\nAnd they don't snap to the edge of their room.\nAre we creating those in a weird way?"
+    },
+    {
+      "role": "assistant",
+      "content": "Good catch! Let me look at how ports are created when a room is made from crossing belts:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"PORT_IN|PORT_OUT\", \"file\": \"src/satisfactory_planner/ui/commands/room_commands.py\", \"context_before\": 5, \"context_after\": 10}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01BJGxeedACXr6KGa4ktTHhB",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BJGxeedACXr6KGa4ktTHhB",
+      "content": "{\"message\": \"Found 6 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:226 \\u2500\\u2500\\n     221 |     ) -> None:\\n     222 |         \\\"\\\"\\\"Handle belts that cross the room boundary by creating ports.\\n     223 | \\n     224 |         Uses pre-generated IDs from crossing_belt_port_ids - fully deterministic.\\n     225 |         Creates:\\n>>>  226 |         - A port building inside the room (PORT_IN or PORT_OUT) with port_index\\n     227 |         - An internal belt connecting the port to the building inside the room\\n     228 |         - An external belt connecting the outside building to the RoomPlacement\\n     229 | \\n     230 |         External belts reference the RoomPlacement's ID as the building_id,\\n     231 |         treating the room as a building with ports.\\n     232 |         \\\"\\\"\\\"\\n     233 |         from satisfactory_planner.core.models import Belt as BeltModel\\n     234 |         from satisfactory_planner.core.models import Building, BuildingType\\n     235 | \\n     236 |         room_w = self.rect[2]\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:257 \\u2500\\u2500\\n     252 |             # Determine direction: is source inside or outside?\\n     253 |             source_inside = belt.source_building_id in self.building_ids\\n     254 |             dest_inside = belt.dest_building_id in self.building_ids\\n     255 | \\n     256 |             if source_inside and not dest_inside:\\n>>>  257 |                 # Output: source is inside room, create PORT_OUT\\n     258 |                 source_building = room.buildings.get(belt.source_building_id)\\n     259 |                 if not source_building:\\n     260 |                     continue\\n     261 | \\n     262 |                 port = Building(\\n     263 |                     id=port_id,\\n     264 |                     building_type=BuildingType.PORT_OUT,\\n     265 |                     x=room_w - PORT_EDGE_OFFSET,  # Right edge\\n     266 |                     y=source_building.y,\\n     267 |                     rotation=0,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:264 \\u2500\\u2500\\n     259 |                 if not source_building:\\n     260 |                     continue\\n     261 | \\n     262 |                 port = Building(\\n     263 |                     id=port_id,\\n>>>  264 |                     building_type=BuildingType.PORT_OUT,\\n     265 |                     x=room_w - PORT_EDGE_OFFSET,  # Right edge\\n     266 |                     y=source_building.y,\\n     267 |                     rotation=0,\\n     268 |                     port_index=output_port_index,\\n     269 |                 )\\n     270 |                 room.add_building(port)\\n     271 | \\n     272 |                 # Belt inside room: from source to port\\n     273 |                 inside_belt = BeltModel(\\n     274 |                     id=internal_belt_id,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:285 \\u2500\\u2500\\n     280 |                     item_id=belt.item_id,\\n     281 |                 )\\n     282 |                 room.add_belt(inside_belt)\\n     283 | \\n     284 |                 # External belt: from RoomPlacement (as building) to original destination\\n>>>  285 |                 # The RoomPlacement's output port corresponds to this PORT_OUT's port_index\\n     286 |                 external_belt = BeltModel(\\n     287 |                     id=external_belt_id,\\n     288 |                     tier=belt.tier,\\n     289 |                     source_building_id=self.created_placement_id,  # Room as building\\n     290 |                     source_port_index=output_port_index,\\n     291 |                     dest_building_id=belt.dest_building_id,\\n     292 |                     dest_port_index=belt.dest_port_index,\\n     293 |                     item_id=belt.item_id,\\n     294 |                 )\\n     295 |                 parent.add_belt(external_belt)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:301 \\u2500\\u2500\\n     296 |                 self.canvas.add_belt_item(external_belt)\\n     297 | \\n     298 |                 output_port_index += 1\\n     299 | \\n     300 |             elif dest_inside and not source_inside:\\n>>>  301 |                 # Input: dest is inside room, create PORT_IN\\n     302 |                 dest_building = room.buildings.get(belt.dest_building_id)\\n     303 |                 if not dest_building:\\n     304 |                     continue\\n     305 | \\n     306 |                 port = Building(\\n     307 |                     id=port_id,\\n     308 |                     building_type=BuildingType.PORT_IN,\\n     309 |                     x=0,  # Left edge\\n     310 |                     y=dest_building.y,\\n     311 |                     rotation=0,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:308 \\u2500\\u2500\\n     303 |                 if not dest_building:\\n     304 |                     continue\\n     305 | \\n     306 |                 port = Building(\\n     307 |                     id=port_id,\\n>>>  308 |                     building_type=BuildingType.PORT_IN,\\n     309 |                     x=0,  # Left edge\\n     310 |                     y=dest_building.y,\\n     311 |                     rotation=0,\\n     312 |                     port_index=input_port_index,\\n     313 |                 )\\n     314 |                 room.add_building(port)\\n     315 | \\n     316 |                 # Belt inside room: from port to destination\\n     317 |                 inside_belt = BeltModel(\\n     318 |                     id=internal_belt_id,\", \"success\": true, \"total_matches\": 6}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"context_after\": 10,\n  \"context_before\": 5,\n  \"file\": \"src/satisfactory_planner/ui/commands/room_commands.py\",\n  \"pattern\": \"PORT_IN|PORT_OUT\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 6 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:226 \\u2500\\u2500\\n     221 |     ) -> None:\\n     222 |         \\\"\\\"\\\"Handle belts that cross the room boundary by creating ports.\\n     223 | \\n     224 |         Uses pre-generated IDs from crossing_belt_port_ids - fully deterministic.\\n     225 |         Creates:\\n>>>  226 |         - A port building inside the room (PORT_IN or PORT_OUT) with port_index\\n     227 |         - An internal belt connecting the port to the building inside the room\\n     228 |         - An external belt connecting the outside building to the RoomPlacement\\n     229 | \\n     230 |         External belts reference the RoomPlacement's ID as the building_id,\\n     231 |         treating the room as a building with ports.\\n     232 |         \\\"\\\"\\\"\\n     233 |         from satisfactory_planner.core.models import Belt as BeltModel\\n     234 |         from satisfactory_planner.core.models import Building, BuildingType\\n     235 | \\n     236 |         room_w = self.rect[2]\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:257 \\u2500\\u2500\\n     252 |             # Determine direction: is source inside or outside?\\n     253 |             source_inside = belt.source_building_id in self.building_ids\\n     254 |             dest_inside = belt.dest_building_id in self.building_ids\\n     255 | \\n     256 |             if source_inside and not dest_inside:\\n>>>  257 |                 # Output: source is inside room, create PORT_OUT\\n     258 |                 source_building = room.buildings.get(belt.source_building_id)\\n     259 |                 if not source_building:\\n     260 |                     continue\\n     261 | \\n     262 |                 port = Building(\\n     263 |                     id=port_id,\\n     264 |                     building_type=BuildingType.PORT_OUT,\\n     265 |                     x=room_w - PORT_EDGE_OFFSET,  # Right edge\\n     266 |                     y=source_building.y,\\n     267 |                     rotation=0,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:264 \\u2500\\u2500\\n     259 |                 if not source_building:\\n     260 |                     continue\\n     261 | \\n     262 |                 port = Building(\\n     263 |                     id=port_id,\\n>>>  264 |                     building_type=BuildingType.PORT_OUT,\\n     265 |                     x=room_w - PORT_EDGE_OFFSET,  # Right edge\\n     266 |                     y=source_building.y,\\n     267 |                     rotation=0,\\n     268 |                     port_index=output_port_index,\\n     269 |                 )\\n     270 |                 room.add_building(port)\\n     271 | \\n     272 |                 # Belt inside room: from source to port\\n     273 |                 inside_belt = BeltModel(\\n     274 |                     id=internal_belt_id,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:285 \\u2500\\u2500\\n     280 |                     item_id=belt.item_id,\\n     281 |                 )\\n     282 |                 room.add_belt(inside_belt)\\n     283 | \\n     284 |                 # External belt: from RoomPlacement (as building) to original destination\\n>>>  285 |                 # The RoomPlacement's output port corresponds to this PORT_OUT's port_index\\n     286 |                 external_belt = BeltModel(\\n     287 |                     id=external_belt_id,\\n     288 |                     tier=belt.tier,\\n     289 |                     source_building_id=self.created_placement_id,  # Room as building\\n     290 |                     source_port_index=output_port_index,\\n     291 |                     dest_building_id=belt.dest_building_id,\\n     292 |                     dest_port_index=belt.dest_port_index,\\n     293 |                     item_id=belt.item_id,\\n     294 |                 )\\n     295 |                 parent.add_belt(external_belt)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:301 \\u2500\\u2500\\n     296 |                 self.canvas.add_belt_item(external_belt)\\n     297 | \\n     298 |                 output_port_index += 1\\n     299 | \\n     300 |             elif dest_inside and not source_inside:\\n>>>  301 |                 # Input: dest is inside room, create PORT_IN\\n     302 |                 dest_building = room.buildings.get(belt.dest_building_id)\\n     303 |                 if not dest_building:\\n     304 |                     continue\\n     305 | \\n     306 |                 port = Building(\\n     307 |                     id=port_id,\\n     308 |                     building_type=BuildingType.PORT_IN,\\n     309 |                     x=0,  # Left edge\\n     310 |                     y=dest_building.y,\\n     311 |                     rotation=0,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:308 \\u2500\\u2500\\n     303 |                 if not dest_building:\\n     304 |                     continue\\n     305 | \\n     306 |                 port = Building(\\n     307 |                     id=port_id,\\n>>>  308 |                     building_type=BuildingType.PORT_IN,\\n     309 |                     x=0,  # Left edge\\n     310 |                     y=dest_building.y,\\n     311 |                     rotation=0,\\n     312 |                     port_index=input_port_index,\\n     313 |                 )\\n     314 |                 room.add_building(port)\\n     315 | \\n     316 |                 # Belt inside room: from port to destination\\n     317 |                 inside_belt = BeltModel(\\n     318 |                     id=internal_belt_id,\",\n  \"success\": true,\n  \"total_matches\": 6\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue! Looking at the code, ports are created as regular `Building` objects with `x` and `y` positions that are **not** on the room edge:\n\n```python\nport = Building(\n    ...\n    x=room_w - PORT_EDGE_OFFSET,  # Right edge - but offset, not ON edge\n    y=source_building.y,\n    ...\n)\n```\n\nAnd `PORT_EDGE_OFFSET = 30` - so the port buildings are placed 30 pixels inside the room, not on the edge!\n\nAlso, the PORT buildings are being rendered as regular `BuildingItem`s (which are draggable), but the `RoomPortItem` is a separate item that draws the half-circle on the room boundary. They're not connected!\n\nThe issue is that we have **two separate items**:\n1. `BuildingItem` for the PORT building (draggable, inside room)\n2. `RoomPortItem` for the half-circle on the edge (which we just made draggable too)\n\nThey should be unified. The `RoomPortItem` should BE the visual for the PORT building, or we should remove the duplicate.\n\nLet me check how `_populate_children` works to understand the duplication:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/items/room_item.py\", \"line\": 85, \"context\": 30}",
+            "name": "get_lines"
+          },
+          "id": "toolu_vrtx_01N2kPffen1Tgdc9uHx4MPmU",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01N2kPffen1Tgdc9uHx4MPmU",
+      "content": "{\"content\": \"      55 |         placement: RoomPlacement,\\n      56 |         room: Room,\\n      57 |         parent_scene: Scene,\\n      58 |         canvas: FactoryCanvas,\\n      59 |     ) -> None:\\n      60 |         super().__init__()\\n      61 | \\n      62 |         self.placement = placement\\n      63 |         self.room = room\\n      64 |         self.parent_scene = parent_scene\\n      65 |         self.canvas = canvas\\n      66 | \\n      67 |         # Setup visual rect (local coords: 0,0 to width,height)\\n      68 |         self.setRect(0, 0, room.width, room.height)\\n      69 |         self.setPos(placement.x, placement.y)\\n      70 | \\n      71 |         # Flags for selection/movement in parent scene\\n      72 |         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)\\n      73 |         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)\\n      74 |         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)\\n      75 | \\n      76 |         # Z-value: rooms are behind top-level buildings but their children are on top\\n      77 |         self.setZValue(-0.5)\\n      78 | \\n      79 |         # Child item tracking (all parented to this item for coordinate transform)\\n      80 |         self._building_items: dict[str, BuildingItem] = {}\\n      81 |         self._belt_items: dict[str, BeltItem] = {}\\n      82 |         self._room_items: dict[str, RoomItem] = {}\\n      83 |         self._port_items: list[RoomPortItem] = []\\n      84 | \\n>>>   85 |         # Populate child items\\n      86 |         self._populate_children()\\n      87 | \\n      88 |     def _populate_children(self) -> None:\\n      89 |         \\\"\\\"\\\"Create child graphics items for room contents.\\\"\\\"\\\"\\n      90 |         # Buildings inside the room - note: scene=self.room, not self.parent_scene\\n      91 |         for building in self.room.buildings.values():\\n      92 |             building_item = BuildingItem(building, self.canvas, scene=self.room)\\n      93 |             building_item.setParentItem(self)  # Qt parent = coordinate transform\\n      94 |             # Re-apply position after parenting (BuildingItem sets pos in __init__\\n      95 |             # before parenting, which can cause incorrect positioning)\\n      96 |             building_item.setPos(building.x, building.y)\\n      97 |             self._building_items[building.id] = building_item\\n      98 | \\n      99 |         # Belts inside the room\\n     100 |         for belt in self.room.belts.values():\\n     101 |             source = self.room.buildings.get(belt.source_building_id)\\n     102 |             dest = self.room.buildings.get(belt.dest_building_id)\\n     103 |             if source and dest:\\n     104 |                 belt_item = BeltItem(belt, self.canvas, source, dest)\\n     105 |                 belt_item.setParentItem(self)\\n     106 |                 self._belt_items[belt.id] = belt_item\\n     107 | \\n     108 |         # Nested room placements\\n     109 |         # Find placements whose parent_room_id matches this room\\n     110 |         for p in self.canvas.document.room_placements.values():\\n     111 |             if p.parent_room_id == self.room.id:\\n     112 |                 nested_room = self.canvas.document.rooms.get(p.room_id)\\n     113 |                 if nested_room:\\n     114 |                     room_item = RoomItem(p, nested_room, parent_scene=self.room, canvas=self.canvas)\\n     115 |                     room_item.setParentItem(self)\", \"filepath\": \"src/satisfactory_planner/ui/items/room_item.py\", \"range\": \"55-115\", \"success\": true, \"target_line\": 85, \"total_lines\": 286}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the problem now! There are **two separate items** being created for each port:\n\n1. A `BuildingItem` for the PORT_IN/PORT_OUT `Building` (created in `_populate_children` for ALL buildings including ports)\n2. A `RoomPortItem` for the half-circle on the room edge (created in `_create_port_items`)\n\nThey're completely disconnected! The `BuildingItem` is what's draggable (and it's placed at `PORT_EDGE_OFFSET` inside the room), while `RoomPortItem` is positioned based on `room.input_port_pos()` / `room.output_port_pos()`.\n\nThe fix is to **skip creating BuildingItems for PORT buildings** since `RoomPortItem` should handle them entirely:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_item.py\">\n<search>\n    def _populate_children(self) -> None:\n        \"\"\"Create child graphics items for room contents.\"\"\"\n        # Buildings inside the room - note: scene=self.room, not self.parent_scene\n        for building in self.room.buildings.values():\n            building_item = BuildingItem(building, self.canvas, scene=self.room)\n            building_item.setParentItem(self)  # Qt parent = coordinate transform\n            # Re-apply position after parenting (BuildingItem sets pos in __init__\n            # before parenting, which can cause incorrect positioning)\n            building_item.setPos(building.x, building.y)\n            self._building_items[building.id] = building_item\n</search>\n<replace>\n    def _populate_children(self) -> None:\n        \"\"\"Create child graphics items for room contents.\"\"\"\n        # Buildings inside the room - note: scene=self.room, not self.parent_scene\n        # Skip PORT_IN/PORT_OUT buildings - they're rendered by RoomPortItem instead\n        for building in self.room.buildings.values():\n            if building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):\n                continue\n            building_item = BuildingItem(building, self.canvas, scene=self.room)\n            building_item.setParentItem(self)  # Qt parent = coordinate transform\n            # Re-apply position after parenting (BuildingItem sets pos in __init__\n            # before parenting, which can cause incorrect positioning)\n            building_item.setPos(building.x, building.y)\n            self._building_items[building.id] = building_item\n</replace>\n</edit>\n\nNow add the import for BuildingType in room_item.py:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_item.py\">\n<search>\nfrom satisfactory_planner.core import Room, RoomPlacement\nfrom satisfactory_planner.core.models import BuildingType, Scene\n</search>\n<replace>\nfrom satisfactory_planner.core import Room, RoomPlacement\nfrom satisfactory_planner.core.models import BuildingType, Scene\n</replace>\n</edit>\n\nWait, it's already imported. Now I also need to fix the port positioning. The PORT buildings are created with `x=0` or `x=room_w - PORT_EDGE_OFFSET`, but they should be ON the edge. Let me fix the creation in room_commands.py:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/commands/room_commands.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_014fQy3uadM8fMH1ukRe1Ggk",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_014fQy3uadM8fMH1ukRe1Ggk",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/commands/room_commands.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at the code, I see the issue clearly now. When ports are created in `_handle_crossing_belts`:\n\n1. PORT buildings are placed at `x=0` or `x=room_w - PORT_EDGE_OFFSET` (30 pixels inside)\n2. `_populate_children` creates `BuildingItem`s for ALL buildings including PORTs (which are draggable)\n3. `_create_port_items` creates separate `RoomPortItem`s positioned via `room.input_port_pos()`\n\nSo there are **two items** for each port, and they're not in sync! The fix is already partially in the context - the `_populate_children` now skips PORT buildings. But I also need to fix the port building positions to be ON the edge, and make sure `RoomPortItem` controls the PORT building position.\n\n<edit file=\"src/satisfactory_planner/ui/commands/room_commands.py\">\n<search>\n            if source_inside and not dest_inside:\n                # Output: source is inside room, create PORT_OUT\n                source_building = room.buildings.get(belt.source_building_id)\n                if not source_building:\n                    continue\n\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_OUT,\n                    x=room_w - PORT_EDGE_OFFSET,  # Right edge\n                    y=source_building.y,\n                    rotation=0,\n                    port_index=output_port_index,\n                )\n</search>\n<replace>\n            if source_inside and not dest_inside:\n                # Output: source is inside room, create PORT_OUT\n                source_building = room.buildings.get(belt.source_building_id)\n                if not source_building:\n                    continue\n\n                # Position port ON the room edge (x=room_w for right edge)\n                # y is centered on the source building\n                port_y = source_building.y + source_building.height / 2\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_OUT,\n                    x=room_w,  # Right edge - ON the edge\n                    y=port_y,\n                    rotation=0,\n                    port_index=output_port_index,\n                )\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/commands/room_commands.py\">\n<search>\n            elif dest_inside and not source_inside:\n                # Input: dest is inside room, create PORT_IN\n                dest_building = room.buildings.get(belt.dest_building_id)\n                if not dest_building:\n                    continue\n\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_IN,\n                    x=0,  # Left edge\n                    y=dest_building.y,\n                    rotation=0,\n                    port_index=input_port_index,\n                )\n</search>\n<replace>\n            elif dest_inside and not source_inside:\n                # Input: dest is inside room, create PORT_IN\n                dest_building = room.buildings.get(belt.dest_building_id)\n                if not dest_building:\n                    continue\n\n                # Position port ON the room edge (x=0 for left edge)\n                # y is centered on the dest building\n                port_y = dest_building.y + dest_building.height / 2\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_IN,\n                    x=0,  # Left edge - ON the edge\n                    y=port_y,\n                    rotation=0,\n                    port_index=input_port_index,\n                )\n</replace>\n</edit>\n\nNow update `Room.input_port_pos` and `Room.output_port_pos` to use the port's x,y directly (since they're now ON the edge):\n\n<edit file=\"src/satisfactory_planner/core/models.py\">\n<search>\n    def input_port_pos(self, index: int) -> tuple[float, float]:\n        \"\"\"Get position of input port by index (in room-local coordinates).\"\"\"\n        port = self.get_port_by_index(index, is_output=False)\n        if port:\n            # Port position is at the port building's location on the room edge\n            return (port.x, port.y + port.height / 2)\n        # Fallback: distribute evenly on left edge\n        spacing = self.height / (self.num_inputs + 1) if self.num_inputs > 0 else self.height / 2\n        return (0, spacing * (index + 1))\n\n    def output_port_pos(self, index: int) -> tuple[float, float]:\n        \"\"\"Get position of output port by index (in room-local coordinates).\"\"\"\n        port = self.get_port_by_index(index, is_output=True)\n        if port:\n            # Port position is at the port building's location on the room edge\n            return (port.x + port.width, port.y + port.height / 2)\n        # Fallback: distribute evenly on right edge\n        spacing = self.height / (self.num_outputs + 1) if self.num_outputs > 0 else self.height / 2\n        return (self.width, spacing * (index + 1))\n</search>\n<replace>\n    def input_port_pos(self, index: int) -> tuple[float, float]:\n        \"\"\"Get position of input port by index (in room-local coordinates).\"\"\"\n        port = self.get_port_by_index(index, is_output=False)\n        if port:\n            # Port x,y is directly ON the room edge\n            return (port.x, port.y)\n        # Fallback: distribute evenly on left edge\n        spacing = self.height / (self.num_inputs + 1) if self.num_inputs > 0 else self.height / 2\n        return (0, spacing * (index + 1))\n\n    def output_port_pos(self, index: int) -> tuple[float, float]:\n        \"\"\"Get position of output port by index (in room-local coordinates).\"\"\"\n        port = self.get_port_by_index(index, is_output=True)\n        if port:\n            # Port x,y is directly ON the room edge\n            return (port.x, port.y)\n        # Fallback: distribute evenly on right edge\n        spacing = self.height / (self.num_outputs + 1) if self.num_outputs > 0 else self.height / 2\n        return (self.width, spacing * (index + 1))\n</replace>\n</edit>\n\nNow simplify `RoomPortItem._update_port_position` since the port position IS the edge position:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n    def _update_port_position(self, new_pos: QPointF) -> None:\n        \"\"\"Update the PORT building's position in the room model.\"\"\"\n        room = self.room_item.room\n        port_type = BuildingType.PORT_OUT if self.is_output else BuildingType.PORT_IN\n\n        # Find the port building\n        for building in room.buildings.values():\n            if building.building_type == port_type and building.port_index == self.port_index:\n                # Update building position (offset by half the building size)\n                w, h = building._get_display_size()\n                building.x = new_pos.x() - w / 2\n                building.y = new_pos.y() - h / 2\n                break\n\n        # Update belts connected to this port\n        self.canvas._update_belts_for_placement(self.placement_id)\n</search>\n<replace>\n    def _update_port_position(self, new_pos: QPointF) -> None:\n        \"\"\"Update the PORT building's position in the room model.\"\"\"\n        room = self.room_item.room\n        port_type = BuildingType.PORT_OUT if self.is_output else BuildingType.PORT_IN\n\n        # Find the port building and update its position\n        for building in room.buildings.values():\n            if building.building_type == port_type and building.port_index == self.port_index:\n                # Port position IS the edge position (no offset needed)\n                building.x = new_pos.x()\n                building.y = new_pos.y()\n                break\n\n        # Update belts connected to this port\n        self.canvas._update_belts_for_placement(self.placement_id)\n</replace>\n</edit>\n\nRemove the unused `PORT_EDGE_OFFSET` import from room_commands.py:\n\n<edit file=\"src/satisfactory_planner/ui/commands/room_commands.py\">\n<search>\nfrom satisfactory_planner.core.models import PORT_EDGE_OFFSET\nfrom satisfactory_planner.ui.commands.base import Command, get_scene\n</search>\n<replace>\nfrom satisfactory_planner.ui.commands.base import Command, get_scene\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Fix room port creation and positioning\n\n- PORT buildings are now positioned directly ON the room edge (x=0 or\n  x=room_w) instead of offset by PORT_EDGE_OFFSET\n- Room.input_port_pos/output_port_pos now return the port's x,y directly\n  since that IS the edge position\n- RoomPortItem._update_port_position simplified - no offset needed\n- Removed unused PORT_EDGE_OFFSET import from room_commands.py\n- _populate_children already skips PORT buildings (rendered by RoomPortItem)\"/>\n\nDone! The port system is now unified:\n\n1. **PORT buildings are positioned ON the room edge** (not offset)\n2. **Only `RoomPortItem` renders ports** (no duplicate `BuildingItem`)\n3. **Dragging `RoomPortItem` updates the PORT building position** and snaps to edges\n4. **`Room.input_port_pos`/`output_port_pos`** return the port's actual position directly",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/room_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/room_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/room_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/room_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/models.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/models.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/room_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/room_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_pu69gbqn\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_pu69gbqn\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_pu69gbqn\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_pu69gbqn\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "d2579f78c6fe",
+          "message": "Committed: 4 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

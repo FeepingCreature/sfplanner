@@ -88,7 +88,10 @@ class RoomItem(QGraphicsRectItem):
     def _populate_children(self) -> None:
         """Create child graphics items for room contents."""
         # Buildings inside the room - note: scene=self.room, not self.parent_scene
+        # Skip PORT_IN/PORT_OUT buildings - they're rendered by RoomPortItem instead
         for building in self.room.buildings.values():
+            if building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
+                continue
             building_item = BuildingItem(building, self.canvas, scene=self.room)
             building_item.setParentItem(self)  # Qt parent = coordinate transform
             # Re-apply position after parenting (BuildingItem sets pos in __init__
