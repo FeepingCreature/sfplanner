@@ -33,6 +33,19 @@ ruff check src/
 ruff format src/
 ```
 
+## Port Rendering Model
+
+**Ports are puzzle pieces** - Input and output ports should look like matching puzzle pieces that fit together:
+- **Output ports** (green): Half-circle facing outward from building, belt starts here
+- **Input ports** (yellow): Half-circle facing outward from building, belt ends here
+- Both face the same direction (outward) so when you connect them, they visually "dock"
+
+The angle parameter to `draw_half_circle_path()` is the direction the curved part faces:
+- A port on the LEFT edge of a building faces LEFT (angle=180)
+- A port on the RIGHT edge of a building faces RIGHT (angle=0)
+
+This means belts flow INTO input ports and OUT OF output ports, with the half-circles acting as connectors.
+
 ## Qt Gotchas
 
 **Defer to next frame when child items misbehave** - Qt sometimes needs to finish processing `addItem()` before child item geometry/visibility is valid. If items are invisible or mispositioned after being added, use `QTimer.singleShot(0, callback)` to defer the fix to the next event loop iteration.
