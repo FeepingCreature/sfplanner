@@ -24,7 +24,7 @@ undone and redone has the same ID, same position, same everything.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Callable, NamedTuple
 
 if TYPE_CHECKING:
     from satisfactory_planner.core.models import Document, Scene
@@ -90,6 +90,7 @@ class CommandStack:
         self.document = document
         self.undo_stack: list[Command] = []
         self.redo_stack: list[Command] = []
+        self._stack_changed_callback: Callable[[], None] | None = None
 
     def execute(self, cmd: Command) -> None:
         """Execute a command and add to undo stack."""
@@ -100,9 +101,11 @@ class CommandStack:
             if merged:
                 self.undo_stack[-1] = merged
                 self.redo_stack.clear()
+                self._notify_stack_changed()
                 return
         self.undo_stack.append(cmd)
         self.redo_stack.clear()
+        self._notify_stack_changed()
 
     def undo(self) -> None:
         """Undo the last command."""
@@ -110,6 +113,7 @@ class CommandStack:
             cmd = self.undo_stack.pop()
             cmd.undo(self.document)
             self.redo_stack.append(cmd)
+            self._notify_stack_changed()
 
     def redo(self) -> None:
         """Redo the last undone command."""
@@ -117,9 +121,15 @@ class CommandStack:
             cmd = self.redo_stack.pop()
             cmd.execute(self.document)
             self.undo_stack.append(cmd)
+            self._notify_stack_changed()
 
     def can_undo(self) -> bool:
         return len(self.undo_stack) > 0
 
     def can_redo(self) -> bool:
         return len(self.redo_stack) > 0
+
+    def _notify_stack_changed(self) -> None:
+        """Notify that the stack changed (for updating UI state)."""
+        if self._stack_changed_callback:
+            self._stack_changed_callback()

@@ -386,6 +386,9 @@ class MainWindow(QMainWindow):
         # Set mutation callback (replaces document_changed signal)
         canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
 
+        # Set stack changed callback (for undo/redo state updates AFTER command is on stack)
+        tab.command_stack._stack_changed_callback = self._update_undo_redo_state
+
         # Add tab
         index = self.tab_widget.addTab(canvas, tab.name)
         self.tabs.append(tab)
@@ -508,6 +511,9 @@ class MainWindow(QMainWindow):
             # Set mutation callback (replaces document_changed signal)
             canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
 
+            # Set stack changed callback (for undo/redo state updates AFTER command is on stack)
+            tab.command_stack._stack_changed_callback = self._update_undo_redo_state
+
             # Add tab
             index = self.tab_widget.addTab(canvas, tab.name)
             self.tabs.append(tab)
@@ -602,11 +608,13 @@ class MainWindow(QMainWindow):
 
         This is called directly by commands via the canvas mutation callback.
         Centralizes all the effects of a document change.
+
+        Note: undo/redo state is updated via CommandStack._stack_changed_callback,
+        which fires AFTER the command is added to the stack.
         """
         self._mark_dirty(tab)
         self._update_warnings()
         self._refresh_flow_visualization(tab)
-        self._update_undo_redo_state()
 
     def _refresh_flow_visualization(self, tab: DocumentTab) -> None:
         """Refresh flow visualization after document changes."""
