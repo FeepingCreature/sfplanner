@@ -2,7 +2,8 @@
 
 Extends BuildingItem with:
 1. Edge snapping instead of grid snapping
-2. Notifies RoomItem to redraw its edge ports when moved
+2. Auto-rotation based on edge (top/bottom = 90°, left/right = 0°)
+3. Notifies RoomItem to redraw its edge ports when moved
 
 The internal connector and building body are handled by BuildingItem.
 The external port half-circles are drawn by RoomItem.
@@ -10,7 +11,6 @@ The external port half-circles are drawn by RoomItem.
 
 from __future__ import annotations
 
-from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QPointF, Qt
@@ -27,20 +27,12 @@ if TYPE_CHECKING:
     from satisfactory_planner.ui.items.room_item import RoomItem
 
 
-class EdgeSide(Enum):
-    """Which edge of the room the port is on."""
-
-    LEFT = auto()
-    RIGHT = auto()
-    TOP = auto()
-    BOTTOM = auto()
-
-
 class RoomPortItem(BuildingItem):
     """PORT building on a room boundary - extends BuildingItem with edge snapping.
 
     Adds:
     - Edge snapping instead of grid snapping
+    - Auto-rotation based on edge position
     - Notifies RoomItem when moved so it can redraw edge ports
     """
 
@@ -56,9 +48,6 @@ class RoomPortItem(BuildingItem):
         self.room_item = room_item
         self.is_output = building.building_type == BuildingType.PORT_OUT
 
-        # Determine which edge this port is on based on position
-        self._edge = self._determine_edge((building.x, building.y))
-
         # Set as child of room item for proper scene hierarchy
         self.setParentItem(room_item)
 
@@ -70,28 +59,6 @@ class RoomPortItem(BuildingItem):
 
         # Drag target highlighting
         self._is_drag_target = False
-
-    def _determine_edge(self, local_pos: tuple[float, float]) -> EdgeSide:
-        """Determine which room edge this port is on."""
-        x, y = local_pos
-        room = self.room_item.room
-
-        # Calculate distances to each edge
-        dist_left = abs(x)
-        dist_right = abs(x - room.width)
-        dist_top = abs(y)
-        dist_bottom = abs(y - room.height)
-
-        min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
-
-        if min_dist == dist_left:
-            return EdgeSide.LEFT
-        elif min_dist == dist_right:
-            return EdgeSide.RIGHT
-        elif min_dist == dist_top:
-            return EdgeSide.TOP
-        else:
-            return EdgeSide.BOTTOM
 
     @property
     def port_index(self) -> int:
@@ -109,71 +76,45 @@ class RoomPortItem(BuildingItem):
         self.update()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
-        """Handle mouse press - start belt from external half-circle, or drag."""
-        if event.button() == Qt.MouseButton.LeftButton:
-            # Check if click is near the external edge - start belt drag
-            local_pos = event.pos()
-            if self._is_on_external_edge(local_pos) and self.is_output:
-                scene_pos = self.scenePos()
-                self.canvas.start_belt_drag(self.building.id, self.port_index, scene_pos)
-                event.accept()
-                return
+        """Handle mouse press - start belt from output port, or drag."""
+        if event.button() == Qt.MouseButton.LeftButton and self.is_output:
+            # Start belt drag from output port
+            scene_pos = self.scenePos()
+            self.canvas.start_belt_drag(self.building.id, self.port_index, scene_pos)
+            event.accept()
+            return
         # Let BuildingItem handle selection and drag
         super().mousePressEvent(event)
-
-    def _is_on_external_edge(self, pos: QPointF) -> bool:
-        """Check if position is on the external half-circle area."""
-        if self._edge == EdgeSide.LEFT:
-            return pos.x() < 0
-        elif self._edge == EdgeSide.RIGHT:
-            return pos.x() > 0
-        elif self._edge == EdgeSide.TOP:
-            return pos.y() < 0
-        else:  # BOTTOM
-            return pos.y() > 0
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Handle item changes - snap to room edge instead of grid."""
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             new_pos = value
             if isinstance(new_pos, QPointF):
-                # Snap to nearest room edge (not grid)
-                new_pos = self._snap_to_edge(new_pos)
+                # Snap to nearest room edge and get rotation
+                new_pos, rotation = self._snap_to_edge_with_rotation(new_pos)
+                # Update rotation if needed
+                if self.building.rotation != rotation:
+                    self.building.rotation = rotation
+                    self._create_ports()
                 return new_pos
         elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
-            # Redetermine which edge we're on
-            new_pos = self.pos()
-            self._edge = self._determine_edge((new_pos.x(), new_pos.y()))
-
-            # Auto-rotate based on edge (top/bottom need 90° rotation)
-            self._update_rotation_for_edge()
-
             self.update()
             # Notify room to redraw its edge ports
             self.room_item.update_room_ports()
         # Let BuildingItem update model position and belts
         return super().itemChange(change, value)
 
-    def _update_rotation_for_edge(self) -> None:
-        """Update building rotation based on which edge it's on."""
-        # Left/right edges: no rotation (0°), top/bottom edges: rotate 90°
-        target_rotation = 90 if self._edge in (EdgeSide.TOP, EdgeSide.BOTTOM) else 0
-
-        if self.building.rotation != target_rotation:
-            self.building.rotation = target_rotation
-            # Rebuild ports with new rotation
-            self._create_ports()
-            self.update()
-
     def rotate(self, delta: int) -> None:
         """Override to prevent manual rotation - ports auto-rotate based on edge."""
-        # Do nothing - port rotation is controlled by edge position
         pass
 
-    def _snap_to_edge(self, pos: QPointF) -> QPointF:
-        """Snap a position to the nearest room edge using shared utility."""
+    def _snap_to_edge_with_rotation(self, pos: QPointF) -> tuple[QPointF, int]:
+        """Snap to nearest room edge and return position + rotation."""
         room = self.room_item.room
-        x, y, _edge = snap_port_to_room_edge(
+        x, y, edge = snap_port_to_room_edge(
             self.building.building_type, room.width, room.height, pos.x(), pos.y()
         )
-        return QPointF(x, y)
+        # Top/bottom edges need 90° rotation
+        rotation = 90 if edge in ("top", "bottom") else 0
+        return QPointF(x, y), rotation

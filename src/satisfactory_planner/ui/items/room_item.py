@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import Room, RoomPlacement
-from satisfactory_planner.core.models import BuildingType, Scene
+from satisfactory_planner.core.models import Building, BuildingType, Scene
 from satisfactory_planner.ui.items.belt_item import BeltItem
 from satisfactory_planner.ui.items.building_item import BuildingItem
 from satisfactory_planner.ui.items.port_item import PortItem
@@ -190,43 +190,60 @@ class RoomItem(QGraphicsRectItem):
         """Create PortItem children for each PORT building's external connector.
 
         These are the room's input/output ports where external belts connect.
-        Positioned at the edge-facing side of each PORT building.
-
-        Port angles follow the same convention as regular buildings:
-        - Input ports face INTO the container (the room)
-        - Output ports face OUT OF the container
+        Position and angle are derived from the PORT building's position and rotation.
         """
         for building in self.room.buildings.values():
-            if building.building_type == BuildingType.PORT_IN:
-                # PORT_IN brings items INTO room - room has an INPUT on its left edge
-                # Input ports face INTO the room (right, angle=0)
-                is_output = False
-                x = building.x  # Left edge of building = left edge of room
-                y = building.y + building.height / 2
-                angle = 0  # Face right (into room) - same as building inputs
-
-            elif building.building_type == BuildingType.PORT_OUT:
-                # PORT_OUT sends items OUT of room - room has an OUTPUT on its right edge
-                # Output ports face OUT OF the room (right, angle=0)
-                is_output = True
-                x = building.x + building.width  # Right edge of building = right edge of room
-                y = building.y + building.height / 2
-                angle = 0  # Face right (out of room) - same as building outputs
-
-            else:
+            if building.building_type not in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
                 continue
+
+            is_output = building.building_type == BuildingType.PORT_OUT
+            x, y, angle = self._get_room_port_position(building)
 
             port_item = PortItem(
                 is_output=is_output,
                 port_index=building.port_index or 0,
-                building_id=self.placement.id,  # Room placement acts as the "building"
+                building_id=self.placement.id,
                 canvas=self.canvas,
                 angle=angle,
             )
             port_item.setParentItem(self)
             port_item.setPos(x, y)
-            port_item.setZValue(1)  # Above room background
+            port_item.setZValue(1)
             self._room_port_items[building.id] = port_item
+
+    def _get_room_port_position(self, building: Building) -> tuple[float, float, float]:
+        """Get room port position and angle based on PORT building position/rotation.
+
+        Returns (x, y, angle) for the room's external port.
+        """
+        # Use building rotation to determine which edge it's on
+        # 0° = left/right edge, 90° = top/bottom edge
+        is_rotated = building.rotation == 90
+        is_output = building.building_type == BuildingType.PORT_OUT
+
+        if is_rotated:
+            # Top/bottom edge - port is at top or bottom of building
+            x = building.x + building.width / 2
+            if is_output:
+                # PORT_OUT on bottom edge
+                y = building.y + building.height
+                angle = 90  # Face down
+            else:
+                # PORT_IN on top edge
+                y = building.y
+                angle = 270  # Face up
+        else:
+            # Left/right edge - port is at left or right of building
+            y = building.y + building.height / 2
+            if is_output:
+                # PORT_OUT on right edge
+                x = building.x + building.width
+                angle = 0  # Face right
+            else:
+                # PORT_IN on left edge
+                x = building.x
+                angle = 180  # Face left
+        return (x, y, angle)
 
     def _clear_room_ports(self) -> None:
         """Remove all room-level port items."""
@@ -250,14 +267,10 @@ class RoomItem(QGraphicsRectItem):
                 continue
 
             port_item = self._room_port_items[building.id]
-            if building.building_type == BuildingType.PORT_IN:
-                x = building.x
-                y = building.y + building.height / 2
-            else:  # PORT_OUT
-                x = building.x + building.width
-                y = building.y + building.height / 2
-
+            x, y, angle = self._get_room_port_position(building)
             port_item.setPos(x, y)
+            port_item.angle = angle
+            port_item.update()
 
         # Update external belts connected to this room's ports
         self.canvas._update_belts_for_placement(self.placement.id)
