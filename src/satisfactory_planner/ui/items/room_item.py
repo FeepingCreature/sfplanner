@@ -217,8 +217,8 @@ class RoomItem(QGraphicsRectItem):
             new_pos = self.pos()
             self.placement.x = new_pos.x()
             self.placement.y = new_pos.y()
-            # Note: belts connected to the room boundary (ports) would need updating here
-            # For now, rooms don't have external belt connections yet
+            # Update belts connected to this room's ports
+            self.canvas._update_belts_for_placement(self.placement.id)
 
         return super().itemChange(change, value)
 

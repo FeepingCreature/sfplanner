@@ -934,15 +934,30 @@ class FactoryCanvas(QGraphicsView):
     # === Internal helpers ===
 
     def _update_belts_for_building(self, building_id: str, scene: Scene | None = None) -> None:
-        """Redraw all belts connected to a building."""
+        """Redraw all belts connected to a building.
+
+        Handles belts where one or both endpoints may be:
+        - A Building in the scene
+        - A RoomPlacement (for belts crossing room boundaries)
+        """
         target_scene: Scene = scene if scene is not None else self.document
         for belt in target_scene.get_belts_for_building(building_id):
             belt_item = self._belt_items.get(belt.id)
             if belt_item:
-                source = target_scene.buildings.get(belt.source_building_id)
-                dest = target_scene.buildings.get(belt.dest_building_id)
-                if source and dest:
-                    belt_item.update_path(source, dest)
+                # Use _update_path_from_endpoints which handles both
+                # Buildings and RoomPlacements
+                belt_item._update_path_from_endpoints()
+
+    def _update_belts_for_placement(self, placement_id: str) -> None:
+        """Redraw all belts connected to a room placement."""
+        # Belts to room placements are stored in document.belts (or parent scene)
+        # and use the placement_id as source/dest_building_id
+        for belt in self.document.belts.values():
+            if belt.source_building_id == placement_id or belt.dest_building_id == placement_id:
+                belt_item = self._belt_items.get(belt.id)
+                if belt_item:
+                    # Use _update_path_from_endpoints which handles placements
+                    belt_item._update_path_from_endpoints()
 
     def set_show_flow_rates(self, show: bool) -> None:
         """Toggle flow rate display on all belts."""
