@@ -225,9 +225,14 @@ class Building:
         return BUILDING_METADATA[self.building_type].num_outputs
 
     def _get_display_size(self) -> tuple[int, int]:
-        """Get display size - smaller for logistics."""
-        # Splitter/Merger display at smaller size, not the metadata 60x60
-        if self.building_type in (BuildingType.SPLITTER, BuildingType.MERGER):
+        """Get display size - smaller for logistics and ports."""
+        # Splitter/Merger/Ports display at smaller size
+        if self.building_type in (
+            BuildingType.SPLITTER,
+            BuildingType.MERGER,
+            BuildingType.PORT_IN,
+            BuildingType.PORT_OUT,
+        ):
             return (LOGISTICS_DISPLAY_SIZE, LOGISTICS_DISPLAY_SIZE)
         return (self.width, self.height)
 
