@@ -64,6 +64,7 @@ class PortItem(QGraphicsItem):
         building_id: str,
         canvas: FactoryCanvas,
         angle: float = 0,  # 0=right, 90=down, 180=left, 270=up
+        scene_room_id: str | None = None,  # None for document root, room ID for rooms
     ) -> None:
         super().__init__()
 
@@ -72,6 +73,7 @@ class PortItem(QGraphicsItem):
         self.building_id = building_id
         self.canvas = canvas
         self.angle = angle  # Direction the port faces
+        self.scene_room_id = scene_room_id  # Which scene this port belongs to
 
         self._setup_flags()
         self._hovered = False
@@ -123,26 +125,9 @@ class PortItem(QGraphicsItem):
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle press to start belt drag from output port."""
         if event.button() == Qt.MouseButton.LeftButton and self.is_output:
-            # Get scene_room_id from parent BuildingItem if available
-            scene_room_id: str | None = None
-            parent = self.parentItem()
-            if parent is not None:
-                from satisfactory_planner.ui.items.building_item import BuildingItem
-                from satisfactory_planner.ui.items.room_item import RoomItem
-
-                if isinstance(parent, BuildingItem) and parent.building_scene is not None:
-                    # Parent is a BuildingItem - check if it's inside a room
-                    scene = parent.building_scene
-                    # If scene is a Room (not Document), find the room_id
-                    if hasattr(scene, "id"):
-                        # It's a Room object, use its id directly
-                        scene_room_id = scene.id
-                elif isinstance(parent, RoomItem):
-                    # Port is directly inside a RoomItem
-                    scene_room_id = parent.room.id
-
+            # scene_room_id was captured at construction time
             self.canvas.start_belt_drag(
-                self.building_id, self.port_index, self.scenePos(), scene_room_id
+                self.building_id, self.port_index, self.scenePos(), self.scene_room_id
             )
             event.accept()
         else:

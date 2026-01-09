@@ -136,10 +136,15 @@ class BuildingItem(QGraphicsRectItem):
         # Get port layout from the building model
         input_layout, output_layout = self.building.get_port_layout()
 
+        # Determine scene_room_id: None for Document, room.id for Room
+        scene_room_id: str | None = getattr(self._scene, "id", None)
+
         # Create input ports
         for i, (px, py, base_angle) in enumerate(input_layout):
             angle = base_angle + rotation
-            port = PortItem(False, i, self.building.id, self.canvas, angle=angle)
+            port = PortItem(
+                False, i, self.building.id, self.canvas, angle=angle, scene_room_id=scene_room_id
+            )
             port.setParentItem(self)
             port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))
             self._input_ports.append(port)
@@ -147,7 +152,9 @@ class BuildingItem(QGraphicsRectItem):
         # Create output ports
         for i, (px, py, base_angle) in enumerate(output_layout):
             angle = base_angle + rotation
-            port = PortItem(True, i, self.building.id, self.canvas, angle=angle)
+            port = PortItem(
+                True, i, self.building.id, self.canvas, angle=angle, scene_room_id=scene_room_id
+            )
             port.setParentItem(self)
             port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))
             self._output_ports.append(port)

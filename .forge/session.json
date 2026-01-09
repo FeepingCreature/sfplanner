@@ -1,6 +1,7 @@
 {
   "active_files": [
     "src/satisfactory_planner/ui/items/port_item.py",
+    "src/satisfactory_planner/ui/items/building_item.py",
     "src/satisfactory_planner/ui/canvas/belt_connector.py",
     "src/satisfactory_planner/ui/canvas/factory_canvas.py",
     "src/satisfactory_planner/ui/items/room_item.py",
@@ -169,6 +170,24 @@
       "streaming": true,
       "actual_cost": 0.05436825,
       "generation_id": "gen-1767977700-oL6TeV7kHIQGpjJ6T40O"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767977883224.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767977883224.json",
+      "timestamp": 1767977883.2248845,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.3443275,
+      "generation_id": "gen-1767977883-CbitZlKYzDYNSwbG8thi"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767977906297.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767977906297.json",
+      "timestamp": 1767977906.298558,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.40358875,
+      "generation_id": "gen-1767977906-EwcTKPoc5zvPyNrA4lUY"
     }
   ],
   "messages": [
@@ -505,6 +524,122 @@
         },
         {
           "commit": "7b1ac307fac1",
+          "message": "Committed: 4 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: adab7c6c",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Hm. The code bulge in port_item is a bit irksome. We're really not supposed to need to do that sort of thing. When constructing the port, is there any cleaner way to keep the scene_room_id? That's the sort of thing we're supposed to just have in hand outright."
+    },
+    {
+      "role": "assistant",
+      "content": "You're right. The `PortItem` constructor already receives `building_id` - we should just also pass `scene_room_id` at construction time, since the caller (BuildingItem) knows it.\n\n<edit file=\"src/satisfactory_planner/ui/items/port_item.py\">\n<search>\nclass PortItem(QGraphicsItem):\n    \"\"\"A clickable port for connecting belts with directional arrow.\"\"\"\n\n    def __init__(\n        self,\n        is_output: bool,\n        port_index: int,\n        building_id: str,\n        canvas: FactoryCanvas,\n        angle: float = 0,  # 0=right, 90=down, 180=left, 270=up\n    ) -> None:\n        super().__init__()\n\n        self.is_output = is_output\n        self.port_index = port_index\n        self.building_id = building_id\n        self.canvas = canvas\n        self.angle = angle  # Direction the port faces\n\n        self._setup_flags()\n        self._hovered = False\n        self._drag_target = False  # Highlighted as valid drop target during belt drag\n        self._spare_capacity: float | None = None  # For overflow display\n</search>\n<replace>\nclass PortItem(QGraphicsItem):\n    \"\"\"A clickable port for connecting belts with directional arrow.\"\"\"\n\n    def __init__(\n        self,\n        is_output: bool,\n        port_index: int,\n        building_id: str,\n        canvas: FactoryCanvas,\n        angle: float = 0,  # 0=right, 90=down, 180=left, 270=up\n        scene_room_id: str | None = None,  # None for document root, room ID for rooms\n    ) -> None:\n        super().__init__()\n\n        self.is_output = is_output\n        self.port_index = port_index\n        self.building_id = building_id\n        self.canvas = canvas\n        self.angle = angle  # Direction the port faces\n        self.scene_room_id = scene_room_id  # Which scene this port belongs to\n\n        self._setup_flags()\n        self._hovered = False\n        self._drag_target = False  # Highlighted as valid drop target during belt drag\n        self._spare_capacity: float | None = None  # For overflow display\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/items/port_item.py\">\n<search>\n    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle press to start belt drag from output port.\"\"\"\n        if event.button() == Qt.MouseButton.LeftButton and self.is_output:\n            # Get scene_room_id from parent BuildingItem if available\n            scene_room_id: str | None = None\n            parent = self.parentItem()\n            if parent is not None:\n                from satisfactory_planner.ui.items.building_item import BuildingItem\n                from satisfactory_planner.ui.items.room_item import RoomItem\n\n                if isinstance(parent, BuildingItem) and parent.building_scene is not None:\n                    # Parent is a BuildingItem - check if it's inside a room\n                    scene = parent.building_scene\n                    # If scene is a Room (not Document), find the room_id\n                    if hasattr(scene, \"id\"):\n                        # It's a Room object, use its id directly\n                        scene_room_id = scene.id\n                elif isinstance(parent, RoomItem):\n                    # Port is directly inside a RoomItem\n                    scene_room_id = parent.room.id\n\n            self.canvas.start_belt_drag(\n                self.building_id, self.port_index, self.scenePos(), scene_room_id\n            )\n            event.accept()\n        else:\n            super().mousePressEvent(event)\n</search>\n<replace>\n    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle press to start belt drag from output port.\"\"\"\n        if event.button() == Qt.MouseButton.LeftButton and self.is_output:\n            # scene_room_id was captured at construction time\n            self.canvas.start_belt_drag(\n                self.building_id, self.port_index, self.scenePos(), self.scene_room_id\n            )\n            event.accept()\n        else:\n            super().mousePressEvent(event)\n</replace>\n</edit>\n\nNow update BuildingItem to pass scene_room_id when creating ports:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/items/building_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01HA5MQif4dzo77GbgYd3wuJ",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01HA5MQif4dzo77GbgYd3wuJ",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/items/building_item.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see - `BuildingItem._create_ports()` creates the ports. It knows `self._scene` which is the Scene the building belongs to. For rooms, we need the room's id. Let me trace through:\n\n- `BuildingItem._scene` is a `Scene` (which could be `Document` or `Room`)\n- `Room` has an `id` attribute, `Document` doesn't\n- So we can check if `_scene` has an `id` attribute to get the `scene_room_id`\n\nLet me update `_create_ports` to pass the scene_room_id:\n\n<edit file=\"src/satisfactory_planner/ui/items/building_item.py\">\n<search>\n    def _create_ports(self) -> None:\n        \"\"\"Create the actual port items from building's port layout.\"\"\"\n        w, h = self._get_display_size()\n        rotation = self.building.rotation\n\n        # Get port layout from the building model\n        input_layout, output_layout = self.building.get_port_layout()\n\n        # Create input ports\n        for i, (px, py, base_angle) in enumerate(input_layout):\n            angle = base_angle + rotation\n            port = PortItem(False, i, self.building.id, self.canvas, angle=angle)\n            port.setParentItem(self)\n            port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))\n            self._input_ports.append(port)\n\n        # Create output ports\n        for i, (px, py, base_angle) in enumerate(output_layout):\n            angle = base_angle + rotation\n            port = PortItem(True, i, self.building.id, self.canvas, angle=angle)\n            port.setParentItem(self)\n            port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))\n            self._output_ports.append(port)\n</search>\n<replace>\n    def _create_ports(self) -> None:\n        \"\"\"Create the actual port items from building's port layout.\"\"\"\n        w, h = self._get_display_size()\n        rotation = self.building.rotation\n\n        # Get port layout from the building model\n        input_layout, output_layout = self.building.get_port_layout()\n\n        # Determine scene_room_id: None for Document, room.id for Room\n        scene_room_id: str | None = getattr(self._scene, \"id\", None)\n\n        # Create input ports\n        for i, (px, py, base_angle) in enumerate(input_layout):\n            angle = base_angle + rotation\n            port = PortItem(\n                False, i, self.building.id, self.canvas, angle=angle, scene_room_id=scene_room_id\n            )\n            port.setParentItem(self)\n            port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))\n            self._input_ports.append(port)\n\n        # Create output ports\n        for i, (px, py, base_angle) in enumerate(output_layout):\n            angle = base_angle + rotation\n            port = PortItem(\n                True, i, self.building.id, self.canvas, angle=angle, scene_room_id=scene_room_id\n            )\n            port.setParentItem(self)\n            port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))\n            self._output_ports.append(port)\n</replace>\n</edit>\n\nNow also update `RoomItem._create_room_ports()` to pass scene_room_id for ports on room boundaries. These ports connect to the *parent* scene (where the room is placed), not inside the room:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_item.py\">\n<search>\n    def _create_room_ports(self) -> None:\n        \"\"\"Create PortItem children for each PORT building's external connector.\n\n        These are the room's input/output ports where external belts connect.\n        Position and angle are derived from the PORT building's position and rotation.\n        \"\"\"\n        for building in self.room.buildings.values():\n            if building.building_type not in (BuildingType.PORT_IN, BuildingType.PORT_OUT):\n                continue\n\n            is_output = building.building_type == BuildingType.PORT_OUT\n            x, y, angle = self._get_room_port_position(building)\n\n            port_item = PortItem(\n                is_output=is_output,\n                port_index=building.port_index or 0,\n                building_id=self.placement.id,\n                canvas=self.canvas,\n                angle=angle,\n            )\n            port_item.setParentItem(self)\n            port_item.setPos(x, y)\n            port_item.setZValue(1)\n            self._room_port_items[building.id] = port_item\n</search>\n<replace>\n    def _create_room_ports(self) -> None:\n        \"\"\"Create PortItem children for each PORT building's external connector.\n\n        These are the room's input/output ports where external belts connect.\n        Position and angle are derived from the PORT building's position and rotation.\n\n        Note: These ports connect to the PARENT scene (where the room is placed),\n        not inside the room. So scene_room_id is the parent's room id (or None for document).\n        \"\"\"\n        # Parent scene's room id (None if parent is Document)\n        parent_scene_room_id: str | None = getattr(self.parent_scene, \"id\", None)\n\n        for building in self.room.buildings.values():\n            if building.building_type not in (BuildingType.PORT_IN, BuildingType.PORT_OUT):\n                continue\n\n            is_output = building.building_type == BuildingType.PORT_OUT\n            x, y, angle = self._get_room_port_position(building)\n\n            port_item = PortItem(\n                is_output=is_output,\n                port_index=building.port_index or 0,\n                building_id=self.placement.id,\n                canvas=self.canvas,\n                angle=angle,\n                scene_room_id=parent_scene_room_id,\n            )\n            port_item.setParentItem(self)\n            port_item.setPos(x, y)\n            port_item.setZValue(1)\n            self._room_port_items[building.id] = port_item\n</replace>\n</edit>\n\nNow we can remove the `RoomPortItem.mousePressEvent` override since ports inside rooms will use the inherited behavior from `BuildingItem`, and their `PortItem` children will have the correct `scene_room_id`:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\nfrom PySide6.QtCore import QPointF\nfrom PySide6.QtWidgets import (\n    QGraphicsItem,\n    QGraphicsSceneMouseEvent,\n)\n</search>\n<replace>\nfrom PySide6.QtCore import QPointF\nfrom PySide6.QtWidgets import (\n    QGraphicsItem,\n)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle press - for output ports, start belt drag with room context.\"\"\"\n        from PySide6.QtCore import Qt\n\n        if event.button() == Qt.MouseButton.LeftButton and self.is_output:\n            # RoomPortItem is inside a room, so scene_room_id is the room's id\n            self.canvas.start_belt_drag(\n                self.building.id,\n                self.port_index,\n                self.scenePos(),\n                self.room_item.room.id,\n            )\n            event.accept()\n        else:\n            super().mousePressEvent(event)\n</search>\n<replace>\n    # No custom mousePressEvent needed - BuildingItem handles selection/drag,\n    # and the port's PortItem handles belt connections with scene_room_id set at construction.\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Pass scene_room_id at PortItem construction time\n\nInstead of deriving scene context from parent items at click time,\npass scene_room_id when creating PortItem. BuildingItem._create_ports()\nuses getattr(self._scene, 'id', None) to get the room ID if in a room.\n\nRoomItem._create_room_ports() passes parent_scene's room id since those\nports connect to the parent scene, not inside the room.\n\nThis eliminates runtime parent-walking and keeps scene context explicit.\"/>\n\nDone! Much cleaner - the `scene_room_id` is now passed at construction time using `getattr(self._scene, \"id\", None)`. No runtime parent-walking needed.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/building_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/building_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n78 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 47 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_pb6af515\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_pb6af515\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n78 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 47 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_pb6af515\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_pb6af515\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "9a444c95385e",
           "message": "Committed: 4 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"

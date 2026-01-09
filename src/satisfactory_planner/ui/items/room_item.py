@@ -199,7 +199,13 @@ class RoomItem(QGraphicsRectItem):
 
         These are the room's input/output ports where external belts connect.
         Position and angle are derived from the PORT building's position and rotation.
+
+        Note: These ports connect to the PARENT scene (where the room is placed),
+        not inside the room. So scene_room_id is the parent's room id (or None for document).
         """
+        # Parent scene's room id (None if parent is Document)
+        parent_scene_room_id: str | None = getattr(self.parent_scene, "id", None)
+
         for building in self.room.buildings.values():
             if building.building_type not in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
                 continue
@@ -213,6 +219,7 @@ class RoomItem(QGraphicsRectItem):
                 building_id=self.placement.id,
                 canvas=self.canvas,
                 angle=angle,
+                scene_room_id=parent_scene_room_id,
             )
             port_item.setParentItem(self)
             port_item.setPos(x, y)
