@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 HALF_CIRCLE_RADIUS = 10  # Radius of the half-circle on room edge
 BUILDING_WIDTH = 30  # Width of the half-building inside
 BUILDING_HEIGHT = 24  # Height of the half-building
-CONNECTOR_RADIUS = 5  # Radius of the connector port
 INPUT_COLOR = QColor(220, 180, 50)  # Yellow for inputs
 OUTPUT_COLOR = QColor(50, 200, 100)  # Green for outputs
 BUILDING_COLOR = QColor(70, 70, 80)  # Dark gray for building body
@@ -167,10 +166,6 @@ class RoomPortItem(QGraphicsObject):
         building_rect = QRectF(0, -BUILDING_HEIGHT / 2, BUILDING_WIDTH, BUILDING_HEIGHT)
         self._draw_half_building(painter, building_rect)
 
-        # Internal half-circle on far side - opposite color (input<->output swap)
-        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
-        self._draw_internal_half_circle(painter, QPointF(BUILDING_WIDTH, 0), internal_color, "left")
-
     def _paint_right_edge(self, painter: QPainter, color: QColor) -> None:
         """Paint port on right edge: building left, half-circle right."""
         # Half-circle on the outside (right of room edge)
@@ -182,12 +177,6 @@ class RoomPortItem(QGraphicsObject):
         )
         self._draw_half_building(painter, building_rect)
 
-        # Internal half-circle on far side - opposite color (input<->output swap)
-        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
-        self._draw_internal_half_circle(
-            painter, QPointF(-BUILDING_WIDTH, 0), internal_color, "right"
-        )
-
     def _paint_top_edge(self, painter: QPainter, color: QColor) -> None:
         """Paint port on top edge: half-circle top, building bottom."""
         # Half-circle on the outside (above room edge)
@@ -196,10 +185,6 @@ class RoomPortItem(QGraphicsObject):
         # Half-building inside room (below)
         building_rect = QRectF(-BUILDING_HEIGHT / 2, 0, BUILDING_HEIGHT, BUILDING_WIDTH)
         self._draw_half_building(painter, building_rect)
-
-        # Internal half-circle on far side - opposite color (input<->output swap)
-        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
-        self._draw_internal_half_circle(painter, QPointF(0, BUILDING_WIDTH), internal_color, "top")
 
     def _paint_bottom_edge(self, painter: QPainter, color: QColor) -> None:
         """Paint port on bottom edge: building top, half-circle bottom."""
@@ -211,12 +196,6 @@ class RoomPortItem(QGraphicsObject):
             -BUILDING_HEIGHT / 2, -BUILDING_WIDTH, BUILDING_HEIGHT, BUILDING_WIDTH
         )
         self._draw_half_building(painter, building_rect)
-
-        # Internal half-circle on far side - opposite color (input<->output swap)
-        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
-        self._draw_internal_half_circle(
-            painter, QPointF(0, -BUILDING_WIDTH), internal_color, "bottom"
-        )
 
     def _draw_half_circle(self, painter: QPainter, color: QColor, side: str) -> None:
         """Draw the half-circle on the room edge."""
@@ -287,44 +266,6 @@ class RoomPortItem(QGraphicsObject):
 
         # Draw rounded rectangle for building body
         painter.drawRoundedRect(rect, 4, 4)
-
-    def _draw_internal_half_circle(
-        self, painter: QPainter, pos: QPointF, color: QColor, side: str
-    ) -> None:
-        """Draw a half-circle on the internal side where belts connect.
-
-        The color is opposite from the external half-circle because:
-        - External input (yellow) connects to internal output (green)
-        - External output (green) connects to internal input (yellow)
-        """
-        painter.setPen(QPen(color.darker(120), 1.5))
-        painter.setBrush(QBrush(color))
-
-        path = QPainterPath()
-        r = CONNECTOR_RADIUS + 2  # Slightly larger than old nub
-
-        if side == "left":
-            # Half-circle facing right (inside room, opposite of external left)
-            path.moveTo(pos.x(), pos.y() - r)
-            path.arcTo(pos.x() - r, pos.y() - r, r * 2, r * 2, 90, -180)
-            path.closeSubpath()
-        elif side == "right":
-            # Half-circle facing left (inside room, opposite of external right)
-            path.moveTo(pos.x(), pos.y() - r)
-            path.arcTo(pos.x() - r, pos.y() - r, r * 2, r * 2, 90, 180)
-            path.closeSubpath()
-        elif side == "top":
-            # Half-circle facing down (inside room, opposite of external top)
-            path.moveTo(pos.x() - r, pos.y())
-            path.arcTo(pos.x() - r, pos.y() - r, r * 2, r * 2, 180, -180)
-            path.closeSubpath()
-        else:  # bottom
-            # Half-circle facing up (inside room, opposite of external bottom)
-            path.moveTo(pos.x() - r, pos.y())
-            path.arcTo(pos.x() - r, pos.y() - r, r * 2, r * 2, 180, 180)
-            path.closeSubpath()
-
-        painter.drawPath(path)
 
     def set_drag_target(self, is_target: bool) -> None:
         """Set whether this port is being targeted for a belt connection."""
