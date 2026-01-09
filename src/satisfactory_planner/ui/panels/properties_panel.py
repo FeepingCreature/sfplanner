@@ -22,6 +22,8 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import (
+    Belt,
+    Building,
     BuildingEfficiency,
     BuildingType,
     Document,
@@ -60,6 +62,7 @@ class PropertiesPanel(QWidget):
         self.command_stack = command_stack
         self.canvas: FactoryCanvas | None = None  # Set by MainWindow
         self._selected_ids: list[str] = []
+        self._scene_room_id: str | None = None  # Room ID for current selection
         self._updating = False  # Prevent signal loops
 
         self._setup_ui()
@@ -291,10 +294,34 @@ class PropertiesPanel(QWidget):
         self._update_recipe_combo()
         self._update_display()
 
-    def set_selection(self, selected_ids: list[str]) -> None:
-        """Update the displayed properties for the selection."""
+    def set_selection(self, selected_ids: list[str], scene_room_id: str | None = None) -> None:
+        """Update the displayed properties for the selection.
+
+        Args:
+            selected_ids: List of selected item IDs
+            scene_room_id: The room ID containing the selection, or None for root document
+        """
         self._selected_ids = selected_ids
+        self._scene_room_id = scene_room_id
         self._update_display()
+
+    def _get_scene(self) -> Document | Room:
+        """Get the current scene (Document or Room) based on selection context."""
+        if self._scene_room_id and self._scene_room_id in self.document.rooms:
+            return self.document.rooms[self._scene_room_id]
+        return self.document
+
+    def _get_building(self, building_id: str) -> Building | None:
+        """Get a building from the current scene."""
+
+        scene = self._get_scene()
+        return scene.buildings.get(building_id)
+
+    def _get_belt(self, belt_id: str) -> Belt | None:
+        """Get a belt from the current scene."""
+
+        scene = self._get_scene()
+        return scene.belts.get(belt_id)
 
     def _get_selected_room_item(self) -> tuple[RoomPlacement, Room] | None:
         """Get the selected RoomItem if exactly one room is selected.
@@ -332,8 +359,8 @@ class PropertiesPanel(QWidget):
         if len(self._selected_ids) == 1:
             item_id = self._selected_ids[0]
 
-            # Check if it's a building (search document and rooms)
-            building = self.document.find_building(item_id)
+            # Check if it's a building in the current scene
+            building = self._get_building(item_id)
             if building:
                 self.selection_label.setText(f"Building: {building.building_type.value}")
                 self.type_label.setText(building.building_type.value)
@@ -432,8 +459,8 @@ class PropertiesPanel(QWidget):
                 self.belt_group.hide()
                 self.room_group.hide()
 
-            # Check if it's a belt (search document and rooms)
-            elif belt := self.document.find_belt(item_id):
+            # Check if it's a belt in the current scene
+            elif belt := self._get_belt(item_id):
                 self.selection_label.setText(f"Belt Mk.{belt.tier}")
 
                 # Set tier combo
@@ -502,15 +529,11 @@ class PropertiesPanel(QWidget):
 
         if len(self._selected_ids) == 1:
             building_id = self._selected_ids[0]
-            building = self.document.buildings.get(building_id)
+            # Look up building in the correct scene
+            building = self._get_building(building_id)
             if building:
-                # Get scene from the building item itself
-                building_item = self.canvas._building_items.get(building_id)
-                scene_room_id = (
-                    self.canvas.get_scene_for_item(building_item) if building_item else None
-                )
                 cmd = SetClockSpeedCommand(
-                    scene_room_id=scene_room_id,
+                    scene_room_id=self._scene_room_id,
                     building_id=building_id,
                     old_clock_speed=building.clock_speed,
                     new_clock_speed=value / 100.0,
@@ -525,16 +548,12 @@ class PropertiesPanel(QWidget):
 
         if len(self._selected_ids) == 1:
             building_id = self._selected_ids[0]
-            building = self.document.buildings.get(building_id)
+            # Look up building in the correct scene
+            building = self._get_building(building_id)
             if building:
                 recipe_id = self.recipe_combo.currentData()
-                # Get scene from the building item itself
-                building_item = self.canvas._building_items.get(building_id)
-                scene_room_id = (
-                    self.canvas.get_scene_for_item(building_item) if building_item else None
-                )
                 cmd = SetRecipeCommand(
-                    scene_room_id=scene_room_id,
+                    scene_room_id=self._scene_room_id,
                     building_id=building_id,
                     old_recipe_id=building.recipe_id,
                     new_recipe_id=recipe_id,
@@ -549,26 +568,19 @@ class PropertiesPanel(QWidget):
 
         if len(self._selected_ids) == 1:
             belt_id = self._selected_ids[0]
-            # Use find_belt to search document AND rooms
-            belt = self.document.find_belt(belt_id)
+            # Look up belt in the correct scene
+            belt = self._get_belt(belt_id)
             if belt:
                 new_tier = self.tier_combo.currentData()
                 if new_tier and new_tier != belt.tier:
-                    # Get scene from the belt item itself
-                    belt_item = self.canvas._belt_items.get(belt_id)
-                    scene_room_id = self.canvas.get_scene_for_item(belt_item) if belt_item else None
                     cmd = SetBeltTierCommand(
-                        scene_room_id=scene_room_id,
+                        scene_room_id=self._scene_room_id,
                         belt_id=belt_id,
                         old_tier=belt.tier,
                         new_tier=new_tier,
                         canvas=self.canvas,
                     )
                     self.command_stack.execute(cmd)
-                    # Refresh the belt item appearance
-                    if belt_item:
-                        belt_item._setup_appearance()
-                        belt_item.update()
 
     def _on_room_name_changed(self) -> None:
         """Handle room name edit."""
@@ -767,19 +779,14 @@ class PropertiesPanel(QWidget):
             return
 
         building_id = self._selected_ids[0]
-        building = self.document.buildings.get(building_id)
+        building = self._get_building(building_id)
         if not building or building.building_type != BuildingType.MINER:
             return
 
         new_tier = self.miner_tier_combo.currentData()
         if new_tier is not None and new_tier != building.tier:
             building.tier = new_tier
-            # Refresh building item visual
-            building_item = self.canvas._building_items.get(building_id)
-            if building_item:
-                # Rebuild the rect with new tier info and repaint
-                building_item._setup_rect()
-                building_item.update()
+            # Notify mutation to trigger visual refresh
             self.canvas.notify_mutation()
 
     def _on_item_changed(self, index: int) -> None:
@@ -805,7 +812,7 @@ class PropertiesPanel(QWidget):
             return
 
         building_id = self._selected_ids[0]
-        building = self.document.buildings.get(building_id)
+        building = self._get_building(building_id)
         if not building:
             return
 
@@ -825,7 +832,7 @@ class PropertiesPanel(QWidget):
             return
 
         building_id = self._selected_ids[0]
-        building = self.document.buildings.get(building_id)
+        building = self._get_building(building_id)
         if not building or not self._is_source_type(building.building_type):
             return
 
@@ -835,11 +842,8 @@ class PropertiesPanel(QWidget):
         # The flow_builder handles these specially
         old_recipe_id = building.recipe_id
         if item_id != old_recipe_id and self.canvas is not None:
-            # Use SetRecipeCommand for undo support
-            building_item = self.canvas._building_items.get(building_id)
-            scene_room_id = self.canvas.get_scene_for_item(building_item) if building_item else None
             cmd = SetRecipeCommand(
-                scene_room_id=scene_room_id,
+                scene_room_id=self._scene_room_id,
                 building_id=building_id,
                 old_recipe_id=old_recipe_id,
                 new_recipe_id=item_id,

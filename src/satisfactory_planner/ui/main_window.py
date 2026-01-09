@@ -798,7 +798,9 @@ class MainWindow(QMainWindow):
         if self.current_tab and self.current_tab.canvas:
             self.current_tab.canvas.set_blueprint_placement_mode(room)  # type: ignore[arg-type]
 
-    def _update_selection_actions(self) -> None:
+    def _update_selection_actions(
+        self, selected_ids: list[str] | None = None, scene_room_id: str | None = None
+    ) -> None:
         """Update toolbar actions based on current selection."""
         if not self.current_tab or not self.current_tab.canvas:
             self.unlink_blueprint_action.setEnabled(False)
