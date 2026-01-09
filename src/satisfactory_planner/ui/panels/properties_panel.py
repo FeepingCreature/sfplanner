@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -43,6 +44,9 @@ if TYPE_CHECKING:
 
 class PropertiesPanel(QWidget):
     """Panel for editing properties of selected items."""
+
+    # Emitted when a blueprint is saved to the library
+    blueprint_saved = Signal()
 
     def __init__(
         self,
@@ -608,13 +612,8 @@ class PropertiesPanel(QWidget):
 
         save_blueprint(room)
 
-        # Try to refresh the library panel if accessible
-        # (MainWindow connects this)
-        QMessageBox.information(
-            self,
-            "Blueprint Saved",
-            f"Blueprint '{room.name}' saved to library.",
-        )
+        # Notify listeners (MainWindow connects this to refresh library panel)
+        self.blueprint_saved.emit()
 
     def _is_source_type(self, building_type: BuildingType) -> bool:
         """Check if building type uses item selector instead of recipe."""
