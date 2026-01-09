@@ -165,11 +165,10 @@ class RoomPortItem(QGraphicsObject):
 
         # Half-building inside room (to the right)
         building_rect = QRectF(0, -BUILDING_HEIGHT / 2, BUILDING_WIDTH, BUILDING_HEIGHT)
-        self._draw_half_building(painter, building_rect, "left")
+        self._draw_half_building(painter, building_rect)
 
-        # Connector on the room-facing side (left side of building)
-        connector_pos = QPointF(0, 0)
-        self._draw_connector(painter, connector_pos, color)
+        # Internal port nub on the far side of building
+        self._draw_port_nub(painter, QPointF(BUILDING_WIDTH, 0), color)
 
     def _paint_right_edge(self, painter: QPainter, color: QColor) -> None:
         """Paint port on right edge: building left, half-circle right."""
@@ -180,11 +179,10 @@ class RoomPortItem(QGraphicsObject):
         building_rect = QRectF(
             -BUILDING_WIDTH, -BUILDING_HEIGHT / 2, BUILDING_WIDTH, BUILDING_HEIGHT
         )
-        self._draw_half_building(painter, building_rect, "right")
+        self._draw_half_building(painter, building_rect)
 
-        # Connector on the room-facing side (right side of building)
-        connector_pos = QPointF(0, 0)
-        self._draw_connector(painter, connector_pos, color)
+        # Internal port nub on the far side of building
+        self._draw_port_nub(painter, QPointF(-BUILDING_WIDTH, 0), color)
 
     def _paint_top_edge(self, painter: QPainter, color: QColor) -> None:
         """Paint port on top edge: half-circle top, building bottom."""
@@ -193,11 +191,10 @@ class RoomPortItem(QGraphicsObject):
 
         # Half-building inside room (below)
         building_rect = QRectF(-BUILDING_HEIGHT / 2, 0, BUILDING_HEIGHT, BUILDING_WIDTH)
-        self._draw_half_building(painter, building_rect, "top")
+        self._draw_half_building(painter, building_rect)
 
-        # Connector on the room-facing side (top of building)
-        connector_pos = QPointF(0, 0)
-        self._draw_connector(painter, connector_pos, color)
+        # Internal port nub on the far side of building
+        self._draw_port_nub(painter, QPointF(0, BUILDING_WIDTH), color)
 
     def _paint_bottom_edge(self, painter: QPainter, color: QColor) -> None:
         """Paint port on bottom edge: building top, half-circle bottom."""
@@ -208,11 +205,10 @@ class RoomPortItem(QGraphicsObject):
         building_rect = QRectF(
             -BUILDING_HEIGHT / 2, -BUILDING_WIDTH, BUILDING_HEIGHT, BUILDING_WIDTH
         )
-        self._draw_half_building(painter, building_rect, "bottom")
+        self._draw_half_building(painter, building_rect)
 
-        # Connector on the room-facing side (bottom of building)
-        connector_pos = QPointF(0, 0)
-        self._draw_connector(painter, connector_pos, color)
+        # Internal port nub on the far side of building
+        self._draw_port_nub(painter, QPointF(0, -BUILDING_WIDTH), color)
 
     def _draw_half_circle(self, painter: QPainter, color: QColor, side: str) -> None:
         """Draw the half-circle on the room edge."""
@@ -276,7 +272,7 @@ class RoomPortItem(QGraphicsObject):
 
         painter.drawPath(path)
 
-    def _draw_half_building(self, painter: QPainter, rect: QRectF, edge: str) -> None:
+    def _draw_half_building(self, painter: QPainter, rect: QRectF) -> None:
         """Draw the half-building shape inside the room."""
         painter.setPen(QPen(BUILDING_BORDER, 1.5))
         painter.setBrush(QBrush(BUILDING_COLOR))
@@ -284,15 +280,10 @@ class RoomPortItem(QGraphicsObject):
         # Draw rounded rectangle for building body
         painter.drawRoundedRect(rect, 4, 4)
 
-    def _draw_connector(self, painter: QPainter, pos: QPointF, color: QColor) -> None:
-        """Draw the connector port on the building."""
-        if self._is_drag_target:
-            painter.setPen(QPen(QColor(255, 255, 255), 2))
-            painter.setBrush(QBrush(color.lighter(130)))
-        else:
-            painter.setPen(QPen(color.darker(120), 1.5))
-            painter.setBrush(QBrush(color))
-
+    def _draw_port_nub(self, painter: QPainter, pos: QPointF, color: QColor) -> None:
+        """Draw a small port nub where internal belts connect."""
+        painter.setPen(QPen(color.darker(120), 1.5))
+        painter.setBrush(QBrush(color))
         painter.drawEllipse(pos, CONNECTOR_RADIUS, CONNECTOR_RADIUS)
 
     def set_drag_target(self, is_target: bool) -> None:
