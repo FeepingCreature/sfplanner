@@ -1,8 +1,11 @@
 {
   "active_files": [
-    "src/satisfactory_planner/ui/main_window.py",
-    "src/satisfactory_planner/ui/items/room_item.py",
+    "src/satisfactory_planner/ui/commands/belt_commands.py",
+    "src/satisfactory_planner/ui/canvas/belt_connector.py",
     "CLAUDE.md",
+    "src/satisfactory_planner/ui/items/room_item.py",
+    "src/satisfactory_planner/ui/main_window.py",
+    "src/satisfactory_planner/ui/canvas/factory_canvas.py",
     "src/satisfactory_planner/ui/items/room_port_item.py"
   ],
   "request_log_entries": [
@@ -455,6 +458,51 @@
       "streaming": true,
       "actual_cost": 0.087227,
       "generation_id": "gen-1767968700-JXKkziQLJhRkTkUBy3AA"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968774467.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968774467.json",
+      "timestamp": 1767968774.4684064,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.09034075,
+      "generation_id": "gen-1767968774-SMPkqyMCOibcD1weCvLF"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968789102.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968789102.json",
+      "timestamp": 1767968789.1028874,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.242795,
+      "generation_id": "gen-1767968789-sjKSrPYNfkqyr4OtdKsr"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968795089.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968795089.json",
+      "timestamp": 1767968795.0896819,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.044332,
+      "generation_id": "gen-1767968795-7CjWlBtRiYLswYdI6TpA"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968805013.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968805013.json",
+      "timestamp": 1767968805.0141652,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05042,
+      "generation_id": "gen-1767968805-ghGMsqU5Hz3IVxbnPrfT"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968813329.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968813329.json",
+      "timestamp": 1767968813.3303552,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.12289925,
+      "generation_id": "gen-1767968813-CPVtrTBgVhOa6T6RQatk"
     }
   ],
   "messages": [
@@ -1581,6 +1629,129 @@
         },
         {
           "commit": "bea84a7142c1",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 3f15e4d3",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "That did it! Compact convo?\nThere's a weird issue where newly drawn belts inside a room don't show up until you move one of the attached rooms."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"from_id\": \"1\", \"to_id\": \"32\", \"summary\": \"## Summary of work done\\n\\n### Bug fixes completed:\\n\\n1. **DissolveRoomCommand crossing belts fix** (room_commands.py)\\n   - When dissolving a room, now properly handles PORT_IN/PORT_OUT buildings\\n   - Traces internal+external belts and recreates direct belts\\n   - Removes external belts that referenced the room placement\\n   - Skips PORT_IN/PORT_OUT when restoring (they're synthetic)\\n   - Added `get_belt_at_port` to Scene protocol in models.py\\n\\n2. **Undo/redo state timing fix** (base.py, main_window.py)\\n   - Problem: notify_mutation() called inside cmd.execute(), but command added to stack AFTER execute returns\\n   - Solution: CommandStack now inherits from QObject with `stack_changed = Signal()`\\n   - Signal fires AFTER command is on stack\\n   - _new_document() and _open_file() connect to signal\\n\\n3. **RoomPortItem belt drag fix** (room_port_item.py)\\n   - Removed unnecessary mousePressEvent override that was incorrectly starting belt drags\\n   - The PortItem children already handle belt connections properly\\n\\n4. **RoomPortItem registration fix** (room_item.py)\\n   - RoomPortItem wasn't being registered in _building_items\\n   - Added registration in _create_port_items() so belt_connector can find PORT buildings\\n\\n### Files currently in context:\\n- src/satisfactory_planner/ui/items/room_item.py\\n- src/satisfactory_planner/ui/items/room_port_item.py\\n\\n### Current issue:\\nNewly drawn belts inside a room don't show up until you move one of the attached buildings.\"}",
+            "name": "compact"
+          },
+          "id": "toolu_vrtx_01UQLv66Uxr6rjgme1tmUY3y",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01UQLv66Uxr6rjgme1tmUY3y",
+      "content": "{\"compact\": true, \"from_id\": \"1\", \"success\": true, \"summary\": \"## Summary of work done\\n\\n### Bug fixes completed:\\n\\n1. **DissolveRoomCommand crossing belts fix** (room_commands.py)\\n   - When dissolving a room, now properly handles PORT_IN/PORT_OUT buildings\\n   - Traces internal+external belts and recreates direct belts\\n   - Removes external belts that referenced the room placement\\n   - Skips PORT_IN/PORT_OUT when restoring (they're synthetic)\\n   - Added `get_belt_at_port` to Scene protocol in models.py\\n\\n2. **Undo/redo state timing fix** (base.py, main_window.py)\\n   - Problem: notify_mutation() called inside cmd.execute(), but command added to stack AFTER execute returns\\n   - Solution: CommandStack now inherits from QObject with `stack_changed = Signal()`\\n   - Signal fires AFTER command is on stack\\n   - _new_document() and _open_file() connect to signal\\n\\n3. **RoomPortItem belt drag fix** (room_port_item.py)\\n   - Removed unnecessary mousePressEvent override that was incorrectly starting belt drags\\n   - The PortItem children already handle belt connections properly\\n\\n4. **RoomPortItem registration fix** (room_item.py)\\n   - RoomPortItem wasn't being registered in _building_items\\n   - Added registration in _create_port_items() so belt_connector can find PORT buildings\\n\\n### Files currently in context:\\n- src/satisfactory_planner/ui/items/room_item.py\\n- src/satisfactory_planner/ui/items/room_port_item.py\\n\\n### Current issue:\\nNewly drawn belts inside a room don't show up until you move one of the attached buildings.\", \"to_id\": \"32\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now let's fix the belt visibility issue. The problem is likely that when a belt is created inside a room, the `BeltItem` isn't being added to the `RoomItem`'s children. Let me check how belt creation works:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_013xycgwGEyox2cbX8FCqHxR",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_013xycgwGEyox2cbX8FCqHxR",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at `belt_connector.py`, I see the issue. In `complete()`:\n\n```python\nsource_item = self.canvas._building_items.get(self._connect_start_building)\nscene_room_id = self.canvas.get_scene_for_item(source_item) if source_item else None\ncmd = ConnectBeltCommand(scene_room_id=scene_room_id, belt=belt, canvas=self.canvas)\n```\n\nThe problem is that `self.canvas._building_items` only contains top-level buildings. When connecting inside a room, the building is in `RoomItem._building_items`, not `canvas._building_items`. So `source_item` is None, and `scene_room_id` becomes None, and the belt gets added to the document instead of the room.\n\nBut wait - even if the belt IS being added to the right place, the issue is that `ConnectBeltCommand` needs to create the `BeltItem` and add it to the `RoomItem`, not just the canvas.\n\nLet me check `ConnectBeltCommand`:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/commands/belt_commands.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01BTnWMTzJjmvf211uLkg3ML",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BTnWMTzJjmvf211uLkg3ML",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/commands/belt_commands.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the problem now. Looking at `ConnectBeltCommand.execute()`:\n\n```python\nscene.add_belt(self.belt)\nself.canvas.add_belt_item(self.belt)\n```\n\nIt correctly adds the belt to the scene (which could be a Room), but then calls `canvas.add_belt_item()` which only handles top-level belts. When the belt is inside a room, we need to add the BeltItem to the RoomItem instead.\n\nAlso, in `belt_connector.py`, `get_scene_for_item()` fails because it's looking in `canvas._building_items` which doesn't contain room-internal buildings.\n\nLet me fix both issues:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas/factory_canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01VhEZc2cEXKV9hLMYisSqbc",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01VhEZc2cEXKV9hLMYisSqbc",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/factory_canvas.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the full picture now. Looking at `ConnectBeltCommand.execute()`:\n\n```python\nscene.add_belt(self.belt)\nself.canvas.add_belt_item(self.belt)\n```\n\nThe problem is two-fold:\n\n1. **In `belt_connector.py`**: `get_scene_for_item()` looks up `source_item` from `canvas._building_items`, but room-internal buildings are ALSO registered there (via `deferred_refresh` in `add_room_item`). So this should work... BUT the lookup is by the PORT building's ID, which IS in `_building_items` now after our last fix.\n\n2. **In `ConnectBeltCommand`**: `canvas.add_belt_item()` only handles document-level belts. For room-internal belts, we need to add to the `RoomItem._belt_items` instead.\n\nLet me fix `ConnectBeltCommand` to handle room-internal belts properly:\n\n<edit file=\"src/satisfactory_planner/ui/commands/belt_commands.py\">\n<search>\n    def execute(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.belt.id in scene.belts:\n            logger.warning(f\"ConnectBeltCommand.execute: belt {self.belt.id} already exists\")\n            return\n        scene.add_belt(self.belt)\n        self.canvas.add_belt_item(self.belt)\n        self.canvas.notify_mutation()\n</search>\n<replace>\n    def execute(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.belt.id in scene.belts:\n            logger.warning(f\"ConnectBeltCommand.execute: belt {self.belt.id} already exists\")\n            return\n        scene.add_belt(self.belt)\n        \n        # Add belt item to the correct container (room or canvas)\n        if self.scene_room_id:\n            # Belt is inside a room - add to the RoomItem\n            from satisfactory_planner.ui.items.room_item import RoomItem\n            for room_item in self.canvas._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:\n                    belt_item = room_item.add_belt_item(self.belt.id)\n                    if belt_item:\n                        self.canvas._belt_items[self.belt.id] = belt_item\n                    break\n        else:\n            self.canvas.add_belt_item(self.belt)\n        self.canvas.notify_mutation()\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/commands/belt_commands.py\">\n<search>\n    def undo(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.belt.id not in scene.belts:\n            logger.warning(f\"ConnectBeltCommand.undo: belt {self.belt.id} not found\")\n            return\n        scene.remove_belt(self.belt.id)\n        self.canvas.remove_belt_item(self.belt.id)\n        self.canvas.notify_mutation()\n</search>\n<replace>\n    def undo(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.belt.id not in scene.belts:\n            logger.warning(f\"ConnectBeltCommand.undo: belt {self.belt.id} not found\")\n            return\n        scene.remove_belt(self.belt.id)\n        \n        # Remove belt item from the correct container (room or canvas)\n        if self.scene_room_id:\n            from satisfactory_planner.ui.items.room_item import RoomItem\n            for room_item in self.canvas._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:\n                    room_item.remove_belt_item(self.belt.id)\n                    break\n        self.canvas.remove_belt_item(self.belt.id)\n        self.canvas.notify_mutation()\n</replace>\n</edit>\n\n<commit message=\"Fix belt creation inside rooms not showing until building moved\n\nConnectBeltCommand.execute() was calling canvas.add_belt_item() which\nonly handles document-level belts. For room-internal belts, we now add\nthe BeltItem to the RoomItem instead, and register it in canvas._belt_items.\n\nSame fix applied to undo().\"/>\n\nDone! The fix ensures that when a belt is created inside a room (`scene_room_id` is set), the `BeltItem` is added to the `RoomItem` via `room_item.add_belt_item()` instead of `canvas.add_belt_item()`. The belt item is still registered in `canvas._belt_items` so lookups work correctly.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/belt_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/belt_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/belt_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/belt_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "commit": "b28005c38afa",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
