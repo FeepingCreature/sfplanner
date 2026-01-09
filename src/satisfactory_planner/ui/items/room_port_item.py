@@ -23,16 +23,13 @@ from PySide6.QtWidgets import (
 from satisfactory_planner.ui.items.port_item import (
     INPUT_COLOR,
     OUTPUT_COLOR,
+    PORT_RADIUS,
     draw_half_circle_path,
 )
 
 if TYPE_CHECKING:
     from satisfactory_planner.ui.canvas import FactoryCanvas
     from satisfactory_planner.ui.items.room_item import RoomItem
-
-
-# Port visual constants
-HALF_CIRCLE_RADIUS = 10  # Radius of the half-circle on room edge
 
 
 class EdgeSide(Enum):
@@ -106,7 +103,7 @@ class RoomPortItem(QGraphicsObject):
 
     def boundingRect(self) -> QRectF:
         """Return bounding rectangle for the half-circle."""
-        r = HALF_CIRCLE_RADIUS
+        r = PORT_RADIUS
         # Half-circle centered on room edge:
         # - Input ports: half-circle inside room
         # - Output ports: half-circle outside room
@@ -194,7 +191,7 @@ class RoomPortItem(QGraphicsObject):
             ("bottom", False): 270,  # Input on bottom edge -> face up (inside)
         }
         angle = angle_map.get((side, self.is_output), 0)
-        path = draw_half_circle_path(HALF_CIRCLE_RADIUS, angle)
+        path = draw_half_circle_path(PORT_RADIUS, angle)
         painter.drawPath(path)
 
     def set_drag_target(self, is_target: bool) -> None:
