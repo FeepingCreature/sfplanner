@@ -1061,15 +1061,17 @@ class FactoryCanvas(QGraphicsView):
         if element_id in self._building_items:
             building_item = self._building_items[element_id]
             rect = building_item.boundingRect()
-            return building_item.pos() + rect.center()
+            # Use mapToScene to handle buildings inside rooms correctly
+            return building_item.mapToScene(rect.center())
 
         # Check belts - use midpoint
         if element_id in self._belt_items:
             belt_item = self._belt_items[element_id]
             path = belt_item.path()
             if path.length() > 0:
-                point: QPointF = path.pointAtPercent(0.5)
-                return point
+                # Use mapToScene to handle belts inside rooms correctly
+                point = path.pointAtPercent(0.5)
+                return belt_item.mapToScene(point)
 
         return None
 
