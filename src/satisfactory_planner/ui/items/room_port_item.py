@@ -96,7 +96,8 @@ class RoomPortItem(BuildingItem):
                 # Update rotation if needed
                 if self.building.rotation != rotation:
                     self.building.rotation = rotation
-                    self._create_ports()
+                    self._update_port_positions()
+                    self.update()
                 return new_pos
         elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
             self.update()

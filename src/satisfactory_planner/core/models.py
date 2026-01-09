@@ -226,12 +226,21 @@ class Building:
         return BUILDING_METADATA[self.building_type].num_outputs
 
     def _get_display_size(self) -> tuple[int, int]:
-        """Get display size - smaller for logistics buildings."""
-        # Splitter/Merger/PORT display at smaller size
+        """Get display size - smaller for logistics buildings.
+
+        For rotated PORT buildings, this returns the VISUAL size (after rotation),
+        so width/height are swapped for 90°/270° rotations.
+        """
+        # Splitter/Merger display at smaller square size
         if self.building_type in (BuildingType.SPLITTER, BuildingType.MERGER):
             return (LOGISTICS_DISPLAY_SIZE, LOGISTICS_DISPLAY_SIZE)
+        # PORT_IN/PORT_OUT use small display size, swap for rotation
         if self.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
-            return (LOGISTICS_DISPLAY_SIZE // 2, LOGISTICS_DISPLAY_SIZE)
+            base_w, base_h = LOGISTICS_DISPLAY_SIZE // 2, LOGISTICS_DISPLAY_SIZE
+            # Swap dimensions for 90°/270° rotation (top/bottom edges)
+            if self.rotation in (90, 270):
+                return (base_h, base_w)
+            return (base_w, base_h)
         return (self.width, self.height)
 
     def get_port_layout(
@@ -731,10 +740,10 @@ def snap_port_to_room_edge(
         (x, y, edge) where edge is 'left', 'right', 'top', or 'bottom'
     """
     spec = BUILDING_METADATA[port_type]
-    w, h = spec.width, spec.height
+    base_w, base_h = spec.width, spec.height
 
-    # Calculate distances to each edge (from building center)
-    center_x, center_y = target_x + w / 2, target_y + h / 2
+    # Calculate distances to each edge (from approximate center)
+    center_x, center_y = target_x + base_w / 2, target_y + base_h / 2
     dist_left = abs(center_x)
     dist_right = abs(center_x - room_width)
     dist_top = abs(center_y)
@@ -742,16 +751,23 @@ def snap_port_to_room_edge(
 
     min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
 
-    # Snap to edge, positioning so building sits ON the edge
+    # On left/right edges: use normal orientation (w x h)
+    # On top/bottom edges: rotated 90°, so effective size is (h x w)
     if min_dist == dist_left:
+        w, h = base_w, base_h
         clamped_y = max(0, min(target_y, room_height - h))
         return (0, clamped_y, "left")
     elif min_dist == dist_right:
+        w, h = base_w, base_h
         clamped_y = max(0, min(target_y, room_height - h))
         return (room_width - w, clamped_y, "right")
     elif min_dist == dist_top:
+        # Rotated 90°, so width/height swap for clamping
+        w, h = base_h, base_w
         clamped_x = max(0, min(target_x, room_width - w))
         return (clamped_x, 0, "top")
     else:  # dist_bottom
+        # Rotated 270°, so width/height swap for clamping
+        w, h = base_h, base_w
         clamped_x = max(0, min(target_x, room_width - w))
         return (clamped_x, room_height - h, "bottom")
