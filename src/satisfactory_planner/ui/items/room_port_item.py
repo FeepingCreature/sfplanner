@@ -75,20 +75,8 @@ class RoomPortItem(BuildingItem):
         self._is_drag_target = is_target
         self.update()
 
-    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
-        """Handle mouse press - start belt from internal output port, or drag.
-
-        PORT_IN has an internal OUTPUT (sends items into the room) - can start belt.
-        PORT_OUT has an internal INPUT (receives items from room) - cannot start belt.
-        """
-        if event.button() == Qt.MouseButton.LeftButton and not self.is_output:
-            # PORT_IN: start belt drag from its internal output connector
-            scene_pos = self.scenePos()
-            self.canvas.start_belt_drag(self.building.id, 0, scene_pos)
-            event.accept()
-            return
-        # Let BuildingItem handle selection and drag
-        super().mousePressEvent(event)
+    # No custom mousePressEvent needed - BuildingItem handles selection/drag,
+    # and the port's PortItem handles belt connections.
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Handle item changes - snap to room edge instead of grid."""

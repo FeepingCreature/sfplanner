@@ -382,6 +382,15 @@
       "streaming": true,
       "actual_cost": 0.06049225,
       "generation_id": "gen-1767968374-NeuSXTFOyYPC4p56Xg2o"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968543895.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968543895.json",
+      "timestamp": 1767968543.8967674,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.056539,
+      "generation_id": "gen-1767968544-gLt6LWG880NMrIMocTJE"
     }
   ],
   "messages": [
@@ -1302,6 +1311,39 @@
         },
         {
           "commit": "8fc73f43a28f",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 24b3f16e",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "I get the logic. But this code should just be completely removed. PORT_IN already *has* a port that can start a belt, clicking on PORT_IN on its own should not start a belt."
+    },
+    {
+      "role": "assistant",
+      "content": "You're right! The PORT_IN building already has a proper port item that handles belt connections. The special-case code in `mousePressEvent` is unnecessary and causes the weird behavior on PORT_OUT. Let me just remove it entirely:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle mouse press - start belt from internal output port, or drag.\n\n        PORT_IN has an internal OUTPUT (sends items into the room) - can start belt.\n        PORT_OUT has an internal INPUT (receives items from room) - cannot start belt.\n        \"\"\"\n        if event.button() == Qt.MouseButton.LeftButton and not self.is_output:\n            # PORT_IN: start belt drag from its internal output connector\n            scene_pos = self.scenePos()\n            self.canvas.start_belt_drag(self.building.id, 0, scene_pos)\n            event.accept()\n            return\n        # Let BuildingItem handle selection and drag\n        super().mousePressEvent(event)\n</search>\n<replace>\n    # No custom mousePressEvent needed - BuildingItem handles selection/drag,\n    # and the port's PortItem handles belt connections.\n</replace>\n</edit>\n\n<commit message=\"Remove unnecessary mousePressEvent from RoomPortItem\n\nThe PORT buildings already have PortItem children that handle belt\nconnections properly. The custom mousePressEvent was incorrectly\nstarting belt drags when clicking on the building body.\"/>\n\nDone! Removed the unnecessary `mousePressEvent` override. The `PortItem` children on PORT_IN/PORT_OUT buildings already handle belt connections through the normal mechanism.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "commit": "aa4bffc4615e",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
