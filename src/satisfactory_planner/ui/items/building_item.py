@@ -117,11 +117,9 @@ class BuildingItem(QGraphicsRectItem):
 
     def _setup_flags(self) -> None:
         """Configure item flags."""
-        # PORT buildings are fixed to room boundary - not movable/selectable
-        is_port = self.building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, not is_port)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, not is_port)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, not is_port)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
 
     def _setup_ports(self) -> None:
         """Create port items based on building type and rotation."""
@@ -130,82 +128,28 @@ class BuildingItem(QGraphicsRectItem):
         self._create_ports()
 
     def _create_ports(self) -> None:
-        """Create the actual port items (called by _setup_ports and _update_port_positions)."""
-        # PORT buildings are rendered entirely by RoomPortItem - skip port creation
-        if self.building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
-            return
-
+        """Create the actual port items from building's port layout."""
         w, h = self._get_display_size()
         rotation = self.building.rotation
 
-        # Port inset from edge
-        port_inset = 6
+        # Get port layout from the building model
+        input_layout, output_layout = self.building.get_port_layout()
 
-        if self.building.building_type == BuildingType.SPLITTER:
-            # Splitter: 1 input (left), 3 outputs (top, right, bottom)
-            # Base angles before rotation
-            input_angle = 180 + rotation
-            port = PortItem(False, 0, self.building.id, self.canvas, angle=input_angle)
+        # Create input ports
+        for i, (px, py, base_angle) in enumerate(input_layout):
+            angle = base_angle + rotation
+            port = PortItem(False, i, self.building.id, self.canvas, angle=angle)
             port.setParentItem(self)
-            port.setPos(*self._rotate_port_pos(port_inset, h / 2, w, h, rotation))
+            port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))
             self._input_ports.append(port)
 
-            # Outputs on top, right, bottom (base angles) - inset from edges
-            base_angles = [270, 0, 90]
-            base_positions = [(w / 2, port_inset), (w - port_inset, h / 2), (w / 2, h - port_inset)]
-            for i, (base_angle, (px, py)) in enumerate(
-                zip(base_angles, base_positions, strict=True)
-            ):
-                angle = base_angle + rotation
-                port = PortItem(True, i, self.building.id, self.canvas, angle=angle)
-                port.setParentItem(self)
-                port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))
-                self._output_ports.append(port)
-
-        elif self.building.building_type == BuildingType.MERGER:
-            # Merger: 3 inputs (top, left, bottom), 1 output (right)
-            base_angles = [270, 180, 90]
-            base_positions = [(w / 2, port_inset), (port_inset, h / 2), (w / 2, h - port_inset)]
-            for i, (base_angle, (px, py)) in enumerate(
-                zip(base_angles, base_positions, strict=True)
-            ):
-                angle = base_angle + rotation
-                port = PortItem(False, i, self.building.id, self.canvas, angle=angle)
-                port.setParentItem(self)
-                port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))
-                self._input_ports.append(port)
-
-            # Output on right - inset
-            output_angle = 0 + rotation
-            port = PortItem(True, 0, self.building.id, self.canvas, angle=output_angle)
+        # Create output ports
+        for i, (px, py, base_angle) in enumerate(output_layout):
+            angle = base_angle + rotation
+            port = PortItem(True, i, self.building.id, self.canvas, angle=angle)
             port.setParentItem(self)
-            port.setPos(*self._rotate_port_pos(w - port_inset, h / 2, w, h, rotation))
+            port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))
             self._output_ports.append(port)
-
-        else:
-            # Standard building: inputs on left, outputs on right
-            # Ports are positioned slightly inside the building edge
-            port_inset = 8
-
-            # Input ports (left side, inset)
-            for i in range(self.building.num_inputs):
-                spacing = h / (self.building.num_inputs + 1)
-                y = spacing * (i + 1)
-                input_angle = 180 + rotation
-                port = PortItem(False, i, self.building.id, self.canvas, angle=input_angle)
-                port.setParentItem(self)
-                port.setPos(*self._rotate_port_pos(port_inset, y, w, h, rotation))
-                self._input_ports.append(port)
-
-            # Output ports (right side, inset)
-            for i in range(self.building.num_outputs):
-                spacing = h / (self.building.num_outputs + 1)
-                y = spacing * (i + 1)
-                output_angle = 0 + rotation
-                port = PortItem(True, i, self.building.id, self.canvas, angle=output_angle)
-                port.setParentItem(self)
-                port.setPos(*self._rotate_port_pos(w - port_inset, y, w, h, rotation))
-                self._output_ports.append(port)
 
     def _rotate_port_pos(
         self, x: float, y: float, w: float, h: float, rotation: int
@@ -259,10 +203,6 @@ class BuildingItem(QGraphicsRectItem):
         widget: QWidget | None = None,
     ) -> None:
         """Paint the building."""
-        # PORT buildings are rendered by RoomPortItem - skip the building body
-        if self.building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
-            return
-
         w, h = self._get_display_size()
         rect = QRectF(0, 0, w, h)
 

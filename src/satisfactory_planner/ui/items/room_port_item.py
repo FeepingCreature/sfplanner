@@ -1,9 +1,7 @@
 """Graphics item for room ports - interactive belt connection points on room boundaries.
 
-Ports are rendered as:
-- A half-circle on the room edge (external connection point)
-- A half-building shape inside the room (internal connection point)
-- The whole unit is draggable along the room edge
+Ports are rendered as a half-circle on the room edge (external connection point).
+The PORT_IN/PORT_OUT building inside the room handles the internal connection.
 """
 
 from __future__ import annotations
@@ -29,12 +27,8 @@ if TYPE_CHECKING:
 
 # Port visual constants
 HALF_CIRCLE_RADIUS = 10  # Radius of the half-circle on room edge
-BUILDING_WIDTH = 30  # Width of the half-building inside
-BUILDING_HEIGHT = 24  # Height of the half-building
 INPUT_COLOR = QColor(220, 180, 50)  # Yellow for inputs
 OUTPUT_COLOR = QColor(50, 200, 100)  # Green for outputs
-BUILDING_COLOR = QColor(70, 70, 80)  # Dark gray for building body
-BUILDING_BORDER = QColor(100, 100, 110)  # Lighter border
 
 
 class EdgeSide(Enum):
@@ -107,36 +101,17 @@ class RoomPortItem(QGraphicsObject):
         return self.room_item.placement.id
 
     def boundingRect(self) -> QRectF:
-        """Return bounding rectangle for the port."""
-        # Account for half-circle outside + building inside
+        """Return bounding rectangle for the half-circle."""
+        r = HALF_CIRCLE_RADIUS
+        # The half-circle extends outward from the room edge
         if self._edge == EdgeSide.LEFT:
-            return QRectF(
-                -HALF_CIRCLE_RADIUS,
-                -BUILDING_HEIGHT / 2,
-                HALF_CIRCLE_RADIUS + BUILDING_WIDTH,
-                BUILDING_HEIGHT,
-            )
+            return QRectF(-r, -r, r, r * 2)
         elif self._edge == EdgeSide.RIGHT:
-            return QRectF(
-                -BUILDING_WIDTH,
-                -BUILDING_HEIGHT / 2,
-                BUILDING_WIDTH + HALF_CIRCLE_RADIUS,
-                BUILDING_HEIGHT,
-            )
+            return QRectF(0, -r, r, r * 2)
         elif self._edge == EdgeSide.TOP:
-            return QRectF(
-                -BUILDING_HEIGHT / 2,
-                -HALF_CIRCLE_RADIUS,
-                BUILDING_HEIGHT,
-                HALF_CIRCLE_RADIUS + BUILDING_WIDTH,
-            )
+            return QRectF(-r, -r, r * 2, r)
         else:  # BOTTOM
-            return QRectF(
-                -BUILDING_HEIGHT / 2,
-                -BUILDING_WIDTH,
-                BUILDING_HEIGHT,
-                BUILDING_WIDTH + HALF_CIRCLE_RADIUS,
-            )
+            return QRectF(-r, 0, r * 2, r)
 
     def paint(
         self,
@@ -158,44 +133,20 @@ class RoomPortItem(QGraphicsObject):
             self._paint_bottom_edge(painter, color)
 
     def _paint_left_edge(self, painter: QPainter, color: QColor) -> None:
-        """Paint port on left edge: half-circle left, building right."""
-        # Half-circle on the outside (left of room edge)
+        """Paint port on left edge: half-circle on room boundary."""
         self._draw_half_circle(painter, color, "left")
 
-        # Half-building inside room (to the right)
-        building_rect = QRectF(0, -BUILDING_HEIGHT / 2, BUILDING_WIDTH, BUILDING_HEIGHT)
-        self._draw_half_building(painter, building_rect)
-
     def _paint_right_edge(self, painter: QPainter, color: QColor) -> None:
-        """Paint port on right edge: building left, half-circle right."""
-        # Half-circle on the outside (right of room edge)
+        """Paint port on right edge: half-circle on room boundary."""
         self._draw_half_circle(painter, color, "right")
 
-        # Half-building inside room (to the left)
-        building_rect = QRectF(
-            -BUILDING_WIDTH, -BUILDING_HEIGHT / 2, BUILDING_WIDTH, BUILDING_HEIGHT
-        )
-        self._draw_half_building(painter, building_rect)
-
     def _paint_top_edge(self, painter: QPainter, color: QColor) -> None:
-        """Paint port on top edge: half-circle top, building bottom."""
-        # Half-circle on the outside (above room edge)
+        """Paint port on top edge: half-circle on room boundary."""
         self._draw_half_circle(painter, color, "top")
 
-        # Half-building inside room (below)
-        building_rect = QRectF(-BUILDING_HEIGHT / 2, 0, BUILDING_HEIGHT, BUILDING_WIDTH)
-        self._draw_half_building(painter, building_rect)
-
     def _paint_bottom_edge(self, painter: QPainter, color: QColor) -> None:
-        """Paint port on bottom edge: building top, half-circle bottom."""
-        # Half-circle on the outside (below room edge)
+        """Paint port on bottom edge: half-circle on room boundary."""
         self._draw_half_circle(painter, color, "bottom")
-
-        # Half-building inside room (above)
-        building_rect = QRectF(
-            -BUILDING_HEIGHT / 2, -BUILDING_WIDTH, BUILDING_HEIGHT, BUILDING_WIDTH
-        )
-        self._draw_half_building(painter, building_rect)
 
     def _draw_half_circle(self, painter: QPainter, color: QColor, side: str) -> None:
         """Draw the half-circle on the room edge."""
@@ -258,14 +209,6 @@ class RoomPortItem(QGraphicsObject):
             path.closeSubpath()
 
         painter.drawPath(path)
-
-    def _draw_half_building(self, painter: QPainter, rect: QRectF) -> None:
-        """Draw the half-building shape inside the room."""
-        painter.setPen(QPen(BUILDING_BORDER, 1.5))
-        painter.setBrush(QBrush(BUILDING_COLOR))
-
-        # Draw rounded rectangle for building body
-        painter.drawRoundedRect(rect, 4, 4)
 
     def set_drag_target(self, is_target: bool) -> None:
         """Set whether this port is being targeted for a belt connection."""
