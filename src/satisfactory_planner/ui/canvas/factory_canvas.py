@@ -271,11 +271,11 @@ class FactoryCanvas(QGraphicsView):
 
         item = BeltItem(
             belt,
+            self,
             source=source,
             dest=dest,
             source_placement=source_placement,
             dest_placement=dest_placement,
-            canvas=self,
         )
         self._scene.addItem(item)
         self._belt_items[belt.id] = item

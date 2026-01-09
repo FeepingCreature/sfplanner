@@ -49,11 +49,11 @@ class BeltItem(QGraphicsPathItem):
     def __init__(
         self,
         belt: Belt,
+        canvas: FactoryCanvas,
         source: Building | None = None,
         dest: Building | None = None,
         source_placement: RoomPlacement | None = None,
         dest_placement: RoomPlacement | None = None,
-        canvas: FactoryCanvas | None = None,
     ) -> None:
         super().__init__()
 

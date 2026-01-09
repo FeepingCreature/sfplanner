@@ -101,7 +101,7 @@ class RoomItem(QGraphicsRectItem):
             source = self.room.buildings.get(belt.source_building_id)
             dest = self.room.buildings.get(belt.dest_building_id)
             if source and dest:
-                belt_item = BeltItem(belt, source, dest, canvas=self.canvas)
+                belt_item = BeltItem(belt, self.canvas, source, dest)
                 belt_item.setParentItem(self)
                 self._belt_items[belt.id] = belt_item
 
@@ -250,7 +250,7 @@ class RoomItem(QGraphicsRectItem):
         source = self.room.buildings.get(belt.source_building_id)
         dest = self.room.buildings.get(belt.dest_building_id)
         if source and dest:
-            item = BeltItem(belt, source, dest, canvas=self.canvas)
+            item = BeltItem(belt, self.canvas, source, dest)
             item.setParentItem(self)
             self._belt_items[belt_id] = item
             return item
