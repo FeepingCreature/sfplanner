@@ -13,10 +13,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QPointF, Qt
+from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import (
     QGraphicsItem,
-    QGraphicsSceneMouseEvent,
 )
 
 from satisfactory_planner.core.models import Building, BuildingType, snap_port_to_room_edge

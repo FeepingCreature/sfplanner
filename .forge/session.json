@@ -1,0 +1,258 @@
+{
+  "active_files": [
+    "src/satisfactory_planner/ui/main_window.py",
+    "src/satisfactory_planner/ui/commands/belt_commands.py",
+    "src/satisfactory_planner/ui/canvas/factory_canvas.py",
+    "src/satisfactory_planner/ui/canvas/drawing_tools.py",
+    "CLAUDE.md",
+    "src/satisfactory_planner/ui/items/room_port_item.py"
+  ],
+  "request_log_entries": [
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767970074193.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767970074193.json",
+      "timestamp": 1767970074.1938303,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.09580375,
+      "generation_id": "gen-1767970074-tScA8flo5Z739d42JraY"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767970080334.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767970080334.json",
+      "timestamp": 1767970080.3349717,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1277725,
+      "generation_id": "gen-1767970080-d14mXmMFGVzylIdU7UHZ"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767970089569.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767970089569.json",
+      "timestamp": 1767970089.5696077,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.163204,
+      "generation_id": "gen-1767970089-aGUGNQK7oqNTp36r6Srb"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767970094072.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767970094072.json",
+      "timestamp": 1767970094.073452,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.14303375,
+      "generation_id": "gen-1767970094-lr67rSTAR4kKTx5Iy4CD"
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "\u2705 Generated summaries for 85 files",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Hi! Let's remove the select/pan/box buttons from the toolbar and the downstream code of it, it's confusing to have mouse actions stateful."
+    },
+    {
+      "role": "assistant",
+      "content": "I'll remove the select/pan/box select tool buttons from the toolbar and the related stateful mouse mode code. Let me first look at the main window and canvas to understand what needs to be removed.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/main_window.py\", \"src/satisfactory_planner/ui/canvas/factory_canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01LCHPfUiew1UwFyUUnvjj36",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01LCHPfUiew1UwFyUUnvjj36",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/main_window.py\", \"src/satisfactory_planner/ui/canvas/factory_canvas.py\"], \"message\": \"Added 2 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at the code, I need to:\n\n1. Remove the tool button group (Select, Pan, Box Select) from the toolbar in `main_window.py`\n2. Remove the `_set_tool_mode` method and related button connections\n3. Simplify `ToolMode` enum - keep `CREATE_ROOM` for the Room button, but remove `SELECT`, `BOX_SELECT`, `PAN`\n4. Update canvas to always behave in \"select\" mode (current default behavior)\n\nLet me also check what other files reference `ToolMode` to understand the full scope:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"ToolMode\\\\.\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01FvvvbW2rMPVaQ5aHqfYFyy",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01FvvvbW2rMPVaQ5aHqfYFyy",
+      "content": "{\"message\": \"Found 10 matches (showing 10 of 11 total matches)\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/drawing_tools.py:137 \\u2500\\u2500\\n     134 |         if rect.width() < 50 or rect.height() < 50:\\n     135 |             logger.info(\\\"Room too small - minimum 50x50\\\")\\n     136 |             self.cancel_room_create()\\n>>>  137 |             self.canvas.set_tool_mode(ToolMode.SELECT)\\n     138 |             return\\n     139 | \\n     140 |         # Determine parent scene\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/drawing_tools.py:153 \\u2500\\u2500\\n     150 |             if rect.intersects(building_rect) and not rect.contains(building_rect):\\n     151 |                 logger.warning(\\\"Room boundary cannot intersect buildings\\\")\\n     152 |                 self.cancel_room_create()\\n>>>  153 |                 self.canvas.set_tool_mode(ToolMode.SELECT)\\n     154 |                 return\\n     155 | \\n     156 |         # Collect contained buildings\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/drawing_tools.py:185 \\u2500\\u2500\\n     182 |         self.canvas.command_stack.execute(cmd)\\n     183 | \\n     184 |         self.cancel_room_create()\\n>>>  185 |         self.canvas.set_tool_mode(ToolMode.SELECT)\\n     186 | \\n     187 |     def cancel_room_create(self) -> None:\\n     188 |         \\\"\\\"\\\"Cancel the current room creation.\\\"\\\"\\\"\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:101 \\u2500\\u2500\\n      98 |         self._pan_start = QPointF()\\n      99 |         self._grid_snap = True\\n     100 |         self._grid_size = DEFAULT_GRID_SIZE\\n>>>  101 |         self._tool_mode: ToolMode = ToolMode.SELECT\\n     102 | \\n     103 |         # Item tracking\\n     104 |         self._building_items: dict[str, BuildingItem] = {}\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:194 \\u2500\\u2500\\n     191 |     def set_tool_mode(self, mode: ToolMode) -> None:\\n     192 |         \\\"\\\"\\\"Set the active tool mode.\\\"\\\"\\\"\\n     193 |         self._tool_mode = mode\\n>>>  194 |         if mode == ToolMode.PAN:\\n     195 |             self.setCursor(Qt.CursorShape.OpenHandCursor)\\n     196 |         elif mode == ToolMode.BOX_SELECT or mode == ToolMode.CREATE_ROOM:\\n     197 |             self.setCursor(Qt.CursorShape.CrossCursor)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:196 \\u2500\\u2500\\n     193 |         self._tool_mode = mode\\n     194 |         if mode == ToolMode.PAN:\\n     195 |             self.setCursor(Qt.CursorShape.OpenHandCursor)\\n>>>  196 |         elif mode == ToolMode.BOX_SELECT or mode == ToolMode.CREATE_ROOM:\\n     197 |             self.setCursor(Qt.CursorShape.CrossCursor)\\n     198 |         else:\\n     199 |             self.setCursor(Qt.CursorShape.ArrowCursor)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:469 \\u2500\\u2500\\n     466 |                 return\\n     467 | \\n     468 |             # Box select mode\\n>>>  469 |             if self._tool_mode == ToolMode.BOX_SELECT:\\n     470 |                 self._drawing.start_box_select(scene_pos)\\n     471 |                 return\\n     472 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:474 \\u2500\\u2500\\n     471 |                 return\\n     472 | \\n     473 |             # Room creation mode\\n>>>  474 |             if self._tool_mode == ToolMode.CREATE_ROOM:\\n     475 |                 self._drawing.start_room_create(scene_pos)\\n     476 |                 return\\n     477 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:479 \\u2500\\u2500\\n     476 |                 return\\n     477 | \\n     478 |             # Select mode - start box select on empty space\\n>>>  479 |             if self._tool_mode == ToolMode.SELECT:\\n     480 |                 item_at_pos = self.itemAt(event.pos())\\n     481 |                 if item_at_pos is None or item_at_pos is self._selection.outline_item:\\n     482 |                     self._drawing.start_box_select(scene_pos)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:527 \\u2500\\u2500\\n     524 |             and self._is_panning\\n     525 |         ):\\n     526 |             self._is_panning = False\\n>>>  527 |             if self._placement.is_placing or self._tool_mode == ToolMode.BOX_SELECT:\\n     528 |                 self.setCursor(Qt.CursorShape.CrossCursor)\\n     529 |             elif self._tool_mode == ToolMode.PAN:\\n     530 |                 self.setCursor(Qt.CursorShape.OpenHandCursor)\", \"success\": true, \"total_matches\": 11}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"ToolMode\\\\.\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 10 matches (showing 10 of 11 total matches)\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/drawing_tools.py:137 \\u2500\\u2500\\n     134 |         if rect.width() < 50 or rect.height() < 50:\\n     135 |             logger.info(\\\"Room too small - minimum 50x50\\\")\\n     136 |             self.cancel_room_create()\\n>>>  137 |             self.canvas.set_tool_mode(ToolMode.SELECT)\\n     138 |             return\\n     139 | \\n     140 |         # Determine parent scene\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/drawing_tools.py:153 \\u2500\\u2500\\n     150 |             if rect.intersects(building_rect) and not rect.contains(building_rect):\\n     151 |                 logger.warning(\\\"Room boundary cannot intersect buildings\\\")\\n     152 |                 self.cancel_room_create()\\n>>>  153 |                 self.canvas.set_tool_mode(ToolMode.SELECT)\\n     154 |                 return\\n     155 | \\n     156 |         # Collect contained buildings\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/drawing_tools.py:185 \\u2500\\u2500\\n     182 |         self.canvas.command_stack.execute(cmd)\\n     183 | \\n     184 |         self.cancel_room_create()\\n>>>  185 |         self.canvas.set_tool_mode(ToolMode.SELECT)\\n     186 | \\n     187 |     def cancel_room_create(self) -> None:\\n     188 |         \\\"\\\"\\\"Cancel the current room creation.\\\"\\\"\\\"\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:101 \\u2500\\u2500\\n      98 |         self._pan_start = QPointF()\\n      99 |         self._grid_snap = True\\n     100 |         self._grid_size = DEFAULT_GRID_SIZE\\n>>>  101 |         self._tool_mode: ToolMode = ToolMode.SELECT\\n     102 | \\n     103 |         # Item tracking\\n     104 |         self._building_items: dict[str, BuildingItem] = {}\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:194 \\u2500\\u2500\\n     191 |     def set_tool_mode(self, mode: ToolMode) -> None:\\n     192 |         \\\"\\\"\\\"Set the active tool mode.\\\"\\\"\\\"\\n     193 |         self._tool_mode = mode\\n>>>  194 |         if mode == ToolMode.PAN:\\n     195 |             self.setCursor(Qt.CursorShape.OpenHandCursor)\\n     196 |         elif mode == ToolMode.BOX_SELECT or mode == ToolMode.CREATE_ROOM:\\n     197 |             self.setCursor(Qt.CursorShape.CrossCursor)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:196 \\u2500\\u2500\\n     193 |         self._tool_mode = mode\\n     194 |         if mode == ToolMode.PAN:\\n     195 |             self.setCursor(Qt.CursorShape.OpenHandCursor)\\n>>>  196 |         elif mode == ToolMode.BOX_SELECT or mode == ToolMode.CREATE_ROOM:\\n     197 |             self.setCursor(Qt.CursorShape.CrossCursor)\\n     198 |         else:\\n     199 |             self.setCursor(Qt.CursorShape.ArrowCursor)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:469 \\u2500\\u2500\\n     466 |                 return\\n     467 | \\n     468 |             # Box select mode\\n>>>  469 |             if self._tool_mode == ToolMode.BOX_SELECT:\\n     470 |                 self._drawing.start_box_select(scene_pos)\\n     471 |                 return\\n     472 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:474 \\u2500\\u2500\\n     471 |                 return\\n     472 | \\n     473 |             # Room creation mode\\n>>>  474 |             if self._tool_mode == ToolMode.CREATE_ROOM:\\n     475 |                 self._drawing.start_room_create(scene_pos)\\n     476 |                 return\\n     477 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:479 \\u2500\\u2500\\n     476 |                 return\\n     477 | \\n     478 |             # Select mode - start box select on empty space\\n>>>  479 |             if self._tool_mode == ToolMode.SELECT:\\n     480 |                 item_at_pos = self.itemAt(event.pos())\\n     481 |                 if item_at_pos is None or item_at_pos is self._selection.outline_item:\\n     482 |                     self._drawing.start_box_select(scene_pos)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:527 \\u2500\\u2500\\n     524 |             and self._is_panning\\n     525 |         ):\\n     526 |             self._is_panning = False\\n>>>  527 |             if self._placement.is_placing or self._tool_mode == ToolMode.BOX_SELECT:\\n     528 |                 self.setCursor(Qt.CursorShape.CrossCursor)\\n     529 |             elif self._tool_mode == ToolMode.PAN:\\n     530 |                 self.setCursor(Qt.CursorShape.OpenHandCursor)\",\n  \"success\": true,\n  \"total_matches\": 11\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me also load the drawing_tools.py since it references ToolMode:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas/drawing_tools.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01TCSqJTXmLJRwxH5TdGax2L",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01TCSqJTXmLJRwxH5TdGax2L",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/drawing_tools.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I have a clear picture. Let me make all the changes:\n\n1. Remove `SELECT`, `BOX_SELECT`, `PAN` from `ToolMode` enum (keep only `CREATE_ROOM`)\n2. Remove the tool button group from the toolbar\n3. Remove `_set_tool_mode` method from main_window\n4. Update `set_tool_mode` in factory_canvas to only handle `CREATE_ROOM`\n5. Update `drawing_tools.py` to use `None` or a simpler approach instead of `ToolMode.SELECT`\n6. Simplify mouse handling logic - always behave as \"select\" mode\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\nclass ToolMode(Enum):\n    \"\"\"Active tool mode for the canvas.\"\"\"\n\n    SELECT = auto()\n    BOX_SELECT = auto()\n    PAN = auto()\n    CREATE_ROOM = auto()\n</search>\n<replace>\nclass ToolMode(Enum):\n    \"\"\"Active tool mode for the canvas.\n\n    Most interactions are stateless (select, pan via middle-mouse, box select on empty space).\n    Only CREATE_ROOM requires an explicit mode toggle.\n    \"\"\"\n\n    CREATE_ROOM = auto()\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n        self._grid_snap = True\n        self._grid_size = DEFAULT_GRID_SIZE\n        self._tool_mode: ToolMode = ToolMode.SELECT\n</search>\n<replace>\n        self._grid_snap = True\n        self._grid_size = DEFAULT_GRID_SIZE\n        self._tool_mode: ToolMode | None = None\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    @property\n    def tool_mode(self) -> ToolMode:\n        return self._tool_mode\n\n    def set_tool_mode(self, mode: ToolMode) -> None:\n        \"\"\"Set the active tool mode.\"\"\"\n        self._tool_mode = mode\n        if mode == ToolMode.PAN:\n            self.setCursor(Qt.CursorShape.OpenHandCursor)\n        elif mode == ToolMode.BOX_SELECT or mode == ToolMode.CREATE_ROOM:\n            self.setCursor(Qt.CursorShape.CrossCursor)\n        else:\n            self.setCursor(Qt.CursorShape.ArrowCursor)\n        self.tool_mode_changed.emit(mode)\n</search>\n<replace>\n    @property\n    def tool_mode(self) -> ToolMode | None:\n        return self._tool_mode\n\n    def set_tool_mode(self, mode: ToolMode | None) -> None:\n        \"\"\"Set the active tool mode.\"\"\"\n        self._tool_mode = mode\n        if mode == ToolMode.CREATE_ROOM:\n            self.setCursor(Qt.CursorShape.CrossCursor)\n        else:\n            self.setCursor(Qt.CursorShape.ArrowCursor)\n        self.tool_mode_changed.emit(mode)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n            # Box select mode\n            if self._tool_mode == ToolMode.BOX_SELECT:\n                self._drawing.start_box_select(scene_pos)\n                return\n\n            # Room creation mode\n            if self._tool_mode == ToolMode.CREATE_ROOM:\n                self._drawing.start_room_create(scene_pos)\n                return\n\n            # Select mode - start box select on empty space\n            if self._tool_mode == ToolMode.SELECT:\n                item_at_pos = self.itemAt(event.pos())\n                if item_at_pos is None or item_at_pos is self._selection.outline_item:\n                    self._drawing.start_box_select(scene_pos)\n                    return\n</search>\n<replace>\n            # Room creation mode\n            if self._tool_mode == ToolMode.CREATE_ROOM:\n                self._drawing.start_room_create(scene_pos)\n                return\n\n            # Normal mode - start box select on empty space\n            item_at_pos = self.itemAt(event.pos())\n            if item_at_pos is None or item_at_pos is self._selection.outline_item:\n                self._drawing.start_box_select(scene_pos)\n                return\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n            self._is_panning = False\n            if self._placement.is_placing or self._tool_mode == ToolMode.BOX_SELECT:\n                self.setCursor(Qt.CursorShape.CrossCursor)\n            elif self._tool_mode == ToolMode.PAN:\n                self.setCursor(Qt.CursorShape.OpenHandCursor)\n            else:\n                self.setCursor(Qt.CursorShape.ArrowCursor)\n            return\n</search>\n<replace>\n            self._is_panning = False\n            if self._placement.is_placing or self._tool_mode == ToolMode.CREATE_ROOM:\n                self.setCursor(Qt.CursorShape.CrossCursor)\n            else:\n                self.setCursor(Qt.CursorShape.ArrowCursor)\n            return\n</replace>\n</edit>\n\nNow update drawing_tools.py to use `None` instead of `ToolMode.SELECT`:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/drawing_tools.py\">\n<search>\n    def complete_room_create(self) -> None:\n        \"\"\"Complete room creation, validating and creating the room.\"\"\"\n        from satisfactory_planner.ui.canvas.factory_canvas import ToolMode\n\n        if not self._room_create_rect:\n            self.cancel_room_create()\n            return\n\n        rect = self._room_create_rect.rect()\n\n        # Validate minimum size\n        if rect.width() < 50 or rect.height() < 50:\n            logger.info(\"Room too small - minimum 50x50\")\n            self.cancel_room_create()\n            self.canvas.set_tool_mode(ToolMode.SELECT)\n            return\n\n        # Determine parent scene\n        parent_scene_room_id = self.canvas.get_room_at_point(rect.topLeft())\n        if parent_scene_room_id:\n            parent_scene: Scene = self.canvas.document.rooms[parent_scene_room_id]\n        else:\n            parent_scene = self.canvas.document\n\n        # Validate no intersected buildings\n        for building in parent_scene.buildings.values():\n            building_rect = self._get_building_rect(building)\n            if rect.intersects(building_rect) and not rect.contains(building_rect):\n                logger.warning(\"Room boundary cannot intersect buildings\")\n                self.cancel_room_create()\n                self.canvas.set_tool_mode(ToolMode.SELECT)\n                return\n\n        # Collect contained buildings\n        contained_building_ids: list[str] = []\n        for building in parent_scene.buildings.values():\n            if rect.contains(self._get_building_rect(building)):\n                contained_building_ids.append(building.id)\n\n        # Collect contained and crossing belts\n        contained_belt_ids: list[str] = []\n        crossing_belts: list[Belt] = []\n        for belt in parent_scene.belts.values():\n            source_inside = belt.source_building_id in contained_building_ids\n            dest_inside = belt.dest_building_id in contained_building_ids\n            if source_inside and dest_inside:\n                contained_belt_ids.append(belt.id)\n            elif source_inside or dest_inside:\n                crossing_belts.append(belt)\n\n        # Create room command\n        cmd = CreateRoomCommand(\n            parent_scene_room_id=parent_scene_room_id,\n            rect=(rect.x(), rect.y(), rect.width(), rect.height()),\n            building_ids=tuple(contained_building_ids),\n            belt_ids=tuple(contained_belt_ids),\n            original_crossing_belts=tuple(crossing_belts),\n            canvas=self.canvas,\n        )\n        self.canvas.command_stack.execute(cmd)\n\n        self.cancel_room_create()\n        self.canvas.set_tool_mode(ToolMode.SELECT)\n</search>\n<replace>\n    def complete_room_create(self) -> None:\n        \"\"\"Complete room creation, validating and creating the room.\"\"\"\n        if not self._room_create_rect:\n            self.cancel_room_create()\n            return\n\n        rect = self._room_create_rect.rect()\n\n        # Validate minimum size\n        if rect.width() < 50 or rect.height() < 50:\n            logger.info(\"Room too small - minimum 50x50\")\n            self.cancel_room_create()\n            self.canvas.set_tool_mode(None)\n            return\n\n        # Determine parent scene\n        parent_scene_room_id = self.canvas.get_room_at_point(rect.topLeft())\n        if parent_scene_room_id:\n            parent_scene: Scene = self.canvas.document.rooms[parent_scene_room_id]\n        else:\n            parent_scene = self.canvas.document\n\n        # Validate no intersected buildings\n        for building in parent_scene.buildings.values():\n            building_rect = self._get_building_rect(building)\n            if rect.intersects(building_rect) and not rect.contains(building_rect):\n                logger.warning(\"Room boundary cannot intersect buildings\")\n                self.cancel_room_create()\n                self.canvas.set_tool_mode(None)\n                return\n\n        # Collect contained buildings\n        contained_building_ids: list[str] = []\n        for building in parent_scene.buildings.values():\n            if rect.contains(self._get_building_rect(building)):\n                contained_building_ids.append(building.id)\n\n        # Collect contained and crossing belts\n        contained_belt_ids: list[str] = []\n        crossing_belts: list[Belt] = []\n        for belt in parent_scene.belts.values():\n            source_inside = belt.source_building_id in contained_building_ids\n            dest_inside = belt.dest_building_id in contained_building_ids\n            if source_inside and dest_inside:\n                contained_belt_ids.append(belt.id)\n            elif source_inside or dest_inside:\n                crossing_belts.append(belt)\n\n        # Create room command\n        cmd = CreateRoomCommand(\n            parent_scene_room_id=parent_scene_room_id,\n            rect=(rect.x(), rect.y(), rect.width(), rect.height()),\n            building_ids=tuple(contained_building_ids),\n            belt_ids=tuple(contained_belt_ids),\n            original_crossing_belts=tuple(crossing_belts),\n            canvas=self.canvas,\n        )\n        self.canvas.command_stack.execute(cmd)\n\n        self.cancel_room_create()\n        self.canvas.set_tool_mode(None)\n</replace>\n</edit>\n\nNow update main_window.py to remove the tool buttons and related code:\n\n<edit file=\"src/satisfactory_planner/ui/main_window.py\">\n<search>\nfrom PySide6.QtWidgets import (\n    QButtonGroup,\n    QComboBox,\n    QDialog,\n    QFileDialog,\n    QLabel,\n    QMainWindow,\n    QMessageBox,\n    QStyle,\n    QTabWidget,\n    QToolBar,\n    QToolButton,\n)\n</search>\n<replace>\nfrom PySide6.QtWidgets import (\n    QComboBox,\n    QDialog,\n    QFileDialog,\n    QLabel,\n    QMainWindow,\n    QMessageBox,\n    QStyle,\n    QTabWidget,\n    QToolBar,\n)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/main_window.py\">\n<search>\n        toolbar.addSeparator()\n\n        # === 3. Selection/Interaction Tools ===\n        self.tool_group = QButtonGroup(self)\n        self.tool_group.setExclusive(True)\n\n        self.select_tool = QToolButton()\n        self.select_tool.setText(\"Select\")\n        self.select_tool.setToolTip(\"Select tool (V)\")\n        self.select_tool.setCheckable(True)\n        self.select_tool.setChecked(True)\n        self.tool_group.addButton(self.select_tool)\n        toolbar.addWidget(self.select_tool)\n\n        self.pan_tool = QToolButton()\n        self.pan_tool.setText(\"Pan\")\n        self.pan_tool.setToolTip(\"Pan tool (H) - also: middle-drag or space+drag\")\n        self.pan_tool.setCheckable(True)\n        self.tool_group.addButton(self.pan_tool)\n        toolbar.addWidget(self.pan_tool)\n\n        self.box_select_tool = QToolButton()\n        self.box_select_tool.setText(\"Box Select\")\n        self.box_select_tool.setToolTip(\"Box select tool (B)\")\n        self.box_select_tool.setCheckable(True)\n        self.tool_group.addButton(self.box_select_tool)\n        toolbar.addWidget(self.box_select_tool)\n\n        # Connect tool buttons to mode changes\n        self.select_tool.clicked.connect(lambda: self._set_tool_mode(\"select\"))\n        self.pan_tool.clicked.connect(lambda: self._set_tool_mode(\"pan\"))\n        self.box_select_tool.clicked.connect(lambda: self._set_tool_mode(\"box_select\"))\n\n        toolbar.addSeparator()\n\n        # === 4. Creation Tools ===\n</search>\n<replace>\n        toolbar.addSeparator()\n\n        # === 3. Creation Tools ===\n</replace>\n</edit>\n\nNow remove the `_set_tool_mode` method:\n\n<edit file=\"src/satisfactory_planner/ui/main_window.py\">\n<search>\n    def _set_tool_mode(self, mode: str) -> None:\n        \"\"\"Set the tool mode on the current canvas.\"\"\"\n        if not self.current_tab or not self.current_tab.canvas:\n            return\n\n        from satisfactory_planner.ui.canvas import ToolMode\n\n        mode_map = {\n            \"select\": ToolMode.SELECT,\n            \"pan\": ToolMode.PAN,\n            \"box_select\": ToolMode.BOX_SELECT,\n        }\n        if mode in mode_map:\n            self.current_tab.canvas.set_tool_mode(mode_map[mode])\n\n</search>\n<replace>\n</replace>\n</edit>\n\nUpdate `_toggle_room_creation` to use `None` instead of `ToolMode.SELECT`:\n\n<edit file=\"src/satisfactory_planner/ui/main_window.py\">\n<search>\n    def _toggle_room_creation(self, checked: bool) -> None:\n        \"\"\"Toggle room creation mode on current canvas.\"\"\"\n        if not self.current_tab or not self.current_tab.canvas:\n            return\n\n        from satisfactory_planner.ui.canvas import ToolMode\n\n        if checked:\n            self.current_tab.canvas.set_tool_mode(ToolMode.CREATE_ROOM)\n        else:\n            self.current_tab.canvas.set_tool_mode(ToolMode.SELECT)\n</search>\n<replace>\n    def _toggle_room_creation(self, checked: bool) -> None:\n        \"\"\"Toggle room creation mode on current canvas.\"\"\"\n        if not self.current_tab or not self.current_tab.canvas:\n            return\n\n        from satisfactory_planner.ui.canvas import ToolMode\n\n        if checked:\n            self.current_tab.canvas.set_tool_mode(ToolMode.CREATE_ROOM)\n        else:\n            self.current_tab.canvas.set_tool_mode(None)\n</replace>\n</edit>\n\nUpdate `_on_tool_mode_changed` to check against `CREATE_ROOM` properly:\n\n<edit file=\"src/satisfactory_planner/ui/main_window.py\">\n<search>\n    def _on_tool_mode_changed(self, mode: object) -> None:\n        \"\"\"Handle tool mode changes from canvas.\"\"\"\n        from satisfactory_planner.ui.canvas import ToolMode\n\n        # Update Room button state without retriggering the toggle\n        if mode != ToolMode.CREATE_ROOM:\n            self.create_room_action.blockSignals(True)\n            self.create_room_action.setChecked(False)\n            self.create_room_action.blockSignals(False)\n</search>\n<replace>\n    def _on_tool_mode_changed(self, mode: object) -> None:\n        \"\"\"Handle tool mode changes from canvas.\"\"\"\n        from satisfactory_planner.ui.canvas import ToolMode\n\n        # Update Room button state without retriggering the toggle\n        is_room_mode = mode == ToolMode.CREATE_ROOM\n        self.create_room_action.blockSignals(True)\n        self.create_room_action.setChecked(is_room_mode)\n        self.create_room_action.blockSignals(False)\n</replace>\n</edit>\n\nNow let's run the tests to make sure everything works:\n\n<run_tests/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/drawing_tools.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/drawing_tools.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/main_window.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/main_window.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/main_window.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/main_window.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/main_window.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/main_window.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/main_window.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/main_window.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/main_window.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/main_window.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nFound 6 errors (6 fixed, 0 remaining).\nruff format src/ tests/ spikes/\n2 files reformatted, 76 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 47 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_txbatyaj\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_txbatyaj\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py",
+            "src/satisfactory_planner/ui/commands/belt_commands.py",
+            "src/satisfactory_planner/ui/items/room_port_item.py",
+            "src/satisfactory_planner/ui/main_window.py"
+          ],
+          "output": "ruff check --fix src/ tests/ spikes/\nFound 6 errors (6 fixed, 0 remaining).\nruff format src/ tests/ spikes/\n2 files reformatted, 76 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 47 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_txbatyaj\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_txbatyaj\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "files_modified",
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        }
+      ]
+    }
+  ]
+}

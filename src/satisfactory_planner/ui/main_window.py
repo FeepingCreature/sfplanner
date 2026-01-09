@@ -9,7 +9,6 @@ import PySide6QtAds as ads
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
-    QButtonGroup,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -19,7 +18,6 @@ from PySide6.QtWidgets import (
     QStyle,
     QTabWidget,
     QToolBar,
-    QToolButton,
 )
 
 from satisfactory_planner.core import (
@@ -250,40 +248,7 @@ class MainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # === 3. Selection/Interaction Tools ===
-        self.tool_group = QButtonGroup(self)
-        self.tool_group.setExclusive(True)
-
-        self.select_tool = QToolButton()
-        self.select_tool.setText("Select")
-        self.select_tool.setToolTip("Select tool (V)")
-        self.select_tool.setCheckable(True)
-        self.select_tool.setChecked(True)
-        self.tool_group.addButton(self.select_tool)
-        toolbar.addWidget(self.select_tool)
-
-        self.pan_tool = QToolButton()
-        self.pan_tool.setText("Pan")
-        self.pan_tool.setToolTip("Pan tool (H) - also: middle-drag or space+drag")
-        self.pan_tool.setCheckable(True)
-        self.tool_group.addButton(self.pan_tool)
-        toolbar.addWidget(self.pan_tool)
-
-        self.box_select_tool = QToolButton()
-        self.box_select_tool.setText("Box Select")
-        self.box_select_tool.setToolTip("Box select tool (B)")
-        self.box_select_tool.setCheckable(True)
-        self.tool_group.addButton(self.box_select_tool)
-        toolbar.addWidget(self.box_select_tool)
-
-        # Connect tool buttons to mode changes
-        self.select_tool.clicked.connect(lambda: self._set_tool_mode("select"))
-        self.pan_tool.clicked.connect(lambda: self._set_tool_mode("pan"))
-        self.box_select_tool.clicked.connect(lambda: self._set_tool_mode("box_select"))
-
-        toolbar.addSeparator()
-
-        # === 4. Creation Tools ===
+        # === 3. Creation Tools ===
         self.create_room_action = QAction("Room", self)
         self.create_room_action.setToolTip("Create a room (drag to select buildings)")
         self.create_room_action.setCheckable(True)
@@ -442,21 +407,6 @@ class MainWindow(QMainWindow):
         """Handle building selection from library."""
         if self.current_tab and self.current_tab.canvas:
             self.current_tab.canvas.set_placement_mode(building_type)  # type: ignore[arg-type]
-
-    def _set_tool_mode(self, mode: str) -> None:
-        """Set the tool mode on the current canvas."""
-        if not self.current_tab or not self.current_tab.canvas:
-            return
-
-        from satisfactory_planner.ui.canvas import ToolMode
-
-        mode_map = {
-            "select": ToolMode.SELECT,
-            "pan": ToolMode.PAN,
-            "box_select": ToolMode.BOX_SELECT,
-        }
-        if mode in mode_map:
-            self.current_tab.canvas.set_tool_mode(mode_map[mode])
 
     def _toggle_grid_snap(self, enabled: bool) -> None:
         """Toggle grid snap on current canvas."""
@@ -734,17 +684,17 @@ class MainWindow(QMainWindow):
         if checked:
             self.current_tab.canvas.set_tool_mode(ToolMode.CREATE_ROOM)
         else:
-            self.current_tab.canvas.set_tool_mode(ToolMode.SELECT)
+            self.current_tab.canvas.set_tool_mode(None)
 
     def _on_tool_mode_changed(self, mode: object) -> None:
         """Handle tool mode changes from canvas."""
         from satisfactory_planner.ui.canvas import ToolMode
 
         # Update Room button state without retriggering the toggle
-        if mode != ToolMode.CREATE_ROOM:
-            self.create_room_action.blockSignals(True)
-            self.create_room_action.setChecked(False)
-            self.create_room_action.blockSignals(False)
+        is_room_mode = mode == ToolMode.CREATE_ROOM
+        self.create_room_action.blockSignals(True)
+        self.create_room_action.setChecked(is_room_mode)
+        self.create_room_action.blockSignals(False)
 
     def _dissolve_room(self) -> None:
         """Dissolve the selected room, restoring buildings to the parent scene."""

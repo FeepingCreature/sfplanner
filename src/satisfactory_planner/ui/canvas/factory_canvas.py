@@ -54,11 +54,12 @@ logger = logging.getLogger(__name__)
 
 
 class ToolMode(Enum):
-    """Active tool mode for the canvas."""
+    """Active tool mode for the canvas.
 
-    SELECT = auto()
-    BOX_SELECT = auto()
-    PAN = auto()
+    Most interactions are stateless (select, pan via middle-mouse, box select on empty space).
+    Only CREATE_ROOM requires an explicit mode toggle.
+    """
+
     CREATE_ROOM = auto()
 
 
@@ -98,7 +99,7 @@ class FactoryCanvas(QGraphicsView):
         self._pan_start = QPointF()
         self._grid_snap = True
         self._grid_size = DEFAULT_GRID_SIZE
-        self._tool_mode: ToolMode = ToolMode.SELECT
+        self._tool_mode: ToolMode | None = None
 
         # Item tracking
         self._building_items: dict[str, BuildingItem] = {}
@@ -185,15 +186,13 @@ class FactoryCanvas(QGraphicsView):
         self._default_belt_tier = tier
 
     @property
-    def tool_mode(self) -> ToolMode:
+    def tool_mode(self) -> ToolMode | None:
         return self._tool_mode
 
-    def set_tool_mode(self, mode: ToolMode) -> None:
+    def set_tool_mode(self, mode: ToolMode | None) -> None:
         """Set the active tool mode."""
         self._tool_mode = mode
-        if mode == ToolMode.PAN:
-            self.setCursor(Qt.CursorShape.OpenHandCursor)
-        elif mode == ToolMode.BOX_SELECT or mode == ToolMode.CREATE_ROOM:
+        if mode == ToolMode.CREATE_ROOM:
             self.setCursor(Qt.CursorShape.CrossCursor)
         else:
             self.setCursor(Qt.CursorShape.ArrowCursor)
@@ -320,13 +319,13 @@ class FactoryCanvas(QGraphicsView):
         belt_item = self._belt_items.get(belt_id)
         if not belt_item:
             return
-        
+
         # Get belt from correct scene
         if scene_room_id and scene_room_id in self.document.rooms:
             scene: Scene = self.document.rooms[scene_room_id]
         else:
             scene = self.document
-        
+
         belt = scene.belts.get(belt_id)
         if belt:
             source = scene.buildings.get(belt.source_building_id)
@@ -465,22 +464,16 @@ class FactoryCanvas(QGraphicsView):
             if self._placement.place_at(scene_pos):
                 return
 
-            # Box select mode
-            if self._tool_mode == ToolMode.BOX_SELECT:
-                self._drawing.start_box_select(scene_pos)
-                return
-
             # Room creation mode
             if self._tool_mode == ToolMode.CREATE_ROOM:
                 self._drawing.start_room_create(scene_pos)
                 return
 
-            # Select mode - start box select on empty space
-            if self._tool_mode == ToolMode.SELECT:
-                item_at_pos = self.itemAt(event.pos())
-                if item_at_pos is None or item_at_pos is self._selection.outline_item:
-                    self._drawing.start_box_select(scene_pos)
-                    return
+            # Normal mode - start box select on empty space
+            item_at_pos = self.itemAt(event.pos())
+            if item_at_pos is None or item_at_pos is self._selection.outline_item:
+                self._drawing.start_box_select(scene_pos)
+                return
 
         super().mousePressEvent(event)
         self._emit_selection_changed()
@@ -524,10 +517,8 @@ class FactoryCanvas(QGraphicsView):
             and self._is_panning
         ):
             self._is_panning = False
-            if self._placement.is_placing or self._tool_mode == ToolMode.BOX_SELECT:
+            if self._placement.is_placing or self._tool_mode == ToolMode.CREATE_ROOM:
                 self.setCursor(Qt.CursorShape.CrossCursor)
-            elif self._tool_mode == ToolMode.PAN:
-                self.setCursor(Qt.CursorShape.OpenHandCursor)
             else:
                 self.setCursor(Qt.CursorShape.ArrowCursor)
             return

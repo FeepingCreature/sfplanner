@@ -29,11 +29,12 @@ class ConnectBeltCommand(Command):
             logger.warning(f"ConnectBeltCommand.execute: belt {self.belt.id} already exists")
             return
         scene.add_belt(self.belt)
-        
+
         # Add belt item to the correct container (room or canvas)
         if self.scene_room_id:
             # Belt is inside a room - add to the RoomItem
             from satisfactory_planner.ui.items.room_item import RoomItem
+
             for room_item in self.canvas._room_items.values():
                 if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:
                     belt_item = room_item.add_belt_item(self.belt.id)
@@ -50,10 +51,11 @@ class ConnectBeltCommand(Command):
             logger.warning(f"ConnectBeltCommand.undo: belt {self.belt.id} not found")
             return
         scene.remove_belt(self.belt.id)
-        
+
         # Remove belt item from the correct container (room or canvas)
         if self.scene_room_id:
             from satisfactory_planner.ui.items.room_item import RoomItem
+
             for room_item in self.canvas._room_items.values():
                 if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:
                     room_item.remove_belt_item(self.belt.id)

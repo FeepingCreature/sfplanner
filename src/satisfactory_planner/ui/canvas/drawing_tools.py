@@ -122,8 +122,6 @@ class DrawingTools:
 
     def complete_room_create(self) -> None:
         """Complete room creation, validating and creating the room."""
-        from satisfactory_planner.ui.canvas.factory_canvas import ToolMode
-
         if not self._room_create_rect:
             self.cancel_room_create()
             return
@@ -134,7 +132,7 @@ class DrawingTools:
         if rect.width() < 50 or rect.height() < 50:
             logger.info("Room too small - minimum 50x50")
             self.cancel_room_create()
-            self.canvas.set_tool_mode(ToolMode.SELECT)
+            self.canvas.set_tool_mode(None)
             return
 
         # Determine parent scene
@@ -150,7 +148,7 @@ class DrawingTools:
             if rect.intersects(building_rect) and not rect.contains(building_rect):
                 logger.warning("Room boundary cannot intersect buildings")
                 self.cancel_room_create()
-                self.canvas.set_tool_mode(ToolMode.SELECT)
+                self.canvas.set_tool_mode(None)
                 return
 
         # Collect contained buildings
@@ -182,7 +180,7 @@ class DrawingTools:
         self.canvas.command_stack.execute(cmd)
 
         self.cancel_room_create()
-        self.canvas.set_tool_mode(ToolMode.SELECT)
+        self.canvas.set_tool_mode(None)
 
     def cancel_room_create(self) -> None:
         """Cancel the current room creation."""
