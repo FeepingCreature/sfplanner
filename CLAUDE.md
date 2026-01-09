@@ -51,6 +51,26 @@ When a belt connects output→input, both half-circles face the same direction (
 
 **Defer to next frame when child items misbehave** - Qt sometimes needs to finish processing `addItem()` before child item geometry/visibility is valid. If items are invisible or mispositioned after being added, use `QTimer.singleShot(0, callback)` to defer the fix to the next event loop iteration.
 
+## File Loading Strategy
+
+**Load files directly instead of grepping repeatedly.** Three `grep_context` calls cost more than one `update_context` to load the file. When you need to understand a file:
+
+1. If you know which file - just load it with `update_context`
+2. If you need to find which file - one `grep_context` to locate, then load the file
+3. Don't grep the same file multiple times - load it once
+
+**Bad pattern:**
+```
+grep_context("pattern1", file="foo.py")  # peek at foo.py
+grep_context("pattern2", file="foo.py")  # peek again
+grep_context("pattern3", file="foo.py")  # peek again
+```
+
+**Good pattern:**
+```
+update_context(add=["foo.py"])  # load once, see everything
+```
+
 ## Web Tools (web_search / web_fetch)
 
 **Compact aggressively after use** - these add lots of tokens to context.
