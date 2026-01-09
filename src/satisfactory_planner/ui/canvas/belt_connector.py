@@ -176,8 +176,22 @@ class BeltConnector:
                 dest_building_id=dest_building_id,
                 dest_port_index=dest_port_index,
             )
+            # Find the source item - check top-level buildings first, then rooms
             source_item = self.canvas._building_items.get(self._connect_start_building)
-            scene_room_id = self.canvas.get_scene_for_item(source_item) if source_item else None
+            scene_room_id: str | None = None
+            if source_item:
+                scene_room_id = self.canvas.get_scene_for_item(source_item)
+            else:
+                # Building might be inside a room - search room items
+                from satisfactory_planner.ui.items.room_item import RoomItem
+
+                for room_item in self.canvas._room_items.values():
+                    if (
+                        isinstance(room_item, RoomItem)
+                        and self._connect_start_building in room_item._building_items
+                    ):
+                        scene_room_id = room_item.room.id
+                        break
             cmd = ConnectBeltCommand(scene_room_id=scene_room_id, belt=belt, canvas=self.canvas)
             self.canvas.command_stack.execute(cmd)
 
