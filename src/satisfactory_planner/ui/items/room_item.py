@@ -99,6 +99,8 @@ class RoomItem(QGraphicsRectItem):
             # Re-apply position after parenting (BuildingItem sets pos in __init__
             # before parenting, which can cause incorrect positioning)
             building_item.setPos(building.x, building.y)
+            # Set placement ID for flow solver lookup with composite key
+            building_item.set_placement_id(self.placement.id)
             self._building_items[building.id] = building_item
 
         # Belts inside the room
@@ -108,6 +110,8 @@ class RoomItem(QGraphicsRectItem):
             if source and dest:
                 belt_item = BeltItem(belt, self.canvas, source, dest)
                 belt_item.setParentItem(self)
+                # Set placement ID for flow solver lookup with composite key
+                belt_item.set_placement_id(self.placement.id)
                 self._belt_items[belt.id] = belt_item
 
         # Nested room placements
@@ -184,6 +188,8 @@ class RoomItem(QGraphicsRectItem):
                 building=building,
                 canvas=self.canvas,
             )
+            # Set placement ID for flow solver lookup with composite key
+            port_item.set_placement_id(self.placement.id)
             self._port_items.append(port_item)
             # Register in _building_items so belt connector can find them
             self._building_items[building.id] = port_item
@@ -335,6 +341,8 @@ class RoomItem(QGraphicsRectItem):
         item.setParentItem(self)
         # Re-apply position after parenting
         item.setPos(building.x, building.y)
+        # Set placement ID for flow solver lookup with composite key
+        item.set_placement_id(self.placement.id)
         self._building_items[building_id] = item
         return item
 
@@ -355,6 +363,8 @@ class RoomItem(QGraphicsRectItem):
         if source and dest:
             item = BeltItem(belt, self.canvas, source, dest)
             item.setParentItem(self)
+            # Set placement ID for flow solver lookup with composite key
+            item.set_placement_id(self.placement.id)
             self._belt_items[belt_id] = item
             return item
         return None

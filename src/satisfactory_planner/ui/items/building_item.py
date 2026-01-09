@@ -62,6 +62,7 @@ class BuildingItem(QGraphicsRectItem):
         self._efficiency_value: float | None = None  # 0.0 - 1.0
         self._is_starved = False
         self._is_blocked = False
+        self._placement_id: str | None = None  # Set when building is inside a room placement
 
     def _get_display_size(self) -> tuple[int, int]:
         """Get display size - delegates to model."""
@@ -478,6 +479,21 @@ class BuildingItem(QGraphicsRectItem):
         self._is_blocked = blocked
         self.update()
 
+    @property
+    def flow_key(self) -> str:
+        """Get the flow solver key for this building.
+
+        Returns composite key (placement_id:building_id) for buildings inside room placements,
+        or just building_id for top-level buildings.
+        """
+        if self._placement_id:
+            return f"{self._placement_id}:{self.building.id}"
+        return self.building.id
+
+    def set_placement_id(self, placement_id: str | None) -> None:
+        """Set the placement ID for buildings inside room placements."""
+        self._placement_id = placement_id
+
     def _update_efficiency_from_solver(self) -> None:
         """Fetch efficiency from flow solver."""
         main_window = self.canvas.window()
@@ -486,7 +502,7 @@ class BuildingItem(QGraphicsRectItem):
 
         flow_solver = main_window.current_tab.flow_solver
         if flow_solver:
-            eff = flow_solver.get_efficiency(self.building.id)
+            eff = flow_solver.get_efficiency(self.flow_key)
             if eff:
                 self.set_efficiency(eff.duty_cycle)
             else:

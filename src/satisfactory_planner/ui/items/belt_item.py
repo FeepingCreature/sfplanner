@@ -66,6 +66,7 @@ class BeltItem(QGraphicsPathItem):
         self._show_flow_rate = False  # Controlled by toolbar toggle
         self._is_overcapacity = False  # Set by flow solver
         self._utilization: float | None = None  # 0.0-1.0, for efficiency outline
+        self._placement_id: str | None = None  # Set when belt is inside a room placement
 
         self._setup_flags()
         self._setup_appearance()
@@ -268,6 +269,21 @@ class BeltItem(QGraphicsPathItem):
             painter.setPen(QPen(QColor(200, 200, 200)))
         painter.drawText(bg_rect, Qt.AlignmentFlag.AlignCenter, text)
 
+    @property
+    def flow_key(self) -> str:
+        """Get the flow solver key for this belt.
+
+        Returns composite key (placement_id:belt_id) for belts inside room placements,
+        or just belt_id for top-level belts.
+        """
+        if self._placement_id:
+            return f"{self._placement_id}:{self.belt.id}"
+        return self.belt.id
+
+    def set_placement_id(self, placement_id: str | None) -> None:
+        """Set the placement ID for belts inside room placements."""
+        self._placement_id = placement_id
+
     def _get_flow_rate(self) -> float | None:
         """Get flow rate from the flow solver."""
         if not self.canvas:
@@ -279,7 +295,7 @@ class BeltItem(QGraphicsPathItem):
 
         flow_solver = main_window.current_tab.flow_solver
         if flow_solver:
-            result: float | None = flow_solver.get_flow_rate(self.belt.id)
+            result: float | None = flow_solver.get_flow_rate(self.flow_key)
             return result
         return None
 
