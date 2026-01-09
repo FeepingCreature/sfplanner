@@ -540,8 +540,21 @@ class Room:
         """Get position of input port by index (in room-local coordinates)."""
         port = self.get_port_by_index(index, is_output=False)
         if port:
-            # PORT_IN sits on left edge - return left edge center of building
-            return (port.x, port.y + port.height / 2)
+            base_w, base_h = port._get_display_size()
+            y_offset = (base_w - base_h) / 2  # Rotation compensation
+
+            if port.rotation == 0:
+                # Left edge
+                return (port.x, port.y + base_h / 2)
+            elif port.rotation == 180:
+                # Right edge
+                return (port.x + base_w, port.y + base_h / 2)
+            elif port.rotation == 90:
+                # Top edge
+                return (port.x + base_h / 2, port.y + y_offset)
+            else:  # 270
+                # Bottom edge
+                return (port.x + base_h / 2, port.y + base_h - y_offset)
         # Fallback: distribute evenly on left edge
         spacing = self.height / (self.num_inputs + 1) if self.num_inputs > 0 else self.height / 2
         return (0, spacing * (index + 1))
@@ -550,8 +563,21 @@ class Room:
         """Get position of output port by index (in room-local coordinates)."""
         port = self.get_port_by_index(index, is_output=True)
         if port:
-            # PORT_OUT sits on right edge - return right edge center of building
-            return (port.x + port.width, port.y + port.height / 2)
+            base_w, base_h = port._get_display_size()
+            y_offset = (base_w - base_h) / 2  # Rotation compensation
+
+            if port.rotation == 0:
+                # Left edge
+                return (port.x, port.y + base_h / 2)
+            elif port.rotation == 180:
+                # Right edge
+                return (port.x + base_w, port.y + base_h / 2)
+            elif port.rotation == 90:
+                # Top edge
+                return (port.x + base_h / 2, port.y + y_offset)
+            else:  # 270
+                # Bottom edge
+                return (port.x + base_h / 2, port.y + base_h - y_offset)
         # Fallback: distribute evenly on right edge
         spacing = self.height / (self.num_outputs + 1) if self.num_outputs > 0 else self.height / 2
         return (self.width, spacing * (index + 1))
@@ -777,15 +803,23 @@ def snap_port_to_room_edge(
     elif min_dist == dist_top:
         # Rotated 90°, visual dimensions swap: w=base_h, h=base_w
         w, h = base_h, base_w
-        # Compensate for paint rotation around (base_w/2, base_h/2)
-        # Visual shift from rotation: (base_w - base_h) / 2 in y
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # WARNING: DO NOT TOUCH THIS OFFSET LOGIC. IT IS CORRECT.
+        # The y_offset compensates for Qt's paint rotation around (base_w/2, base_h/2).
+        # When a 20x40 rect rotates 90° around its center (10, 20), the visual
+        # top-left shifts. This offset makes the VISUAL rect sit on the edge.
+        # It took many painful iterations to get this right. LEAVE IT ALONE.
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         y_offset = (base_w - base_h) / 2
         clamped_x = max(0, min(target_x, room_width - w))
         return (clamped_x, y_offset, "top")
     else:  # dist_bottom
         # Rotated 270°, visual dimensions swap: w=base_h, h=base_w
         w, h = base_h, base_w
-        # Same offset for bottom
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # WARNING: DO NOT TOUCH THIS OFFSET LOGIC. IT IS CORRECT.
+        # Same rotation compensation as top edge. See comment above.
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         y_offset = (base_w - base_h) / 2
         clamped_x = max(0, min(target_x, room_width - w))
         return (clamped_x, room_height - h + y_offset, "bottom")
