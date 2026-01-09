@@ -359,6 +359,15 @@
       "streaming": true,
       "actual_cost": 0.16863225,
       "generation_id": "gen-1767973083-lTI4755Aj6CeaTS44EW8"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767973184042.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767973184042.json",
+      "timestamp": 1767973184.043731,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.16643725,
+      "generation_id": "gen-1767973184-Lqrq9cE7dWOSYiedKyM9"
     }
   ],
   "messages": [
@@ -1588,6 +1597,39 @@
         },
         {
           "commit": "7ab1f98abd85",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: de75515f",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "hm, you should clear even if there *is* a model. before you update."
+    },
+    {
+      "role": "assistant",
+      "content": "You're right - we should clear first to ensure any items that no longer have flow data get reset, then apply the new results.\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def update_flow_visualization(self) -> None:\n        \"\"\"Update visual state of items based on flow solver results.\n\n        Iterates visual items and lets each look up its own flow data using\n        its flow_key (which includes placement_id for items inside rooms).\n        \"\"\"\n        main_window = self.window()\n        if not hasattr(main_window, \"current_tab\") or not main_window.current_tab:\n            return\n\n        flow_solver = main_window.current_tab.flow_solver\n        if not flow_solver or not flow_solver._solved_model:\n            # No flow data - clear all visualizations\n            self._clear_flow_visualization()\n            return\n\n        solved = flow_solver._solved_model\n\n        # Update all belt items - each uses its flow_key to look up results\n</search>\n<replace>\n    def update_flow_visualization(self) -> None:\n        \"\"\"Update visual state of items based on flow solver results.\n\n        Iterates visual items and lets each look up its own flow data using\n        its flow_key (which includes placement_id for items inside rooms).\n        \"\"\"\n        main_window = self.window()\n        if not hasattr(main_window, \"current_tab\") or not main_window.current_tab:\n            return\n\n        flow_solver = main_window.current_tab.flow_solver\n        if not flow_solver or not flow_solver._solved_model:\n            # No flow data - clear all visualizations\n            self._clear_flow_visualization()\n            return\n\n        # Clear previous state before applying new results\n        # This ensures items that no longer have flow data get reset\n        self._clear_flow_visualization()\n\n        solved = flow_solver._solved_model\n\n        # Update all belt items - each uses its flow_key to look up results\n</replace>\n</edit>\n\n<commit message=\"Clear flow visualization before applying new results\n\nEnsures items that no longer have flow data get reset when the\nflow solver is re-run (e.g., after disconnecting a room).\"/>\n\nDone! Now flow visualization is cleared before applying new results, so any items that no longer have flow data will be properly reset.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "commit": "834885271e12",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"

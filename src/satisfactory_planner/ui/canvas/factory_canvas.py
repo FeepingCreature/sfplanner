@@ -1020,6 +1020,10 @@ class FactoryCanvas(QGraphicsView):
             self._clear_flow_visualization()
             return
 
+        # Clear previous state before applying new results
+        # This ensures items that no longer have flow data get reset
+        self._clear_flow_visualization()
+
         solved = flow_solver._solved_model
 
         # Update all belt items - each uses its flow_key to look up results
