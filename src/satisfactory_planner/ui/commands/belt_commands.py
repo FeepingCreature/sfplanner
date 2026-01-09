@@ -60,7 +60,8 @@ class ConnectBeltCommand(Command):
                 if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:
                     room_item.remove_belt_item(self.belt.id)
                     break
-        self.canvas.remove_belt_item(self.belt.id)
+        else:
+            self.canvas.remove_belt_item(self.belt.id)
         self.canvas.notify_mutation()
 
 

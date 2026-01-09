@@ -64,7 +64,7 @@ class DeleteItemsCommand(Command):
                 logger.warning(f"DeleteItemsCommand.execute: building {building.id} not found")
                 continue
             scene.remove_building(building.id)
-            self.canvas.remove_building_item(building.id)
+            self._remove_building_item(building.id)
             any_deleted = True
 
         for belt in self.belts:
@@ -72,7 +72,7 @@ class DeleteItemsCommand(Command):
                 logger.warning(f"DeleteItemsCommand.execute: belt {belt.id} not found")
                 continue
             scene.remove_belt(belt.id)
-            self.canvas.remove_belt_item(belt.id)
+            self._remove_belt_item(belt.id)
             any_deleted = True
 
         if any_deleted:
@@ -86,7 +86,7 @@ class DeleteItemsCommand(Command):
                 logger.warning(f"DeleteItemsCommand.undo: building {building.id} already exists")
                 continue
             scene.add_building(building)
-            self.canvas.add_building_item(building)
+            self._add_building_item(building)
             any_restored = True
 
         for belt in self.belts:
@@ -94,11 +94,55 @@ class DeleteItemsCommand(Command):
                 logger.warning(f"DeleteItemsCommand.undo: belt {belt.id} already exists")
                 continue
             scene.add_belt(belt)
-            self.canvas.add_belt_item(belt)
+            self._add_belt_item(belt)
             any_restored = True
 
         if any_restored:
             self.canvas.notify_mutation()
+
+    def _remove_building_item(self, building_id: str) -> None:
+        """Remove building item from the correct container (room or canvas)."""
+        if self.scene_room_id:
+            from satisfactory_planner.ui.items.room_item import RoomItem
+
+            for room_item in self.canvas._room_items.values():
+                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:
+                    room_item.remove_building_item(building_id)
+                    return
+        self.canvas.remove_building_item(building_id)
+
+    def _remove_belt_item(self, belt_id: str) -> None:
+        """Remove belt item from the correct container (room or canvas)."""
+        if self.scene_room_id:
+            from satisfactory_planner.ui.items.room_item import RoomItem
+
+            for room_item in self.canvas._room_items.values():
+                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:
+                    room_item.remove_belt_item(belt_id)
+                    return
+        self.canvas.remove_belt_item(belt_id)
+
+    def _add_building_item(self, building: Building) -> None:
+        """Add building item to the correct container (room or canvas)."""
+        if self.scene_room_id:
+            from satisfactory_planner.ui.items.room_item import RoomItem
+
+            for room_item in self.canvas._room_items.values():
+                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:
+                    room_item.add_building_item(building.id)
+                    return
+        self.canvas.add_building_item(building)
+
+    def _add_belt_item(self, belt: Belt) -> None:
+        """Add belt item to the correct container (room or canvas)."""
+        if self.scene_room_id:
+            from satisfactory_planner.ui.items.room_item import RoomItem
+
+            for room_item in self.canvas._room_items.values():
+                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:
+                    room_item.add_belt_item(belt.id)
+                    return
+        self.canvas.add_belt_item(belt)
 
 
 @dataclass(frozen=True)
