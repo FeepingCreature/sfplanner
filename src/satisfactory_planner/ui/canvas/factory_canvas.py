@@ -674,24 +674,35 @@ class FactoryCanvas(QGraphicsView):
                     self.command_stack.execute(room_cmd)
 
         if selected_buildings or selected_belts:
-            for building_id in selected_buildings:
-                for belt in self.document.get_belts_for_building(building_id):
-                    if belt.id not in selected_belts:
-                        selected_belts.append(belt.id)
-
-            buildings_to_delete = tuple(
-                self.document.buildings[bid]
-                for bid in selected_buildings
-                if bid in self.document.buildings
-            )
-            belts_to_delete = tuple(
-                self.document.belts[bid] for bid in selected_belts if bid in self.document.belts
-            )
+            # Determine which scene (document or room) these items belong to
             first_item = next(
                 (item for item in self._scene.selectedItems() if isinstance(item, BuildingItem)),
                 None,
             )
             scene_room_id = self.get_scene_for_item(first_item) if first_item else None
+
+            # Get the correct scene to look up items
+            if scene_room_id and scene_room_id in self.document.rooms:
+                target_scene: Scene = self.document.rooms[scene_room_id]
+            else:
+                target_scene = self.document
+
+            # Add connected belts to deletion list
+            for building_id in selected_buildings:
+                for belt in target_scene.get_belts_for_building(building_id):
+                    if belt.id not in selected_belts:
+                        selected_belts.append(belt.id)
+
+            # Look up items from the correct scene
+            buildings_to_delete = tuple(
+                target_scene.buildings[bid]
+                for bid in selected_buildings
+                if bid in target_scene.buildings
+            )
+            belts_to_delete = tuple(
+                target_scene.belts[bid] for bid in selected_belts if bid in target_scene.belts
+            )
+
             cmd = DeleteItemsCommand(
                 scene_room_id=scene_room_id,
                 buildings=buildings_to_delete,
