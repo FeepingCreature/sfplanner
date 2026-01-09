@@ -777,10 +777,15 @@ def snap_port_to_room_edge(
     elif min_dist == dist_top:
         # Rotated 90°, visual dimensions swap: w=base_h, h=base_w
         w, h = base_h, base_w
+        # Compensate for paint rotation around (base_w/2, base_h/2)
+        # Visual shift from rotation: (base_w - base_h) / 2 in y
+        y_offset = (base_w - base_h) / 2
         clamped_x = max(0, min(target_x, room_width - w))
-        return (clamped_x, 0, "top")
+        return (clamped_x, y_offset, "top")
     else:  # dist_bottom
         # Rotated 270°, visual dimensions swap: w=base_h, h=base_w
         w, h = base_h, base_w
+        # Same offset for bottom
+        y_offset = (base_w - base_h) / 2
         clamped_x = max(0, min(target_x, room_width - w))
-        return (clamped_x, room_height - h, "bottom")
+        return (clamped_x, room_height - h + y_offset, "bottom")
