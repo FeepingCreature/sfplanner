@@ -81,22 +81,17 @@ class PortItem(QGraphicsItem):
             painter.setPen(QPen(color.darker(120), 2))
             painter.setBrush(QBrush(color))
 
-        # Draw half-circle facing outward (right by default, then rotated)
-        # For output: half-circle opens to the right (where belt connects)
-        # For input: half-circle opens to the left (where belt connects)
+        # Draw half-circle - curved side faces the belt connection
+        # Both input and output have the curved part facing away from the building
+        # (toward where the belt connects)
         path = QPainterPath()
         r = PORT_RADIUS
 
-        if self.is_output:
-            # Half-circle facing right (outward)
-            path.moveTo(0, -r)
-            path.arcTo(-r, -r, r * 2, r * 2, 90, -180)
-            path.closeSubpath()
-        else:
-            # Half-circle facing left (inward from belt's perspective)
-            path.moveTo(0, -r)
-            path.arcTo(-r, -r, r * 2, r * 2, 90, 180)
-            path.closeSubpath()
+        # Half-circle facing right (toward belt connection)
+        # The angle rotation already handles the direction
+        path.moveTo(0, -r)
+        path.arcTo(-r, -r, r * 2, r * 2, 90, -180)
+        path.closeSubpath()
 
         painter.drawPath(path)
 

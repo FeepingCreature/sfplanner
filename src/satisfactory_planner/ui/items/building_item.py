@@ -131,6 +131,10 @@ class BuildingItem(QGraphicsRectItem):
 
     def _create_ports(self) -> None:
         """Create the actual port items (called by _setup_ports and _update_port_positions)."""
+        # PORT buildings are rendered entirely by RoomPortItem - skip port creation
+        if self.building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
+            return
+
         w, h = self._get_display_size()
         rotation = self.building.rotation
 
@@ -249,6 +253,10 @@ class BuildingItem(QGraphicsRectItem):
         widget: QWidget | None = None,
     ) -> None:
         """Paint the building."""
+        # PORT buildings are rendered by RoomPortItem - skip the building body
+        if self.building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
+            return
+
         w, h = self._get_display_size()
         rect = QRectF(0, 0, w, h)
 
