@@ -82,7 +82,7 @@ class SetBeltTierCommand(Command):
             logger.warning(f"SetBeltTierCommand.execute: tier already set to {self.new_tier}")
             return
         belt.tier = self.new_tier
-        self.canvas.refresh_belt(self.belt_id)
+        self.canvas.refresh_belt(self.belt_id, self.scene_room_id)
         self.canvas.notify_mutation()
 
     def undo(self, document: Document) -> None:
@@ -95,5 +95,5 @@ class SetBeltTierCommand(Command):
             logger.warning(f"SetBeltTierCommand.undo: tier already set to {self.old_tier}")
             return
         belt.tier = self.old_tier
-        self.canvas.refresh_belt(self.belt_id)
+        self.canvas.refresh_belt(self.belt_id, self.scene_room_id)
         self.canvas.notify_mutation()

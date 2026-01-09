@@ -503,6 +503,15 @@
       "streaming": true,
       "actual_cost": 0.12289925,
       "generation_id": "gen-1767968813-CPVtrTBgVhOa6T6RQatk"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968894598.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968894598.json",
+      "timestamp": 1767968894.5993903,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.14766675,
+      "generation_id": "gen-1767968894-ZGev3ExJYRJgKo98vCtE"
     }
   ],
   "messages": [
@@ -1753,6 +1762,49 @@
         {
           "commit": "b28005c38afa",
           "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: a6424217",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Confirm! Hooray!\n\nBelt tier changes inside rooms don't work. I think the belt change command predates rooms and doesn't handle them right."
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at `SetBeltTierCommand`, I can see the issue - `refresh_belt` only works for document-level belts:\n\n```python\ndef refresh_belt(self, belt_id: str) -> None:\n    \"\"\"Refresh a belt's visual state.\"\"\"\n    belt_item = self._belt_items.get(belt_id)\n    belt = self.document.belts.get(belt_id)  # <-- Only looks in document.belts!\n```\n\nBut actually, the belt_item lookup should work since we register room belt items in `_belt_items`. The issue is that `refresh_belt` looks up the belt model from `document.belts` which won't have room-internal belts.\n\nLet me also check how `SetBeltTierCommand` gets its `scene_room_id` - it's passed in from the properties panel. Let me fix `refresh_belt` to handle room belts:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def refresh_belt(self, belt_id: str) -> None:\n        \"\"\"Refresh a belt's visual state.\"\"\"\n        belt_item = self._belt_items.get(belt_id)\n        belt = self.document.belts.get(belt_id)\n        if belt_item and belt:\n            source = self.document.buildings.get(belt.source_building_id)\n            dest = self.document.buildings.get(belt.dest_building_id)\n            if source and dest:\n                belt_item.update_path(source, dest)\n</search>\n<replace>\n    def refresh_belt(self, belt_id: str, scene_room_id: str | None = None) -> None:\n        \"\"\"Refresh a belt's visual state.\"\"\"\n        belt_item = self._belt_items.get(belt_id)\n        if not belt_item:\n            return\n        \n        # Get belt from correct scene\n        if scene_room_id and scene_room_id in self.document.rooms:\n            scene: Scene = self.document.rooms[scene_room_id]\n        else:\n            scene = self.document\n        \n        belt = scene.belts.get(belt_id)\n        if belt:\n            source = scene.buildings.get(belt.source_building_id)\n            dest = scene.buildings.get(belt.dest_building_id)\n            if source and dest:\n                belt_item.update_path(source, dest)\n            else:\n                # May be connected to placements - use generic update\n                belt_item._update_path_from_endpoints()\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/commands/belt_commands.py\">\n<search>\n        belt.tier = self.new_tier\n        self.canvas.refresh_belt(self.belt_id)\n        self.canvas.notify_mutation()\n\n    def undo(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        belt = scene.belts.get(self.belt_id)\n        if not belt:\n            logger.warning(f\"SetBeltTierCommand.undo: belt {self.belt_id} not found\")\n            return\n        if belt.tier == self.old_tier:\n            logger.warning(f\"SetBeltTierCommand.undo: tier already set to {self.old_tier}\")\n            return\n        belt.tier = self.old_tier\n        self.canvas.refresh_belt(self.belt_id)\n        self.canvas.notify_mutation()\n</search>\n<replace>\n        belt.tier = self.new_tier\n        self.canvas.refresh_belt(self.belt_id, self.scene_room_id)\n        self.canvas.notify_mutation()\n\n    def undo(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        belt = scene.belts.get(self.belt_id)\n        if not belt:\n            logger.warning(f\"SetBeltTierCommand.undo: belt {self.belt_id} not found\")\n            return\n        if belt.tier == self.old_tier:\n            logger.warning(f\"SetBeltTierCommand.undo: tier already set to {self.old_tier}\")\n            return\n        belt.tier = self.old_tier\n        self.canvas.refresh_belt(self.belt_id, self.scene_room_id)\n        self.canvas.notify_mutation()\n</replace>\n</edit>\n\n<commit message=\"Fix belt tier changes not working inside rooms\n\n- refresh_belt() now accepts scene_room_id parameter to look up belt\n  from correct scene (room vs document)\n- SetBeltTierCommand passes scene_room_id to refresh_belt()\"/>\n\nDone! The fix adds a `scene_room_id` parameter to `refresh_belt()` so it can look up the belt from the correct scene (room or document), and `SetBeltTierCommand` now passes its `scene_room_id` when calling it.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/belt_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/belt_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "commit": "21764211100d",
+          "message": "Committed: 2 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

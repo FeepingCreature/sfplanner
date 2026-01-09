@@ -304,15 +304,27 @@ class FactoryCanvas(QGraphicsView):
                 return
         self._update_belts_for_building(building_id)
 
-    def refresh_belt(self, belt_id: str) -> None:
+    def refresh_belt(self, belt_id: str, scene_room_id: str | None = None) -> None:
         """Refresh a belt's visual state."""
         belt_item = self._belt_items.get(belt_id)
-        belt = self.document.belts.get(belt_id)
-        if belt_item and belt:
-            source = self.document.buildings.get(belt.source_building_id)
-            dest = self.document.buildings.get(belt.dest_building_id)
+        if not belt_item:
+            return
+        
+        # Get belt from correct scene
+        if scene_room_id and scene_room_id in self.document.rooms:
+            scene: Scene = self.document.rooms[scene_room_id]
+        else:
+            scene = self.document
+        
+        belt = scene.belts.get(belt_id)
+        if belt:
+            source = scene.buildings.get(belt.source_building_id)
+            dest = scene.buildings.get(belt.dest_building_id)
             if source and dest:
                 belt_item.update_path(source, dest)
+            else:
+                # May be connected to placements - use generic update
+                belt_item._update_path_from_endpoints()
 
     def add_room_item(self, placement: RoomPlacement, room: Room) -> None:
         """Add a room item to the scene."""
