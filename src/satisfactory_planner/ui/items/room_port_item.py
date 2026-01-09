@@ -103,15 +103,29 @@ class RoomPortItem(QGraphicsObject):
     def boundingRect(self) -> QRectF:
         """Return bounding rectangle for the half-circle."""
         r = HALF_CIRCLE_RADIUS
-        # The half-circle extends outward from the room edge
+        # Half-circle centered on room edge:
+        # - Input ports: half-circle inside room
+        # - Output ports: half-circle outside room
         if self._edge == EdgeSide.LEFT:
-            return QRectF(-r, -r, r, r * 2)
+            if self.is_output:
+                return QRectF(-r, -r, r, r * 2)  # Outside (left)
+            else:
+                return QRectF(0, -r, r, r * 2)  # Inside (right)
         elif self._edge == EdgeSide.RIGHT:
-            return QRectF(0, -r, r, r * 2)
+            if self.is_output:
+                return QRectF(0, -r, r, r * 2)  # Outside (right)
+            else:
+                return QRectF(-r, -r, r, r * 2)  # Inside (left)
         elif self._edge == EdgeSide.TOP:
-            return QRectF(-r, -r, r * 2, r)
+            if self.is_output:
+                return QRectF(-r, -r, r * 2, r)  # Outside (up)
+            else:
+                return QRectF(-r, 0, r * 2, r)  # Inside (down)
         else:  # BOTTOM
-            return QRectF(-r, 0, r * 2, r)
+            if self.is_output:
+                return QRectF(-r, 0, r * 2, r)  # Outside (down)
+            else:
+                return QRectF(-r, -r, r * 2, r)  # Inside (up)
 
     def paint(
         self,
@@ -149,7 +163,13 @@ class RoomPortItem(QGraphicsObject):
         self._draw_half_circle(painter, color, "bottom")
 
     def _draw_half_circle(self, painter: QPainter, color: QColor, side: str) -> None:
-        """Draw the half-circle on the room edge."""
+        """Draw the half-circle on the room edge.
+
+        - Input ports: half-circle faces INTO the room (curved side inside)
+        - Output ports: half-circle faces OUT of the room (curved side outside)
+
+        The flat edge of the half-circle sits on the room boundary.
+        """
         if self._is_drag_target:
             painter.setPen(QPen(QColor(255, 255, 255), 3))
             painter.setBrush(QBrush(color.lighter(130)))
@@ -158,54 +178,50 @@ class RoomPortItem(QGraphicsObject):
             painter.setBrush(QBrush(color))
 
         path = QPainterPath()
+        r = HALF_CIRCLE_RADIUS
 
+        # Determine arc direction based on edge and port type
+        # Output = face outward (curved side outside room)
+        # Input = face inward (curved side inside room)
         if side == "left":
-            # Half-circle facing left (outside room)
-            path.moveTo(0, -HALF_CIRCLE_RADIUS)
-            path.arcTo(
-                -HALF_CIRCLE_RADIUS,
-                -HALF_CIRCLE_RADIUS,
-                HALF_CIRCLE_RADIUS * 2,
-                HALF_CIRCLE_RADIUS * 2,
-                90,
-                180,
-            )
+            if self.is_output:
+                # Curved side faces left (outside)
+                path.moveTo(0, -r)
+                path.arcTo(-r, -r, r * 2, r * 2, 90, 180)
+            else:
+                # Curved side faces right (inside)
+                path.moveTo(0, -r)
+                path.arcTo(-r, -r, r * 2, r * 2, 90, -180)
             path.closeSubpath()
         elif side == "right":
-            # Half-circle facing right (outside room)
-            path.moveTo(0, -HALF_CIRCLE_RADIUS)
-            path.arcTo(
-                -HALF_CIRCLE_RADIUS,
-                -HALF_CIRCLE_RADIUS,
-                HALF_CIRCLE_RADIUS * 2,
-                HALF_CIRCLE_RADIUS * 2,
-                90,
-                -180,
-            )
+            if self.is_output:
+                # Curved side faces right (outside)
+                path.moveTo(0, -r)
+                path.arcTo(-r, -r, r * 2, r * 2, 90, -180)
+            else:
+                # Curved side faces left (inside)
+                path.moveTo(0, -r)
+                path.arcTo(-r, -r, r * 2, r * 2, 90, 180)
             path.closeSubpath()
         elif side == "top":
-            # Half-circle facing up (outside room)
-            path.moveTo(-HALF_CIRCLE_RADIUS, 0)
-            path.arcTo(
-                -HALF_CIRCLE_RADIUS,
-                -HALF_CIRCLE_RADIUS,
-                HALF_CIRCLE_RADIUS * 2,
-                HALF_CIRCLE_RADIUS * 2,
-                180,
-                180,
-            )
+            if self.is_output:
+                # Curved side faces up (outside)
+                path.moveTo(-r, 0)
+                path.arcTo(-r, -r, r * 2, r * 2, 180, 180)
+            else:
+                # Curved side faces down (inside)
+                path.moveTo(-r, 0)
+                path.arcTo(-r, -r, r * 2, r * 2, 180, -180)
             path.closeSubpath()
         else:  # bottom
-            # Half-circle facing down (outside room)
-            path.moveTo(-HALF_CIRCLE_RADIUS, 0)
-            path.arcTo(
-                -HALF_CIRCLE_RADIUS,
-                -HALF_CIRCLE_RADIUS,
-                HALF_CIRCLE_RADIUS * 2,
-                HALF_CIRCLE_RADIUS * 2,
-                180,
-                -180,
-            )
+            if self.is_output:
+                # Curved side faces down (outside)
+                path.moveTo(-r, 0)
+                path.arcTo(-r, -r, r * 2, r * 2, 180, -180)
+            else:
+                # Curved side faces up (inside)
+                path.moveTo(-r, 0)
+                path.arcTo(-r, -r, r * 2, r * 2, 180, 180)
             path.closeSubpath()
 
         painter.drawPath(path)
