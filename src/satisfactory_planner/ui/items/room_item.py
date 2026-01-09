@@ -191,21 +191,27 @@ class RoomItem(QGraphicsRectItem):
 
         These are the room's input/output ports where external belts connect.
         Positioned at the edge-facing side of each PORT building.
+
+        Port angles follow the same convention as regular buildings:
+        - Input ports face INTO the container (the room)
+        - Output ports face OUT OF the container
         """
         for building in self.room.buildings.values():
             if building.building_type == BuildingType.PORT_IN:
-                # PORT_IN brings items INTO room - room has an INPUT on edge
+                # PORT_IN brings items INTO room - room has an INPUT on its left edge
+                # Input ports face INTO the room (right, angle=0)
                 is_output = False
-                x = building.x  # Left edge
+                x = building.x  # Left edge of building = left edge of room
                 y = building.y + building.height / 2
-                angle = 180  # Face left
+                angle = 0  # Face right (into room) - same as building inputs
 
             elif building.building_type == BuildingType.PORT_OUT:
-                # PORT_OUT sends items OUT of room - room has an OUTPUT on edge
+                # PORT_OUT sends items OUT of room - room has an OUTPUT on its right edge
+                # Output ports face OUT OF the room (right, angle=0)
                 is_output = True
-                x = building.x + building.width  # Right edge
+                x = building.x + building.width  # Right edge of building = right edge of room
                 y = building.y + building.height / 2
-                angle = 0  # Face right
+                angle = 0  # Face right (out of room) - same as building outputs
 
             else:
                 continue
