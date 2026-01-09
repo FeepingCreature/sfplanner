@@ -287,6 +287,7 @@ class FactoryCanvas(QGraphicsView):
             dest=dest,
             source_placement=source_placement,
             dest_placement=dest_placement,
+            scene=self.document,
         )
         self._scene.addItem(item)
         self._belt_items[belt.id] = item
@@ -379,7 +380,11 @@ class FactoryCanvas(QGraphicsView):
         self._update_belts_for_building(building_id)
 
     def refresh_belt(self, belt_id: str, scene_room_id: str | None = None) -> None:
-        """Refresh a belt's visual state."""
+        """Refresh a belt's visual state.
+
+        For belts in rooms, this updates ALL visual instances (since linked
+        room placements share the same Room data).
+        """
         from satisfactory_planner.ui.items.room_item import RoomItem
 
         # Get belt from correct scene
@@ -392,33 +397,30 @@ class FactoryCanvas(QGraphicsView):
         if not belt:
             return
 
-        # Find belt item - could be top-level or inside a room
-        belt_item = self._belt_items.get(belt_id)
-        if not belt_item and scene_room_id:
-            # Look in room items
+        def update_belt_item(belt_item: BeltItem) -> None:
+            """Update a single belt item's appearance and path."""
+            belt_item.belt = belt  # Update reference to get new tier
+            belt_item._setup_appearance()
+            source = scene.buildings.get(belt.source_building_id)
+            dest = scene.buildings.get(belt.dest_building_id)
+            if source and dest:
+                belt_item.update_path(source, dest)
+            else:
+                belt_item._update_path_from_endpoints()
+            belt_item.update()
+
+        if scene_room_id:
+            # Belt is inside a room - update ALL RoomItems displaying this room
             for room_item in self._room_items.values():
                 if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
                     belt_item = room_item._belt_items.get(belt_id)
                     if belt_item:
-                        break
-
-        if not belt_item:
-            return
-
-        # Update appearance (tier may have changed)
-        belt_item.belt = belt  # Update reference to get new tier
-        belt_item._setup_appearance()
-
-        # Update path
-        source = scene.buildings.get(belt.source_building_id)
-        dest = scene.buildings.get(belt.dest_building_id)
-        if source and dest:
-            belt_item.update_path(source, dest)
+                        update_belt_item(belt_item)
         else:
-            # May be connected to placements - use generic update
-            belt_item._update_path_from_endpoints()
-
-        belt_item.update()
+            # Top-level belt
+            belt_item = self._belt_items.get(belt_id)
+            if belt_item:
+                update_belt_item(belt_item)
 
     def add_room_item(self, placement: RoomPlacement, room: Room) -> None:
         """Add a room item to the scene."""
@@ -810,24 +812,14 @@ class FactoryCanvas(QGraphicsView):
         for item in self._scene.selectedItems():
             if isinstance(item, BuildingItem):
                 selected_ids.append(item.building.id)
-                # Determine scene from item
+                # Get scene_room_id from item's scene
                 if scene_room_id is None:
-                    item_scene = self._selection.get_scene_for_item(item)
-                    if item_scene is not None and item_scene is not self.document:
-                        for room_id, room in self.document.rooms.items():
-                            if room is item_scene:
-                                scene_room_id = room_id
-                                break
+                    scene_room_id = item.building_scene.scene_room_id
             elif isinstance(item, BeltItem):
                 selected_ids.append(item.belt.id)
-                # Determine scene from item
+                # Get scene_room_id from item's scene
                 if scene_room_id is None:
-                    item_scene = self._selection.get_scene_for_item(item)
-                    if item_scene is not None and item_scene is not self.document:
-                        for room_id, room in self.document.rooms.items():
-                            if room is item_scene:
-                                scene_room_id = room_id
-                                break
+                    scene_room_id = item.belt_scene.scene_room_id
             elif isinstance(item, RoomItem):
                 selected_ids.append(item.placement.id)
 

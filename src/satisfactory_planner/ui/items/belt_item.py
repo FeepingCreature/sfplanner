@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import Belt, Building
-from satisfactory_planner.core.models import RoomPlacement
+from satisfactory_planner.core.models import RoomPlacement, Scene
 from satisfactory_planner.core.routing import Point, compute_belt_path
 from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 
@@ -54,6 +54,7 @@ class BeltItem(QGraphicsPathItem):
         dest: Building | None = None,
         source_placement: RoomPlacement | None = None,
         dest_placement: RoomPlacement | None = None,
+        scene: Scene | None = None,
     ) -> None:
         super().__init__()
 
@@ -67,6 +68,8 @@ class BeltItem(QGraphicsPathItem):
         self._is_overcapacity = False  # Set by flow solver
         self._utilization: float | None = None  # 0.0-1.0, for efficiency outline
         self._placement_id: str | None = None  # Set when belt is inside a room placement
+        # Scene this belt belongs to (Document or Room)
+        self._scene: Scene = scene if scene is not None else canvas.document
 
         self._setup_flags()
         self._setup_appearance()
@@ -313,6 +316,16 @@ class BeltItem(QGraphicsPathItem):
         """Set belt utilization for efficiency outline."""
         self._utilization = utilization
         self.update()
+
+    @property
+    def belt_scene(self) -> Scene:
+        """Get the scene this belt belongs to."""
+        return self._scene
+
+    @belt_scene.setter
+    def belt_scene(self, scene: Scene) -> None:
+        """Set the scene this belt belongs to."""
+        self._scene = scene
 
     def hoverEnterEvent(self, event: object) -> None:
         """Show flow rate tooltip on hover."""

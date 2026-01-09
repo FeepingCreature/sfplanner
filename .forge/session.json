@@ -3,10 +3,11 @@
     "CLAUDE.md",
     "src/satisfactory_planner/ui/items/belt_item.py",
     "src/satisfactory_planner/ui/canvas/selection_manager.py",
-    "src/satisfactory_planner/ui/main_window.py",
     "src/satisfactory_planner/ui/canvas/factory_canvas.py",
+    "src/satisfactory_planner/ui/items/room_item.py",
     "src/satisfactory_planner/ui/commands/belt_commands.py",
-    "src/satisfactory_planner/ui/panels/properties_panel.py"
+    "src/satisfactory_planner/ui/panels/properties_panel.py",
+    "src/satisfactory_planner/ui/items/building_item.py"
   ],
   "request_log_entries": [
     {
@@ -98,6 +99,42 @@
       "streaming": true,
       "actual_cost": 0.131854,
       "generation_id": "gen-1767978733-GJ79coQdXgi0NGtli6xO"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767978848950.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767978848950.json",
+      "timestamp": 1767978848.9519439,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.46678,
+      "generation_id": "gen-1767978849-3tiOkp0C8Fz8rv0puDCt"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767978856723.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767978856723.json",
+      "timestamp": 1767978856.7248294,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06621375,
+      "generation_id": "gen-1767978856-R1otzA57jEyNV6ksbfdd"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767978862950.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767978862950.json",
+      "timestamp": 1767978862.9510117,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06113225,
+      "generation_id": "gen-1767978863-5Ji3dZg2RQsavK15TlW9"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767978870528.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767978870528.json",
+      "timestamp": 1767978870.52973,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.5620825,
+      "generation_id": "gen-1767978870-uZk1CNhU82stLa4HGje5"
     }
   ],
   "messages": [
@@ -538,6 +575,194 @@
         },
         {
           "commit": "12ebf5ab8b4c",
+          "message": "Committed: 3 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 65325362",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "hang on. You're doing a weird thing with refresh_belt. A belt *can* correspond to multiple visual items because all instances of rooms are shared. Also earlier in factory_canvas you did a weird scan to determine scene from item. Shouuuldn't BuildingItem already know its scene id?"
+    },
+    {
+      "role": "assistant",
+      "content": "You're absolutely right. Let me reconsider the design:\n\n1. **BuildingItem/BeltItem should know their scene_room_id** - they're created in a specific context and should store it\n2. **refresh_belt for linked rooms** - when a belt's tier changes in a shared room, ALL visual instances need updating\n\nLet me check what BuildingItem has:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"class BuildingItem|building_scene|scene_room_id\", \"file\": \"src/satisfactory_planner/ui/items/building_item.py\"}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_018DoXtFuGE4YeJPk4cg6bmE",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_018DoXtFuGE4YeJPk4cg6bmE",
+      "content": "{\"message\": \"Found 8 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:35 \\u2500\\u2500\\n      32 |     return QColor(rgb[0], rgb[1], rgb[2])\\n      33 | \\n      34 | \\n>>>   35 | class BuildingItem(QGraphicsRectItem):\\n      36 |     \\\"\\\"\\\"A draggable building item on the canvas.\\\"\\\"\\\"\\n      37 | \\n      38 |     def __init__(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:139 \\u2500\\u2500\\n     136 |         # Get port layout from the building model\\n     137 |         input_layout, output_layout = self.building.get_port_layout()\\n     138 | \\n>>>  139 |         # Get scene_room_id from the Scene protocol\\n     140 |         scene_room_id = self._scene.scene_room_id\\n     141 | \\n     142 |         # Create input ports\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:140 \\u2500\\u2500\\n     137 |         input_layout, output_layout = self.building.get_port_layout()\\n     138 | \\n     139 |         # Get scene_room_id from the Scene protocol\\n>>>  140 |         scene_room_id = self._scene.scene_room_id\\n     141 | \\n     142 |         # Create input ports\\n     143 |         for i, (px, py, base_angle) in enumerate(input_layout):\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:146 \\u2500\\u2500\\n     143 |         for i, (px, py, base_angle) in enumerate(input_layout):\\n     144 |             angle = base_angle + rotation\\n     145 |             port = PortItem(\\n>>>  146 |                 False, i, self.building.id, self.canvas, angle=angle, scene_room_id=scene_room_id\\n     147 |             )\\n     148 |             port.setParentItem(self)\\n     149 |             port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:156 \\u2500\\u2500\\n     153 |         for i, (px, py, base_angle) in enumerate(output_layout):\\n     154 |             angle = base_angle + rotation\\n     155 |             port = PortItem(\\n>>>  156 |                 True, i, self.building.id, self.canvas, angle=angle, scene_room_id=scene_room_id\\n     157 |             )\\n     158 |             port.setParentItem(self)\\n     159 |             port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:464 \\u2500\\u2500\\n     461 |             event.ignore()\\n     462 | \\n     463 |     @property\\n>>>  464 |     def building_scene(self) -> Scene:\\n     465 |         \\\"\\\"\\\"Get the scene this building belongs to.\\\"\\\"\\\"\\n     466 |         return self._scene\\n     467 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:468 \\u2500\\u2500\\n     465 |         \\\"\\\"\\\"Get the scene this building belongs to.\\\"\\\"\\\"\\n     466 |         return self._scene\\n     467 | \\n>>>  468 |     @building_scene.setter\\n     469 |     def building_scene(self, scene: Scene) -> None:\\n     470 |         \\\"\\\"\\\"Set the scene this building belongs to.\\\"\\\"\\\"\\n     471 |         self._scene = scene\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:469 \\u2500\\u2500\\n     466 |         return self._scene\\n     467 | \\n     468 |     @building_scene.setter\\n>>>  469 |     def building_scene(self, scene: Scene) -> None:\\n     470 |         \\\"\\\"\\\"Set the scene this building belongs to.\\\"\\\"\\\"\\n     471 |         self._scene = scene\\n     472 | \", \"success\": true, \"total_matches\": 8}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"file\": \"src/satisfactory_planner/ui/items/building_item.py\",\n  \"pattern\": \"class BuildingItem|building_scene|scene_room_id\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 8 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:35 \\u2500\\u2500\\n      32 |     return QColor(rgb[0], rgb[1], rgb[2])\\n      33 | \\n      34 | \\n>>>   35 | class BuildingItem(QGraphicsRectItem):\\n      36 |     \\\"\\\"\\\"A draggable building item on the canvas.\\\"\\\"\\\"\\n      37 | \\n      38 |     def __init__(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:139 \\u2500\\u2500\\n     136 |         # Get port layout from the building model\\n     137 |         input_layout, output_layout = self.building.get_port_layout()\\n     138 | \\n>>>  139 |         # Get scene_room_id from the Scene protocol\\n     140 |         scene_room_id = self._scene.scene_room_id\\n     141 | \\n     142 |         # Create input ports\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:140 \\u2500\\u2500\\n     137 |         input_layout, output_layout = self.building.get_port_layout()\\n     138 | \\n     139 |         # Get scene_room_id from the Scene protocol\\n>>>  140 |         scene_room_id = self._scene.scene_room_id\\n     141 | \\n     142 |         # Create input ports\\n     143 |         for i, (px, py, base_angle) in enumerate(input_layout):\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:146 \\u2500\\u2500\\n     143 |         for i, (px, py, base_angle) in enumerate(input_layout):\\n     144 |             angle = base_angle + rotation\\n     145 |             port = PortItem(\\n>>>  146 |                 False, i, self.building.id, self.canvas, angle=angle, scene_room_id=scene_room_id\\n     147 |             )\\n     148 |             port.setParentItem(self)\\n     149 |             port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:156 \\u2500\\u2500\\n     153 |         for i, (px, py, base_angle) in enumerate(output_layout):\\n     154 |             angle = base_angle + rotation\\n     155 |             port = PortItem(\\n>>>  156 |                 True, i, self.building.id, self.canvas, angle=angle, scene_room_id=scene_room_id\\n     157 |             )\\n     158 |             port.setParentItem(self)\\n     159 |             port.setPos(*self._rotate_port_pos(px, py, w, h, rotation))\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:464 \\u2500\\u2500\\n     461 |             event.ignore()\\n     462 | \\n     463 |     @property\\n>>>  464 |     def building_scene(self) -> Scene:\\n     465 |         \\\"\\\"\\\"Get the scene this building belongs to.\\\"\\\"\\\"\\n     466 |         return self._scene\\n     467 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:468 \\u2500\\u2500\\n     465 |         \\\"\\\"\\\"Get the scene this building belongs to.\\\"\\\"\\\"\\n     466 |         return self._scene\\n     467 | \\n>>>  468 |     @building_scene.setter\\n     469 |     def building_scene(self, scene: Scene) -> None:\\n     470 |         \\\"\\\"\\\"Set the scene this building belongs to.\\\"\\\"\\\"\\n     471 |         self._scene = scene\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:469 \\u2500\\u2500\\n     466 |         return self._scene\\n     467 | \\n     468 |     @building_scene.setter\\n>>>  469 |     def building_scene(self, scene: Scene) -> None:\\n     470 |         \\\"\\\"\\\"Set the scene this building belongs to.\\\"\\\"\\\"\\n     471 |         self._scene = scene\\n     472 | \",\n  \"success\": true,\n  \"total_matches\": 8\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "You're right. Let me look at what BuildingItem already has - it has `building_scene` which is the Scene itself, and `_scene.scene_room_id`. So the item already knows its scene.\n\nFor BeltItem, let me check:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"scene_room_id|_scene\", \"file\": \"src/satisfactory_planner/ui/items/belt_item.py\"}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_015xPBkmH75YArWQzvGiaohG",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_015xPBkmH75YArWQzvGiaohG",
+      "content": "{\"message\": \"No matches found for pattern: scene_room_id|_scene\", \"snippets\": [], \"success\": true, \"total_matches\": 0}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"file\": \"src/satisfactory_planner/ui/items/belt_item.py\",\n  \"pattern\": \"scene_room_id|_scene\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"No matches found for pattern: scene_room_id|_scene\",\n  \"snippets\": [],\n  \"success\": true,\n  \"total_matches\": 0\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "You're right. BeltItem should store its scene_room_id just like BuildingItem stores `_scene`. Let me fix this properly:\n\n1. Add `_scene` to BeltItem (like BuildingItem has)\n2. Use `item._scene.scene_room_id` directly in `_emit_selection_changed` instead of the weird scan\n3. Fix `refresh_belt` to update ALL visual instances for linked rooms",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/items/building_item.py\", \"src/satisfactory_planner/ui/items/room_item.py\"], \"remove\": [\"src/satisfactory_planner/ui/main_window.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_018nsoR7k1sgD7xYT46iHth9",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_018nsoR7k1sgD7xYT46iHth9",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/items/building_item.py\", \"src/satisfactory_planner/ui/items/room_item.py\"], \"message\": \"Added 2 files, removed 1 files from context\", \"remove\": [\"src/satisfactory_planner/ui/main_window.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "You're right. Let me look at what's actually happening:\n\n1. `BuildingItem` already has `_scene` (a `Scene` object) and can get `_scene.scene_room_id`\n2. `BeltItem` has no `_scene` - it should have one\n\nLet me fix this properly:\n\n1. Add `_scene` to `BeltItem` \n2. Simplify `_emit_selection_changed` to just use `item._scene.scene_room_id`\n3. Fix `refresh_belt` to update ALL RoomItems for the room (not just finding one)\n\n<edit file=\"src/satisfactory_planner/ui/items/belt_item.py\">\n<search>\nclass BeltItem(QGraphicsPathItem):\n    \"\"\"A belt connecting two buildings or room placements.\"\"\"\n\n    def __init__(\n        self,\n        belt: Belt,\n        canvas: FactoryCanvas,\n        source: Building | None = None,\n        dest: Building | None = None,\n        source_placement: RoomPlacement | None = None,\n        dest_placement: RoomPlacement | None = None,\n    ) -> None:\n        super().__init__()\n\n        self.belt = belt\n        self.canvas = canvas\n        self._source = source\n        self._dest = dest\n        self._source_placement = source_placement\n        self._dest_placement = dest_placement\n        self._show_flow_rate = False  # Controlled by toolbar toggle\n        self._is_overcapacity = False  # Set by flow solver\n        self._utilization: float | None = None  # 0.0-1.0, for efficiency outline\n        self._placement_id: str | None = None  # Set when belt is inside a room placement\n</search>\n<replace>\nclass BeltItem(QGraphicsPathItem):\n    \"\"\"A belt connecting two buildings or room placements.\"\"\"\n\n    def __init__(\n        self,\n        belt: Belt,\n        canvas: FactoryCanvas,\n        source: Building | None = None,\n        dest: Building | None = None,\n        source_placement: RoomPlacement | None = None,\n        dest_placement: RoomPlacement | None = None,\n        scene: \"Scene | None\" = None,\n    ) -> None:\n        super().__init__()\n\n        self.belt = belt\n        self.canvas = canvas\n        self._source = source\n        self._dest = dest\n        self._source_placement = source_placement\n        self._dest_placement = dest_placement\n        self._show_flow_rate = False  # Controlled by toolbar toggle\n        self._is_overcapacity = False  # Set by flow solver\n        self._utilization: float | None = None  # 0.0-1.0, for efficiency outline\n        self._placement_id: str | None = None  # Set when belt is inside a room placement\n        # Scene this belt belongs to (Document or Room)\n        from satisfactory_planner.core.models import Scene\n        self._scene: Scene = scene if scene is not None else canvas.document\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/items/belt_item.py\">\n<search>\nfrom satisfactory_planner.core import Belt, Building\nfrom satisfactory_planner.core.models import RoomPlacement\n</search>\n<replace>\nfrom satisfactory_planner.core import Belt, Building\nfrom satisfactory_planner.core.models import RoomPlacement, Scene\n</replace>\n</edit>\n\nNow add a property like BuildingItem has:\n\n<edit file=\"src/satisfactory_planner/ui/items/belt_item.py\">\n<search>\n    def set_utilization(self, utilization: float | None) -> None:\n        \"\"\"Set belt utilization for efficiency outline.\"\"\"\n        self._utilization = utilization\n        self.update()\n</search>\n<replace>\n    def set_utilization(self, utilization: float | None) -> None:\n        \"\"\"Set belt utilization for efficiency outline.\"\"\"\n        self._utilization = utilization\n        self.update()\n\n    @property\n    def belt_scene(self) -> Scene:\n        \"\"\"Get the scene this belt belongs to.\"\"\"\n        return self._scene\n\n    @belt_scene.setter\n    def belt_scene(self, scene: Scene) -> None:\n        \"\"\"Set the scene this belt belongs to.\"\"\"\n        self._scene = scene\n</replace>\n</edit>\n\nNow update RoomItem to pass the scene when creating BeltItems:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_item.py\">\n<search>\n        # Belts inside the room\n        for belt in self.room.belts.values():\n            source = self.room.buildings.get(belt.source_building_id)\n            dest = self.room.buildings.get(belt.dest_building_id)\n            if source and dest:\n                belt_item = BeltItem(belt, self.canvas, source, dest)\n                belt_item.setParentItem(self)\n                # Set placement ID for flow solver lookup with composite key\n                belt_item.set_placement_id(self.placement.id)\n                self._belt_items[belt.id] = belt_item\n</search>\n<replace>\n        # Belts inside the room\n        for belt in self.room.belts.values():\n            source = self.room.buildings.get(belt.source_building_id)\n            dest = self.room.buildings.get(belt.dest_building_id)\n            if source and dest:\n                belt_item = BeltItem(belt, self.canvas, source, dest, scene=self.room)\n                belt_item.setParentItem(self)\n                # Set placement ID for flow solver lookup with composite key\n                belt_item.set_placement_id(self.placement.id)\n                self._belt_items[belt.id] = belt_item\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/items/room_item.py\">\n<search>\n    def add_belt_item(self, belt_id: str) -> BeltItem | None:\n        \"\"\"Add a belt item for a belt that was added to the room.\"\"\"\n        belt = self.room.belts.get(belt_id)\n        if not belt:\n            return None\n\n        source = self.room.buildings.get(belt.source_building_id)\n        dest = self.room.buildings.get(belt.dest_building_id)\n        if source and dest:\n            item = BeltItem(belt, self.canvas, source, dest)\n            item.setParentItem(self)\n            # Set placement ID for flow solver lookup with composite key\n            item.set_placement_id(self.placement.id)\n            self._belt_items[belt_id] = item\n            return item\n        return None\n</search>\n<replace>\n    def add_belt_item(self, belt_id: str) -> BeltItem | None:\n        \"\"\"Add a belt item for a belt that was added to the room.\"\"\"\n        belt = self.room.belts.get(belt_id)\n        if not belt:\n            return None\n\n        source = self.room.buildings.get(belt.source_building_id)\n        dest = self.room.buildings.get(belt.dest_building_id)\n        if source and dest:\n            item = BeltItem(belt, self.canvas, source, dest, scene=self.room)\n            item.setParentItem(self)\n            # Set placement ID for flow solver lookup with composite key\n            item.set_placement_id(self.placement.id)\n            self._belt_items[belt_id] = item\n            return item\n        return None\n</replace>\n</edit>\n\nNow update the canvas to pass scene when creating top-level belts:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n        item = BeltItem(\n            belt,\n            self,\n            source=source,\n            dest=dest,\n            source_placement=source_placement,\n            dest_placement=dest_placement,\n        )\n</search>\n<replace>\n        item = BeltItem(\n            belt,\n            self,\n            source=source,\n            dest=dest,\n            source_placement=source_placement,\n            dest_placement=dest_placement,\n            scene=self.document,\n        )\n</replace>\n</edit>\n\nNow simplify `_emit_selection_changed` to use item's scene directly:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def _emit_selection_changed(self) -> None:\n        \"\"\"Emit signal with current selection and scene context.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        selected_ids = []\n        scene_room_id: str | None = None\n\n        for item in self._scene.selectedItems():\n            if isinstance(item, BuildingItem):\n                selected_ids.append(item.building.id)\n                # Determine scene from item\n                if scene_room_id is None:\n                    item_scene = self._selection.get_scene_for_item(item)\n                    if item_scene is not None and item_scene is not self.document:\n                        for room_id, room in self.document.rooms.items():\n                            if room is item_scene:\n                                scene_room_id = room_id\n                                break\n            elif isinstance(item, BeltItem):\n                selected_ids.append(item.belt.id)\n                # Determine scene from item\n                if scene_room_id is None:\n                    item_scene = self._selection.get_scene_for_item(item)\n                    if item_scene is not None and item_scene is not self.document:\n                        for room_id, room in self.document.rooms.items():\n                            if room is item_scene:\n                                scene_room_id = room_id\n                                break\n            elif isinstance(item, RoomItem):\n                selected_ids.append(item.placement.id)\n\n        self.selection_changed.emit(selected_ids, scene_room_id)\n</search>\n<replace>\n    def _emit_selection_changed(self) -> None:\n        \"\"\"Emit signal with current selection and scene context.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        selected_ids = []\n        scene_room_id: str | None = None\n\n        for item in self._scene.selectedItems():\n            if isinstance(item, BuildingItem):\n                selected_ids.append(item.building.id)\n                # Get scene_room_id from item's scene\n                if scene_room_id is None:\n                    scene_room_id = item.building_scene.scene_room_id\n            elif isinstance(item, BeltItem):\n                selected_ids.append(item.belt.id)\n                # Get scene_room_id from item's scene\n                if scene_room_id is None:\n                    scene_room_id = item.belt_scene.scene_room_id\n            elif isinstance(item, RoomItem):\n                selected_ids.append(item.placement.id)\n\n        self.selection_changed.emit(selected_ids, scene_room_id)\n</replace>\n</edit>\n\nNow fix `refresh_belt` to update ALL visual instances of a belt (for linked rooms):\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def refresh_belt(self, belt_id: str, scene_room_id: str | None = None) -> None:\n        \"\"\"Refresh a belt's visual state.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        # Get belt from correct scene\n        if scene_room_id and scene_room_id in self.document.rooms:\n            scene: Scene = self.document.rooms[scene_room_id]\n        else:\n            scene = self.document\n\n        belt = scene.belts.get(belt_id)\n        if not belt:\n            return\n\n        # Find belt item - could be top-level or inside a room\n        belt_item = self._belt_items.get(belt_id)\n        if not belt_item and scene_room_id:\n            # Look in room items\n            for room_item in self._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:\n                    belt_item = room_item._belt_items.get(belt_id)\n                    if belt_item:\n                        break\n\n        if not belt_item:\n            return\n\n        # Update appearance (tier may have changed)\n        belt_item.belt = belt  # Update reference to get new tier\n        belt_item._setup_appearance()\n\n        # Update path\n        source = scene.buildings.get(belt.source_building_id)\n        dest = scene.buildings.get(belt.dest_building_id)\n        if source and dest:\n            belt_item.update_path(source, dest)\n        else:\n            # May be connected to placements - use generic update\n            belt_item._update_path_from_endpoints()\n\n        belt_item.update()\n</search>\n<replace>\n    def refresh_belt(self, belt_id: str, scene_room_id: str | None = None) -> None:\n        \"\"\"Refresh a belt's visual state.\n\n        For belts in rooms, this updates ALL visual instances (since linked\n        room placements share the same Room data).\n        \"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        # Get belt from correct scene\n        if scene_room_id and scene_room_id in self.document.rooms:\n            scene: Scene = self.document.rooms[scene_room_id]\n        else:\n            scene = self.document\n\n        belt = scene.belts.get(belt_id)\n        if not belt:\n            return\n\n        def update_belt_item(belt_item: BeltItem) -> None:\n            \"\"\"Update a single belt item's appearance and path.\"\"\"\n            belt_item.belt = belt  # Update reference to get new tier\n            belt_item._setup_appearance()\n            source = scene.buildings.get(belt.source_building_id)\n            dest = scene.buildings.get(belt.dest_building_id)\n            if source and dest:\n                belt_item.update_path(source, dest)\n            else:\n                belt_item._update_path_from_endpoints()\n            belt_item.update()\n\n        if scene_room_id:\n            # Belt is inside a room - update ALL RoomItems displaying this room\n            for room_item in self._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:\n                    belt_item = room_item._belt_items.get(belt_id)\n                    if belt_item:\n                        update_belt_item(belt_item)\n        else:\n            # Top-level belt\n            belt_item = self._belt_items.get(belt_id)\n            if belt_item:\n                update_belt_item(belt_item)\n</replace>\n</edit>\n\n<run_tests/>\n\n<commit message=\"Fix belt tier changes for belts inside rooms\n\n- Add _scene to BeltItem (like BuildingItem has) to track which scene it belongs to\n- Pass scene when creating BeltItems in RoomItem and FactoryCanvas\n- Simplify _emit_selection_changed to use item's scene directly\n- Fix refresh_belt to update ALL visual instances for linked rooms\n- Pass scene_room_id through selection_changed signal\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/belt_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/belt_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/belt_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/belt_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/belt_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/belt_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nFound 2 errors (2 fixed, 0 remaining).\nruff format src/ tests/ spikes/\n78 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 47 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_y0k6ne_y\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_y0k6ne_y\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/belt_item.py"
+          ],
+          "output": "ruff check --fix src/ tests/ spikes/\nFound 2 errors (2 fixed, 0 remaining).\nruff format src/ tests/ spikes/\n78 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 47 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_y0k6ne_y\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_y0k6ne_y\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "files_modified",
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "9663f72371b3",
           "message": "Committed: 3 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
