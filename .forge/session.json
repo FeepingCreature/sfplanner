@@ -1,6 +1,7 @@
 {
   "active_files": [
     "src/satisfactory_planner/ui/main_window.py",
+    "src/satisfactory_planner/ui/items/room_item.py",
     "CLAUDE.md",
     "src/satisfactory_planner/ui/items/room_port_item.py"
   ],
@@ -391,6 +392,69 @@
       "streaming": true,
       "actual_cost": 0.056539,
       "generation_id": "gen-1767968544-gLt6LWG880NMrIMocTJE"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968659050.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968659050.json",
+      "timestamp": 1767968659.051047,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0521065,
+      "generation_id": "gen-1767968659-RfcUIMuqwoXEnc8GgThq"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968665063.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968665063.json",
+      "timestamp": 1767968665.0640762,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.03639525,
+      "generation_id": "gen-1767968665-l0aAHVVTXCZr8hjLVOVf"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968669221.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968669221.json",
+      "timestamp": 1767968669.2221491,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.04254575,
+      "generation_id": "gen-1767968669-HHCdljohnfKfkehfYXI4"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968676834.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968676834.json",
+      "timestamp": 1767968676.8352008,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0566415,
+      "generation_id": "gen-1767968677-ZforWnCXuw9wLCKoBTyS"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968684414.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968684414.json",
+      "timestamp": 1767968684.4150772,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0554665,
+      "generation_id": "gen-1767968684-FnxBnBDl2QZKLcodLyTZ"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968690769.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968690769.json",
+      "timestamp": 1767968690.7708957,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.110269,
+      "generation_id": "gen-1767968690-LkVcaWPtstnM1d0o56i0"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968699887.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968699887.json",
+      "timestamp": 1767968699.8884957,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.087227,
+      "generation_id": "gen-1767968700-JXKkziQLJhRkTkUBy3AA"
     }
   ],
   "messages": [
@@ -1344,6 +1408,179 @@
         },
         {
           "commit": "aa4bffc4615e",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: bb5968d5",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Thanks! Yeah the drag behavior is right now. But when I draw a belt from the IN PORT item out port to another building, I get warnings \"Belt source building not found/Belt destination building not found.\"\n\nI think we've kinda confused ourselves designing this class and added on a lot of complexity that we're now stripping back out slowly"
+    },
+    {
+      "role": "assistant",
+      "content": "You're right, let's trace this properly. The issue is that belts inside a room use building IDs from the room's `buildings` dict, but something is looking them up in the wrong place. Let me check where this warning comes from:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"Belt source building not found|Belt destination building not found\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01SrMDyDDm8Hxc2oeg5DdYJ7",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01SrMDyDDm8Hxc2oeg5DdYJ7",
+      "content": "{\"message\": \"No matches found for pattern: Belt source building not found|Belt destination building not found\", \"snippets\": [], \"success\": true, \"total_matches\": 0}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"Belt source building not found|Belt destination building not found\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"No matches found for pattern: Belt source building not found|Belt destination building not found\",\n  \"snippets\": [],\n  \"success\": true,\n  \"total_matches\": 0\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me search differently:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"source building not found|destination building not found\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01NBVVtdEnbv43T2YDtpNaQT",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01NBVVtdEnbv43T2YDtpNaQT",
+      "content": "{\"message\": \"Found 4 matches\", \"output\": \"\\u2500\\u2500 spikes/flowsim/builder.py:234 \\u2500\\u2500\\n     231 |             errors.append(\\n     232 |                 FatalError(\\n     233 |                     error_type=FatalErrorType.DISCONNECTED_BELT,\\n>>>  234 |                     message=f\\\"Belt {belt_id} source building not found\\\",\\n     235 |                     element_id=belt_id,\\n     236 |                 )\\n     237 |             )\\n\\n\\u2500\\u2500 spikes/flowsim/builder.py:251 \\u2500\\u2500\\n     248 |             errors.append(\\n     249 |                 FatalError(\\n     250 |                     error_type=FatalErrorType.DISCONNECTED_BELT,\\n>>>  251 |                     message=f\\\"Belt {belt_id} destination building not found\\\",\\n     252 |                     element_id=belt_id,\\n     253 |                 )\\n     254 |             )\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/flow_builder.py:484 \\u2500\\u2500\\n     481 |                 errors.append(\\n     482 |                     FatalError(\\n     483 |                         error_type=FatalErrorType.DISCONNECTED_BELT,\\n>>>  484 |                         message=f\\\"Belt {belt_id} source building not found\\\",\\n     485 |                         element_id=belt_id,\\n     486 |                     )\\n     487 |                 )\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/flow_builder.py:507 \\u2500\\u2500\\n     504 |                 errors.append(\\n     505 |                     FatalError(\\n     506 |                         error_type=FatalErrorType.DISCONNECTED_BELT,\\n>>>  507 |                         message=f\\\"Belt {belt_id} destination building not found\\\",\\n     508 |                         element_id=belt_id,\\n     509 |                     )\\n     510 |                 )\", \"success\": true, \"total_matches\": 4}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"source building not found|destination building not found\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 4 matches\",\n  \"output\": \"\\u2500\\u2500 spikes/flowsim/builder.py:234 \\u2500\\u2500\\n     231 |             errors.append(\\n     232 |                 FatalError(\\n     233 |                     error_type=FatalErrorType.DISCONNECTED_BELT,\\n>>>  234 |                     message=f\\\"Belt {belt_id} source building not found\\\",\\n     235 |                     element_id=belt_id,\\n     236 |                 )\\n     237 |             )\\n\\n\\u2500\\u2500 spikes/flowsim/builder.py:251 \\u2500\\u2500\\n     248 |             errors.append(\\n     249 |                 FatalError(\\n     250 |                     error_type=FatalErrorType.DISCONNECTED_BELT,\\n>>>  251 |                     message=f\\\"Belt {belt_id} destination building not found\\\",\\n     252 |                     element_id=belt_id,\\n     253 |                 )\\n     254 |             )\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/flow_builder.py:484 \\u2500\\u2500\\n     481 |                 errors.append(\\n     482 |                     FatalError(\\n     483 |                         error_type=FatalErrorType.DISCONNECTED_BELT,\\n>>>  484 |                         message=f\\\"Belt {belt_id} source building not found\\\",\\n     485 |                         element_id=belt_id,\\n     486 |                     )\\n     487 |                 )\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/flow_builder.py:507 \\u2500\\u2500\\n     504 |                 errors.append(\\n     505 |                     FatalError(\\n     506 |                         error_type=FatalErrorType.DISCONNECTED_BELT,\\n>>>  507 |                         message=f\\\"Belt {belt_id} destination building not found\\\",\\n     508 |                         element_id=belt_id,\\n     509 |                     )\\n     510 |                 )\",\n  \"success\": true,\n  \"total_matches\": 4\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "So the warning is coming from `flow_builder.py`. This is the flow solver looking up buildings when processing belts. The issue is likely that when a belt is inside a room and connects to a PORT building, the flow builder is looking in the wrong place (main document instead of room).\n\nBut let me first check if the belt is even being created correctly. Let me look at how belt connections work with RoomPortItem - specifically how the scene/room context is determined:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"start_belt_drag|complete.*belt|get_scene_for\", \"include_extensions\": [\".py\"], \"max_matches\": 15}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01C5jY5mnogyJedT19oHiUnH",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01C5jY5mnogyJedT19oHiUnH",
+      "content": "{\"message\": \"Found 15 matches (showing 15 of 16 total matches)\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:180 \\u2500\\u2500\\n     177 |                 dest_port_index=dest_port_index,\\n     178 |             )\\n     179 |             source_item = self.canvas._building_items.get(self._connect_start_building)\\n>>>  180 |             scene_room_id = self.canvas.get_scene_for_item(source_item) if source_item else None\\n     181 |             cmd = ConnectBeltCommand(scene_room_id=scene_room_id, belt=belt, canvas=self.canvas)\\n     182 |             self.canvas.command_stack.execute(cmd)\\n     183 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:686 \\u2500\\u2500\\n     683 |                 ),\\n     684 |                 None,\\n     685 |             )\\n>>>  686 |             scene_room_id = self.get_scene_for_item(first_item) if first_item else None\\n     687 | \\n     688 |             # Get the correct scene to look up items\\n     689 |             if scene_room_id and scene_room_id in self.document.rooms:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:755 \\u2500\\u2500\\n     752 |                 return item.room.id\\n     753 |         return None\\n     754 | \\n>>>  755 |     def get_scene_for_item(self, item: QGraphicsItem) -> str | None:\\n     756 |         \\\"\\\"\\\"Get the room_id for the scene an item belongs to.\\\"\\\"\\\"\\n     757 |         scene = self._selection.get_scene_for_item(item)\\n     758 |         if scene is None or scene is self.document:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:757 \\u2500\\u2500\\n     754 | \\n     755 |     def get_scene_for_item(self, item: QGraphicsItem) -> str | None:\\n     756 |         \\\"\\\"\\\"Get the room_id for the scene an item belongs to.\\\"\\\"\\\"\\n>>>  757 |         scene = self._selection.get_scene_for_item(item)\\n     758 |         if scene is None or scene is self.document:\\n     759 |             return None\\n     760 |         for room_id, room in self.document.rooms.items():\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:767 \\u2500\\u2500\\n     764 | \\n     765 |     # === Belt connection (delegated) ===\\n     766 | \\n>>>  767 |     def start_belt_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:\\n     768 |         \\\"\\\"\\\"Start dragging a belt connection from an output port.\\\"\\\"\\\"\\n     769 |         self._belt_connector.start_drag(building_id, port_index, start_pos)\\n     770 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:779 \\u2500\\u2500\\n     776 |         \\\"\\\"\\\"Start a belt connection (legacy compatibility).\\\"\\\"\\\"\\n     777 |         self._belt_connector.start_drag(building_id, port_index, QPointF(0, 0))\\n     778 | \\n>>>  779 |     def complete_belt_connection(self, building_id: str, port_index: int) -> None:\\n     780 |         \\\"\\\"\\\"Complete a belt connection to an input port.\\\"\\\"\\\"\\n     781 |         self._belt_connector.complete(building_id, port_index)\\n     782 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:944 \\u2500\\u2500\\n     941 |             new_y=new_y,\\n     942 |             new_rotation=new_rot,\\n     943 |         )\\n>>>  944 |         scene_room_id = self.get_scene_for_item(item)\\n     945 |         cmd = MoveBuildingsCommand(scene_room_id=scene_room_id, canvas=self, moves=(move,))\\n     946 |         self.command_stack.execute(cmd)\\n     947 |         self._update_belts_for_building(building_id)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/selection_manager.py:77 \\u2500\\u2500\\n      74 |         \\\"\\\"\\\"Return the selection outline item (for hit testing).\\\"\\\"\\\"\\n      75 |         return self._selection_outline\\n      76 | \\n>>>   77 |     def get_scene_for_item(self, item: QGraphicsItem) -> Scene | None:\\n      78 |         \\\"\\\"\\\"Get the scene (Document or Room) that an item belongs to.\\\"\\\"\\\"\\n      79 |         from satisfactory_planner.ui.items.belt_item import BeltItem\\n      80 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/selection_manager.py:97 \\u2500\\u2500\\n      94 |     def clear_selection_in_other_scenes(self, current_scene: Scene) -> None:\\n      95 |         \\\"\\\"\\\"Clear selection for all items not in the given scene.\\\"\\\"\\\"\\n      96 |         for item in self.canvas._scene.selectedItems():\\n>>>   97 |             item_scene = self.get_scene_for_item(item)\\n      98 |             if item_scene is not None and item_scene is not current_scene:\\n      99 |                 item.setSelected(False)\\n     100 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/selection_manager.py:103 \\u2500\\u2500\\n     100 | \\n     101 |     def on_item_clicked(self, item: QGraphicsItem) -> None:\\n     102 |         \\\"\\\"\\\"Handle an item being clicked - enforce scene-local selection.\\\"\\\"\\\"\\n>>>  103 |         item_scene = self.get_scene_for_item(item)\\n     104 |         if item_scene is None:\\n     105 |             return\\n     106 |         self.clear_selection_in_other_scenes(item_scene)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/port_item.py:127 \\u2500\\u2500\\n     124 |         \\\"\\\"\\\"Handle press to start belt drag from output port.\\\"\\\"\\\"\\n     125 |         if event.button() == Qt.MouseButton.LeftButton and self.is_output:\\n     126 |             # Start dragging a connection from output\\n>>>  127 |             self.canvas.start_belt_drag(self.building_id, self.port_index, self.scenePos())\\n     128 |             event.accept()\\n     129 |         else:\\n     130 |             super().mousePressEvent(event)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/port_item.py:133 \\u2500\\u2500\\n     130 |             super().mousePressEvent(event)\\n     131 | \\n     132 |     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n>>>  133 |         \\\"\\\"\\\"Handle release to complete belt connection on input port.\\\"\\\"\\\"\\n     134 |         if (\\n     135 |             event.button() == Qt.MouseButton.LeftButton\\n     136 |             and not self.is_output\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/port_item.py:139 \\u2500\\u2500\\n     136 |             and not self.is_output\\n     137 |             and self.canvas.is_dragging_belt()\\n     138 |         ):\\n>>>  139 |             self.canvas.complete_belt_connection(self.building_id, self.port_index)\\n     140 |             event.accept()\\n     141 |             return\\n     142 |         super().mouseReleaseEvent(event)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:496 \\u2500\\u2500\\n     493 |                 # Get scene from the building item itself\\n     494 |                 building_item = self.canvas._building_items.get(building_id)\\n     495 |                 scene_room_id = (\\n>>>  496 |                     self.canvas.get_scene_for_item(building_item) if building_item else None\\n     497 |                 )\\n     498 |                 cmd = SetClockSpeedCommand(\\n     499 |                     scene_room_id=scene_room_id,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:520 \\u2500\\u2500\\n     517 |                 # Get scene from the building item itself\\n     518 |                 building_item = self.canvas._building_items.get(building_id)\\n     519 |                 scene_room_id = (\\n>>>  520 |                     self.canvas.get_scene_for_item(building_item) if building_item else None\\n     521 |                 )\\n     522 |                 cmd = SetRecipeCommand(\\n     523 |                     scene_room_id=scene_room_id,\", \"success\": true, \"total_matches\": 16}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"max_matches\": 15,\n  \"pattern\": \"start_belt_drag|complete.*belt|get_scene_for\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 15 matches (showing 15 of 16 total matches)\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:180 \\u2500\\u2500\\n     177 |                 dest_port_index=dest_port_index,\\n     178 |             )\\n     179 |             source_item = self.canvas._building_items.get(self._connect_start_building)\\n>>>  180 |             scene_room_id = self.canvas.get_scene_for_item(source_item) if source_item else None\\n     181 |             cmd = ConnectBeltCommand(scene_room_id=scene_room_id, belt=belt, canvas=self.canvas)\\n     182 |             self.canvas.command_stack.execute(cmd)\\n     183 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:686 \\u2500\\u2500\\n     683 |                 ),\\n     684 |                 None,\\n     685 |             )\\n>>>  686 |             scene_room_id = self.get_scene_for_item(first_item) if first_item else None\\n     687 | \\n     688 |             # Get the correct scene to look up items\\n     689 |             if scene_room_id and scene_room_id in self.document.rooms:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:755 \\u2500\\u2500\\n     752 |                 return item.room.id\\n     753 |         return None\\n     754 | \\n>>>  755 |     def get_scene_for_item(self, item: QGraphicsItem) -> str | None:\\n     756 |         \\\"\\\"\\\"Get the room_id for the scene an item belongs to.\\\"\\\"\\\"\\n     757 |         scene = self._selection.get_scene_for_item(item)\\n     758 |         if scene is None or scene is self.document:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:757 \\u2500\\u2500\\n     754 | \\n     755 |     def get_scene_for_item(self, item: QGraphicsItem) -> str | None:\\n     756 |         \\\"\\\"\\\"Get the room_id for the scene an item belongs to.\\\"\\\"\\\"\\n>>>  757 |         scene = self._selection.get_scene_for_item(item)\\n     758 |         if scene is None or scene is self.document:\\n     759 |             return None\\n     760 |         for room_id, room in self.document.rooms.items():\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:767 \\u2500\\u2500\\n     764 | \\n     765 |     # === Belt connection (delegated) ===\\n     766 | \\n>>>  767 |     def start_belt_drag(self, building_id: str, port_index: int, start_pos: QPointF) -> None:\\n     768 |         \\\"\\\"\\\"Start dragging a belt connection from an output port.\\\"\\\"\\\"\\n     769 |         self._belt_connector.start_drag(building_id, port_index, start_pos)\\n     770 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:779 \\u2500\\u2500\\n     776 |         \\\"\\\"\\\"Start a belt connection (legacy compatibility).\\\"\\\"\\\"\\n     777 |         self._belt_connector.start_drag(building_id, port_index, QPointF(0, 0))\\n     778 | \\n>>>  779 |     def complete_belt_connection(self, building_id: str, port_index: int) -> None:\\n     780 |         \\\"\\\"\\\"Complete a belt connection to an input port.\\\"\\\"\\\"\\n     781 |         self._belt_connector.complete(building_id, port_index)\\n     782 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:944 \\u2500\\u2500\\n     941 |             new_y=new_y,\\n     942 |             new_rotation=new_rot,\\n     943 |         )\\n>>>  944 |         scene_room_id = self.get_scene_for_item(item)\\n     945 |         cmd = MoveBuildingsCommand(scene_room_id=scene_room_id, canvas=self, moves=(move,))\\n     946 |         self.command_stack.execute(cmd)\\n     947 |         self._update_belts_for_building(building_id)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/selection_manager.py:77 \\u2500\\u2500\\n      74 |         \\\"\\\"\\\"Return the selection outline item (for hit testing).\\\"\\\"\\\"\\n      75 |         return self._selection_outline\\n      76 | \\n>>>   77 |     def get_scene_for_item(self, item: QGraphicsItem) -> Scene | None:\\n      78 |         \\\"\\\"\\\"Get the scene (Document or Room) that an item belongs to.\\\"\\\"\\\"\\n      79 |         from satisfactory_planner.ui.items.belt_item import BeltItem\\n      80 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/selection_manager.py:97 \\u2500\\u2500\\n      94 |     def clear_selection_in_other_scenes(self, current_scene: Scene) -> None:\\n      95 |         \\\"\\\"\\\"Clear selection for all items not in the given scene.\\\"\\\"\\\"\\n      96 |         for item in self.canvas._scene.selectedItems():\\n>>>   97 |             item_scene = self.get_scene_for_item(item)\\n      98 |             if item_scene is not None and item_scene is not current_scene:\\n      99 |                 item.setSelected(False)\\n     100 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/selection_manager.py:103 \\u2500\\u2500\\n     100 | \\n     101 |     def on_item_clicked(self, item: QGraphicsItem) -> None:\\n     102 |         \\\"\\\"\\\"Handle an item being clicked - enforce scene-local selection.\\\"\\\"\\\"\\n>>>  103 |         item_scene = self.get_scene_for_item(item)\\n     104 |         if item_scene is None:\\n     105 |             return\\n     106 |         self.clear_selection_in_other_scenes(item_scene)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/port_item.py:127 \\u2500\\u2500\\n     124 |         \\\"\\\"\\\"Handle press to start belt drag from output port.\\\"\\\"\\\"\\n     125 |         if event.button() == Qt.MouseButton.LeftButton and self.is_output:\\n     126 |             # Start dragging a connection from output\\n>>>  127 |             self.canvas.start_belt_drag(self.building_id, self.port_index, self.scenePos())\\n     128 |             event.accept()\\n     129 |         else:\\n     130 |             super().mousePressEvent(event)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/port_item.py:133 \\u2500\\u2500\\n     130 |             super().mousePressEvent(event)\\n     131 | \\n     132 |     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\\n>>>  133 |         \\\"\\\"\\\"Handle release to complete belt connection on input port.\\\"\\\"\\\"\\n     134 |         if (\\n     135 |             event.button() == Qt.MouseButton.LeftButton\\n     136 |             and not self.is_output\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/port_item.py:139 \\u2500\\u2500\\n     136 |             and not self.is_output\\n     137 |             and self.canvas.is_dragging_belt()\\n     138 |         ):\\n>>>  139 |             self.canvas.complete_belt_connection(self.building_id, self.port_index)\\n     140 |             event.accept()\\n     141 |             return\\n     142 |         super().mouseReleaseEvent(event)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:496 \\u2500\\u2500\\n     493 |                 # Get scene from the building item itself\\n     494 |                 building_item = self.canvas._building_items.get(building_id)\\n     495 |                 scene_room_id = (\\n>>>  496 |                     self.canvas.get_scene_for_item(building_item) if building_item else None\\n     497 |                 )\\n     498 |                 cmd = SetClockSpeedCommand(\\n     499 |                     scene_room_id=scene_room_id,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:520 \\u2500\\u2500\\n     517 |                 # Get scene from the building item itself\\n     518 |                 building_item = self.canvas._building_items.get(building_id)\\n     519 |                 scene_room_id = (\\n>>>  520 |                     self.canvas.get_scene_for_item(building_item) if building_item else None\\n     521 |                 )\\n     522 |                 cmd = SetRecipeCommand(\\n     523 |                     scene_room_id=scene_room_id,\",\n  \"success\": true,\n  \"total_matches\": 16\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at the code, I see the issue. In `belt_connector.py` line 179-180:\n\n```python\nsource_item = self.canvas._building_items.get(self._connect_start_building)\nscene_room_id = self.canvas.get_scene_for_item(source_item) if source_item else None\n```\n\nThe problem is that `RoomPortItem` is a child of `RoomItem`, but it's not registered in `canvas._building_items`. Let me check where building items are registered:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"_building_items\\\\[|_building_items\\\\.get\", \"include_extensions\": [\".py\"], \"max_matches\": 15}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01MfZtcRYaMxcXEBQkWd36fL",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01MfZtcRYaMxcXEBQkWd36fL",
+      "content": "{\"message\": \"Found 15 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:179 \\u2500\\u2500\\n     176 |                 dest_building_id=dest_building_id,\\n     177 |                 dest_port_index=dest_port_index,\\n     178 |             )\\n>>>  179 |             source_item = self.canvas._building_items.get(self._connect_start_building)\\n     180 |             scene_room_id = self.canvas.get_scene_for_item(source_item) if source_item else None\\n     181 |             cmd = ConnectBeltCommand(scene_room_id=scene_room_id, belt=belt, canvas=self.canvas)\\n     182 |             self.canvas.command_stack.execute(cmd)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:238 \\u2500\\u2500\\n     235 |         \\\"\\\"\\\"Add a building item to the scene.\\\"\\\"\\\"\\n     236 |         item = BuildingItem(building, self)\\n     237 |         self._scene.addItem(item)\\n>>>  238 |         self._building_items[building.id] = item\\n     239 |         return item\\n     240 | \\n     241 |     def remove_building_item(self, building_id: str) -> None:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:292 \\u2500\\u2500\\n     289 | \\n     290 |     def refresh_building(self, building_id: str) -> None:\\n     291 |         \\\"\\\"\\\"Refresh a building's visual state.\\\"\\\"\\\"\\n>>>  292 |         item = self._building_items.get(building_id)\\n     293 |         if item:\\n     294 |             building = self.document.buildings.get(building_id)\\n     295 |             if building:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:341 \\u2500\\u2500\\n     338 |             room_item.refresh()\\n     339 |             # Re-register items after refresh\\n     340 |             for building_id, building_item in room_item._building_items.items():\\n>>>  341 |                 self._building_items[building_id] = building_item\\n     342 |             for belt_id, belt_item in room_item._belt_items.items():\\n     343 |                 self._belt_items[belt_id] = belt_item\\n     344 |             # Refresh linked rooms too\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:353 \\u2500\\u2500\\n     350 |                 ):\\n     351 |                     other_room_item.refresh()\\n     352 |                     for building_id, building_item in other_room_item._building_items.items():\\n>>>  353 |                         self._building_items[building_id] = building_item\\n     354 |                     for belt_id, belt_item in other_room_item._belt_items.items():\\n     355 |                         self._belt_items[belt_id] = belt_item\\n     356 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:889 \\u2500\\u2500\\n     886 | \\n     887 |         self._scene.clearSelection()\\n     888 |         for new_id in new_item_ids:\\n>>>  889 |             item = self._building_items.get(new_id)\\n     890 |             if item:\\n     891 |                 item.setSelected(True)\\n     892 |             room_item = self._room_items.get(new_id)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:916 \\u2500\\u2500\\n     913 |         \\\"\\\"\\\"\\n     914 |         if isinstance(item_or_id, str):\\n     915 |             # Legacy path - lookup by ID (may get wrong item for linked rooms)\\n>>>  916 |             item = self._building_items.get(item_or_id)\\n     917 |             building_id = item_or_id\\n     918 |         else:\\n     919 |             # New path - use the actual item that was dragged\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:1016 \\u2500\\u2500\\n    1013 |         # Update building efficiency\\n    1014 |         for eff in solved.efficiencies.values():\\n    1015 |             if eff.building_id in self._building_items:\\n>>> 1016 |                 item = self._building_items[eff.building_id]\\n    1017 |                 item.set_efficiency(eff.duty_cycle)\\n    1018 | \\n    1019 |         # Update warning icons\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:1048 \\u2500\\u2500\\n    1045 |         \\\"\\\"\\\"Get the scene position for an element (building or belt).\\\"\\\"\\\"\\n    1046 |         # Check buildings\\n    1047 |         if element_id in self._building_items:\\n>>> 1048 |             building_item = self._building_items[element_id]\\n    1049 |             rect = building_item.boundingRect()\\n    1050 |             return building_item.pos() + rect.center()\\n    1051 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:1082 \\u2500\\u2500\\n    1079 |                 room_item.refresh()\\n    1080 | \\n    1081 |                 for building_id, building_item in room_item._building_items.items():\\n>>> 1082 |                     self._building_items[building_id] = building_item\\n    1083 |                 for belt_id, belt_item in room_item._belt_items.items():\\n    1084 |                     self._belt_items[belt_id] = belt_item\\n    1085 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/placement_manager.py:168 \\u2500\\u2500\\n     165 |         )\\n     166 |         self.canvas.command_stack.execute(cmd)\\n     167 | \\n>>>  168 |         item = self.canvas._building_items.get(building.id)\\n     169 |         if item:\\n     170 |             item.rotation_angle = self._placement_rotation\\n     171 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/placement_manager.py:233 \\u2500\\u2500\\n     230 |             )\\n     231 |             self.canvas.command_stack.execute(cmd)\\n     232 | \\n>>>  233 |             item = self.canvas._building_items.get(building.id)\\n     234 |             if item:\\n     235 |                 item.rotation_angle = self._drag_rotation\\n     236 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:412 \\u2500\\u2500\\n     409 |             # Only the \\\"lead\\\" building snaps; others maintain relative positions\\n     410 |             if isinstance(new_pos, QPointF) and hasattr(self, \\\"_multi_drag_offsets\\\"):\\n     411 |                 for building_id, offset in self._multi_drag_offsets.items():\\n>>>  412 |                     other_item = self.canvas._building_items.get(building_id)\\n     413 |                     if other_item and other_item is not self:\\n     414 |                         # Temporarily disable the other item's individual snapping\\n     415 |                         other_item.setFlag(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/room_item.py:102 \\u2500\\u2500\\n      99 |             # Re-apply position after parenting (BuildingItem sets pos in __init__\\n     100 |             # before parenting, which can cause incorrect positioning)\\n     101 |             building_item.setPos(building.x, building.y)\\n>>>  102 |             self._building_items[building.id] = building_item\\n     103 | \\n     104 |         # Belts inside the room\\n     105 |         for belt in self.room.belts.values():\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/room_item.py:336 \\u2500\\u2500\\n     333 |         item.setParentItem(self)\\n     334 |         # Re-apply position after parenting\\n     335 |         item.setPos(building.x, building.y)\\n>>>  336 |         self._building_items[building_id] = item\\n     337 |         return item\\n     338 | \\n     339 |     def remove_building_item(self, building_id: str) -> None:\", \"success\": true, \"total_matches\": 15}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"max_matches\": 15,\n  \"pattern\": \"_building_items\\\\[|_building_items\\\\.get\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 15 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:179 \\u2500\\u2500\\n     176 |                 dest_building_id=dest_building_id,\\n     177 |                 dest_port_index=dest_port_index,\\n     178 |             )\\n>>>  179 |             source_item = self.canvas._building_items.get(self._connect_start_building)\\n     180 |             scene_room_id = self.canvas.get_scene_for_item(source_item) if source_item else None\\n     181 |             cmd = ConnectBeltCommand(scene_room_id=scene_room_id, belt=belt, canvas=self.canvas)\\n     182 |             self.canvas.command_stack.execute(cmd)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:238 \\u2500\\u2500\\n     235 |         \\\"\\\"\\\"Add a building item to the scene.\\\"\\\"\\\"\\n     236 |         item = BuildingItem(building, self)\\n     237 |         self._scene.addItem(item)\\n>>>  238 |         self._building_items[building.id] = item\\n     239 |         return item\\n     240 | \\n     241 |     def remove_building_item(self, building_id: str) -> None:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:292 \\u2500\\u2500\\n     289 | \\n     290 |     def refresh_building(self, building_id: str) -> None:\\n     291 |         \\\"\\\"\\\"Refresh a building's visual state.\\\"\\\"\\\"\\n>>>  292 |         item = self._building_items.get(building_id)\\n     293 |         if item:\\n     294 |             building = self.document.buildings.get(building_id)\\n     295 |             if building:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:341 \\u2500\\u2500\\n     338 |             room_item.refresh()\\n     339 |             # Re-register items after refresh\\n     340 |             for building_id, building_item in room_item._building_items.items():\\n>>>  341 |                 self._building_items[building_id] = building_item\\n     342 |             for belt_id, belt_item in room_item._belt_items.items():\\n     343 |                 self._belt_items[belt_id] = belt_item\\n     344 |             # Refresh linked rooms too\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:353 \\u2500\\u2500\\n     350 |                 ):\\n     351 |                     other_room_item.refresh()\\n     352 |                     for building_id, building_item in other_room_item._building_items.items():\\n>>>  353 |                         self._building_items[building_id] = building_item\\n     354 |                     for belt_id, belt_item in other_room_item._belt_items.items():\\n     355 |                         self._belt_items[belt_id] = belt_item\\n     356 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:889 \\u2500\\u2500\\n     886 | \\n     887 |         self._scene.clearSelection()\\n     888 |         for new_id in new_item_ids:\\n>>>  889 |             item = self._building_items.get(new_id)\\n     890 |             if item:\\n     891 |                 item.setSelected(True)\\n     892 |             room_item = self._room_items.get(new_id)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:916 \\u2500\\u2500\\n     913 |         \\\"\\\"\\\"\\n     914 |         if isinstance(item_or_id, str):\\n     915 |             # Legacy path - lookup by ID (may get wrong item for linked rooms)\\n>>>  916 |             item = self._building_items.get(item_or_id)\\n     917 |             building_id = item_or_id\\n     918 |         else:\\n     919 |             # New path - use the actual item that was dragged\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:1016 \\u2500\\u2500\\n    1013 |         # Update building efficiency\\n    1014 |         for eff in solved.efficiencies.values():\\n    1015 |             if eff.building_id in self._building_items:\\n>>> 1016 |                 item = self._building_items[eff.building_id]\\n    1017 |                 item.set_efficiency(eff.duty_cycle)\\n    1018 | \\n    1019 |         # Update warning icons\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:1048 \\u2500\\u2500\\n    1045 |         \\\"\\\"\\\"Get the scene position for an element (building or belt).\\\"\\\"\\\"\\n    1046 |         # Check buildings\\n    1047 |         if element_id in self._building_items:\\n>>> 1048 |             building_item = self._building_items[element_id]\\n    1049 |             rect = building_item.boundingRect()\\n    1050 |             return building_item.pos() + rect.center()\\n    1051 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:1082 \\u2500\\u2500\\n    1079 |                 room_item.refresh()\\n    1080 | \\n    1081 |                 for building_id, building_item in room_item._building_items.items():\\n>>> 1082 |                     self._building_items[building_id] = building_item\\n    1083 |                 for belt_id, belt_item in room_item._belt_items.items():\\n    1084 |                     self._belt_items[belt_id] = belt_item\\n    1085 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/placement_manager.py:168 \\u2500\\u2500\\n     165 |         )\\n     166 |         self.canvas.command_stack.execute(cmd)\\n     167 | \\n>>>  168 |         item = self.canvas._building_items.get(building.id)\\n     169 |         if item:\\n     170 |             item.rotation_angle = self._placement_rotation\\n     171 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/placement_manager.py:233 \\u2500\\u2500\\n     230 |             )\\n     231 |             self.canvas.command_stack.execute(cmd)\\n     232 | \\n>>>  233 |             item = self.canvas._building_items.get(building.id)\\n     234 |             if item:\\n     235 |                 item.rotation_angle = self._drag_rotation\\n     236 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:412 \\u2500\\u2500\\n     409 |             # Only the \\\"lead\\\" building snaps; others maintain relative positions\\n     410 |             if isinstance(new_pos, QPointF) and hasattr(self, \\\"_multi_drag_offsets\\\"):\\n     411 |                 for building_id, offset in self._multi_drag_offsets.items():\\n>>>  412 |                     other_item = self.canvas._building_items.get(building_id)\\n     413 |                     if other_item and other_item is not self:\\n     414 |                         # Temporarily disable the other item's individual snapping\\n     415 |                         other_item.setFlag(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/room_item.py:102 \\u2500\\u2500\\n      99 |             # Re-apply position after parenting (BuildingItem sets pos in __init__\\n     100 |             # before parenting, which can cause incorrect positioning)\\n     101 |             building_item.setPos(building.x, building.y)\\n>>>  102 |             self._building_items[building.id] = building_item\\n     103 | \\n     104 |         # Belts inside the room\\n     105 |         for belt in self.room.belts.values():\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/room_item.py:336 \\u2500\\u2500\\n     333 |         item.setParentItem(self)\\n     334 |         # Re-apply position after parenting\\n     335 |         item.setPos(building.x, building.y)\\n>>>  336 |         self._building_items[building_id] = item\\n     337 |         return item\\n     338 | \\n     339 |     def remove_building_item(self, building_id: str) -> None:\",\n  \"success\": true,\n  \"total_matches\": 15\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue now. Looking at line 341 in `factory_canvas.py`, room items register their building items to the canvas's `_building_items`. But let me check if PORT buildings (RoomPortItem) are being registered there:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/items/room_item.py\"], \"remove\": [\"src/satisfactory_planner/ui/items/room_port_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01K6mbjLeeSok2YKWLo6CHNG",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01K6mbjLeeSok2YKWLo6CHNG",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/items/room_item.py\"], \"message\": \"Added 1 files, removed 1 files from context\", \"remove\": [\"src/satisfactory_planner/ui/items/room_port_item.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at `RoomItem._populate_children()`, I see that PORT_IN/PORT_OUT buildings are explicitly skipped when creating BuildingItems (line 91-92). Instead, they create `RoomPortItem` which is a special visual item.\n\nBut the problem is that `RoomPortItem` creates `PortItem` children that use `self.building.id` as the `building_id`. When a belt connection is made, the `belt_connector.py` looks up the source item in `canvas._building_items`, but PORT buildings aren't registered there because they're handled specially.\n\nLet me check how `RoomPortItem` creates its port:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/items/room_port_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01SCFrDi6gCaZZXuSaWemEMC",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01SCFrDi6gCaZZXuSaWemEMC",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/items/room_port_item.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "You're right, this has gotten overly complex. Looking at the code:\n\n1. `RoomPortItem` extends `BuildingItem` \n2. `BuildingItem` already creates `PortItem` children for the building's ports\n3. PORT_IN/PORT_OUT buildings ARE in the room's `buildings` dict\n4. But `RoomItem._populate_children()` explicitly SKIPS them (lines 91-92) and creates `RoomPortItem` instead\n\nThe problem is that `RoomPortItem` gets created but never registered in `_building_items`. So when `belt_connector.py` looks up the building ID, it can't find it.\n\nThe simplest fix is to register `RoomPortItem` instances in `_building_items` just like regular buildings:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_item.py\">\n<search>\n    def _create_port_items(self) -> None:\n        \"\"\"Create interactive RoomPortItem for each PORT building in the room.\"\"\"\n        for building in self.room.buildings.values():\n            if building.building_type not in (BuildingType.PORT_IN, BuildingType.PORT_OUT):\n                continue\n\n            port_item = RoomPortItem(\n                room_item=self,\n                building=building,\n                canvas=self.canvas,\n            )\n            self._port_items.append(port_item)\n</search>\n<replace>\n    def _create_port_items(self) -> None:\n        \"\"\"Create interactive RoomPortItem for each PORT building in the room.\"\"\"\n        for building in self.room.buildings.values():\n            if building.building_type not in (BuildingType.PORT_IN, BuildingType.PORT_OUT):\n                continue\n\n            port_item = RoomPortItem(\n                room_item=self,\n                building=building,\n                canvas=self.canvas,\n            )\n            self._port_items.append(port_item)\n            # Register in _building_items so belt connector can find them\n            self._building_items[building.id] = port_item\n</replace>\n</edit>\n\n<commit message=\"Register RoomPortItem in _building_items for belt connections\n\nRoomPortItem extends BuildingItem but wasn't being registered in\n_building_items, so belt_connector couldn't find PORT buildings\nwhen creating belt connections inside rooms.\"/>\n\nDone! The fix is simple - `RoomPortItem` is a `BuildingItem` subclass, so it should be registered in `_building_items` just like regular buildings. Now the belt connector can find PORT buildings when creating connections inside rooms.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "commit": "bea84a7142c1",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"

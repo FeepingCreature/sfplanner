@@ -185,6 +185,8 @@ class RoomItem(QGraphicsRectItem):
                 canvas=self.canvas,
             )
             self._port_items.append(port_item)
+            # Register in _building_items so belt connector can find them
+            self._building_items[building.id] = port_item
 
     def _create_room_ports(self) -> None:
         """Create PortItem children for each PORT building's external connector.
