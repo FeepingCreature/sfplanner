@@ -24,7 +24,9 @@ undone and redone has the same ID, same position, same everything.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
+
+from PySide6.QtCore import QObject, Signal
 
 if TYPE_CHECKING:
     from satisfactory_planner.core.models import Document, Scene
@@ -80,17 +82,19 @@ def get_scene(document: Document, scene_room_id: str | None) -> Scene:
     return document.rooms[scene_room_id]
 
 
-class CommandStack:
+class CommandStack(QObject):
     """Stack of commands for undo/redo.
 
     The stack owns the document reference and passes it to commands at execute time.
     """
 
+    stack_changed = Signal()
+
     def __init__(self, document: Document) -> None:
+        super().__init__()
         self.document = document
         self.undo_stack: list[Command] = []
         self.redo_stack: list[Command] = []
-        self._stack_changed_callback: Callable[[], None] | None = None
 
     def execute(self, cmd: Command) -> None:
         """Execute a command and add to undo stack."""
@@ -131,5 +135,4 @@ class CommandStack:
 
     def _notify_stack_changed(self) -> None:
         """Notify that the stack changed (for updating UI state)."""
-        if self._stack_changed_callback:
-            self._stack_changed_callback()
+        self.stack_changed.emit()

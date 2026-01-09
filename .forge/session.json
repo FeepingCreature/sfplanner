@@ -300,6 +300,33 @@
       "streaming": true,
       "actual_cost": 0.12654225,
       "generation_id": "gen-1767968196-SoZPdw1fMfwBB3Qm538Q"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968253539.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968253539.json",
+      "timestamp": 1767968253.540567,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.100279,
+      "generation_id": "gen-1767968253-eUZKAFm87wGKc8fzkpV9"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968259354.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968259354.json",
+      "timestamp": 1767968259.3553863,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06117275,
+      "generation_id": "gen-1767968259-mrVKIAc25UqtpDw83iWa"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767968274400.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767968274400.json",
+      "timestamp": 1767968274.40097,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0973895,
+      "generation_id": "gen-1767968274-9Ntp5ioGikIb9d1EVZ5S"
     }
   ],
   "messages": [
@@ -1002,6 +1029,121 @@
         },
         {
           "commit": "c51b28ed27d7",
+          "message": "Committed: 2 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 27700532",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "hm, callback is a bit ugly. can we use a signal?"
+    },
+    {
+      "role": "assistant",
+      "content": "Good idea! `CommandStack` is a plain Python class, not a QObject, so we need to make it one. Let me do that:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/commands/base.py\"], \"remove\": [\"src/satisfactory_planner/ui/main_window.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01PtM2xnsY4MBMUNA6QcNYNJ",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01PtM2xnsY4MBMUNA6QcNYNJ",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/commands/base.py\"], \"message\": \"Added 1 files, removed 1 files from context\", \"remove\": [\"src/satisfactory_planner/ui/main_window.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "<edit file=\"src/satisfactory_planner/ui/commands/base.py\">\n<search>\nfrom __future__ import annotations\n\nfrom abc import ABC, abstractmethod\nfrom typing import TYPE_CHECKING, Callable, NamedTuple\n\nif TYPE_CHECKING:\n    from satisfactory_planner.core.models import Document, Scene\n</search>\n<replace>\nfrom __future__ import annotations\n\nfrom abc import ABC, abstractmethod\nfrom typing import TYPE_CHECKING, NamedTuple\n\nfrom PySide6.QtCore import QObject, Signal\n\nif TYPE_CHECKING:\n    from satisfactory_planner.core.models import Document, Scene\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/commands/base.py\">\n<search>\nclass CommandStack:\n    \"\"\"Stack of commands for undo/redo.\n\n    The stack owns the document reference and passes it to commands at execute time.\n    \"\"\"\n\n    def __init__(self, document: Document) -> None:\n        self.document = document\n        self.undo_stack: list[Command] = []\n        self.redo_stack: list[Command] = []\n        self._stack_changed_callback: Callable[[], None] | None = None\n</search>\n<replace>\nclass CommandStack(QObject):\n    \"\"\"Stack of commands for undo/redo.\n\n    The stack owns the document reference and passes it to commands at execute time.\n    \"\"\"\n\n    stack_changed = Signal()\n\n    def __init__(self, document: Document) -> None:\n        super().__init__()\n        self.document = document\n        self.undo_stack: list[Command] = []\n        self.redo_stack: list[Command] = []\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/commands/base.py\">\n<search>\n    def can_undo(self) -> bool:\n        return len(self.undo_stack) > 0\n\n    def can_redo(self) -> bool:\n        return len(self.redo_stack) > 0\n\n    def _notify_stack_changed(self) -> None:\n        \"\"\"Notify that the stack changed (for updating UI state).\"\"\"\n        if self._stack_changed_callback:\n            self._stack_changed_callback()\n</search>\n<replace>\n    def can_undo(self) -> bool:\n        return len(self.undo_stack) > 0\n\n    def can_redo(self) -> bool:\n        return len(self.redo_stack) > 0\n\n    def _notify_stack_changed(self) -> None:\n        \"\"\"Notify that the stack changed (for updating UI state).\"\"\"\n        self.stack_changed.emit()\n</replace>\n</edit>\n\nNow update main_window to connect to the signal instead of setting a callback:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/main_window.py\"], \"remove\": [\"src/satisfactory_planner/ui/commands/base.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01LArH7xQMFYDh9Lsg1JExC6",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/base.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/base.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/base.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/base.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/base.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/base.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01LArH7xQMFYDh9Lsg1JExC6",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/main_window.py\"], \"message\": \"Added 1 files, removed 1 files from context\", \"remove\": [\"src/satisfactory_planner/ui/commands/base.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "<edit file=\"src/satisfactory_planner/ui/main_window.py\">\n<search>\n        # Set stack changed callback (for undo/redo state updates AFTER command is on stack)\n        tab.command_stack._stack_changed_callback = self._update_undo_redo_state\n\n        # Add tab\n        index = self.tab_widget.addTab(canvas, tab.name)\n        self.tabs.append(tab)\n        self.tab_widget.setCurrentIndex(index)\n\n        # Ensure current_tab is set (signal might not fire on first tab)\n        self.current_tab = tab\n        self._on_tab_changed(index)\n</search>\n<replace>\n        # Connect stack changed signal (for undo/redo state updates AFTER command is on stack)\n        tab.command_stack.stack_changed.connect(self._update_undo_redo_state)\n\n        # Add tab\n        index = self.tab_widget.addTab(canvas, tab.name)\n        self.tabs.append(tab)\n        self.tab_widget.setCurrentIndex(index)\n\n        # Ensure current_tab is set (signal might not fire on first tab)\n        self.current_tab = tab\n        self._on_tab_changed(index)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/main_window.py\">\n<search>\n            # Set stack changed callback (for undo/redo state updates AFTER command is on stack)\n            tab.command_stack._stack_changed_callback = self._update_undo_redo_state\n\n            # Add tab\n            index = self.tab_widget.addTab(canvas, tab.name)\n            self.tabs.append(tab)\n            self.tab_widget.setCurrentIndex(index)\n\n            return True\n</search>\n<replace>\n            # Connect stack changed signal (for undo/redo state updates AFTER command is on stack)\n            tab.command_stack.stack_changed.connect(self._update_undo_redo_state)\n\n            # Add tab\n            index = self.tab_widget.addTab(canvas, tab.name)\n            self.tabs.append(tab)\n            self.tab_widget.setCurrentIndex(index)\n\n            return True\n</replace>\n</edit>\n\n<commit message=\"Use Qt signal instead of callback for CommandStack.stack_changed\n\nCleaner pattern - CommandStack is now a QObject with a proper signal.\"/>\n\nDone! Changed from callback to Qt signal:\n- `CommandStack` now inherits from `QObject` and has a `stack_changed = Signal()`\n- `_new_document()` and `_open_file()` connect to it with `.connect()` instead of setting a callback",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/main_window.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/main_window.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/main_window.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/main_window.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "commit": "90c46751c0da",
           "message": "Committed: 2 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"

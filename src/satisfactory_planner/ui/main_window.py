@@ -386,8 +386,8 @@ class MainWindow(QMainWindow):
         # Set mutation callback (replaces document_changed signal)
         canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
 
-        # Set stack changed callback (for undo/redo state updates AFTER command is on stack)
-        tab.command_stack._stack_changed_callback = self._update_undo_redo_state
+        # Connect stack changed signal (for undo/redo state updates AFTER command is on stack)
+        tab.command_stack.stack_changed.connect(self._update_undo_redo_state)
 
         # Add tab
         index = self.tab_widget.addTab(canvas, tab.name)
@@ -511,8 +511,8 @@ class MainWindow(QMainWindow):
             # Set mutation callback (replaces document_changed signal)
             canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
 
-            # Set stack changed callback (for undo/redo state updates AFTER command is on stack)
-            tab.command_stack._stack_changed_callback = self._update_undo_redo_state
+            # Connect stack changed signal (for undo/redo state updates AFTER command is on stack)
+            tab.command_stack.stack_changed.connect(self._update_undo_redo_state)
 
             # Add tab
             index = self.tab_widget.addTab(canvas, tab.name)
