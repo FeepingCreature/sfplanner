@@ -91,12 +91,8 @@ class RoomPortItem(BuildingItem):
         # Z-value above room background but below regular buildings
         self.setZValue(0.5)
 
-        # Remove the PortItem children created by BuildingItem - we render our own ports
-        for port in self._input_ports + self._output_ports:
-            if port.scene():
-                port.scene().removeItem(port)
-        self._input_ports.clear()
-        self._output_ports.clear()
+        # Reposition the PortItem children based on room edge
+        self._update_port_positions_for_edge()
 
     def _determine_edge(self, local_pos: tuple[float, float]) -> EdgeSide:
         """Determine which room edge this port is on."""
@@ -117,6 +113,35 @@ class RoomPortItem(BuildingItem):
     def port_index(self) -> int:
         """Get port index from the building model."""
         return self.building.port_index or 0
+
+    def _update_port_positions_for_edge(self) -> None:
+        """Reposition PortItem children based on which room edge we're on."""
+        # Get angle for internal connector based on edge
+        # The internal connector faces INTO the room
+        internal_angle_map = {
+            EdgeSide.LEFT: 0,  # Face right (into room)
+            EdgeSide.RIGHT: 180,  # Face left (into room)
+            EdgeSide.TOP: 90,  # Face down (into room)
+            EdgeSide.BOTTOM: 270,  # Face up (into room)
+        }
+        internal_angle = internal_angle_map.get(self._edge, 0)
+
+        # Position for internal connector (on far side of building body from edge)
+        internal_pos_map = {
+            EdgeSide.LEFT: (BUILDING_SIZE, 0),
+            EdgeSide.RIGHT: (-BUILDING_SIZE, 0),
+            EdgeSide.TOP: (0, BUILDING_SIZE),
+            EdgeSide.BOTTOM: (0, -BUILDING_SIZE),
+        }
+        internal_pos = internal_pos_map.get(self._edge, (0, 0))
+
+        # PORT_IN has output ports (internal connector is output)
+        # PORT_OUT has input ports (internal connector is input)
+        ports = self._output_ports if not self.is_output else self._input_ports
+        for port in ports:
+            port.setPos(internal_pos[0], internal_pos[1])
+            port.angle = internal_angle
+            port.update()
 
     @property
     def placement_id(self) -> str:
@@ -159,94 +184,37 @@ class RoomPortItem(BuildingItem):
         option: QStyleOptionGraphicsItem,
         widget: QWidget | None = None,
     ) -> None:
-        """Paint the port with half-circle and half-building."""
+        """Paint the port: external half-circle + building body.
+
+        The internal connector is handled by the PortItem child from BuildingItem.
+        """
+        # External half-circle color (on room edge)
         color = OUTPUT_COLOR if self.is_output else INPUT_COLOR
 
-        # Draw based on edge orientation
+        # Draw external half-circle on room edge
+        self._draw_half_circle(painter, color, self._edge.name.lower())
+
+        # Draw building body
+        body_rect = self._get_body_rect()
+        self._draw_building_body(painter, body_rect)
+
+    def _get_body_rect(self) -> QRectF:
+        """Get the rectangle for the building body based on edge."""
+        b = BUILDING_SIZE
         if self._edge == EdgeSide.LEFT:
-            self._paint_left_edge(painter, color)
+            return QRectF(0, -b / 2, b, b)
         elif self._edge == EdgeSide.RIGHT:
-            self._paint_right_edge(painter, color)
+            return QRectF(-b, -b / 2, b, b)
         elif self._edge == EdgeSide.TOP:
-            self._paint_top_edge(painter, color)
-        else:
-            self._paint_bottom_edge(painter, color)
-
-    def _paint_left_edge(self, painter: QPainter, color: QColor) -> None:
-        """Paint port on left edge: half-circle + building body + internal connector."""
-        # Half-circle on room edge
-        self._draw_half_circle(painter, color, "left")
-        # Building body inside room (to the right)
-        self._draw_building_body(
-            painter, QRectF(0, -BUILDING_SIZE / 2, BUILDING_SIZE, BUILDING_SIZE)
-        )
-        # Internal connector on far side of building
-        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
-        self._draw_internal_connector(painter, QPointF(BUILDING_SIZE, 0), internal_color, "left")
-
-    def _paint_right_edge(self, painter: QPainter, color: QColor) -> None:
-        """Paint port on right edge: half-circle + building body + internal connector."""
-        # Half-circle on room edge
-        self._draw_half_circle(painter, color, "right")
-        # Building body inside room (to the left)
-        self._draw_building_body(
-            painter, QRectF(-BUILDING_SIZE, -BUILDING_SIZE / 2, BUILDING_SIZE, BUILDING_SIZE)
-        )
-        # Internal connector on far side of building
-        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
-        self._draw_internal_connector(painter, QPointF(-BUILDING_SIZE, 0), internal_color, "right")
-
-    def _paint_top_edge(self, painter: QPainter, color: QColor) -> None:
-        """Paint port on top edge: half-circle + building body + internal connector."""
-        # Half-circle on room edge
-        self._draw_half_circle(painter, color, "top")
-        # Building body inside room (below)
-        self._draw_building_body(
-            painter, QRectF(-BUILDING_SIZE / 2, 0, BUILDING_SIZE, BUILDING_SIZE)
-        )
-        # Internal connector on far side of building
-        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
-        self._draw_internal_connector(painter, QPointF(0, BUILDING_SIZE), internal_color, "top")
-
-    def _paint_bottom_edge(self, painter: QPainter, color: QColor) -> None:
-        """Paint port on bottom edge: half-circle + building body + internal connector."""
-        # Half-circle on room edge
-        self._draw_half_circle(painter, color, "bottom")
-        # Building body inside room (above)
-        self._draw_building_body(
-            painter, QRectF(-BUILDING_SIZE / 2, -BUILDING_SIZE, BUILDING_SIZE, BUILDING_SIZE)
-        )
-        # Internal connector on far side of building
-        internal_color = INPUT_COLOR if self.is_output else OUTPUT_COLOR
-        self._draw_internal_connector(painter, QPointF(0, -BUILDING_SIZE), internal_color, "bottom")
+            return QRectF(-b / 2, 0, b, b)
+        else:  # BOTTOM
+            return QRectF(-b / 2, -b, b, b)
 
     def _draw_building_body(self, painter: QPainter, rect: QRectF) -> None:
         """Draw the draggable building body inside the room."""
         painter.setPen(QPen(BUILDING_BORDER, 1.5))
         painter.setBrush(QBrush(BUILDING_COLOR))
         painter.drawRoundedRect(rect, 4, 4)
-
-    def _draw_internal_connector(
-        self, painter: QPainter, pos: QPointF, color: QColor, edge: str
-    ) -> None:
-        """Draw the internal connector half-circle where belts inside the room connect."""
-        painter.setPen(QPen(color.darker(120), 1.5))
-        painter.setBrush(QBrush(color))
-
-        # Determine angle - connector faces INTO the room (opposite of external half-circle)
-        angle_map = {
-            "left": 0,  # Face right (into room)
-            "right": 180,  # Face left (into room)
-            "top": 90,  # Face down (into room)
-            "bottom": 270,  # Face up (into room)
-        }
-        angle = angle_map.get(edge, 0)
-        path = draw_half_circle_path(PORT_RADIUS, angle)
-
-        painter.save()
-        painter.translate(pos)
-        painter.drawPath(path)
-        painter.restore()
 
     def _draw_half_circle(self, painter: QPainter, color: QColor, side: str) -> None:
         """Draw the half-circle on the room edge.
@@ -334,9 +302,12 @@ class RoomPortItem(BuildingItem):
                 new_pos = self._snap_to_edge(new_pos)
                 return new_pos
         elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
-            # Redetermine which edge we're on
+            # Redetermine which edge we're on and update port positions
             new_pos = self.pos()
+            old_edge = self._edge
             self._edge = self._determine_edge((new_pos.x(), new_pos.y()))
+            if self._edge != old_edge:
+                self._update_port_positions_for_edge()
             self.update()
         # Let BuildingItem update model position and belts
         return super().itemChange(change, value)
