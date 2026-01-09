@@ -243,7 +243,7 @@ class RoomItem(QGraphicsRectItem):
         self._port_items.clear()
 
     def update_room_ports(self) -> None:
-        """Called when a PORT building moves - update room edge port positions."""
+        """Called when a PORT building moves - update room edge port positions and belts."""
         # Reposition room-level ports to match their PORT buildings
         for building in self.room.buildings.values():
             if building.id not in self._room_port_items:
@@ -258,6 +258,9 @@ class RoomItem(QGraphicsRectItem):
                 y = building.y + building.height / 2
 
             port_item.setPos(x, y)
+
+        # Update external belts connected to this room's ports
+        self.canvas._update_belts_for_placement(self.placement.id)
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle mouse press - enforce scene-local selection."""
