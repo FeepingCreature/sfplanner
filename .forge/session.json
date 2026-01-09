@@ -1,5 +1,6 @@
 {
   "active_files": [
+    "src/satisfactory_planner/ui/canvas/factory_canvas.py",
     "CLAUDE.md",
     "src/satisfactory_planner/ui/items/room_port_item.py",
     "src/satisfactory_planner/ui/commands/building_commands.py",
@@ -392,6 +393,60 @@
       "streaming": true,
       "actual_cost": 0.1171265,
       "generation_id": "gen-1767973739-jatXQEbBmisMqGlyqdDv"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767973994710.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767973994710.json",
+      "timestamp": 1767973994.7120826,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.09871775,
+      "generation_id": "gen-1767973995-Er6qvn6LB31b7Du5tAy7"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767975645953.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767975645953.json",
+      "timestamp": 1767975645.9547756,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.429665,
+      "generation_id": "gen-1767975646-9Fcox6ZEaKhTIhsZxtHn"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767975830159.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767975830159.json",
+      "timestamp": 1767975830.160719,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06117025,
+      "generation_id": "gen-1767975830-ZPMbJXJmjt2f14Vgo8hr"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767975939300.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767975939300.json",
+      "timestamp": 1767975939.301817,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05226225,
+      "generation_id": "gen-1767975939-42uj8LTZrT6OIcmfBpgq"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767975949412.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767975949412.json",
+      "timestamp": 1767975949.4135342,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.60323125,
+      "generation_id": "gen-1767975949-Jz5VMQrSKNVlOeTJTORA"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767976011964.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767976011964.json",
+      "timestamp": 1767976011.9650412,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1557405,
+      "generation_id": "gen-1767976012-cT5IUzJWMdEktnNxen5J"
     }
   ],
   "messages": [
@@ -1748,6 +1803,118 @@
         {
           "commit": "f6b43a0eeec0",
           "message": "Committed: 2 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: a24bab86",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Root cause mode: how could we have prevented this?\n\nThe whole room logic seems very janky.\n\nDo you have ideas? I'm open to full redesigns."
+    },
+    {
+      "role": "assistant",
+      "content": "Great question. Let me analyze the root cause and propose a cleaner design.\n\n## Root Cause Analysis\n\nThe current design has **scattered ownership** of visual items:\n1. Top-level items are tracked in `canvas._building_items` / `canvas._belt_items`\n2. Room items are tracked in `room_item._building_items` / `room_item._belt_items`\n3. Commands need to know which container to use based on `scene_room_id`\n4. Flow visualization needs to iterate both containers\n5. Every new feature touching items needs to handle both cases\n\nThis violates the **Single Source of Truth** principle - there's no unified way to access all items.\n\n## Proposed Redesign: Flatten the Item Registry\n\n**Core idea**: Canvas owns ALL visual items in flat dictionaries. RoomItem is purely visual (draws the boundary, handles grouping for selection/drag), but doesn't own its children's item registry.\n\n```python\n# In FactoryCanvas:\nclass FactoryCanvas:\n    # ALL items, regardless of whether they're in rooms\n    _building_items: dict[str, BuildingItem]  # building_id -> item\n    _belt_items: dict[str, BeltItem]          # belt_id -> item\n    _room_items: dict[str, RoomItem]          # placement_id -> item\n    \n    def add_building_item(self, building: Building, parent: RoomItem | None = None) -> BuildingItem:\n        \"\"\"Add building item, optionally parented to a room for Qt hierarchy.\"\"\"\n        item = BuildingItem(building, self)\n        if parent:\n            item.setParentItem(parent)  # Just for Qt coordinate transform\n        self._building_items[building.id] = item\n        return item\n    \n    def remove_building_item(self, building_id: str) -> None:\n        \"\"\"Always works - items are always in this dict.\"\"\"\n        item = self._building_items.pop(building_id, None)\n        if item:\n            self._scene.removeItem(item)\n```\n\n**Benefits**:\n1. **Commands become simple again** - always call `canvas.add/remove_*`, no branching\n2. **Flow visualization is simple** - iterate `canvas._building_items.values()`\n3. **RoomItem is simpler** - just draws boundary, doesn't track children\n4. **Single source of truth** - one place to find any item\n\n**RoomItem's new role**:\n- Draws the room boundary rectangle\n- When refreshing, tells canvas to recreate items with itself as Qt parent\n- Handles the visual grouping (selection box, drag together)\n- Does NOT maintain its own item dictionaries\n\n**The `placement_id` for flow**:\n- `BuildingItem` and `BeltItem` still have `placement_id` property\n- Set when created inside a room\n- Used only for constructing `flow_key` for solver lookups\n\nWould you like me to implement this redesign? It would touch:\n- `FactoryCanvas`: Simplify item management\n- `RoomItem`: Remove `_building_items`/`_belt_items`, become purely visual\n- Commands: Remove all the `if scene_room_id` branching\n- Flow visualization: Just iterate canvas dictionaries"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 208473d8",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "hm hang on what would that do to room movement?"
+    },
+    {
+      "role": "assistant",
+      "content": "Good catch. With a flat registry, room movement gets tricky - Qt's parent-child relationship handles coordinate transforms and group movement automatically. If we flatten the registry but keep Qt parenting, we'd lose the automatic \"move room \u2192 children follow\" behavior, or we'd have to manually update all children's positions.\n\n**Revised thinking**: The issue isn't the dual registries per se - it's that **commands don't know which registry to use**. \n\n## Better Solution: Keep Qt Hierarchy, Add Routing Layer\n\nKeep the current structure where `RoomItem` owns its children (for Qt parenting/movement), but add a simple routing layer so commands don't need to know:\n\n```python\n# In FactoryCanvas:\ndef find_belt_item(self, belt_id: str) -> BeltItem | None:\n    \"\"\"Find a belt item regardless of whether it's in a room.\"\"\"\n    if belt_id in self._belt_items:\n        return self._belt_items[belt_id]\n    for room_item in self._room_items.values():\n        if isinstance(room_item, RoomItem) and belt_id in room_item._belt_items:\n            return room_item._belt_items[belt_id]\n    return None\n\ndef remove_belt_item_anywhere(self, belt_id: str) -> bool:\n    \"\"\"Remove a belt item from wherever it lives.\"\"\"\n    if belt_id in self._belt_items:\n        item = self._belt_items.pop(belt_id)\n        self._scene.removeItem(item)\n        return True\n    for room_item in self._room_items.values():\n        if isinstance(room_item, RoomItem) and belt_id in room_item._belt_items:\n            room_item.remove_belt_item(belt_id)\n            return True\n    return False\n\n# Similar for buildings...\n```\n\nThen commands just call `canvas.remove_belt_item_anywhere(belt_id)` - no branching needed.\n\n**Benefits**:\n- Qt hierarchy preserved (room movement works)\n- Commands become simple (single method call)\n- Routing logic is in one place (canvas), not scattered across commands\n\nThis is less invasive than a full redesign. Want me to implement this approach?"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 9c37ffa6",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Yeah the `if` logic in commands definitely has to go. Lemme think some more. Why exactly don't commands like... do a one-two step? Store the room_id_or_none (SceneCommand superclass?), ask the canvas for the relevant scene. Perform the action on the scene? Commands should have only ids for undo/redo, and they should grab their scene as they're invoked. Idk, I'm not super in the design."
+    },
+    {
+      "role": "assistant",
+      "content": "You're onto something. Let me think through this...\n\n## Current Problem\n\nCommands store `scene_room_id` and then **manually route** to the right visual container. This is backwards - the command knows the scene, but then has to figure out where the visual items live.\n\n## Your Insight: Commands Should Work on Scenes, Canvas Routes Visuals\n\nCommands should:\n1. Store `scene_room_id` (which scene in the data model)\n2. Call `scene.add_belt()` / `scene.remove_belt()` (data model)\n3. Call `canvas.sync_belt(belt_id, scene_room_id)` (visual sync)\n\nCanvas handles the visual routing internally:\n\n```python\n# Canvas owns the routing logic\ndef add_belt_visual(self, belt_id: str, scene_room_id: str | None) -> None:\n    \"\"\"Add visual for a belt - routes to correct container internally.\"\"\"\n    if scene_room_id:\n        # Find the room item(s) displaying this room and add there\n        for room_item in self._room_items.values():\n            if room_item.room.id == scene_room_id:\n                room_item.add_belt_item(belt_id)\n    else:\n        belt = self.document.belts[belt_id]\n        self._add_top_level_belt(belt)\n\ndef remove_belt_visual(self, belt_id: str, scene_room_id: str | None) -> None:\n    \"\"\"Remove visual for a belt - routes to correct container internally.\"\"\"\n    if scene_room_id:\n        for room_item in self._room_items.values():\n            if room_item.room.id == scene_room_id:\n                room_item.remove_belt_item(belt_id)\n    else:\n        self._belt_items.pop(belt_id, None)\n```\n\nCommands become trivial:\n\n```python\n@dataclass\nclass ConnectBeltCommand(Command):\n    scene_room_id: str | None\n    belt: Belt\n    canvas: FactoryCanvas\n\n    def execute(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        scene.add_belt(self.belt)\n        self.canvas.add_belt_visual(self.belt.id, self.scene_room_id)\n\n    def undo(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        scene.remove_belt(self.belt.id)\n        self.canvas.remove_belt_visual(self.belt.id, self.scene_room_id)\n```\n\n**The key insight**: Commands know *what scene* they operate on. Canvas knows *where visuals live*. Don't mix these responsibilities.\n\nWant me to implement this refactor? It would:\n1. Add `add_belt_visual`, `remove_belt_visual`, `add_building_visual`, `remove_building_visual` to canvas\n2. Simplify all commands to use these (remove the helper methods in commands)\n3. Keep Qt hierarchy intact (RoomItem still parents its children)"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: d181ea3e",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "yeah and commands first affect the data layer and then ask canvas to refresh the visual layer as required. And canvas can like... do a callback-based helper, idk how good python is for macro-shit, to apply an op to every visual instance of an id?"
+    },
+    {
+      "role": "assistant",
+      "content": "You're right - Python is great for this with closures/lambdas. Let me implement this:\n\n```python\n# Canvas provides a helper to apply an operation to all visual instances\ndef for_each_belt_visual(self, belt_id: str, scene_room_id: str | None, fn: Callable[[BeltItem], None]) -> None:\n    \"\"\"Apply fn to every visual instance of a belt.\"\"\"\n    if scene_room_id:\n        for room_item in self._room_items.values():\n            if room_item.room.id == scene_room_id:\n                if belt_id in room_item._belt_items:\n                    fn(room_item._belt_items[belt_id])\n    else:\n        if belt_id in self._belt_items:\n            fn(self._belt_items[belt_id])\n```\n\nBut actually, let me step back. The pattern is simpler:\n\n1. **Commands**: Modify data model, then call `canvas.sync_*` methods\n2. **Canvas**: `sync_*` methods handle all visual routing internally\n\nLet me implement this refactor:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas/factory_canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_bdrk_013nDGWQprjtbgjjd5hW4Kiu",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_013nDGWQprjtbgjjd5hW4Kiu",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/factory_canvas.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me implement the cleaner design. The idea:\n\n1. Commands modify data, then call canvas sync methods with `(item_id, scene_room_id)`\n2. Canvas has routing methods that find the right visual container internally\n3. A helper method applies operations to all visual instances of an item\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def remove_belt_item(self, belt_id: str) -> None:\n        \"\"\"Remove a belt item from the scene.\"\"\"\n        item = self._belt_items.pop(belt_id, None)\n        if item:\n            self._scene.removeItem(item)\n</search>\n<replace>\n    def remove_belt_item(self, belt_id: str) -> None:\n        \"\"\"Remove a belt item from the scene.\"\"\"\n        item = self._belt_items.pop(belt_id, None)\n        if item:\n            self._scene.removeItem(item)\n\n    # === Visual sync methods (for commands) ===\n    # These route to the correct container (canvas or room) internally.\n    # Commands should use these instead of directly manipulating items.\n\n    def sync_add_belt(self, belt_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Add visual for a belt - routes to correct container.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        if scene_room_id:\n            # Belt is inside a room - add to all RoomItems displaying this room\n            room = self.document.rooms.get(scene_room_id)\n            if not room:\n                return\n            for room_item in self._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:\n                    room_item.add_belt_item(belt_id)\n        else:\n            # Top-level belt\n            belt = self.document.belts.get(belt_id)\n            if belt:\n                self.add_belt_item(belt)\n\n    def sync_remove_belt(self, belt_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Remove visual for a belt - routes to correct container.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        if scene_room_id:\n            # Belt is inside a room - remove from all RoomItems displaying this room\n            for room_item in self._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:\n                    room_item.remove_belt_item(belt_id)\n        else:\n            # Top-level belt\n            self.remove_belt_item(belt_id)\n\n    def sync_add_building(self, building_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Add visual for a building - routes to correct container.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        if scene_room_id:\n            # Building is inside a room - add to all RoomItems displaying this room\n            for room_item in self._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:\n                    room_item.add_building_item(building_id)\n        else:\n            # Top-level building\n            building = self.document.buildings.get(building_id)\n            if building:\n                self.add_building_item(building)\n\n    def sync_remove_building(self, building_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Remove visual for a building - routes to correct container.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        if scene_room_id:\n            # Building is inside a room - remove from all RoomItems displaying this room\n            for room_item in self._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:\n                    room_item.remove_building_item(building_id)\n        else:\n            # Top-level building\n            self.remove_building_item(building_id)\n</replace>\n</edit>\n\nNow simplify the commands to use these sync methods:\n\n<edit file=\"src/satisfactory_planner/ui/commands/belt_commands.py\">\n<search>\n    def execute(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.belt.id in scene.belts:\n            logger.warning(f\"ConnectBeltCommand.execute: belt {self.belt.id} already exists\")\n            return\n        scene.add_belt(self.belt)\n\n        # Add belt item to the correct container (room or canvas)\n        if self.scene_room_id:\n            # Belt is inside a room - add to the RoomItem\n            from satisfactory_planner.ui.items.room_item import RoomItem\n\n            for room_item in self.canvas._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:\n                    belt_item = room_item.add_belt_item(self.belt.id)\n                    if belt_item:\n                        self.canvas._belt_items[self.belt.id] = belt_item\n                    break\n        else:\n            self.canvas.add_belt_item(self.belt)\n        self.canvas.notify_mutation()\n\n    def undo(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.belt.id not in scene.belts:\n            logger.warning(f\"ConnectBeltCommand.undo: belt {self.belt.id} not found\")\n            return\n        scene.remove_belt(self.belt.id)\n\n        # Remove belt item from the correct container (room or canvas)\n        if self.scene_room_id:\n            from satisfactory_planner.ui.items.room_item import RoomItem\n\n            for room_item in self.canvas._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:\n                    room_item.remove_belt_item(self.belt.id)\n                    break\n        else:\n            self.canvas.remove_belt_item(self.belt.id)\n        self.canvas.notify_mutation()\n</search>\n<replace>\n    def execute(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.belt.id in scene.belts:\n            logger.warning(f\"ConnectBeltCommand.execute: belt {self.belt.id} already exists\")\n            return\n        # Update data model\n        scene.add_belt(self.belt)\n        # Sync visual\n        self.canvas.sync_add_belt(self.belt.id, self.scene_room_id)\n        self.canvas.notify_mutation()\n\n    def undo(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.belt.id not in scene.belts:\n            logger.warning(f\"ConnectBeltCommand.undo: belt {self.belt.id} not found\")\n            return\n        # Update data model\n        scene.remove_belt(self.belt.id)\n        # Sync visual\n        self.canvas.sync_remove_belt(self.belt.id, self.scene_room_id)\n        self.canvas.notify_mutation()\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/commands/building_commands.py\">\n<search>\n    def execute(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        any_deleted = False\n        for building in self.buildings:\n            if building.id not in scene.buildings:\n                logger.warning(f\"DeleteItemsCommand.execute: building {building.id} not found\")\n                continue\n            scene.remove_building(building.id)\n            self._remove_building_item(building.id)\n            any_deleted = True\n\n        for belt in self.belts:\n            if belt.id not in scene.belts:\n                logger.warning(f\"DeleteItemsCommand.execute: belt {belt.id} not found\")\n                continue\n            scene.remove_belt(belt.id)\n            self._remove_belt_item(belt.id)\n            any_deleted = True\n\n        if any_deleted:\n            self.canvas.notify_mutation()\n\n    def undo(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        any_restored = False\n        for building in self.buildings:\n            if building.id in scene.buildings:\n                logger.warning(f\"DeleteItemsCommand.undo: building {building.id} already exists\")\n                continue\n            scene.add_building(building)\n            self._add_building_item(building)\n            any_restored = True\n\n        for belt in self.belts:\n            if belt.id in scene.belts:\n                logger.warning(f\"DeleteItemsCommand.undo: belt {belt.id} already exists\")\n                continue\n            scene.add_belt(belt)\n            self._add_belt_item(belt)\n            any_restored = True\n\n        if any_restored:\n            self.canvas.notify_mutation()\n\n    def _remove_building_item(self, building_id: str) -> None:\n        \"\"\"Remove building item from the correct container (room or canvas).\"\"\"\n        if self.scene_room_id:\n            from satisfactory_planner.ui.items.room_item import RoomItem\n\n            for room_item in self.canvas._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:\n                    room_item.remove_building_item(building_id)\n                    return\n        self.canvas.remove_building_item(building_id)\n\n    def _remove_belt_item(self, belt_id: str) -> None:\n        \"\"\"Remove belt item from the correct container (room or canvas).\"\"\"\n        if self.scene_room_id:\n            from satisfactory_planner.ui.items.room_item import RoomItem\n\n            for room_item in self.canvas._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:\n                    room_item.remove_belt_item(belt_id)\n                    return\n        self.canvas.remove_belt_item(belt_id)\n\n    def _add_building_item(self, building: Building) -> None:\n        \"\"\"Add building item to the correct container (room or canvas).\"\"\"\n        if self.scene_room_id:\n            from satisfactory_planner.ui.items.room_item import RoomItem\n\n            for room_item in self.canvas._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:\n                    room_item.add_building_item(building.id)\n                    return\n        self.canvas.add_building_item(building)\n\n    def _add_belt_item(self, belt: Belt) -> None:\n        \"\"\"Add belt item to the correct container (room or canvas).\"\"\"\n        if self.scene_room_id:\n            from satisfactory_planner.ui.items.room_item import RoomItem\n\n            for room_item in self.canvas._room_items.values():\n                if isinstance(room_item, RoomItem) and room_item.room.id == self.scene_room_id:\n                    room_item.add_belt_item(belt.id)\n                    return\n        self.canvas.add_belt_item(belt)\n</search>\n<replace>\n    def execute(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        any_deleted = False\n        for building in self.buildings:\n            if building.id not in scene.buildings:\n                logger.warning(f\"DeleteItemsCommand.execute: building {building.id} not found\")\n                continue\n            scene.remove_building(building.id)\n            self.canvas.sync_remove_building(building.id, self.scene_room_id)\n            any_deleted = True\n\n        for belt in self.belts:\n            if belt.id not in scene.belts:\n                logger.warning(f\"DeleteItemsCommand.execute: belt {belt.id} not found\")\n                continue\n            scene.remove_belt(belt.id)\n            self.canvas.sync_remove_belt(belt.id, self.scene_room_id)\n            any_deleted = True\n\n        if any_deleted:\n            self.canvas.notify_mutation()\n\n    def undo(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        any_restored = False\n        for building in self.buildings:\n            if building.id in scene.buildings:\n                logger.warning(f\"DeleteItemsCommand.undo: building {building.id} already exists\")\n                continue\n            scene.add_building(building)\n            self.canvas.sync_add_building(building.id, self.scene_room_id)\n            any_restored = True\n\n        for belt in self.belts:\n            if belt.id in scene.belts:\n                logger.warning(f\"DeleteItemsCommand.undo: belt {belt.id} already exists\")\n                continue\n            scene.add_belt(belt)\n            self.canvas.sync_add_belt(belt.id, self.scene_room_id)\n            any_restored = True\n\n        if any_restored:\n            self.canvas.notify_mutation()\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/commands/building_commands.py\">\n<search>\nfrom satisfactory_planner.ui.commands.base import BuildingMove, Command, get_scene\n\nif TYPE_CHECKING:\n    from satisfactory_planner.core.models import Belt, Building, Document\n</search>\n<replace>\nfrom satisfactory_planner.ui.commands.base import BuildingMove, Command, get_scene\n\nif TYPE_CHECKING:\n    from satisfactory_planner.core.models import Building, Document\n</replace>\n</edit>\n\nAlso simplify `PlaceBuildingCommand`:\n\n<edit file=\"src/satisfactory_planner/ui/commands/building_commands.py\">\n<search>\n    def execute(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.building.id in scene.buildings:\n            logger.warning(\n                f\"PlaceBuildingCommand.execute: building {self.building.id} already exists\"\n            )\n            return\n        scene.add_building(self.building)\n        self.canvas.add_building_item(self.building)\n        self.canvas.notify_mutation()\n\n    def undo(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.building.id not in scene.buildings:\n            logger.warning(f\"PlaceBuildingCommand.undo: building {self.building.id} not found\")\n            return\n        scene.remove_building(self.building.id)\n        self.canvas.remove_building_item(self.building.id)\n        self.canvas.notify_mutation()\n</search>\n<replace>\n    def execute(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.building.id in scene.buildings:\n            logger.warning(\n                f\"PlaceBuildingCommand.execute: building {self.building.id} already exists\"\n            )\n            return\n        # Update data model\n        scene.add_building(self.building)\n        # Sync visual\n        self.canvas.sync_add_building(self.building.id, self.scene_room_id)\n        self.canvas.notify_mutation()\n\n    def undo(self, document: Document) -> None:\n        scene = get_scene(document, self.scene_room_id)\n        if self.building.id not in scene.buildings:\n            logger.warning(f\"PlaceBuildingCommand.undo: building {self.building.id} not found\")\n            return\n        # Update data model\n        scene.remove_building(self.building.id)\n        # Sync visual\n        self.canvas.sync_remove_building(self.building.id, self.scene_room_id)\n        self.canvas.notify_mutation()\n</replace>\n</edit>\n\n<run_tests/>"
+    },
+    {
+      "role": "system",
+      "content": "Commands executed:\n\u2713 edit\n\u2713 edit\n\u2713 edit\n\u2713 edit\n\u2713 edit\n\n\u274c `run_tests` failed:\n\nruff check --fix src/ tests/ spikes/\nF821 Undefined name `Belt`\n  --> src/satisfactory_planner/ui/commands/building_commands.py:60:18\n   |\n58 |     scene_room_id: str | None  # None = root document, else room ID\n59 |     buildings: tuple[Building, ...]\n60 |     belts: tuple[Belt, ...]\n   |                  ^^^^\n61 |     canvas: FactoryCanvas\n   |\n\nFound 1 error.\n\n--- stderr ---\nmake: *** [Makefile:20: fix] Error 1\n",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I accidentally removed the `Belt` import. Let me fix that:\n\n<edit file=\"src/satisfactory_planner/ui/commands/building_commands.py\">\n<search>\nfrom satisfactory_planner.ui.commands.base import BuildingMove, Command, get_scene\n\nif TYPE_CHECKING:\n    from satisfactory_planner.core.models import Building, Document\n</search>\n<replace>\nfrom satisfactory_planner.ui.commands.base import BuildingMove, Command, get_scene\n\nif TYPE_CHECKING:\n    from satisfactory_planner.core.models import Belt, Building, Document\n</replace>\n</edit>\n\n<run_tests/>\n\n<commit message=\"Refactor: Add canvas sync methods for visual item routing\n\nCommands now:\n1. Modify data model (scene.add_belt, scene.remove_building, etc.)\n2. Call canvas.sync_* methods to update visuals\n\nCanvas handles routing to correct container (top-level or room) internally.\nThis removes duplicated if/else logic from commands.\n\nNew methods:\n- sync_add_belt(belt_id, scene_room_id)\n- sync_remove_belt(belt_id, scene_room_id)\n- sync_add_building(building_id, scene_room_id)\n- sync_remove_building(building_id, scene_room_id)\"/>\n\nDone! The refactor adds clean sync methods to canvas that handle routing, so commands just call `canvas.sync_add_belt(belt_id, scene_room_id)` etc. without needing to know about room items.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/building_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/building_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n78 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 47 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ixglw056\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ixglw056\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n78 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 47 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ixglw056\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ixglw056\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "1d75e25ab3d1",
+          "message": "Committed: 3 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

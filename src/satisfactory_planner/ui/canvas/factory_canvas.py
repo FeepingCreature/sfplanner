@@ -297,6 +297,69 @@ class FactoryCanvas(QGraphicsView):
         if item:
             self._scene.removeItem(item)
 
+    # === Visual sync methods (for commands) ===
+    # These route to the correct container (canvas or room) internally.
+    # Commands should use these instead of directly manipulating items.
+
+    def sync_add_belt(self, belt_id: str, scene_room_id: str | None) -> None:
+        """Add visual for a belt - routes to correct container."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        if scene_room_id:
+            # Belt is inside a room - add to all RoomItems displaying this room
+            room = self.document.rooms.get(scene_room_id)
+            if not room:
+                return
+            for room_item in self._room_items.values():
+                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
+                    room_item.add_belt_item(belt_id)
+        else:
+            # Top-level belt
+            belt = self.document.belts.get(belt_id)
+            if belt:
+                self.add_belt_item(belt)
+
+    def sync_remove_belt(self, belt_id: str, scene_room_id: str | None) -> None:
+        """Remove visual for a belt - routes to correct container."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        if scene_room_id:
+            # Belt is inside a room - remove from all RoomItems displaying this room
+            for room_item in self._room_items.values():
+                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
+                    room_item.remove_belt_item(belt_id)
+        else:
+            # Top-level belt
+            self.remove_belt_item(belt_id)
+
+    def sync_add_building(self, building_id: str, scene_room_id: str | None) -> None:
+        """Add visual for a building - routes to correct container."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        if scene_room_id:
+            # Building is inside a room - add to all RoomItems displaying this room
+            for room_item in self._room_items.values():
+                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
+                    room_item.add_building_item(building_id)
+        else:
+            # Top-level building
+            building = self.document.buildings.get(building_id)
+            if building:
+                self.add_building_item(building)
+
+    def sync_remove_building(self, building_id: str, scene_room_id: str | None) -> None:
+        """Remove visual for a building - routes to correct container."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        if scene_room_id:
+            # Building is inside a room - remove from all RoomItems displaying this room
+            for room_item in self._room_items.values():
+                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
+                    room_item.remove_building_item(building_id)
+        else:
+            # Top-level building
+            self.remove_building_item(building_id)
+
     def refresh_building(self, building_id: str) -> None:
         """Refresh a building's visual state."""
         item = self._building_items.get(building_id)
