@@ -358,14 +358,6 @@ class FactoryCanvas(QGraphicsView):
         # the refresh happens after the current event is fully processed.
         def deferred_refresh() -> None:
             room_item.refresh()
-            # Re-register items after refresh using composite keys (placement_id:item_id)
-            # This ensures each room placement's items are tracked separately
-            for building_id, building_item in room_item._building_items.items():
-                composite_key = f"{placement_id}:{building_id}"
-                self._building_items[composite_key] = building_item
-            for belt_id, belt_item in room_item._belt_items.items():
-                composite_key = f"{placement_id}:{belt_id}"
-                self._belt_items[composite_key] = belt_item
             # Refresh linked rooms too
             for other_placement_id, other_room_item in list(self._room_items.items()):
                 if (
@@ -374,12 +366,6 @@ class FactoryCanvas(QGraphicsView):
                     and other_placement_id != placement_id
                 ):
                     other_room_item.refresh()
-                    for building_id, building_item in other_room_item._building_items.items():
-                        composite_key = f"{other_placement_id}:{building_id}"
-                        self._building_items[composite_key] = building_item
-                    for belt_id, belt_item in other_room_item._belt_items.items():
-                        composite_key = f"{other_placement_id}:{belt_id}"
-                        self._belt_items[composite_key] = belt_item
 
         QTimer.singleShot(0, deferred_refresh)
 
@@ -389,12 +375,6 @@ class FactoryCanvas(QGraphicsView):
 
         room_item = self._room_items.pop(placement_id, None)
         if room_item and isinstance(room_item, RoomItem):
-            for building_id in list(room_item._building_items.keys()):
-                composite_key = f"{placement_id}:{building_id}"
-                self._building_items.pop(composite_key, None)
-            for belt_id in list(room_item._belt_items.keys()):
-                composite_key = f"{placement_id}:{belt_id}"
-                self._belt_items.pop(composite_key, None)
             self._scene.removeItem(room_item)
 
     def notify_mutation(self) -> None:
@@ -997,19 +977,39 @@ class FactoryCanvas(QGraphicsView):
 
     def set_show_flow_rates(self, show: bool) -> None:
         """Toggle flow rate display on all belts."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
         for belt_item in self._belt_items.values():
             belt_item.set_show_flow_rate(show)
+        # Also update belts inside room placements
+        for room_item in self._room_items.values():
+            if isinstance(room_item, RoomItem):
+                for belt_item in room_item._belt_items.values():
+                    belt_item.set_show_flow_rate(show)
 
     def set_show_efficiency(self, show: bool) -> None:
         """Toggle efficiency overlay on all buildings."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
         for building_item in self._building_items.values():
             building_item.set_show_efficiency(show)
             if not show:
                 # Clear efficiency value when disabling
                 building_item.set_efficiency(None)
+        # Also update buildings inside room placements
+        for room_item in self._room_items.values():
+            if isinstance(room_item, RoomItem):
+                for building_item in room_item._building_items.values():
+                    building_item.set_show_efficiency(show)
+                    if not show:
+                        building_item.set_efficiency(None)
 
     def update_flow_visualization(self) -> None:
-        """Update visual state of items based on flow solver results."""
+        """Update visual state of items based on flow solver results.
+
+        Iterates visual items and lets each look up its own flow data using
+        its flow_key (which includes placement_id for items inside rooms).
+        """
         main_window = self.window()
         if not hasattr(main_window, "current_tab") or not main_window.current_tab:
             return
@@ -1020,22 +1020,51 @@ class FactoryCanvas(QGraphicsView):
 
         solved = flow_solver._solved_model
 
-        # Update belt overcapacity state and utilization
-        for edge in solved.graph.edges.values():
-            if edge.belt_id and edge.belt_id in self._belt_items:
-                belt_item = self._belt_items[edge.belt_id]
+        # Update all belt items - each uses its flow_key to look up results
+        for belt_item in self._belt_items.values():
+            edge = solved.graph.edges.get(belt_item.flow_key)
+            if edge:
                 belt_item.set_overcapacity(edge.is_overcapacity)
-                # Calculate utilization
                 if edge.capacity > 0:
                     belt_item.set_utilization(edge.flow_rate / edge.capacity)
                 else:
                     belt_item.set_utilization(None)
+            else:
+                belt_item.set_overcapacity(False)
+                belt_item.set_utilization(None)
 
-        # Update building efficiency
-        for eff in solved.efficiencies.values():
-            if eff.building_id in self._building_items:
-                item = self._building_items[eff.building_id]
-                item.set_efficiency(eff.duty_cycle)
+        # Update all building items - each uses its flow_key to look up results
+        for building_item in self._building_items.values():
+            eff = solved.efficiencies.get(building_item.flow_key)
+            if eff:
+                building_item.set_efficiency(eff.duty_cycle)
+            else:
+                building_item.set_efficiency(None)
+
+        # Also update items inside room placements
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        for room_item in self._room_items.values():
+            if not isinstance(room_item, RoomItem):
+                continue
+            for belt_item in room_item._belt_items.values():
+                edge = solved.graph.edges.get(belt_item.flow_key)
+                if edge:
+                    belt_item.set_overcapacity(edge.is_overcapacity)
+                    if edge.capacity > 0:
+                        belt_item.set_utilization(edge.flow_rate / edge.capacity)
+                    else:
+                        belt_item.set_utilization(None)
+                else:
+                    belt_item.set_overcapacity(False)
+                    belt_item.set_utilization(None)
+
+            for building_item in room_item._building_items.values():
+                eff = solved.efficiencies.get(building_item.flow_key)
+                if eff:
+                    building_item.set_efficiency(eff.duty_cycle)
+                else:
+                    building_item.set_efficiency(None)
 
         # Update warning icons
         self._update_warning_icons(flow_solver._warnings)
@@ -1092,23 +1121,9 @@ class FactoryCanvas(QGraphicsView):
         """Refresh all RoomItems displaying the given room."""
         from satisfactory_planner.ui.items.room_item import RoomItem
 
-        for placement_id, room_item in self._room_items.items():
+        for _placement_id, room_item in self._room_items.items():
             if isinstance(room_item, RoomItem) and room_item.room.id == room_id:
-                for building_id in list(room_item._building_items.keys()):
-                    composite_key = f"{placement_id}:{building_id}"
-                    self._building_items.pop(composite_key, None)
-                for belt_id in list(room_item._belt_items.keys()):
-                    composite_key = f"{placement_id}:{belt_id}"
-                    self._belt_items.pop(composite_key, None)
-
                 room_item.refresh()
-
-                for building_id, building_item in room_item._building_items.items():
-                    composite_key = f"{placement_id}:{building_id}"
-                    self._building_items[composite_key] = building_item
-                for belt_id, belt_item in room_item._belt_items.items():
-                    composite_key = f"{placement_id}:{belt_id}"
-                    self._belt_items[composite_key] = belt_item
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]
         """Draw the grid background."""
