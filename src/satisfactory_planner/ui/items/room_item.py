@@ -229,9 +229,14 @@ class RoomItem(QGraphicsRectItem):
         # 0° = left, 180° = right, 90° = top, 270° = bottom
         rotation = building.rotation
 
-        # The y_offset compensates for Qt's paint rotation around center.
-        # See snap_port_to_room_edge for the painful explanation.
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # WARNING: DO NOT TOUCH THIS OFFSET LOGIC. IT IS CORRECT.
+        # These offsets compensate for Qt's paint rotation around the center
+        # of the UNROTATED rect. See snap_port_to_room_edge for explanation.
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # For 90°/270° rotation, both x and y shift due to rotation around center
         y_offset = (base_w - base_h) / 2  # = -10 for 20x40 port
+        x_offset = (base_h - base_w) / 2  # = +10 for 20x40 port
 
         if rotation == 0:
             # Left edge - port on left side of building, at vertical center
@@ -247,15 +252,15 @@ class RoomItem(QGraphicsRectItem):
             angle = 180 if not is_output else 0
         elif rotation == 90:
             # Top edge - port at visual top center of rotated building
-            # Visual width is base_h, visual height is base_w after 90° rotation
-            x = building.x + base_h / 2
-            y = building.y + y_offset  # Compensate for rotation shift
+            # Visual size after 90° rotation: (base_h x base_w) = (40 x 20)
+            x = building.x + base_w / 2 + x_offset  # Visual center x
+            y = building.y + y_offset  # Visual top
             # PORT_IN: blank faces down (into room), PORT_OUT: tab faces up (out)
             angle = 90 if not is_output else 270
         else:  # rotation == 270
             # Bottom edge - port at visual bottom center of rotated building
-            x = building.x + base_h / 2
-            y = building.y + base_h - y_offset  # Visual bottom = y + visual_height - offset
+            x = building.x + base_w / 2 + x_offset  # Visual center x
+            y = building.y + base_h + y_offset  # Visual bottom
             # PORT_IN: blank faces up (into room), PORT_OUT: tab faces down (out)
             angle = 270 if not is_output else 90
 
