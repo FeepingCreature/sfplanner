@@ -144,11 +144,31 @@ class RoomPortItem(BuildingItem):
             # Redetermine which edge we're on
             new_pos = self.pos()
             self._edge = self._determine_edge((new_pos.x(), new_pos.y()))
+
+            # Auto-rotate based on edge (top/bottom need 90° rotation)
+            self._update_rotation_for_edge()
+
             self.update()
             # Notify room to redraw its edge ports
             self.room_item.update_room_ports()
         # Let BuildingItem update model position and belts
         return super().itemChange(change, value)
+
+    def _update_rotation_for_edge(self) -> None:
+        """Update building rotation based on which edge it's on."""
+        # Left/right edges: no rotation (0°), top/bottom edges: rotate 90°
+        target_rotation = 90 if self._edge in (EdgeSide.TOP, EdgeSide.BOTTOM) else 0
+
+        if self.building.rotation != target_rotation:
+            self.building.rotation = target_rotation
+            # Rebuild ports with new rotation
+            self._create_ports()
+            self.update()
+
+    def rotate(self, delta: int) -> None:
+        """Override to prevent manual rotation - ports auto-rotate based on edge."""
+        # Do nothing - port rotation is controlled by edge position
+        pass
 
     def _snap_to_edge(self, pos: QPointF) -> QPointF:
         """Snap a position to the nearest room edge using shared utility."""
