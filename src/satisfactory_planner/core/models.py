@@ -292,9 +292,14 @@ class Building:
 
         elif self.building_type == BuildingType.PORT_OUT:
             # PORT_OUT: sends items OUT of the room (1 input, 0 outputs)
-            # Building sits on RIGHT room edge, input faces LEFT (from room interior)
-            # Standard layout: input on left edge, faces right (belt travels right into it)
-            inputs.append((0, h / 2, 0))  # left edge, center, face right (belt enters from left)
+            # The input should be on the INTERIOR side of the building (away from room edge)
+            # At rotation 0 (left edge): input on RIGHT side of building (x=w)
+            # At rotation 180 (right edge): input on LEFT side (x=0) - but rotation handles this
+            # We define at base rotation, then _rotate_port_pos handles the rest
+            # Base: building on left edge, input on right side facing left (into building)
+            inputs.append(
+                (w, h / 2, 180)
+            )  # right edge of building, face left (belt enters from right)
 
         else:
             # Standard layout: inputs on left edge, outputs on right edge
