@@ -335,6 +335,16 @@ class PropertiesPanel(QWidget):
                 self.type_label.setText(building.building_type.value)
                 self.clock_spin.setValue(building.clock_speed * 100)
 
+                # PORT_IN/PORT_OUT have no useful properties to edit
+                if building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
+                    self.building_group.hide()
+                    self.belt_group.hide()
+                    self.stats_group.hide()
+                    self.source_group.hide()
+                    self.room_group.hide()
+                    self._updating = False
+                    return
+
                 # Source/Sink/Miner use item selector, not recipe
                 if self._is_source_type(building.building_type):
                     self._populate_item_combo(building.building_type)
