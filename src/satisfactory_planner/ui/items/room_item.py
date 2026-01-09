@@ -169,22 +169,14 @@ class RoomItem(QGraphicsRectItem):
         )
 
     def _create_port_items(self) -> None:
-        """Create interactive RoomPortItem for each port on the room boundary."""
-        for port in self.room.get_ports():
-            if port.port_index is None:
+        """Create interactive RoomPortItem for each PORT building in the room."""
+        for building in self.room.buildings.values():
+            if building.building_type not in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
                 continue
-
-            is_output = port.building_type == BuildingType.PORT_OUT
-            if is_output:
-                local_pos = self.room.output_port_pos(port.port_index)
-            else:
-                local_pos = self.room.input_port_pos(port.port_index)
 
             port_item = RoomPortItem(
                 room_item=self,
-                port_index=port.port_index,
-                is_output=is_output,
-                local_pos=local_pos,
+                building=building,
                 canvas=self.canvas,
             )
             self._port_items.append(port_item)

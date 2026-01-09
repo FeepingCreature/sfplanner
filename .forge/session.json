@@ -1,5 +1,6 @@
 {
   "active_files": [
+    "src/satisfactory_planner/ui/items/room_item.py",
     "src/satisfactory_planner/ui/items/room_port_item.py",
     "src/satisfactory_planner/ui/canvas/selection_manager.py",
     "src/satisfactory_planner/ui/items/building_item.py"
@@ -958,6 +959,51 @@
       "streaming": true,
       "actual_cost": 0.051873,
       "generation_id": "gen-1767960404-xQppxIdEbL3j2bvbSIRX"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767960425885.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767960425885.json",
+      "timestamp": 1767960425.8862424,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05131625,
+      "generation_id": "gen-1767960426-IGw0JKXS6iiZTNt5nY65"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767960452980.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767960452980.json",
+      "timestamp": 1767960452.981315,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.040287,
+      "generation_id": "gen-1767960453-9AeBvhNxTtHDa9dZ7NlZ"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767960484262.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767960484262.json",
+      "timestamp": 1767960484.2632797,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.12242375,
+      "generation_id": "gen-1767960484-qEQ25QfH67S0mcfk82yq"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767960542739.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767960542739.json",
+      "timestamp": 1767960542.7404487,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.14344825,
+      "generation_id": "gen-1767960542-k45IqIv9C7b3WjYbowQU"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767960547677.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767960547677.json",
+      "timestamp": 1767960547.6788445,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.08076775,
+      "generation_id": "gen-1767960547-4r8wi1pwd4xk2XJ7nhfs"
     }
   ],
   "messages": [
@@ -3565,6 +3611,183 @@
         {
           "commit": "4dc2e3add6c6",
           "message": "Committed: 2 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 62fbb27d",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "hang on- can we literally just change the class hierarchy for more reuse?"
+    },
+    {
+      "role": "assistant",
+      "content": "Yes, you're right! We could create a base class that both `BuildingItem` and `RoomPortItem` inherit from. Let me look at what they share:\n\n**Common needs:**\n- Selection handling (`ItemIsSelectable`, `ItemIsMovable`, `ItemSendsGeometryChanges`)\n- Scene tracking (`building_scene` / `get_scene_for_item`)\n- Drag tracking (`_drag_start_pos`, `_is_dragging`)\n- `mousePressEvent` calling `canvas.on_item_clicked(self)`\n- `mouseReleaseEvent` creating move commands\n- `itemChange` for position updates and belt repathing\n\nThe issue is they inherit from different Qt base classes:\n- `BuildingItem` \u2192 `QGraphicsRectItem`\n- `RoomPortItem` \u2192 `QGraphicsObject`\n\nWe could use a **mixin** approach instead of inheritance:\n\n```python\nclass CanvasItemMixin:\n    \"\"\"Mixin providing common behavior for selectable/movable canvas items.\"\"\"\n    canvas: FactoryCanvas\n    _drag_start_pos: QPointF | None\n    _is_dragging: bool\n    \n    def setup_canvas_item_flags(self) -> None: ...\n    def handle_mouse_press(self, event) -> None: ...\n    def handle_mouse_release(self, event) -> None: ...\n    def get_item_scene(self) -> Scene: ...  # Each subclass implements\n```\n\nOr we could make `RoomPortItem` inherit from `QGraphicsRectItem` like `BuildingItem` does, since it now draws a rectangular building body anyway.\n\nWhich approach do you prefer?\n1. **Mixin** - Less refactoring, adds shared behavior via composition\n2. **Common base class** - Cleaner hierarchy but requires both to use same Qt base\n3. **RoomPortItem extends BuildingItem** - Maximum reuse if port IS-A building conceptually"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: ccd7975d",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "What's the difference between QGraphicsRectItem and QGraphicsObject? Why the division?"
+    },
+    {
+      "role": "assistant",
+      "content": "Good question! The difference:\n\n- **`QGraphicsRectItem`** - A convenience class that draws a rectangle. Has built-in `rect()`, `setRect()`, `paint()` that draws the rect. Good for items that ARE rectangles.\n\n- **`QGraphicsObject`** - A base class that adds QObject features (signals/slots) to QGraphicsItem. No built-in shape - you implement `boundingRect()` and `paint()` yourself.\n\nLooking at the code, I suspect `RoomPortItem` used `QGraphicsObject` because originally it was just a half-circle, not a rectangle. But now that it draws a rectangular building body, it could just as easily be a `QGraphicsRectItem`.\n\nHowever, the real question is: **should `RoomPortItem` just BE a `BuildingItem`?**\n\nA PORT_IN/PORT_OUT is a `Building` in the model. The `RoomPortItem` is duplicating a lot of what `BuildingItem` does. The main differences are:\n1. Custom rendering (half-circle + body instead of just rect)\n2. Edge snapping instead of grid snapping\n3. Belt connection start point is the room edge, not the building center\n\nWe could:\n1. **Make `RoomPortItem` extend `BuildingItem`** and override just the paint/snap behavior\n2. **Use `BuildingItem` directly** with a flag for \"is port\" that changes rendering/snapping\n\nOption 1 seems cleanest - `RoomPortItem` IS-A `BuildingItem` with specialized rendering. Want me to try that refactor?"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 109b2b80",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "yeah that's my thinking, just subclass building."
+    },
+    {
+      "role": "assistant",
+      "content": "Let me refactor `RoomPortItem` to extend `BuildingItem`:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n\"\"\"Graphics item for room ports - interactive belt connection points on room boundaries.\n\nPorts are rendered as a half-circle on the room edge (external connection point).\nThe PORT_IN/PORT_OUT building inside the room handles the internal connection.\n\"\"\"\n\nfrom __future__ import annotations\n\nfrom enum import Enum, auto\nfrom typing import TYPE_CHECKING\n\nfrom PySide6.QtCore import QPointF, QRectF, Qt\nfrom PySide6.QtGui import QBrush, QColor, QPainter, QPen\nfrom PySide6.QtWidgets import (\n    QGraphicsItem,\n    QGraphicsObject,\n    QGraphicsSceneHoverEvent,\n    QGraphicsSceneMouseEvent,\n    QStyleOptionGraphicsItem,\n    QWidget,\n)\n\nfrom satisfactory_planner.core.models import BuildingType\nfrom satisfactory_planner.ui.items.port_item import (\n    INPUT_COLOR,\n    OUTPUT_COLOR,\n    PORT_RADIUS,\n    draw_half_circle_path,\n)\n\nif TYPE_CHECKING:\n    from satisfactory_planner.ui.canvas import FactoryCanvas\n    from satisfactory_planner.ui.items.room_item import RoomItem\n\n\n# Building body constants\nBUILDING_SIZE = 30  # Size of the draggable building body\nBUILDING_COLOR = QColor(70, 70, 80)  # Dark gray for building body\nBUILDING_BORDER = QColor(100, 100, 110)  # Lighter border\n\n\nclass EdgeSide(Enum):\n    \"\"\"Which edge of the room the port is on.\"\"\"\n\n    LEFT = auto()\n    RIGHT = auto()\n    TOP = auto()\n    BOTTOM = auto()\n\n\nclass RoomPortItem(QGraphicsObject):\n    \"\"\"Interactive port on a room boundary with half-building visualization.\n\n    Renders as:\n    - Half-circle on room edge (external belt connection)\n    - Half-building shape inside room (internal belt connection)\n    - Connector port on the room-facing side of the building\n\n    The port can be dragged along the room edge (future feature).\n    \"\"\"\n\n    def __init__(\n        self,\n        room_item: RoomItem,\n        port_index: int,\n        is_output: bool,\n        local_pos: tuple[float, float],\n        canvas: FactoryCanvas,\n    ) -> None:\n        super().__init__(parent=room_item)\n\n        self.room_item = room_item\n        self.port_index = port_index\n        self.is_output = is_output\n        self.canvas = canvas\n        self._is_drag_target = False\n\n        # Determine which edge this port is on based on position\n        self._edge = self._determine_edge(local_pos)\n\n        # Position relative to parent RoomItem\n        self.setPos(local_pos[0], local_pos[1])\n\n        # Enable hover events for belt connection highlighting\n        self.setAcceptHoverEvents(True)\n        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)\n        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)\n        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)\n\n        # Z-value above room background but below regular buildings\n        self.setZValue(0.5)\n\n        # Drag state\n        self._is_dragging = False\n        self._drag_start_pos: QPointF | None = None\n</search>\n<replace>\n\"\"\"Graphics item for room ports - interactive belt connection points on room boundaries.\n\nPorts are rendered as a half-circle on the room edge (external connection point),\nplus a building body inside the room with an internal connector.\n\"\"\"\n\nfrom __future__ import annotations\n\nfrom enum import Enum, auto\nfrom typing import TYPE_CHECKING\n\nfrom PySide6.QtCore import QPointF, QRectF, Qt\nfrom PySide6.QtGui import QBrush, QColor, QPainter, QPen\nfrom PySide6.QtWidgets import (\n    QGraphicsItem,\n    QGraphicsSceneHoverEvent,\n    QGraphicsSceneMouseEvent,\n    QStyleOptionGraphicsItem,\n    QWidget,\n)\n\nfrom satisfactory_planner.core.models import Building, BuildingType\nfrom satisfactory_planner.ui.items.building_item import BuildingItem\nfrom satisfactory_planner.ui.items.port_item import (\n    INPUT_COLOR,\n    OUTPUT_COLOR,\n    PORT_RADIUS,\n    draw_half_circle_path,\n)\n\nif TYPE_CHECKING:\n    from satisfactory_planner.ui.canvas import FactoryCanvas\n    from satisfactory_planner.ui.items.room_item import RoomItem\n\n\n# Building body constants\nBUILDING_SIZE = 30  # Size of the draggable building body\nBUILDING_COLOR = QColor(70, 70, 80)  # Dark gray for building body\nBUILDING_BORDER = QColor(100, 100, 110)  # Lighter border\n\n\nclass EdgeSide(Enum):\n    \"\"\"Which edge of the room the port is on.\"\"\"\n\n    LEFT = auto()\n    RIGHT = auto()\n    TOP = auto()\n    BOTTOM = auto()\n\n\nclass RoomPortItem(BuildingItem):\n    \"\"\"Interactive port on a room boundary with half-building visualization.\n\n    Extends BuildingItem to reuse selection, dragging, and scene handling.\n    Overrides rendering to show half-circle on room edge plus building body.\n\n    Renders as:\n    - Half-circle on room edge (external belt connection)\n    - Building body inside room\n    - Internal connector half-circle (for belts inside the room)\n    \"\"\"\n\n    def __init__(\n        self,\n        room_item: RoomItem,\n        building: Building,\n        canvas: FactoryCanvas,\n    ) -> None:\n        # Get local position from building\n        local_pos = (building.x, building.y)\n\n        # Initialize BuildingItem with the PORT building\n        super().__init__(building, canvas, scene=room_item.room)\n\n        self.room_item = room_item\n        self.is_output = building.building_type == BuildingType.PORT_OUT\n        self._is_drag_target = False\n\n        # Determine which edge this port is on based on position\n        self._edge = self._determine_edge(local_pos)\n\n        # Set as child of room item for proper scene hierarchy\n        self.setParentItem(room_item)\n\n        # Position relative to parent RoomItem\n        self.setPos(local_pos[0], local_pos[1])\n\n        # Enable hover events for belt connection highlighting\n        self.setAcceptHoverEvents(True)\n\n        # Z-value above room background but below regular buildings\n        self.setZValue(0.5)\n</replace>\n</edit>\n\nNow update the property to use building's port_index:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n    def _determine_edge(self, local_pos: tuple[float, float]) -> EdgeSide:\n        \"\"\"Determine which room edge this port is on.\"\"\"\n        x, y = local_pos\n        room_width = self.room_item.room.width\n\n        # Check proximity to each edge\n        if x <= 1:\n            return EdgeSide.LEFT\n        elif x >= room_width - 1:\n            return EdgeSide.RIGHT\n        elif y <= 1:\n            return EdgeSide.TOP\n        else:\n            return EdgeSide.BOTTOM\n\n    @property\n    def placement_id(self) -> str:\n        \"\"\"Get the room placement ID this port belongs to.\"\"\"\n        return self.room_item.placement.id\n</search>\n<replace>\n    def _determine_edge(self, local_pos: tuple[float, float]) -> EdgeSide:\n        \"\"\"Determine which room edge this port is on.\"\"\"\n        x, y = local_pos\n        room_width = self.room_item.room.width\n\n        # Check proximity to each edge\n        if x <= 1:\n            return EdgeSide.LEFT\n        elif x >= room_width - 1:\n            return EdgeSide.RIGHT\n        elif y <= 1:\n            return EdgeSide.TOP\n        else:\n            return EdgeSide.BOTTOM\n\n    @property\n    def port_index(self) -> int:\n        \"\"\"Get port index from the building model.\"\"\"\n        return self.building.port_index or 0\n\n    @property\n    def placement_id(self) -> str:\n        \"\"\"Get the room placement ID this port belongs to.\"\"\"\n        return self.room_item.placement.id\n</replace>\n</edit>\n\nNow simplify the mouse event handling to leverage BuildingItem's implementation:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle mouse press - start belt connection or drag port.\"\"\"\n        if event.button() == Qt.MouseButton.LeftButton:\n            if self.is_output:\n                # Start belt drag from this output port\n                scene_pos = self.scenePos()\n                self.canvas.start_belt_drag(self.placement_id, self.port_index, scene_pos)\n                event.accept()\n                return\n            else:\n                # Enforce scene-local selection before handling\n                self.canvas.on_item_clicked(self)\n                # Track drag start for undo\n                self._drag_start_pos = self.pos()\n                self._is_dragging = True\n        super().mousePressEvent(event)\n\n    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle mouse release - end port drag, create command if moved.\"\"\"\n        if event.button() == Qt.MouseButton.LeftButton and self._is_dragging:\n            self._is_dragging = False\n            # TODO: Create move command for undo/redo if position changed\n            # For now, model is already updated in itemChange\n            self._drag_start_pos = None\n        super().mouseReleaseEvent(event)\n</search>\n<replace>\n    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle mouse press - start belt connection or drag port.\"\"\"\n        if event.button() == Qt.MouseButton.LeftButton and self.is_output:\n            # Start belt drag from this output port\n            scene_pos = self.scenePos()\n            self.canvas.start_belt_drag(self.placement_id, self.port_index, scene_pos)\n            event.accept()\n            return\n        # Let BuildingItem handle selection and drag tracking\n        super().mousePressEvent(event)\n</replace>\n</edit>\n\nNow override itemChange to add edge snapping while keeping BuildingItem's belt update logic:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n    def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:\n        \"\"\"Handle item changes - snap to room edge while dragging.\"\"\"\n        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:\n            new_pos = value\n            if isinstance(new_pos, QPointF):\n                # Snap to nearest room edge\n                new_pos = self._snap_to_edge(new_pos)\n                return new_pos\n        elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:\n            # Update the port building's position in the model\n            new_pos = self.pos()\n            self._update_port_position(new_pos)\n            # Redetermine which edge we're on\n            self._edge = self._determine_edge((new_pos.x(), new_pos.y()))\n            self.update()\n        return super().itemChange(change, value)\n</search>\n<replace>\n    def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:\n        \"\"\"Handle item changes - snap to room edge instead of grid.\"\"\"\n        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:\n            new_pos = value\n            if isinstance(new_pos, QPointF):\n                # Snap to nearest room edge (not grid)\n                new_pos = self._snap_to_edge(new_pos)\n                return new_pos\n        elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:\n            # Redetermine which edge we're on\n            new_pos = self.pos()\n            self._edge = self._determine_edge((new_pos.x(), new_pos.y()))\n            self.update()\n        # Let BuildingItem update model position and belts\n        return super().itemChange(change, value)\n</replace>\n</edit>\n\nRemove the now-redundant `_update_port_position` method since BuildingItem handles model updates:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_port_item.py\">\n<search>\n    def _update_port_position(self, new_pos: QPointF) -> None:\n        \"\"\"Update the PORT building's position in the room model.\"\"\"\n        room = self.room_item.room\n        port_type = BuildingType.PORT_OUT if self.is_output else BuildingType.PORT_IN\n\n        # Find the port building and update its position\n        for building in room.buildings.values():\n            if building.building_type == port_type and building.port_index == self.port_index:\n                # Port position IS the edge position (no offset needed)\n                building.x = new_pos.x()\n                building.y = new_pos.y()\n                break\n\n        # Update belts connected to this port\n        self.canvas._update_belts_for_placement(self.placement_id)\n\n    def get_scene_pos(self) -> QPointF:\n        \"\"\"Get the scene position of this port.\"\"\"\n        return self.scenePos()\n</search>\n<replace>\n    def get_scene_pos(self) -> QPointF:\n        \"\"\"Get the scene position of this port.\"\"\"\n        return self.scenePos()\n</replace>\n</edit>\n\nNow update the room_item.py to pass the Building to RoomPortItem:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"RoomPortItem\\\\(\", \"include_extensions\": [\".py\"], \"context_before\": 3, \"context_after\": 8}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_0176J52xWnsKnp9ZUNGpHb6r",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_0176J52xWnsKnp9ZUNGpHb6r",
+      "content": "{\"message\": \"Found 2 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/room_item.py:183 \\u2500\\u2500\\n     180 |             else:\\n     181 |                 local_pos = self.room.input_port_pos(port.port_index)\\n     182 | \\n>>>  183 |             port_item = RoomPortItem(\\n     184 |                 room_item=self,\\n     185 |                 port_index=port.port_index,\\n     186 |                 is_output=is_output,\\n     187 |                 local_pos=local_pos,\\n     188 |                 canvas=self.canvas,\\n     189 |             )\\n     190 |             self._port_items.append(port_item)\\n     191 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/room_port_item.py:51 \\u2500\\u2500\\n      48 |     BOTTOM = auto()\\n      49 | \\n      50 | \\n>>>   51 | class RoomPortItem(BuildingItem):\\n      52 |     \\\"\\\"\\\"Interactive port on a room boundary with half-building visualization.\\n      53 | \\n      54 |     Extends BuildingItem to reuse selection, dragging, and scene handling.\\n      55 |     Overrides rendering to show half-circle on room edge plus building body.\\n      56 | \\n      57 |     Renders as:\\n      58 |     - Half-circle on room edge (external belt connection)\\n      59 |     - Building body inside room\", \"success\": true, \"total_matches\": 2}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"context_after\": 8,\n  \"context_before\": 3,\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"RoomPortItem\\\\(\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 2 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/room_item.py:183 \\u2500\\u2500\\n     180 |             else:\\n     181 |                 local_pos = self.room.input_port_pos(port.port_index)\\n     182 | \\n>>>  183 |             port_item = RoomPortItem(\\n     184 |                 room_item=self,\\n     185 |                 port_index=port.port_index,\\n     186 |                 is_output=is_output,\\n     187 |                 local_pos=local_pos,\\n     188 |                 canvas=self.canvas,\\n     189 |             )\\n     190 |             self._port_items.append(port_item)\\n     191 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/room_port_item.py:51 \\u2500\\u2500\\n      48 |     BOTTOM = auto()\\n      49 | \\n      50 | \\n>>>   51 | class RoomPortItem(BuildingItem):\\n      52 |     \\\"\\\"\\\"Interactive port on a room boundary with half-building visualization.\\n      53 | \\n      54 |     Extends BuildingItem to reuse selection, dragging, and scene handling.\\n      55 |     Overrides rendering to show half-circle on room edge plus building body.\\n      56 | \\n      57 |     Renders as:\\n      58 |     - Half-circle on room edge (external belt connection)\\n      59 |     - Building body inside room\",\n  \"success\": true,\n  \"total_matches\": 2\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I need to update room_item.py to pass the Building object to the new RoomPortItem constructor:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/items/room_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01A7As513bMsQsufduwVZAWn",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01A7As513bMsQsufduwVZAWn",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/items/room_item.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the current `_create_port_items` is passing individual arguments. I need to update it to pass the Building object instead:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_item.py\">\n<search>\n    def _create_port_items(self) -> None:\n        \"\"\"Create interactive RoomPortItem for each port on the room boundary.\"\"\"\n        for port in self.room.get_ports():\n            if port.port_index is None:\n                continue\n\n            is_output = port.building_type == BuildingType.PORT_OUT\n            if is_output:\n                local_pos = self.room.output_port_pos(port.port_index)\n            else:\n                local_pos = self.room.input_port_pos(port.port_index)\n\n            port_item = RoomPortItem(\n                room_item=self,\n                port_index=port.port_index,\n                is_output=is_output,\n                local_pos=local_pos,\n                canvas=self.canvas,\n            )\n            self._port_items.append(port_item)\n</search>\n<replace>\n    def _create_port_items(self) -> None:\n        \"\"\"Create interactive RoomPortItem for each PORT building in the room.\"\"\"\n        for building in self.room.buildings.values():\n            if building.building_type not in (BuildingType.PORT_IN, BuildingType.PORT_OUT):\n                continue\n\n            port_item = RoomPortItem(\n                room_item=self,\n                building=building,\n                canvas=self.canvas,\n            )\n            self._port_items.append(port_item)\n</replace>\n</edit>\n\nNow I need to update `selection_manager.py` to handle `RoomPortItem` as a `BuildingItem` (since it now inherits from it). Actually, since `RoomPortItem` IS-A `BuildingItem`, the existing `isinstance(item, BuildingItem)` check should now catch it. But we need `building_scene` to return the room, which is already set in the super().__init__ call. Let me verify the selection manager handles this correctly:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/selection_manager.py\">\n<search>\n    def get_scene_for_item(self, item: QGraphicsItem) -> Scene | None:\n        \"\"\"Get the scene (Document or Room) that an item belongs to.\"\"\"\n        from satisfactory_planner.ui.items.belt_item import BeltItem\n        from satisfactory_planner.ui.items.room_item import RoomItem\n        from satisfactory_planner.ui.items.room_port_item import RoomPortItem\n\n        if isinstance(item, BuildingItem):\n            return item.building_scene\n        elif isinstance(item, BeltItem):\n            parent = item.parentItem()\n            if isinstance(parent, RoomItem):\n                return parent.room\n            return self.canvas.document\n        elif isinstance(item, RoomItem):\n            return item.parent_scene\n        elif isinstance(item, RoomPortItem):\n            # Port belongs to the room it's on\n            return item.room_item.room\n        return None\n</search>\n<replace>\n    def get_scene_for_item(self, item: QGraphicsItem) -> Scene | None:\n        \"\"\"Get the scene (Document or Room) that an item belongs to.\"\"\"\n        from satisfactory_planner.ui.items.belt_item import BeltItem\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        # Note: RoomPortItem extends BuildingItem, so it's handled by the first check\n        if isinstance(item, BuildingItem):\n            return item.building_scene\n        elif isinstance(item, BeltItem):\n            parent = item.parentItem()\n            if isinstance(parent, RoomItem):\n                return parent.room\n            return self.canvas.document\n        elif isinstance(item, RoomItem):\n            return item.parent_scene\n        return None\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Refactor RoomPortItem to extend BuildingItem\n\nRoomPortItem now inherits from BuildingItem instead of QGraphicsObject,\ngaining all selection, dragging, and scene handling behavior for free.\n\nChanges:\n- RoomPortItem.__init__ takes a Building object instead of individual params\n- Overrides boundingRect/paint for custom half-circle + body rendering\n- Overrides itemChange to snap to room edges instead of grid\n- Removes redundant mouse event handling (inherited from BuildingItem)\n- Removes RoomPortItem special case in selection_manager (handled as BuildingItem)\n- Updates room_item._create_port_items to pass Building objects\"/>\n\nDone! `RoomPortItem` now extends `BuildingItem`, which means:\n\n1. **Selection works correctly** - inherited from `BuildingItem`\n2. **Drag tracking and undo/redo** - inherited from `BuildingItem`\n3. **Scene handling** - `building_scene` returns the room (set in constructor)\n4. **Belt updates on move** - inherited `itemChange` calls `update_belts_for_building`\n5. **No special cases needed** - `SelectionManager.get_scene_for_item` handles it as a `BuildingItem`\n\nThe only overrides are:\n- `boundingRect` / `paint` for the custom half-circle + body rendering\n- `itemChange` to snap to room edges instead of grid\n- `mousePressEvent` to start belt drags from output ports",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/selection_manager.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/selection_manager.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_7xtbvfa2\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.15s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_7xtbvfa2\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_7xtbvfa2\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.15s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_7xtbvfa2\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "924318b9eee7",
+          "message": "Committed: 3 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

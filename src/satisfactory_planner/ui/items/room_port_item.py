@@ -1,7 +1,7 @@
 """Graphics item for room ports - interactive belt connection points on room boundaries.
 
-Ports are rendered as a half-circle on the room edge (external connection point).
-The PORT_IN/PORT_OUT building inside the room handles the internal connection.
+Ports are rendered as a half-circle on the room edge (external connection point),
+plus a building body inside the room with an internal connector.
 """
 
 from __future__ import annotations
@@ -13,14 +13,14 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import (
     QGraphicsItem,
-    QGraphicsObject,
     QGraphicsSceneHoverEvent,
     QGraphicsSceneMouseEvent,
     QStyleOptionGraphicsItem,
     QWidget,
 )
 
-from satisfactory_planner.core.models import BuildingType
+from satisfactory_planner.core.models import Building, BuildingType
+from satisfactory_planner.ui.items.building_item import BuildingItem
 from satisfactory_planner.ui.items.port_item import (
     INPUT_COLOR,
     OUTPUT_COLOR,
@@ -48,51 +48,48 @@ class EdgeSide(Enum):
     BOTTOM = auto()
 
 
-class RoomPortItem(QGraphicsObject):
+class RoomPortItem(BuildingItem):
     """Interactive port on a room boundary with half-building visualization.
+
+    Extends BuildingItem to reuse selection, dragging, and scene handling.
+    Overrides rendering to show half-circle on room edge plus building body.
 
     Renders as:
     - Half-circle on room edge (external belt connection)
-    - Half-building shape inside room (internal belt connection)
-    - Connector port on the room-facing side of the building
-
-    The port can be dragged along the room edge (future feature).
+    - Building body inside room
+    - Internal connector half-circle (for belts inside the room)
     """
 
     def __init__(
         self,
         room_item: RoomItem,
-        port_index: int,
-        is_output: bool,
-        local_pos: tuple[float, float],
+        building: Building,
         canvas: FactoryCanvas,
     ) -> None:
-        super().__init__(parent=room_item)
+        # Get local position from building
+        local_pos = (building.x, building.y)
+
+        # Initialize BuildingItem with the PORT building
+        super().__init__(building, canvas, scene=room_item.room)
 
         self.room_item = room_item
-        self.port_index = port_index
-        self.is_output = is_output
-        self.canvas = canvas
+        self.is_output = building.building_type == BuildingType.PORT_OUT
         self._is_drag_target = False
 
         # Determine which edge this port is on based on position
         self._edge = self._determine_edge(local_pos)
+
+        # Set as child of room item for proper scene hierarchy
+        self.setParentItem(room_item)
 
         # Position relative to parent RoomItem
         self.setPos(local_pos[0], local_pos[1])
 
         # Enable hover events for belt connection highlighting
         self.setAcceptHoverEvents(True)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
 
         # Z-value above room background but below regular buildings
         self.setZValue(0.5)
-
-        # Drag state
-        self._is_dragging = False
-        self._drag_start_pos: QPointF | None = None
 
     def _determine_edge(self, local_pos: tuple[float, float]) -> EdgeSide:
         """Determine which room edge this port is on."""
@@ -108,6 +105,11 @@ class RoomPortItem(QGraphicsObject):
             return EdgeSide.TOP
         else:
             return EdgeSide.BOTTOM
+
+    @property
+    def port_index(self) -> int:
+        """Get port index from the building model."""
+        return self.building.port_index or 0
 
     @property
     def placement_id(self) -> str:
@@ -288,45 +290,29 @@ class RoomPortItem(QGraphicsObject):
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """Handle mouse press - start belt connection or drag port."""
-        if event.button() == Qt.MouseButton.LeftButton:
-            if self.is_output:
-                # Start belt drag from this output port
-                scene_pos = self.scenePos()
-                self.canvas.start_belt_drag(self.placement_id, self.port_index, scene_pos)
-                event.accept()
-                return
-            else:
-                # Enforce scene-local selection before handling
-                self.canvas.on_item_clicked(self)
-                # Track drag start for undo
-                self._drag_start_pos = self.pos()
-                self._is_dragging = True
+        if event.button() == Qt.MouseButton.LeftButton and self.is_output:
+            # Start belt drag from this output port
+            scene_pos = self.scenePos()
+            self.canvas.start_belt_drag(self.placement_id, self.port_index, scene_pos)
+            event.accept()
+            return
+        # Let BuildingItem handle selection and drag tracking
         super().mousePressEvent(event)
 
-    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
-        """Handle mouse release - end port drag, create command if moved."""
-        if event.button() == Qt.MouseButton.LeftButton and self._is_dragging:
-            self._is_dragging = False
-            # TODO: Create move command for undo/redo if position changed
-            # For now, model is already updated in itemChange
-            self._drag_start_pos = None
-        super().mouseReleaseEvent(event)
-
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
-        """Handle item changes - snap to room edge while dragging."""
+        """Handle item changes - snap to room edge instead of grid."""
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             new_pos = value
             if isinstance(new_pos, QPointF):
-                # Snap to nearest room edge
+                # Snap to nearest room edge (not grid)
                 new_pos = self._snap_to_edge(new_pos)
                 return new_pos
         elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
-            # Update the port building's position in the model
-            new_pos = self.pos()
-            self._update_port_position(new_pos)
             # Redetermine which edge we're on
+            new_pos = self.pos()
             self._edge = self._determine_edge((new_pos.x(), new_pos.y()))
             self.update()
+        # Let BuildingItem update model position and belts
         return super().itemChange(change, value)
 
     def _snap_to_edge(self, pos: QPointF) -> QPointF:
@@ -351,22 +337,6 @@ class RoomPortItem(QGraphicsObject):
             return QPointF(max(0, min(x, room.width)), 0)
         else:  # dist_bottom
             return QPointF(max(0, min(x, room.width)), room.height)
-
-    def _update_port_position(self, new_pos: QPointF) -> None:
-        """Update the PORT building's position in the room model."""
-        room = self.room_item.room
-        port_type = BuildingType.PORT_OUT if self.is_output else BuildingType.PORT_IN
-
-        # Find the port building and update its position
-        for building in room.buildings.values():
-            if building.building_type == port_type and building.port_index == self.port_index:
-                # Port position IS the edge position (no offset needed)
-                building.x = new_pos.x()
-                building.y = new_pos.y()
-                break
-
-        # Update belts connected to this port
-        self.canvas._update_belts_for_placement(self.placement_id)
 
     def get_scene_pos(self) -> QPointF:
         """Get the scene position of this port."""
