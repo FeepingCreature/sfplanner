@@ -541,12 +541,6 @@ class Room:
         port = self.get_port_by_index(index, is_output=False)
         if port:
             base_w, base_h = port._get_display_size()
-            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            # WARNING: DO NOT TOUCH THIS OFFSET LOGIC. IT IS CORRECT.
-            # These offsets compensate for Qt's paint rotation around center.
-            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            y_offset = (base_w - base_h) / 2
-            x_offset = (base_h - base_w) / 2
 
             if port.rotation == 0:
                 # Left edge
@@ -555,11 +549,11 @@ class Room:
                 # Right edge
                 return (port.x + base_w, port.y + base_h / 2)
             elif port.rotation == 90:
-                # Top edge
-                return (port.x + base_w / 2 + x_offset, port.y + y_offset)
+                # Top edge - use same formula as _get_room_port_position
+                return (port.x + base_w / 2, 0)
             else:  # 270
-                # Bottom edge
-                return (port.x + base_w / 2 + x_offset, port.y + base_h + y_offset)
+                # Bottom edge - use same formula as _get_room_port_position
+                return (port.x + base_w / 2, self.height)
         # Fallback: distribute evenly on left edge
         spacing = self.height / (self.num_inputs + 1) if self.num_inputs > 0 else self.height / 2
         return (0, spacing * (index + 1))
@@ -569,12 +563,6 @@ class Room:
         port = self.get_port_by_index(index, is_output=True)
         if port:
             base_w, base_h = port._get_display_size()
-            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            # WARNING: DO NOT TOUCH THIS OFFSET LOGIC. IT IS CORRECT.
-            # These offsets compensate for Qt's paint rotation around center.
-            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            y_offset = (base_w - base_h) / 2
-            x_offset = (base_h - base_w) / 2
 
             if port.rotation == 0:
                 # Left edge
@@ -583,11 +571,11 @@ class Room:
                 # Right edge
                 return (port.x + base_w, port.y + base_h / 2)
             elif port.rotation == 90:
-                # Top edge
-                return (port.x + base_w / 2 + x_offset, port.y + y_offset)
+                # Top edge - use same formula as _get_room_port_position
+                return (port.x + base_w / 2, 0)
             else:  # 270
-                # Bottom edge
-                return (port.x + base_w / 2 + x_offset, port.y + base_h + y_offset)
+                # Bottom edge - use same formula as _get_room_port_position
+                return (port.x + base_w / 2, self.height)
         # Fallback: distribute evenly on right edge
         spacing = self.height / (self.num_outputs + 1) if self.num_outputs > 0 else self.height / 2
         return (self.width, spacing * (index + 1))

@@ -1,10 +1,10 @@
 {
   "active_files": [
-    "src/satisfactory_planner/ui/items/building_item.py",
-    "src/satisfactory_planner/ui/canvas/belt_connector.py",
     "src/satisfactory_planner/ui/items/room_port_item.py",
-    "src/satisfactory_planner/ui/items/room_item.py",
+    "src/satisfactory_planner/ui/canvas/belt_connector.py",
     "src/satisfactory_planner/core/models.py",
+    "src/satisfactory_planner/ui/items/room_item.py",
+    "src/satisfactory_planner/ui/items/building_item.py",
     "src/satisfactory_planner/ui/items/belt_item.py",
     "CLAUDE.md"
   ],
@@ -1772,6 +1772,15 @@
       "streaming": true,
       "actual_cost": 0.6213525,
       "generation_id": "gen-1767965742-5aOMEiiUbVxGpOiZZ9Kf"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767965951036.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767965951036.json",
+      "timestamp": 1767965951.037891,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.62489125,
+      "generation_id": "gen-1767965951-6cGIKN7lqNVvrpxcEvUk"
     }
   ],
   "messages": [
@@ -7349,6 +7358,50 @@
         },
         {
           "commit": "c58564f7e625",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Generated summaries for 87 files",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Extremely close now. The belt connection point has to use the same math as the room port."
+    },
+    {
+      "role": "assistant",
+      "content": "The belt connection points in `Room.input_port_pos` and `Room.output_port_pos` need to use `base_w / 2` for top/bottom edges (same as `_get_room_port_position`), not the offset formula. Let me fix that:\n\n<edit file=\"src/satisfactory_planner/core/models.py\">\n<search>\n    def input_port_pos(self, index: int) -> tuple[float, float]:\n        \"\"\"Get position of input port by index (in room-local coordinates).\"\"\"\n        port = self.get_port_by_index(index, is_output=False)\n        if port:\n            base_w, base_h = port._get_display_size()\n            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n            # WARNING: DO NOT TOUCH THIS OFFSET LOGIC. IT IS CORRECT.\n            # These offsets compensate for Qt's paint rotation around center.\n            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n            y_offset = (base_w - base_h) / 2\n            x_offset = (base_h - base_w) / 2\n\n            if port.rotation == 0:\n                # Left edge\n                return (port.x, port.y + base_h / 2)\n            elif port.rotation == 180:\n                # Right edge\n                return (port.x + base_w, port.y + base_h / 2)\n            elif port.rotation == 90:\n                # Top edge\n                return (port.x + base_w / 2 + x_offset, port.y + y_offset)\n            else:  # 270\n                # Bottom edge\n                return (port.x + base_w / 2 + x_offset, port.y + base_h + y_offset)\n        # Fallback: distribute evenly on left edge\n        spacing = self.height / (self.num_inputs + 1) if self.num_inputs > 0 else self.height / 2\n        return (0, spacing * (index + 1))\n\n    def output_port_pos(self, index: int) -> tuple[float, float]:\n        \"\"\"Get position of output port by index (in room-local coordinates).\"\"\"\n        port = self.get_port_by_index(index, is_output=True)\n        if port:\n            base_w, base_h = port._get_display_size()\n            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n            # WARNING: DO NOT TOUCH THIS OFFSET LOGIC. IT IS CORRECT.\n            # These offsets compensate for Qt's paint rotation around center.\n            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n            y_offset = (base_w - base_h) / 2\n            x_offset = (base_h - base_w) / 2\n\n            if port.rotation == 0:\n                # Left edge\n                return (port.x, port.y + base_h / 2)\n            elif port.rotation == 180:\n                # Right edge\n                return (port.x + base_w, port.y + base_h / 2)\n            elif port.rotation == 90:\n                # Top edge\n                return (port.x + base_w / 2 + x_offset, port.y + y_offset)\n            else:  # 270\n                # Bottom edge\n                return (port.x + base_w / 2 + x_offset, port.y + base_h + y_offset)\n        # Fallback: distribute evenly on right edge\n        spacing = self.height / (self.num_outputs + 1) if self.num_outputs > 0 else self.height / 2\n        return (self.width, spacing * (index + 1))\n</search>\n<replace>\n    def input_port_pos(self, index: int) -> tuple[float, float]:\n        \"\"\"Get position of input port by index (in room-local coordinates).\"\"\"\n        port = self.get_port_by_index(index, is_output=False)\n        if port:\n            base_w, base_h = port._get_display_size()\n\n            if port.rotation == 0:\n                # Left edge\n                return (port.x, port.y + base_h / 2)\n            elif port.rotation == 180:\n                # Right edge\n                return (port.x + base_w, port.y + base_h / 2)\n            elif port.rotation == 90:\n                # Top edge - use same formula as _get_room_port_position\n                return (port.x + base_w / 2, 0)\n            else:  # 270\n                # Bottom edge - use same formula as _get_room_port_position\n                return (port.x + base_w / 2, self.height)\n        # Fallback: distribute evenly on left edge\n        spacing = self.height / (self.num_inputs + 1) if self.num_inputs > 0 else self.height / 2\n        return (0, spacing * (index + 1))\n\n    def output_port_pos(self, index: int) -> tuple[float, float]:\n        \"\"\"Get position of output port by index (in room-local coordinates).\"\"\"\n        port = self.get_port_by_index(index, is_output=True)\n        if port:\n            base_w, base_h = port._get_display_size()\n\n            if port.rotation == 0:\n                # Left edge\n                return (port.x, port.y + base_h / 2)\n            elif port.rotation == 180:\n                # Right edge\n                return (port.x + base_w, port.y + base_h / 2)\n            elif port.rotation == 90:\n                # Top edge - use same formula as _get_room_port_position\n                return (port.x + base_w / 2, 0)\n            else:  # 270\n                # Bottom edge - use same formula as _get_room_port_position\n                return (port.x + base_w / 2, self.height)\n        # Fallback: distribute evenly on right edge\n        spacing = self.height / (self.num_outputs + 1) if self.num_outputs > 0 else self.height / 2\n        return (self.width, spacing * (index + 1))\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Fix belt connection points for top/bottom ports - use same formula as room port position\"/>\n\nDone! The belt connection points for top/bottom edge ports now use the same simple formula as `_get_room_port_position`: `x = port.x + base_w / 2`, `y = 0` (top) or `y = self.height` (bottom). This eliminates the confusing offset math that was causing the rightward shift.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/core/models.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/models.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_4r9k5un7\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_4r9k5un7\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_4r9k5un7\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_4r9k5un7\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "ebabee1321c0",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
