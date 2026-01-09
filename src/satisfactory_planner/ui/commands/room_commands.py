@@ -472,6 +472,10 @@ class DissolveRoomCommand(Command):
 
     Unlike delete, this preserves the buildings and belts by moving them back
     to the parent scene at the room's position.
+
+    Handles crossing belts: finds PORT_IN/PORT_OUT buildings, traces the
+    internal belt (inside room) and external belt (in parent), and recreates
+    a direct belt connecting the original source to original destination.
     """
 
     placement_id: str
@@ -480,8 +484,15 @@ class DissolveRoomCommand(Command):
     # Captured state for undo
     _placement: RoomPlacement | None = None
     _room: Room | None = None
+    # External belts that were removed (for undo)
+    _removed_external_belts: tuple[Belt, ...] = ()
+    # Direct belts that were created (for undo)
+    _created_direct_belts: tuple[Belt, ...] = ()
 
     def execute(self, document: Document) -> None:
+        from satisfactory_planner.core.models import Belt as BeltModel
+        from satisfactory_planner.core.models import BuildingType, generate_id
+
         placement = document.room_placements.get(self.placement_id)
         if not placement:
             logger.warning(f"DissolveRoomCommand.execute: placement {self.placement_id} not found")
@@ -496,23 +507,105 @@ class DissolveRoomCommand(Command):
         object.__setattr__(self, "_placement", copy.deepcopy(placement))
         object.__setattr__(self, "_room", copy.deepcopy(room))
 
+        parent = get_scene(document, placement.parent_room_id)
+
+        # Find and remove external belts that reference this placement
+        # Also collect info to recreate direct belts
+        removed_external: list[Belt] = []
+        created_direct: list[Belt] = []
+
+        # Get all ports in the room
+        ports = room.get_ports()
+
+        for port in ports:
+            if port.building_type == BuildingType.PORT_IN:
+                # PORT_IN: external belt goes INTO the placement, internal belt goes OUT of port
+                # External: dest_building_id = placement_id, dest_port_index = port.port_index
+                # Internal: source_building_id = port.id
+                external_belt = parent.get_belt_at_port(
+                    self.placement_id, port.port_index or 0, is_output=False
+                )
+                internal_belt = room.get_belt_at_port(port.id, 0, is_output=True)
+
+                if external_belt and internal_belt:
+                    # Create direct belt: external source -> internal dest
+                    direct_belt = BeltModel(
+                        id=generate_id(),
+                        tier=external_belt.tier,
+                        source_building_id=external_belt.source_building_id,
+                        source_port_index=external_belt.source_port_index,
+                        dest_building_id=internal_belt.dest_building_id,
+                        dest_port_index=internal_belt.dest_port_index,
+                        item_id=external_belt.item_id or internal_belt.item_id,
+                    )
+                    created_direct.append(direct_belt)
+
+                # Remove external belt
+                if external_belt:
+                    removed_external.append(copy.deepcopy(external_belt))
+                    parent.remove_belt(external_belt.id)
+                    self.canvas.remove_belt_item(external_belt.id)
+
+            elif port.building_type == BuildingType.PORT_OUT:
+                # PORT_OUT: external belt goes OUT of the placement, internal belt goes INTO port
+                # External: source_building_id = placement_id, source_port_index = port.port_index
+                # Internal: dest_building_id = port.id
+                external_belt = parent.get_belt_at_port(
+                    self.placement_id, port.port_index or 0, is_output=True
+                )
+                internal_belt = room.get_belt_at_port(port.id, 0, is_output=False)
+
+                if external_belt and internal_belt:
+                    # Create direct belt: internal source -> external dest
+                    direct_belt = BeltModel(
+                        id=generate_id(),
+                        tier=external_belt.tier,
+                        source_building_id=internal_belt.source_building_id,
+                        source_port_index=internal_belt.source_port_index,
+                        dest_building_id=external_belt.dest_building_id,
+                        dest_port_index=external_belt.dest_port_index,
+                        item_id=internal_belt.item_id or external_belt.item_id,
+                    )
+                    created_direct.append(direct_belt)
+
+                # Remove external belt
+                if external_belt:
+                    removed_external.append(copy.deepcopy(external_belt))
+                    parent.remove_belt(external_belt.id)
+                    self.canvas.remove_belt_item(external_belt.id)
+
+        # Store for undo
+        object.__setattr__(self, "_removed_external_belts", tuple(removed_external))
+        object.__setattr__(self, "_created_direct_belts", tuple(created_direct))
+
         # Remove room item from canvas
         self.canvas.remove_room_item(self.placement_id)
 
         # Remove placement
         document.room_placements.pop(self.placement_id, None)
 
-        # Restore buildings and belts to parent scene
-        parent = get_scene(document, placement.parent_room_id)
-
+        # Restore non-port buildings to parent scene
         for building in list(room.buildings.values()):
+            # Skip PORT_IN/PORT_OUT - they're synthetic
+            if building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
+                continue
             # Translate back to absolute coords
             building.x += placement.x
             building.y += placement.y
             parent.add_building(building)
             self.canvas.add_building_item(building)
 
+        # Restore non-port belts (belts that don't connect to ports)
+        port_ids = {p.id for p in ports}
         for belt in list(room.belts.values()):
+            # Skip belts that connect to ports
+            if belt.source_building_id in port_ids or belt.dest_building_id in port_ids:
+                continue
+            parent.add_belt(belt)
+            self.canvas.add_belt_item(belt)
+
+        # Add the recreated direct belts
+        for belt in created_direct:
             parent.add_belt(belt)
             self.canvas.add_belt_item(belt)
 
@@ -522,6 +615,8 @@ class DissolveRoomCommand(Command):
         self.canvas.notify_mutation()
 
     def undo(self, document: Document) -> None:
+        from satisfactory_planner.core.models import BuildingType
+
         if not self._placement or not self._room:
             logger.warning("DissolveRoomCommand.undo: no captured state")
             return
@@ -532,13 +627,31 @@ class DissolveRoomCommand(Command):
         room_copy = copy.deepcopy(self._room)
         document.rooms[room_copy.id] = room_copy
 
-        # Remove restored buildings/belts from parent
-        for building_id in self._room.buildings:
+        # Remove created direct belts
+        for belt in self._created_direct_belts:
+            if belt.id in parent.belts:
+                parent.remove_belt(belt.id)
+                self.canvas.remove_belt_item(belt.id)
+
+        # Get port IDs to know which buildings/belts to skip
+        port_ids = {
+            b.id
+            for b in self._room.buildings.values()
+            if b.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT)
+        }
+
+        # Remove restored buildings from parent (only non-port ones were restored)
+        for building_id, building in self._room.buildings.items():
+            if building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
+                continue
             if building_id in parent.buildings:
                 parent.remove_building(building_id)
                 self.canvas.remove_building_item(building_id)
 
-        for belt_id in self._room.belts:
+        # Remove restored belts from parent (only non-port ones were restored)
+        for belt_id, belt in self._room.belts.items():
+            if belt.source_building_id in port_ids or belt.dest_building_id in port_ids:
+                continue
             if belt_id in parent.belts:
                 parent.remove_belt(belt_id)
                 self.canvas.remove_belt_item(belt_id)
@@ -551,6 +664,12 @@ class DissolveRoomCommand(Command):
         room = document.rooms.get(placement_copy.room_id)
         if room:
             self.canvas.add_room_item(placement_copy, room)
+
+        # Restore external belts that were removed
+        for belt in self._removed_external_belts:
+            belt_copy = copy.deepcopy(belt)
+            parent.add_belt(belt_copy)
+            self.canvas.add_belt_item(belt_copy)
 
         self.canvas.notify_mutation()
 
