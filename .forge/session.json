@@ -5,6 +5,7 @@
     "src/satisfactory_planner/core/models.py",
     "src/satisfactory_planner/ui/items/room_item.py",
     "src/satisfactory_planner/ui/items/building_item.py",
+    "src/satisfactory_planner/ui/commands/room_commands.py",
     "src/satisfactory_planner/ui/items/belt_item.py",
     "CLAUDE.md"
   ],
@@ -1799,6 +1800,24 @@
       "streaming": true,
       "actual_cost": 0.6121875,
       "generation_id": "gen-1767966207-bUTMne950Q3Ux7FUGNLv"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767966277173.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767966277173.json",
+      "timestamp": 1767966277.1744976,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.6044325,
+      "generation_id": "gen-1767966277-1RYOemg46gDPVMVl0lYF"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767966284986.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767966284986.json",
+      "timestamp": 1767966284.9882727,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.084152,
+      "generation_id": "gen-1767966285-kZ5stSOUMgIDbaXyHIYN"
     }
   ],
   "messages": [
@@ -7512,6 +7531,85 @@
         },
         {
           "commit": "4c1370dcfbb6",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 67bab4ed",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "99% done. When creating ports by room drawing, ports that are placed on edges have to already set their rotation to account for which edge it is."
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at `_handle_crossing_belts` in room_commands.py, when ports are created they need to set their rotation based on which edge they're placed on:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"PORT_IN|PORT_OUT\", \"file\": \"src/satisfactory_planner/ui/commands/room_commands.py\"}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_019Pqmb636T7A7qfWAqxui8j",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_019Pqmb636T7A7qfWAqxui8j",
+      "content": "{\"message\": \"Found 10 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:226 \\u2500\\u2500\\n     223 | \\n     224 |         Uses pre-generated IDs from crossing_belt_port_ids - fully deterministic.\\n     225 |         Creates:\\n>>>  226 |         - A port building inside the room (PORT_IN or PORT_OUT) with port_index\\n     227 |         - An internal belt connecting the port to the building inside the room\\n     228 |         - An external belt connecting the outside building to the RoomPlacement\\n     229 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:257 \\u2500\\u2500\\n     254 |             dest_inside = belt.dest_building_id in self.building_ids\\n     255 | \\n     256 |             if source_inside and not dest_inside:\\n>>>  257 |                 # Output: source is inside room, create PORT_OUT\\n     258 |                 source_building = room.buildings.get(belt.source_building_id)\\n     259 |                 if not source_building:\\n     260 |                     continue\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:263 \\u2500\\u2500\\n     260 |                     continue\\n     261 | \\n     262 |                 # Position port on right edge, centered on source building\\n>>>  263 |                 port_height = BUILDING_METADATA[BuildingType.PORT_OUT].height\\n     264 |                 target_y = source_building.y + source_building.height / 2 - port_height / 2\\n     265 |                 port_x, port_y, _edge = snap_port_to_room_edge(\\n     266 |                     BuildingType.PORT_OUT, room_w, room.height, room_w, target_y\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:266 \\u2500\\u2500\\n     263 |                 port_height = BUILDING_METADATA[BuildingType.PORT_OUT].height\\n     264 |                 target_y = source_building.y + source_building.height / 2 - port_height / 2\\n     265 |                 port_x, port_y, _edge = snap_port_to_room_edge(\\n>>>  266 |                     BuildingType.PORT_OUT, room_w, room.height, room_w, target_y\\n     267 |                 )\\n     268 |                 port = Building(\\n     269 |                     id=port_id,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:270 \\u2500\\u2500\\n     267 |                 )\\n     268 |                 port = Building(\\n     269 |                     id=port_id,\\n>>>  270 |                     building_type=BuildingType.PORT_OUT,\\n     271 |                     x=port_x,\\n     272 |                     y=port_y,\\n     273 |                     rotation=0,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:291 \\u2500\\u2500\\n     288 |                 room.add_belt(inside_belt)\\n     289 | \\n     290 |                 # External belt: from RoomPlacement (as building) to original destination\\n>>>  291 |                 # The RoomPlacement's output port corresponds to this PORT_OUT's port_index\\n     292 |                 external_belt = BeltModel(\\n     293 |                     id=external_belt_id,\\n     294 |                     tier=belt.tier,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:307 \\u2500\\u2500\\n     304 |                 output_port_index += 1\\n     305 | \\n     306 |             elif dest_inside and not source_inside:\\n>>>  307 |                 # Input: dest is inside room, create PORT_IN\\n     308 |                 dest_building = room.buildings.get(belt.dest_building_id)\\n     309 |                 if not dest_building:\\n     310 |                     continue\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:313 \\u2500\\u2500\\n     310 |                     continue\\n     311 | \\n     312 |                 # Position port on left edge, centered on dest building\\n>>>  313 |                 port_height = BUILDING_METADATA[BuildingType.PORT_IN].height\\n     314 |                 target_y = dest_building.y + dest_building.height / 2 - port_height / 2\\n     315 |                 port_x, port_y, _edge = snap_port_to_room_edge(\\n     316 |                     BuildingType.PORT_IN, room_w, room.height, 0, target_y\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:316 \\u2500\\u2500\\n     313 |                 port_height = BUILDING_METADATA[BuildingType.PORT_IN].height\\n     314 |                 target_y = dest_building.y + dest_building.height / 2 - port_height / 2\\n     315 |                 port_x, port_y, _edge = snap_port_to_room_edge(\\n>>>  316 |                     BuildingType.PORT_IN, room_w, room.height, 0, target_y\\n     317 |                 )\\n     318 |                 port = Building(\\n     319 |                     id=port_id,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:320 \\u2500\\u2500\\n     317 |                 )\\n     318 |                 port = Building(\\n     319 |                     id=port_id,\\n>>>  320 |                     building_type=BuildingType.PORT_IN,\\n     321 |                     x=port_x,\\n     322 |                     y=port_y,\\n     323 |                     rotation=0,\", \"success\": true, \"total_matches\": 10}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"file\": \"src/satisfactory_planner/ui/commands/room_commands.py\",\n  \"pattern\": \"PORT_IN|PORT_OUT\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 10 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:226 \\u2500\\u2500\\n     223 | \\n     224 |         Uses pre-generated IDs from crossing_belt_port_ids - fully deterministic.\\n     225 |         Creates:\\n>>>  226 |         - A port building inside the room (PORT_IN or PORT_OUT) with port_index\\n     227 |         - An internal belt connecting the port to the building inside the room\\n     228 |         - An external belt connecting the outside building to the RoomPlacement\\n     229 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:257 \\u2500\\u2500\\n     254 |             dest_inside = belt.dest_building_id in self.building_ids\\n     255 | \\n     256 |             if source_inside and not dest_inside:\\n>>>  257 |                 # Output: source is inside room, create PORT_OUT\\n     258 |                 source_building = room.buildings.get(belt.source_building_id)\\n     259 |                 if not source_building:\\n     260 |                     continue\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:263 \\u2500\\u2500\\n     260 |                     continue\\n     261 | \\n     262 |                 # Position port on right edge, centered on source building\\n>>>  263 |                 port_height = BUILDING_METADATA[BuildingType.PORT_OUT].height\\n     264 |                 target_y = source_building.y + source_building.height / 2 - port_height / 2\\n     265 |                 port_x, port_y, _edge = snap_port_to_room_edge(\\n     266 |                     BuildingType.PORT_OUT, room_w, room.height, room_w, target_y\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:266 \\u2500\\u2500\\n     263 |                 port_height = BUILDING_METADATA[BuildingType.PORT_OUT].height\\n     264 |                 target_y = source_building.y + source_building.height / 2 - port_height / 2\\n     265 |                 port_x, port_y, _edge = snap_port_to_room_edge(\\n>>>  266 |                     BuildingType.PORT_OUT, room_w, room.height, room_w, target_y\\n     267 |                 )\\n     268 |                 port = Building(\\n     269 |                     id=port_id,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:270 \\u2500\\u2500\\n     267 |                 )\\n     268 |                 port = Building(\\n     269 |                     id=port_id,\\n>>>  270 |                     building_type=BuildingType.PORT_OUT,\\n     271 |                     x=port_x,\\n     272 |                     y=port_y,\\n     273 |                     rotation=0,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:291 \\u2500\\u2500\\n     288 |                 room.add_belt(inside_belt)\\n     289 | \\n     290 |                 # External belt: from RoomPlacement (as building) to original destination\\n>>>  291 |                 # The RoomPlacement's output port corresponds to this PORT_OUT's port_index\\n     292 |                 external_belt = BeltModel(\\n     293 |                     id=external_belt_id,\\n     294 |                     tier=belt.tier,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:307 \\u2500\\u2500\\n     304 |                 output_port_index += 1\\n     305 | \\n     306 |             elif dest_inside and not source_inside:\\n>>>  307 |                 # Input: dest is inside room, create PORT_IN\\n     308 |                 dest_building = room.buildings.get(belt.dest_building_id)\\n     309 |                 if not dest_building:\\n     310 |                     continue\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:313 \\u2500\\u2500\\n     310 |                     continue\\n     311 | \\n     312 |                 # Position port on left edge, centered on dest building\\n>>>  313 |                 port_height = BUILDING_METADATA[BuildingType.PORT_IN].height\\n     314 |                 target_y = dest_building.y + dest_building.height / 2 - port_height / 2\\n     315 |                 port_x, port_y, _edge = snap_port_to_room_edge(\\n     316 |                     BuildingType.PORT_IN, room_w, room.height, 0, target_y\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:316 \\u2500\\u2500\\n     313 |                 port_height = BUILDING_METADATA[BuildingType.PORT_IN].height\\n     314 |                 target_y = dest_building.y + dest_building.height / 2 - port_height / 2\\n     315 |                 port_x, port_y, _edge = snap_port_to_room_edge(\\n>>>  316 |                     BuildingType.PORT_IN, room_w, room.height, 0, target_y\\n     317 |                 )\\n     318 |                 port = Building(\\n     319 |                     id=port_id,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/room_commands.py:320 \\u2500\\u2500\\n     317 |                 )\\n     318 |                 port = Building(\\n     319 |                     id=port_id,\\n>>>  320 |                     building_type=BuildingType.PORT_IN,\\n     321 |                     x=port_x,\\n     322 |                     y=port_y,\\n     323 |                     rotation=0,\",\n  \"success\": true,\n  \"total_matches\": 10\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue - `snap_port_to_room_edge` returns the edge, but the rotation is hardcoded to `0`. Need to use the edge to determine rotation:\n\n<edit file=\"src/satisfactory_planner/ui/commands/room_commands.py\">\n<search>\n                port_x, port_y, _edge = snap_port_to_room_edge(\n                    BuildingType.PORT_OUT, room_w, room.height, room_w, target_y\n                )\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_OUT,\n                    x=port_x,\n                    y=port_y,\n                    rotation=0,\n</search>\n<replace>\n                port_x, port_y, edge = snap_port_to_room_edge(\n                    BuildingType.PORT_OUT, room_w, room.height, room_w, target_y\n                )\n                # Rotation based on which edge the port is on\n                edge_rotations = {\"left\": 0, \"right\": 180, \"top\": 90, \"bottom\": 270}\n                port_rotation = edge_rotations.get(edge, 0)\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_OUT,\n                    x=port_x,\n                    y=port_y,\n                    rotation=port_rotation,\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/commands/room_commands.py\">\n<search>\n                port_x, port_y, _edge = snap_port_to_room_edge(\n                    BuildingType.PORT_IN, room_w, room.height, 0, target_y\n                )\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_IN,\n                    x=port_x,\n                    y=port_y,\n                    rotation=0,\n</search>\n<replace>\n                port_x, port_y, edge = snap_port_to_room_edge(\n                    BuildingType.PORT_IN, room_w, room.height, 0, target_y\n                )\n                # Rotation based on which edge the port is on\n                edge_rotations = {\"left\": 0, \"right\": 180, \"top\": 90, \"bottom\": 270}\n                port_rotation = edge_rotations.get(edge, 0)\n                port = Building(\n                    id=port_id,\n                    building_type=BuildingType.PORT_IN,\n                    x=port_x,\n                    y=port_y,\n                    rotation=port_rotation,\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Set port rotation based on edge when creating ports during room creation\"/>\n\nDone! Now when creating ports via room drawing, the rotation is set based on which edge they're placed on.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/room_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/room_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/commands/room_commands.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/commands/room_commands.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs__ds5qw7i\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs__ds5qw7i\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs__ds5qw7i\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs__ds5qw7i\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "1c39977c8cac",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"

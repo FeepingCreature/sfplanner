@@ -262,15 +262,18 @@ class CreateRoomCommand(Command):
                 # Position port on right edge, centered on source building
                 port_height = BUILDING_METADATA[BuildingType.PORT_OUT].height
                 target_y = source_building.y + source_building.height / 2 - port_height / 2
-                port_x, port_y, _edge = snap_port_to_room_edge(
+                port_x, port_y, edge = snap_port_to_room_edge(
                     BuildingType.PORT_OUT, room_w, room.height, room_w, target_y
                 )
+                # Rotation based on which edge the port is on
+                edge_rotations = {"left": 0, "right": 180, "top": 90, "bottom": 270}
+                port_rotation = edge_rotations.get(edge, 0)
                 port = Building(
                     id=port_id,
                     building_type=BuildingType.PORT_OUT,
                     x=port_x,
                     y=port_y,
-                    rotation=0,
+                    rotation=port_rotation,
                     port_index=output_port_index,
                 )
                 room.add_building(port)
@@ -312,15 +315,18 @@ class CreateRoomCommand(Command):
                 # Position port on left edge, centered on dest building
                 port_height = BUILDING_METADATA[BuildingType.PORT_IN].height
                 target_y = dest_building.y + dest_building.height / 2 - port_height / 2
-                port_x, port_y, _edge = snap_port_to_room_edge(
+                port_x, port_y, edge = snap_port_to_room_edge(
                     BuildingType.PORT_IN, room_w, room.height, 0, target_y
                 )
+                # Rotation based on which edge the port is on
+                edge_rotations = {"left": 0, "right": 180, "top": 90, "bottom": 270}
+                port_rotation = edge_rotations.get(edge, 0)
                 port = Building(
                     id=port_id,
                     building_type=BuildingType.PORT_IN,
                     x=port_x,
                     y=port_y,
-                    rotation=0,
+                    rotation=port_rotation,
                     port_index=input_port_index,
                 )
                 room.add_building(port)
