@@ -108,7 +108,7 @@ class RoomItem(QGraphicsRectItem):
             source = self.room.buildings.get(belt.source_building_id)
             dest = self.room.buildings.get(belt.dest_building_id)
             if source and dest:
-                belt_item = BeltItem(belt, self.canvas, source, dest, scene=self.room)
+                belt_item = BeltItem(belt, self.canvas, self.room, source, dest)
                 belt_item.setParentItem(self)
                 # Set placement ID for flow solver lookup with composite key
                 belt_item.set_placement_id(self.placement.id)
@@ -368,7 +368,7 @@ class RoomItem(QGraphicsRectItem):
         source = self.room.buildings.get(belt.source_building_id)
         dest = self.room.buildings.get(belt.dest_building_id)
         if source and dest:
-            item = BeltItem(belt, self.canvas, source, dest, scene=self.room)
+            item = BeltItem(belt, self.canvas, self.room, source, dest)
             item.setParentItem(self)
             # Set placement ID for flow solver lookup with composite key
             item.set_placement_id(self.placement.id)

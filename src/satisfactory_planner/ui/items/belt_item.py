@@ -50,16 +50,17 @@ class BeltItem(QGraphicsPathItem):
         self,
         belt: Belt,
         canvas: FactoryCanvas,
+        parent_scene: Scene,
         source: Building | None = None,
         dest: Building | None = None,
         source_placement: RoomPlacement | None = None,
         dest_placement: RoomPlacement | None = None,
-        scene: Scene | None = None,
     ) -> None:
         super().__init__()
 
         self.belt = belt
         self.canvas = canvas
+        self.parent_scene = parent_scene  # Scene this belt belongs to (Document or Room)
         self._source = source
         self._dest = dest
         self._source_placement = source_placement
@@ -68,8 +69,6 @@ class BeltItem(QGraphicsPathItem):
         self._is_overcapacity = False  # Set by flow solver
         self._utilization: float | None = None  # 0.0-1.0, for efficiency outline
         self._placement_id: str | None = None  # Set when belt is inside a room placement
-        # Scene this belt belongs to (Document or Room)
-        self._scene: Scene = scene if scene is not None else canvas.document
 
         self._setup_flags()
         self._setup_appearance()
@@ -320,12 +319,7 @@ class BeltItem(QGraphicsPathItem):
     @property
     def belt_scene(self) -> Scene:
         """Get the scene this belt belongs to."""
-        return self._scene
-
-    @belt_scene.setter
-    def belt_scene(self, scene: Scene) -> None:
-        """Set the scene this belt belongs to."""
-        self._scene = scene
+        return self.parent_scene
 
     def hoverEnterEvent(self, event: object) -> None:
         """Show flow rate tooltip on hover."""
