@@ -65,9 +65,9 @@ class BeltItem(QGraphicsPathItem):
         self._dest = dest
         self._source_placement = source_placement
         self._dest_placement = dest_placement
-        self._show_flow_rate = False  # Controlled by toolbar toggle
-        self._is_overcapacity = False  # Set by flow solver
-        self._utilization: float | None = None  # 0.0-1.0, for efficiency outline
+        self._flow_rate: float | None = None  # Set by flow solver
+        self._optimal_flow_rate: float | None = None  # set by flow solver, flow without belt limits
+        # FIXME isn't this redundant with source_placement?
         self._placement_id: str | None = None  # Set when belt is inside a room placement
 
         self._setup_flags()
@@ -154,8 +154,8 @@ class BeltItem(QGraphicsPathItem):
     ) -> None:
         """Paint the belt with flow direction indicators."""
         # Draw utilization underlay first (wider, behind) - green to yellow to red
-        if self._utilization is not None and not self._is_overcapacity:
-            util = self._utilization
+        if self._flow_rate is not None and not self.is_over_capacity:
+            util = self._flow_rate / self.belt.capacity
             if util >= 0.9:
                 util_color = QColor(80, 255, 80, 180)  # Bright green - well utilized
             elif util >= 0.5:
@@ -169,7 +169,7 @@ class BeltItem(QGraphicsPathItem):
             painter.drawPath(self.path())
 
         # Draw overcapacity underlay (wider, behind, red)
-        if self._is_overcapacity:
+        if self.is_over_capacity:
             overcap_pen = QPen(QColor(255, 80, 80), self.pen().widthF() + 6)
             overcap_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             painter.setPen(overcap_pen)
@@ -188,7 +188,7 @@ class BeltItem(QGraphicsPathItem):
         self._draw_flow_arrows(painter)
 
         # Draw flow rate if enabled
-        if self._show_flow_rate:
+        if self.canvas.show_flow_rate:
             self._draw_flow_rate(painter)
 
     def _draw_flow_arrows(self, painter: QPainter) -> None:
@@ -231,9 +231,7 @@ class BeltItem(QGraphicsPathItem):
         if not self.canvas:
             return
 
-        # Get flow rate from flow solver
-        flow_rate = self._get_flow_rate()
-        if flow_rate is None:
+        if self._flow_rate is None:
             return
 
         path = self.path()
@@ -244,7 +242,7 @@ class BeltItem(QGraphicsPathItem):
         midpoint = path.pointAtPercent(0.5)
 
         # Background for readability
-        text = f"{flow_rate:.1f}/min"
+        text = f"{self._flow_rate:.1f}/min"
         font = painter.font()
         font.setPointSize(8)
         painter.setFont(font)
@@ -265,7 +263,7 @@ class BeltItem(QGraphicsPathItem):
         painter.drawRoundedRect(bg_rect, 3, 3)
 
         # Draw text
-        if self._is_overcapacity:
+        if self.is_over_capacity:
             painter.setPen(QPen(QColor(255, 100, 100)))
         else:
             painter.setPen(QPen(QColor(200, 200, 200)))
@@ -286,35 +284,17 @@ class BeltItem(QGraphicsPathItem):
         """Set the placement ID for belts inside room placements."""
         self._placement_id = placement_id
 
-    def _get_flow_rate(self) -> float | None:
-        """Get flow rate from the flow solver."""
-        if not self.canvas:
+    def set_flow_rate(self, flow_rate: float | None, optimal_flow_rate: float | None) -> None:
+        """Set belt flow rate for efficiency outline."""
+        self._flow_rate = flow_rate
+        self._optimal_flow_rate = optimal_flow_rate
+        self.update()
+
+    @property
+    def is_over_capacity(self) -> bool | None:
+        if not self._optimal_flow_rate:
             return None
-
-        main_window = self.canvas.window()
-        if not hasattr(main_window, "current_tab") or not main_window.current_tab:
-            return None
-
-        flow_solver = main_window.current_tab.flow_solver
-        if flow_solver:
-            result: float | None = flow_solver.get_flow_rate(self.flow_key)
-            return result
-        return None
-
-    def set_show_flow_rate(self, show: bool) -> None:
-        """Toggle flow rate display."""
-        self._show_flow_rate = show
-        self.update()
-
-    def set_overcapacity(self, overcapacity: bool) -> None:
-        """Set overcapacity state for visual feedback."""
-        self._is_overcapacity = overcapacity
-        self.update()
-
-    def set_utilization(self, utilization: float | None) -> None:
-        """Set belt utilization for efficiency outline."""
-        self._utilization = utilization
-        self.update()
+        return self._optimal_flow_rate > self.belt.capacity
 
     @property
     def belt_scene(self) -> Scene:
@@ -323,14 +303,14 @@ class BeltItem(QGraphicsPathItem):
 
     def hoverEnterEvent(self, event: object) -> None:
         """Show flow rate tooltip on hover."""
-        flow_rate = self._get_flow_rate()
+        flow_rate = self._flow_rate
         capacity = self.belt.capacity
         if flow_rate is not None:
             usage_pct = (flow_rate / capacity) * 100 if capacity > 0 else 0
             tooltip = (
                 f"Flow: {flow_rate:.1f}/min\nCapacity: {capacity}/min\nUsage: {usage_pct:.1f}%"
             )
-            if self._is_overcapacity:
+            if self.is_over_capacity:
                 tooltip += "\n⚠️ OVERCAPACITY"
             self.setToolTip(tooltip)
 

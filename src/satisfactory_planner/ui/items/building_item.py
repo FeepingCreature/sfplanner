@@ -429,7 +429,7 @@ class BuildingItem(QGraphicsRectItem):
                         other_item.setFlag(
                             QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True
                         )
-                        self.canvas.update_belts_for_building(building_id)
+                        self.canvas.update_belts_for_building(building_id, self._scene)
 
             return new_pos
         elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged and self.scene():

@@ -71,18 +71,13 @@ class FlowEdge:
     """An edge in the flow graph (represents a belt or pipe)."""
 
     id: str
+    belt_id: str  # Reference back to visual Belt
     source_node_id: str
     source_port_index: int
     dest_node_id: str
     dest_port_index: int
     capacity: float  # items/min (from belt tier)
-
-    # Optional fields with defaults
-    belt_id: str | None = None  # Reference back to visual Belt
-    is_fluid: bool = False
     item_id: str | None = None  # Item type (inferred from source)
-    flow_rate: float = 0.0  # Actual flow (computed)
-    is_overcapacity: bool = False  # Computed state
 
 
 @dataclass

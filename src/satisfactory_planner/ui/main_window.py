@@ -838,7 +838,7 @@ class MainWindow(QMainWindow):
     def _toggle_flow_rates(self, enabled: bool) -> None:
         """Toggle flow rate display on belts."""
         if self.current_tab and self.current_tab.canvas:
-            self.current_tab.canvas.set_show_flow_rates(enabled)
+            self.current_tab.canvas.set_show_flow_rate(enabled)
             if enabled:
                 self.current_tab.canvas.update_flow_visualization()
 

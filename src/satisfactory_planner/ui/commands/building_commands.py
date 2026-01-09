@@ -132,7 +132,7 @@ class MoveBuildingsCommand(Command):
             building.rotation = move.new_rotation
             # Always refresh - for rooms this updates all linked instances
             self.canvas.refresh_building(move.building_id)
-            self.canvas.refresh_belts_for_building(move.building_id)
+            self.canvas.refresh_belts_for_building(move.building_id, scene)
         self.canvas.notify_mutation()
 
     def undo(self, document: Document) -> None:
@@ -148,7 +148,7 @@ class MoveBuildingsCommand(Command):
             building.rotation = move.old_rotation
             # Always refresh - for rooms this updates all linked instances
             self.canvas.refresh_building(move.building_id)
-            self.canvas.refresh_belts_for_building(move.building_id)
+            self.canvas.refresh_belts_for_building(move.building_id, scene)
         self.canvas.notify_mutation()
 
     def merge_with(self, other: Command) -> Command | None:

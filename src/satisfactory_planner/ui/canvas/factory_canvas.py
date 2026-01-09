@@ -119,6 +119,10 @@ class FactoryCanvas(QGraphicsView):
         # Default belt tier for new connections
         self._default_belt_tier: int = 1
 
+        # Rendering settings
+        self._show_flow_rate: bool = False
+        self._show_efficiency: bool = False
+
         # Initialize managers BEFORE _setup_scene (which uses _selection)
         from satisfactory_planner.ui.canvas.belt_connector import BeltConnector
         from satisfactory_planner.ui.canvas.drawing_tools import DrawingTools
@@ -207,9 +211,19 @@ class FactoryCanvas(QGraphicsView):
         """Enter placement mode for a blueprint."""
         self._placement.set_blueprint_mode(room)
 
-    def update_belts_for_building(self, building_id: str, scene: Scene | None = None) -> None:
-        """Redraw all belts connected to a building."""
-        self._update_belts_for_building(building_id, scene)
+    def update_belts_for_building(self, building_id: str, scene: Scene) -> None:
+        """Redraw all belts connected to a building.
+
+        Handles belts where one or both endpoints may be:
+        - A Building in the scene
+        - A RoomPlacement (for belts crossing room boundaries)
+        """
+        for belt in scene.get_belts_for_building(building_id):
+            belt_item = self._belt_items.get(belt.id)
+            if belt_item:
+                # Use _update_path_from_endpoints which handles both
+                # Buildings and RoomPlacements
+                belt_item._update_path_from_endpoints()
 
     # === Refresh ===
 
@@ -371,13 +385,13 @@ class FactoryCanvas(QGraphicsView):
                 item.setPos(building.x, building.y)
             item.update()
 
-    def refresh_belts_for_building(self, building_id: str) -> None:
+    def refresh_belts_for_building(self, building_id: str, scene: Scene) -> None:
         """Refresh belts connected to a building."""
         for room_id, room in self.document.rooms.items():
             if building_id in room.buildings:
                 self._refresh_all_room_items(room_id)
                 return
-        self._update_belts_for_building(building_id)
+        self.update_belts_for_building(building_id, scene)
 
     def refresh_belt(self, belt_id: str, scene_room_id: str | None = None) -> None:
         """Refresh a belt's visual state.
@@ -494,7 +508,7 @@ class FactoryCanvas(QGraphicsView):
         for item in self._scene.selectedItems():
             if isinstance(item, BuildingItem) and item._is_dragging:
                 item.rotate_building(delta)
-                self._update_belts_for_building(item.building.id)
+                self.update_belts_for_building(item.building.id, item.building_scene)
                 return
 
         # Normal zoom
@@ -848,6 +862,7 @@ class FactoryCanvas(QGraphicsView):
                 return item.room.id
         return None
 
+    # FIXME items should know their scene
     def get_scene_for_item(self, item: QGraphicsItem) -> str | None:
         """Get the room_id for the scene an item belongs to."""
         scene = self._selection.get_scene_for_item(item)
@@ -1046,24 +1061,9 @@ class FactoryCanvas(QGraphicsView):
         scene_room_id = self.get_scene_for_item(item)
         cmd = MoveBuildingsCommand(scene_room_id=scene_room_id, canvas=self, moves=(move,))
         self.command_stack.execute(cmd)
-        self._update_belts_for_building(building_id)
+        self.update_belts_for_building(building_id, item.building_scene)
 
     # === Internal helpers ===
-
-    def _update_belts_for_building(self, building_id: str, scene: Scene | None = None) -> None:
-        """Redraw all belts connected to a building.
-
-        Handles belts where one or both endpoints may be:
-        - A Building in the scene
-        - A RoomPlacement (for belts crossing room boundaries)
-        """
-        target_scene: Scene = scene if scene is not None else self.document
-        for belt in target_scene.get_belts_for_building(building_id):
-            belt_item = self._belt_items.get(belt.id)
-            if belt_item:
-                # Use _update_path_from_endpoints which handles both
-                # Buildings and RoomPlacements
-                belt_item._update_path_from_endpoints()
 
     def _update_belts_for_placement(self, placement_id: str) -> None:
         """Redraw all belts connected to a room placement."""
@@ -1076,34 +1076,19 @@ class FactoryCanvas(QGraphicsView):
                     # Use _update_path_from_endpoints which handles placements
                     belt_item._update_path_from_endpoints()
 
-    def set_show_flow_rates(self, show: bool) -> None:
-        """Toggle flow rate display on all belts."""
-        from satisfactory_planner.ui.items.room_item import RoomItem
+    def set_show_flow_rate(self, show: bool) -> None:
+        self._show_flow_rate = show
 
-        for belt_item in self._belt_items.values():
-            belt_item.set_show_flow_rate(show)
-        # Also update belts inside room placements
-        for room_item in self._room_items.values():
-            if isinstance(room_item, RoomItem):
-                for belt_item in room_item._belt_items.values():
-                    belt_item.set_show_flow_rate(show)
+    @property
+    def show_flow_rate(self) -> bool:
+        return self._show_flow_rate
 
     def set_show_efficiency(self, show: bool) -> None:
-        """Toggle efficiency overlay on all buildings."""
-        from satisfactory_planner.ui.items.room_item import RoomItem
+        self._show_efficiency = show
 
-        for building_item in self._building_items.values():
-            building_item.set_show_efficiency(show)
-            if not show:
-                # Clear efficiency value when disabling
-                building_item.set_efficiency(None)
-        # Also update buildings inside room placements
-        for room_item in self._room_items.values():
-            if isinstance(room_item, RoomItem):
-                for building_item in room_item._building_items.values():
-                    building_item.set_show_efficiency(show)
-                    if not show:
-                        building_item.set_efficiency(None)
+    @property
+    def show_efficiency(self) -> bool:
+        return self._show_efficiency
 
     def update_flow_visualization(self) -> None:
         """Update visual state of items based on flow solver results.
@@ -1116,62 +1101,34 @@ class FactoryCanvas(QGraphicsView):
             return
 
         flow_solver = main_window.current_tab.flow_solver
-        if not flow_solver or not flow_solver._solved_model:
-            # No flow data - clear all visualizations
-            self._clear_flow_visualization()
-            return
-
-        # Clear previous state before applying new results
-        # This ensures items that no longer have flow data get reset
-        self._clear_flow_visualization()
-
-        solved = flow_solver._solved_model
+        solved = flow_solver and flow_solver._solved_model
 
         # Update all belt items - each uses its flow_key to look up results
         for belt_item in self._belt_items.values():
-            edge = solved.graph.edges.get(belt_item.flow_key)
-            if edge:
-                belt_item.set_overcapacity(edge.is_overcapacity)
-                if edge.capacity > 0:
-                    belt_item.set_utilization(edge.flow_rate / edge.capacity)
-                else:
-                    belt_item.set_utilization(None)
-            else:
-                belt_item.set_overcapacity(False)
-                belt_item.set_utilization(None)
+            flow_rate = solved and solved.flows.get(belt_item.flow_key)
+            optimal_flow_rate = solved and solved.theoretical_flows.get(belt_item.flow_key)
+            belt_item.set_flow_rate(flow_rate, optimal_flow_rate)
 
         # Update all building items - each uses its flow_key to look up results
         for building_item in self._building_items.values():
-            eff = solved.efficiencies.get(building_item.flow_key)
-            if eff:
-                building_item.set_efficiency(eff.duty_cycle)
-            else:
-                building_item.set_efficiency(None)
+            eff = solved and solved.efficiencies.get(building_item.flow_key)
+            building_item.set_efficiency(eff and eff.duty_cycle)
 
         # Also update items inside room placements
+        # FIXME this should recurse, shouldn't it??
         from satisfactory_planner.ui.items.room_item import RoomItem
 
         for room_item in self._room_items.values():
             if not isinstance(room_item, RoomItem):
                 continue
             for belt_item in room_item._belt_items.values():
-                edge = solved.graph.edges.get(belt_item.flow_key)
-                if edge:
-                    belt_item.set_overcapacity(edge.is_overcapacity)
-                    if edge.capacity > 0:
-                        belt_item.set_utilization(edge.flow_rate / edge.capacity)
-                    else:
-                        belt_item.set_utilization(None)
-                else:
-                    belt_item.set_overcapacity(False)
-                    belt_item.set_utilization(None)
+                flow_rate = solved and solved.flows.get(belt_item.flow_key)
+                optimal_flow_rate = solved and solved.theoretical_flows.get(belt_item.flow_key)
+                belt_item.set_flow_rate(flow_rate, optimal_flow_rate)
 
             for building_item in room_item._building_items.values():
-                eff = solved.efficiencies.get(building_item.flow_key)
-                if eff:
-                    building_item.set_efficiency(eff.duty_cycle)
-                else:
-                    building_item.set_efficiency(None)
+                eff = solved and solved.efficiencies.get(building_item.flow_key)
+                building_item.set_efficiency(eff and eff.duty_cycle)
 
         # Update warning icons
         self._update_warning_icons(flow_solver._warnings)
@@ -1217,37 +1174,6 @@ class FactoryCanvas(QGraphicsView):
                 return belt_item.mapToScene(point)
 
         return None
-
-    def clear_warning_icons(self) -> None:
-        """Remove all warning icons from the scene."""
-        for icon in self._warning_icons:
-            self._scene.removeItem(icon)
-        self._warning_icons.clear()
-
-    def _clear_flow_visualization(self) -> None:
-        """Clear all flow visualization state from items."""
-        from satisfactory_planner.ui.items.room_item import RoomItem
-
-        # Clear top-level belts
-        for belt_item in self._belt_items.values():
-            belt_item.set_overcapacity(False)
-            belt_item.set_utilization(None)
-
-        # Clear top-level buildings
-        for building_item in self._building_items.values():
-            building_item.set_efficiency(None)
-
-        # Clear items inside room placements
-        for room_item in self._room_items.values():
-            if isinstance(room_item, RoomItem):
-                for belt_item in room_item._belt_items.values():
-                    belt_item.set_overcapacity(False)
-                    belt_item.set_utilization(None)
-                for building_item in room_item._building_items.values():
-                    building_item.set_efficiency(None)
-
-        # Clear warning icons
-        self.clear_warning_icons()
 
     def _refresh_all_room_items(self, room_id: str) -> None:
         """Refresh all RoomItems displaying the given room."""
