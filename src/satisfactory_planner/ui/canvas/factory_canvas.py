@@ -358,11 +358,14 @@ class FactoryCanvas(QGraphicsView):
         # the refresh happens after the current event is fully processed.
         def deferred_refresh() -> None:
             room_item.refresh()
-            # Re-register items after refresh
+            # Re-register items after refresh using composite keys (placement_id:item_id)
+            # This ensures each room placement's items are tracked separately
             for building_id, building_item in room_item._building_items.items():
-                self._building_items[building_id] = building_item
+                composite_key = f"{placement_id}:{building_id}"
+                self._building_items[composite_key] = building_item
             for belt_id, belt_item in room_item._belt_items.items():
-                self._belt_items[belt_id] = belt_item
+                composite_key = f"{placement_id}:{belt_id}"
+                self._belt_items[composite_key] = belt_item
             # Refresh linked rooms too
             for other_placement_id, other_room_item in list(self._room_items.items()):
                 if (
@@ -372,9 +375,11 @@ class FactoryCanvas(QGraphicsView):
                 ):
                     other_room_item.refresh()
                     for building_id, building_item in other_room_item._building_items.items():
-                        self._building_items[building_id] = building_item
+                        composite_key = f"{other_placement_id}:{building_id}"
+                        self._building_items[composite_key] = building_item
                     for belt_id, belt_item in other_room_item._belt_items.items():
-                        self._belt_items[belt_id] = belt_item
+                        composite_key = f"{other_placement_id}:{belt_id}"
+                        self._belt_items[composite_key] = belt_item
 
         QTimer.singleShot(0, deferred_refresh)
 
@@ -385,9 +390,11 @@ class FactoryCanvas(QGraphicsView):
         room_item = self._room_items.pop(placement_id, None)
         if room_item and isinstance(room_item, RoomItem):
             for building_id in list(room_item._building_items.keys()):
-                self._building_items.pop(building_id, None)
+                composite_key = f"{placement_id}:{building_id}"
+                self._building_items.pop(composite_key, None)
             for belt_id in list(room_item._belt_items.keys()):
-                self._belt_items.pop(belt_id, None)
+                composite_key = f"{placement_id}:{belt_id}"
+                self._belt_items.pop(composite_key, None)
             self._scene.removeItem(room_item)
 
     def notify_mutation(self) -> None:
@@ -1085,19 +1092,23 @@ class FactoryCanvas(QGraphicsView):
         """Refresh all RoomItems displaying the given room."""
         from satisfactory_planner.ui.items.room_item import RoomItem
 
-        for room_item in self._room_items.values():
+        for placement_id, room_item in self._room_items.items():
             if isinstance(room_item, RoomItem) and room_item.room.id == room_id:
                 for building_id in list(room_item._building_items.keys()):
-                    self._building_items.pop(building_id, None)
+                    composite_key = f"{placement_id}:{building_id}"
+                    self._building_items.pop(composite_key, None)
                 for belt_id in list(room_item._belt_items.keys()):
-                    self._belt_items.pop(belt_id, None)
+                    composite_key = f"{placement_id}:{belt_id}"
+                    self._belt_items.pop(composite_key, None)
 
                 room_item.refresh()
 
                 for building_id, building_item in room_item._building_items.items():
-                    self._building_items[building_id] = building_item
+                    composite_key = f"{placement_id}:{building_id}"
+                    self._building_items[composite_key] = building_item
                 for belt_id, belt_item in room_item._belt_items.items():
-                    self._belt_items[belt_id] = belt_item
+                    composite_key = f"{placement_id}:{belt_id}"
+                    self._belt_items[composite_key] = belt_item
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]
         """Draw the grid background."""

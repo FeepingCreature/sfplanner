@@ -282,18 +282,26 @@ def build_flow_graph(document: Document, recipes: dict[str, Recipe]) -> BuildRes
 
     Returns:
         BuildResult with either a valid graph or a list of fatal errors.
+
+    Node IDs use composite keys for buildings inside room placements:
+    - Top-level buildings: just building_id
+    - Buildings in rooms: placement_id:building_id
+
+    This allows the same Room to be placed multiple times with separate
+    flow analysis for each placement.
     """
     errors: list[FatalError] = []
     graph = FlowGraph()
 
     # Build from all scenes (document + rooms)
-    _build_scene(document, document, recipes, graph, errors)
+    _build_scene(document, document, recipes, graph, errors, placement_id=None)
 
     # Also build from room contents (for room placements)
+    # Each placement gets its own set of nodes with composite IDs
     for placement in document.room_placements.values():
         room = document.rooms.get(placement.room_id)
         if room:
-            _build_scene(room, document, recipes, graph, errors)
+            _build_scene(room, document, recipes, graph, errors, placement_id=placement.id)
 
     if errors:
         return BuildResult(errors=errors)
@@ -453,12 +461,20 @@ def _propagate_item_types(graph: FlowGraph) -> None:
                             changed = True
 
 
+def _make_node_id(building_id: str, placement_id: str | None) -> str:
+    """Create a node ID, using composite key for buildings in room placements."""
+    if placement_id:
+        return f"{placement_id}:{building_id}"
+    return building_id
+
+
 def _build_scene(
     scene: Scene,
     document: Document,
     recipes: dict[str, Recipe],
     graph: FlowGraph,
     errors: list[FatalError],
+    placement_id: str | None = None,
 ) -> None:
     """Build flow graph nodes and edges from a scene (Document or Room)."""
     # Phase 1: Check for disconnected belts
@@ -530,10 +546,11 @@ def _build_scene(
     # Phase 3: Build nodes
     for building_id, building in scene.buildings.items():
         inputs, outputs = _build_flow_ports(building, recipes)
+        node_id = _make_node_id(building_id, placement_id)
         node = FlowNode(
-            id=building_id,
+            id=node_id,
             node_type=_get_node_type(building.building_type),
-            building_id=building_id,
+            building_id=node_id,  # Use composite ID for flow result lookup
             recipe_id=building.recipe_id,
             clock_speed=building.clock_speed,
             inputs=inputs,
@@ -547,16 +564,16 @@ def _build_scene(
         assert belt.dest_building_id is not None
 
         # Resolve room placement references to PORT buildings
-        source_node_id, source_port_idx = _resolve_belt_endpoint(
+        source_building_id, source_port_idx = _resolve_belt_endpoint(
             document, belt.source_building_id, belt.source_port_index, is_output=True
         )
-        dest_node_id, dest_port_idx = _resolve_belt_endpoint(
+        dest_building_id, dest_port_idx = _resolve_belt_endpoint(
             document, belt.dest_building_id, belt.dest_port_index, is_output=False
         )
 
         # Get the actual buildings (may be in rooms)
-        source_building = document.find_building(source_node_id)
-        dest_building = document.find_building(dest_node_id)
+        source_building = document.find_building(source_building_id)
+        dest_building = document.find_building(dest_building_id)
 
         if source_building is None or dest_building is None:
             # Already reported as disconnected belt error
@@ -594,9 +611,16 @@ def _build_scene(
         # Determine the item type for this edge
         item_id = source_item_id or dest_item_id
 
+        # Use composite node IDs for buildings in room placements
+        source_node_id = _make_node_id(source_building_id, placement_id)
+        dest_node_id = _make_node_id(dest_building_id, placement_id)
+
+        # Belt ID also uses composite key for belts inside rooms
+        edge_belt_id = _make_node_id(belt_id, placement_id)
+
         edge = FlowEdge(
-            id=belt_id,
-            belt_id=belt_id,
+            id=edge_belt_id,
+            belt_id=edge_belt_id,
             source_node_id=source_node_id,
             source_port_index=source_port_idx,
             dest_node_id=dest_node_id,
