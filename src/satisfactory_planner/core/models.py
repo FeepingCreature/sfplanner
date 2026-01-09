@@ -245,40 +245,43 @@ class Building:
         uses this to create PortItems without needing to know building types.
         """
         w, h = self._get_display_size()
-        port_inset = 6  # How far inside the building edge ports sit
 
         inputs: list[tuple[float, float, float]] = []
         outputs: list[tuple[float, float, float]] = []
 
         if self.building_type == BuildingType.SPLITTER:
             # 1 input on left, 3 outputs on top/right/bottom
-            inputs.append((port_inset, h / 2, 180))
-            outputs.append((w / 2, port_inset, 270))  # top
-            outputs.append((w - port_inset, h / 2, 0))  # right
-            outputs.append((w / 2, h - port_inset, 90))  # bottom
+            # Half-circles face INTO building for inputs, OUT for outputs
+            inputs.append((0, h / 2, 0))  # left edge, face right (into)
+            outputs.append((w / 2, 0, 270))  # top edge, face up (out)
+            outputs.append((w, h / 2, 0))  # right edge, face right (out)
+            outputs.append((w / 2, h, 90))  # bottom edge, face down (out)
 
         elif self.building_type == BuildingType.MERGER:
             # 3 inputs on top/left/bottom, 1 output on right
-            inputs.append((w / 2, port_inset, 270))  # top
-            inputs.append((port_inset, h / 2, 180))  # left
-            inputs.append((w / 2, h - port_inset, 90))  # bottom
-            outputs.append((w - port_inset, h / 2, 0))  # right
+            # Half-circles face INTO building for inputs, OUT for outputs
+            inputs.append((w / 2, 0, 90))  # top edge, face down (into)
+            inputs.append((0, h / 2, 0))  # left edge, face right (into)
+            inputs.append((w / 2, h, 270))  # bottom edge, face up (into)
+            outputs.append((w, h / 2, 0))  # right edge, face right (out)
 
         else:
-            # Standard layout: inputs on left, outputs on right
-            port_inset = 8  # Slightly more inset for larger buildings
+            # Standard layout: inputs on left edge, outputs on right edge
+            # Ports are centered ON the edge (not inset)
             num_in = self.num_inputs
             num_out = self.num_outputs
 
             for i in range(num_in):
                 spacing = h / (num_in + 1)
                 y = spacing * (i + 1)
-                inputs.append((port_inset, y, 180))
+                # Input on left edge, half-circle faces RIGHT (into building)
+                inputs.append((0, y, 0))
 
             for i in range(num_out):
                 spacing = h / (num_out + 1)
                 y = spacing * (i + 1)
-                outputs.append((w - port_inset, y, 0))
+                # Output on right edge, half-circle faces RIGHT (out of building)
+                outputs.append((w, y, 0))
 
         return (inputs, outputs)
 
