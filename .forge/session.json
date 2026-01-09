@@ -4,7 +4,8 @@
     "src/satisfactory_planner/ui/commands/room_commands.py",
     "src/satisfactory_planner/ui/canvas/factory_canvas.py",
     "src/satisfactory_planner/ui/items/room_item.py",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "src/satisfactory_planner/ui/canvas/selection_manager.py"
   ],
   "request_log_entries": [
     {
@@ -267,6 +268,33 @@
       "streaming": true,
       "actual_cost": 0.06401,
       "generation_id": "gen-1767953057-8UzsZJvqavgHFQ38NaU1"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767953123572.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767953123572.json",
+      "timestamp": 1767953123.57326,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0536845,
+      "generation_id": "gen-1767953123-FKEN3r2y75NHTWi1xWYL"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767953135141.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767953135141.json",
+      "timestamp": 1767953135.1421757,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.043283,
+      "generation_id": "gen-1767953135-iXCNGbUXaBnAF9nUwvB0"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767953140061.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767953140061.json",
+      "timestamp": 1767953140.0626593,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0479085,
+      "generation_id": "gen-1767953140-vdRTm8AIfQl544DLReLB"
     }
   ],
   "messages": [
@@ -850,6 +878,64 @@
     {
       "role": "assistant",
       "content": "Looking at `delete_selection` in the context I already have, I can see the issue. The code collects selected buildings and belts, but then it only looks them up in `self.document.buildings` and `self.document.belts`:\n\n```python\nbuildings_to_delete = tuple(\n    self.document.buildings[bid]\n    for bid in selected_buildings\n    if bid in self.document.buildings\n)\nbelts_to_delete = tuple(\n    self.document.belts[bid] for bid in selected_belts if bid in self.document.belts\n)\n```\n\nBut buildings/belts inside rooms are stored in `room.buildings` and `room.belts`, not in `self.document`. So when we try to find them in `self.document`, they're not there and get filtered out.\n\nThe fix needs to look up items from the correct scene (the room they belong to). I can see `get_scene_for_item` is already called to get the `scene_room_id`, but it's called *after* the filtering, and only for `first_item`. We need to use the scene to look up the items:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n        if selected_buildings or selected_belts:\n            for building_id in selected_buildings:\n                for belt in self.document.get_belts_for_building(building_id):\n                    if belt.id not in selected_belts:\n                        selected_belts.append(belt.id)\n\n            buildings_to_delete = tuple(\n                self.document.buildings[bid]\n                for bid in selected_buildings\n                if bid in self.document.buildings\n            )\n            belts_to_delete = tuple(\n                self.document.belts[bid] for bid in selected_belts if bid in self.document.belts\n            )\n            first_item = next(\n                (item for item in self._scene.selectedItems() if isinstance(item, BuildingItem)),\n                None,\n            )\n            scene_room_id = self.get_scene_for_item(first_item) if first_item else None\n            cmd = DeleteItemsCommand(\n                scene_room_id=scene_room_id,\n                buildings=buildings_to_delete,\n                belts=belts_to_delete,\n                canvas=self,\n            )\n            self.command_stack.execute(cmd)\n</search>\n<replace>\n        if selected_buildings or selected_belts:\n            # Determine which scene (document or room) these items belong to\n            first_item = next(\n                (item for item in self._scene.selectedItems() if isinstance(item, BuildingItem)),\n                None,\n            )\n            scene_room_id = self.get_scene_for_item(first_item) if first_item else None\n\n            # Get the correct scene to look up items\n            if scene_room_id and scene_room_id in self.document.rooms:\n                target_scene: Scene = self.document.rooms[scene_room_id]\n            else:\n                target_scene = self.document\n\n            # Add connected belts to deletion list\n            for building_id in selected_buildings:\n                for belt in target_scene.get_belts_for_building(building_id):\n                    if belt.id not in selected_belts:\n                        selected_belts.append(belt.id)\n\n            # Look up items from the correct scene\n            buildings_to_delete = tuple(\n                target_scene.buildings[bid]\n                for bid in selected_buildings\n                if bid in target_scene.buildings\n            )\n            belts_to_delete = tuple(\n                target_scene.belts[bid] for bid in selected_belts if bid in target_scene.belts\n            )\n\n            cmd = DeleteItemsCommand(\n                scene_room_id=scene_room_id,\n                buildings=buildings_to_delete,\n                belts=belts_to_delete,\n                canvas=self,\n            )\n            self.command_stack.execute(cmd)\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Fix deleting items inside rooms\n\nThe delete_selection method was looking up buildings and belts in\nself.document, but items inside rooms are stored in room.buildings\nand room.belts. Fixed by determining the target scene first (document\nor room) and looking up items from the correct scene.\"/>\n\nDone! The issue was that `delete_selection` was always looking for items in `self.document`, but items inside rooms live in `room.buildings`/`room.belts`. Now it determines the correct scene first and looks up items there."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: a3fb35aa",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Confirm deleting room items works- nice! Deleting belts in rooms doesn't work yet."
+    },
+    {
+      "role": "assistant",
+      "content": "Good to know the building delete works! Looking at the code again, I see the issue with belt deletion. The `first_item` lookup only looks for `BuildingItem`, so if you only have belts selected (no buildings), `first_item` will be `None` and `scene_room_id` will be `None`, causing it to look in the wrong scene.\n\nLet me also check for `BeltItem` when determining the scene:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n        if selected_buildings or selected_belts:\n            # Determine which scene (document or room) these items belong to\n            first_item = next(\n                (item for item in self._scene.selectedItems() if isinstance(item, BuildingItem)),\n                None,\n            )\n            scene_room_id = self.get_scene_for_item(first_item) if first_item else None\n</search>\n<replace>\n        if selected_buildings or selected_belts:\n            # Determine which scene (document or room) these items belong to\n            first_item = next(\n                (item for item in self._scene.selectedItems()\n                 if isinstance(item, (BuildingItem, BeltItem))),\n                None,\n            )\n            scene_room_id = self.get_scene_for_item(first_item) if first_item else None\n</replace>\n</edit>\n\nNow I need to check if `get_scene_for_item` handles `BeltItem` properly. Looking at `SelectionManager.get_scene_for_item`:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"def get_scene_for_item\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01D4FQCPMqeeaJEB1kyraHN9",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01D4FQCPMqeeaJEB1kyraHN9",
+      "content": "{\"message\": \"Found 2 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:752 \\u2500\\u2500\\n     749 |                 return item.room.id\\n     750 |         return None\\n     751 | \\n>>>  752 |     def get_scene_for_item(self, item: QGraphicsItem) -> str | None:\\n     753 |         \\\"\\\"\\\"Get the room_id for the scene an item belongs to.\\\"\\\"\\\"\\n     754 |         scene = self._selection.get_scene_for_item(item)\\n     755 |         if scene is None or scene is self.document:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/selection_manager.py:77 \\u2500\\u2500\\n      74 |         \\\"\\\"\\\"Return the selection outline item (for hit testing).\\\"\\\"\\\"\\n      75 |         return self._selection_outline\\n      76 | \\n>>>   77 |     def get_scene_for_item(self, item: QGraphicsItem) -> Scene | None:\\n      78 |         \\\"\\\"\\\"Get the scene (Document or Room) that an item belongs to.\\\"\\\"\\\"\\n      79 |         from satisfactory_planner.ui.items.belt_item import BeltItem\\n      80 |         from satisfactory_planner.ui.items.room_item import RoomItem\", \"success\": true, \"total_matches\": 2}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"def get_scene_for_item\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 2 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:752 \\u2500\\u2500\\n     749 |                 return item.room.id\\n     750 |         return None\\n     751 | \\n>>>  752 |     def get_scene_for_item(self, item: QGraphicsItem) -> str | None:\\n     753 |         \\\"\\\"\\\"Get the room_id for the scene an item belongs to.\\\"\\\"\\\"\\n     754 |         scene = self._selection.get_scene_for_item(item)\\n     755 |         if scene is None or scene is self.document:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/selection_manager.py:77 \\u2500\\u2500\\n      74 |         \\\"\\\"\\\"Return the selection outline item (for hit testing).\\\"\\\"\\\"\\n      75 |         return self._selection_outline\\n      76 | \\n>>>   77 |     def get_scene_for_item(self, item: QGraphicsItem) -> Scene | None:\\n      78 |         \\\"\\\"\\\"Get the scene (Document or Room) that an item belongs to.\\\"\\\"\\\"\\n      79 |         from satisfactory_planner.ui.items.belt_item import BeltItem\\n      80 |         from satisfactory_planner.ui.items.room_item import RoomItem\",\n  \"success\": true,\n  \"total_matches\": 2\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me load the selection_manager to see how `get_scene_for_item` handles BeltItem:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas/selection_manager.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01C3yUKeBXLXAMU1rNSopRzy",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01C3yUKeBXLXAMU1rNSopRzy",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/selection_manager.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good, I can see that `get_scene_for_item` already handles `BeltItem` correctly - it checks if the parent is a `RoomItem` and returns `parent.room`. The edit I made should work.\n\n<run_tests/>\n<commit message=\"Fix deleting belts inside rooms\n\nThe delete_selection method only looked for BuildingItem when determining\nwhich scene the selection belongs to. If only belts were selected,\nscene_room_id would be None and it would look in the wrong scene.\n\nFixed by also checking for BeltItem when finding the first selected item.\"/>\n\nDone! The issue was that when only belts were selected (no buildings), the code couldn't determine the correct scene because it only looked for `BuildingItem`. Now it checks for both `BuildingItem` and `BeltItem` when determining the scene."
     }
   ]
 }

@@ -676,7 +676,11 @@ class FactoryCanvas(QGraphicsView):
         if selected_buildings or selected_belts:
             # Determine which scene (document or room) these items belong to
             first_item = next(
-                (item for item in self._scene.selectedItems() if isinstance(item, BuildingItem)),
+                (
+                    item
+                    for item in self._scene.selectedItems()
+                    if isinstance(item, (BuildingItem, BeltItem))
+                ),
                 None,
             )
             scene_room_id = self.get_scene_for_item(first_item) if first_item else None
