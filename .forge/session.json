@@ -1,9 +1,11 @@
 {
   "active_files": [
     "src/satisfactory_planner/ui/items/building_item.py",
+    "src/satisfactory_planner/ui/canvas/belt_connector.py",
     "src/satisfactory_planner/ui/items/room_port_item.py",
     "src/satisfactory_planner/ui/items/room_item.py",
     "src/satisfactory_planner/core/models.py",
+    "src/satisfactory_planner/ui/items/belt_item.py",
     "CLAUDE.md"
   ],
   "request_log_entries": [
@@ -1707,6 +1709,24 @@
       "streaming": true,
       "actual_cost": 0.54965875,
       "generation_id": "gen-1767965193-vg07iLUwKy6N7vWyUjPl"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767965375014.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767965375014.json",
+      "timestamp": 1767965375.016107,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.51518625,
+      "generation_id": "gen-1767965375-kbvXJEUe7qMT4QxLQJmk"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767965394285.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767965394285.json",
+      "timestamp": 1767965394.2872863,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.52147125,
+      "generation_id": "gen-1767965394-PWa1CmjAuAK2TuXgJtsh"
     }
   ],
   "messages": [
@@ -6985,6 +7005,111 @@
         {
           "commit": "0d4b5da7a549",
           "message": "Committed: 2 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 1affd7cd",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Hm something is fishy. When the PORT is at the top edge, a belt connecting to the room port (which is now firmly pointing down (if positioned wrongly lol - NEVER ENDS)) still approaches it from the left."
+    },
+    {
+      "role": "assistant",
+      "content": "The belt direction is wrong for top/bottom edge ports. Looking at `RoomPlacement.input_port_direction` and `output_port_direction`, they always return 0.0 (traveling right). But for top/bottom edges, belts should travel vertically.\n\n<edit file=\"src/satisfactory_planner/core/models.py\">\n<search>\n    def input_port_direction(self, index: int) -> float:\n        \"\"\"Get direction (radians) a belt is TRAVELING when it enters this input port.\"\"\"\n        return 0.0  # Traveling right, into left side\n\n    def output_port_direction(self, index: int) -> float:\n        \"\"\"Get direction (radians) a belt is TRAVELING when it leaves this output port.\"\"\"\n        return 0.0  # Traveling right, out of right side\n</search>\n<replace>\n    def input_port_direction(self, index: int, document: Document) -> float:\n        \"\"\"Get direction (radians) a belt is TRAVELING when it enters this input port.\"\"\"\n        import math\n\n        room = self.get_room(document)\n        if room:\n            port = room.get_port_by_index(index, is_output=False)\n            if port:\n                # Direction based on PORT rotation (which edge it's on)\n                # 0\u00b0 = left edge, belt travels right (0)\n                # 180\u00b0 = right edge, belt travels left (\u03c0)\n                # 90\u00b0 = top edge, belt travels down (\u03c0/2)\n                # 270\u00b0 = bottom edge, belt travels up (-\u03c0/2)\n                rotation_to_dir = {\n                    0: 0.0,\n                    180: math.pi,\n                    90: math.pi / 2,\n                    270: -math.pi / 2,\n                }\n                return rotation_to_dir.get(port.rotation, 0.0)\n        return 0.0  # Fallback: traveling right\n\n    def output_port_direction(self, index: int, document: Document) -> float:\n        \"\"\"Get direction (radians) a belt is TRAVELING when it leaves this output port.\"\"\"\n        import math\n\n        room = self.get_room(document)\n        if room:\n            port = room.get_port_by_index(index, is_output=True)\n            if port:\n                # Direction based on PORT rotation (which edge it's on)\n                # 0\u00b0 = left edge, belt travels left (-\u03c0, away from room)\n                # 180\u00b0 = right edge, belt travels right (0, away from room)\n                # 90\u00b0 = top edge, belt travels up (-\u03c0/2, away from room)\n                # 270\u00b0 = bottom edge, belt travels down (\u03c0/2, away from room)\n                rotation_to_dir = {\n                    0: math.pi,  # Left edge, output goes left (out of room)\n                    180: 0.0,  # Right edge, output goes right (out of room)\n                    90: -math.pi / 2,  # Top edge, output goes up (out of room)\n                    270: math.pi / 2,  # Bottom edge, output goes down (out of room)\n                }\n                return rotation_to_dir.get(port.rotation, 0.0)\n        return 0.0  # Fallback: traveling right\n</replace>\n</edit>\n\nNow I need to update the callers to pass `document`:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"input_port_direction|output_port_direction\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_0112LJKpFcQWmKQmekWnYekW",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/core/models.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/models.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_0112LJKpFcQWmKQmekWnYekW",
+      "content": "{\"message\": \"Found 10 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/core/models.py:362 \\u2500\\u2500\\n     359 | \\n     360 |         return self._rotate_point(*base_pos)\\n     361 | \\n>>>  362 |     def input_port_direction(self, index: int) -> float:\\n     363 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it enters this input port.\\\"\\\"\\\"\\n     364 |         if self.building_type == BuildingType.SPLITTER:\\n     365 |             base_dir = 0.0  # traveling right, into left side\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:397 \\u2500\\u2500\\n     394 | \\n     395 |         return self._rotate_point(*base_pos)\\n     396 | \\n>>>  397 |     def output_port_direction(self, index: int) -> float:\\n     398 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it leaves this output port.\\\"\\\"\\\"\\n     399 |         if self.building_type == BuildingType.SPLITTER:\\n     400 |             # top (traveling up), right (traveling right), bottom (traveling down)\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:641 \\u2500\\u2500\\n     638 |             return (self.x + local_pos[0], self.y + local_pos[1])\\n     639 |         return (self.x, self.y)\\n     640 | \\n>>>  641 |     def input_port_direction(self, index: int, document: Document) -> float:\\n     642 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it enters this input port.\\\"\\\"\\\"\\n     643 |         import math\\n     644 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:663 \\u2500\\u2500\\n     660 |                 return rotation_to_dir.get(port.rotation, 0.0)\\n     661 |         return 0.0  # Fallback: traveling right\\n     662 | \\n>>>  663 |     def output_port_direction(self, index: int, document: Document) -> float:\\n     664 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it leaves this output port.\\\"\\\"\\\"\\n     665 |         import math\\n     666 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:73 \\u2500\\u2500\\n      70 |         # Get start direction from the source (building or room placement)\\n      71 |         building = self.canvas.document.buildings.get(building_id)\\n      72 |         if building:\\n>>>   73 |             self._drag_start_dir = building.output_port_direction(port_index)\\n      74 |         else:\\n      75 |             # Check if it's a room placement\\n      76 |             placement = self.canvas.document.room_placements.get(building_id)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:78 \\u2500\\u2500\\n      75 |             # Check if it's a room placement\\n      76 |             placement = self.canvas.document.room_placements.get(building_id)\\n      77 |             if placement:\\n>>>   78 |                 self._drag_start_dir = placement.output_port_direction(port_index)\\n      79 |             else:\\n      80 |                 self._drag_start_dir = 0\\n      81 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/belt_item.py:106 \\u2500\\u2500\\n     103 |         # Get start position and direction\\n     104 |         if self._source:\\n     105 |             start_pos = self._source.output_port_pos(self.belt.source_port_index)\\n>>>  106 |             start_dir = self._source.output_port_direction(self.belt.source_port_index)\\n     107 |         elif self._source_placement:\\n     108 |             start_pos = self._source_placement.output_port_pos(\\n     109 |                 self.belt.source_port_index, document\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/belt_item.py:111 \\u2500\\u2500\\n     108 |             start_pos = self._source_placement.output_port_pos(\\n     109 |                 self.belt.source_port_index, document\\n     110 |             )\\n>>>  111 |             start_dir = self._source_placement.output_port_direction(self.belt.source_port_index)\\n     112 |         else:\\n     113 |             return\\n     114 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/belt_item.py:118 \\u2500\\u2500\\n     115 |         # Get end position and direction\\n     116 |         if self._dest:\\n     117 |             end_pos = self._dest.input_port_pos(self.belt.dest_port_index)\\n>>>  118 |             end_dir = self._dest.input_port_direction(self.belt.dest_port_index)\\n     119 |         elif self._dest_placement:\\n     120 |             end_pos = self._dest_placement.input_port_pos(self.belt.dest_port_index, document)\\n     121 |             end_dir = self._dest_placement.input_port_direction(self.belt.dest_port_index)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/belt_item.py:121 \\u2500\\u2500\\n     118 |             end_dir = self._dest.input_port_direction(self.belt.dest_port_index)\\n     119 |         elif self._dest_placement:\\n     120 |             end_pos = self._dest_placement.input_port_pos(self.belt.dest_port_index, document)\\n>>>  121 |             end_dir = self._dest_placement.input_port_direction(self.belt.dest_port_index)\\n     122 |         else:\\n     123 |             return\\n     124 | \", \"success\": true, \"total_matches\": 10}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"input_port_direction|output_port_direction\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 10 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/core/models.py:362 \\u2500\\u2500\\n     359 | \\n     360 |         return self._rotate_point(*base_pos)\\n     361 | \\n>>>  362 |     def input_port_direction(self, index: int) -> float:\\n     363 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it enters this input port.\\\"\\\"\\\"\\n     364 |         if self.building_type == BuildingType.SPLITTER:\\n     365 |             base_dir = 0.0  # traveling right, into left side\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:397 \\u2500\\u2500\\n     394 | \\n     395 |         return self._rotate_point(*base_pos)\\n     396 | \\n>>>  397 |     def output_port_direction(self, index: int) -> float:\\n     398 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it leaves this output port.\\\"\\\"\\\"\\n     399 |         if self.building_type == BuildingType.SPLITTER:\\n     400 |             # top (traveling up), right (traveling right), bottom (traveling down)\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:641 \\u2500\\u2500\\n     638 |             return (self.x + local_pos[0], self.y + local_pos[1])\\n     639 |         return (self.x, self.y)\\n     640 | \\n>>>  641 |     def input_port_direction(self, index: int, document: Document) -> float:\\n     642 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it enters this input port.\\\"\\\"\\\"\\n     643 |         import math\\n     644 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:663 \\u2500\\u2500\\n     660 |                 return rotation_to_dir.get(port.rotation, 0.0)\\n     661 |         return 0.0  # Fallback: traveling right\\n     662 | \\n>>>  663 |     def output_port_direction(self, index: int, document: Document) -> float:\\n     664 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it leaves this output port.\\\"\\\"\\\"\\n     665 |         import math\\n     666 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:73 \\u2500\\u2500\\n      70 |         # Get start direction from the source (building or room placement)\\n      71 |         building = self.canvas.document.buildings.get(building_id)\\n      72 |         if building:\\n>>>   73 |             self._drag_start_dir = building.output_port_direction(port_index)\\n      74 |         else:\\n      75 |             # Check if it's a room placement\\n      76 |             placement = self.canvas.document.room_placements.get(building_id)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:78 \\u2500\\u2500\\n      75 |             # Check if it's a room placement\\n      76 |             placement = self.canvas.document.room_placements.get(building_id)\\n      77 |             if placement:\\n>>>   78 |                 self._drag_start_dir = placement.output_port_direction(port_index)\\n      79 |             else:\\n      80 |                 self._drag_start_dir = 0\\n      81 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/belt_item.py:106 \\u2500\\u2500\\n     103 |         # Get start position and direction\\n     104 |         if self._source:\\n     105 |             start_pos = self._source.output_port_pos(self.belt.source_port_index)\\n>>>  106 |             start_dir = self._source.output_port_direction(self.belt.source_port_index)\\n     107 |         elif self._source_placement:\\n     108 |             start_pos = self._source_placement.output_port_pos(\\n     109 |                 self.belt.source_port_index, document\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/belt_item.py:111 \\u2500\\u2500\\n     108 |             start_pos = self._source_placement.output_port_pos(\\n     109 |                 self.belt.source_port_index, document\\n     110 |             )\\n>>>  111 |             start_dir = self._source_placement.output_port_direction(self.belt.source_port_index)\\n     112 |         else:\\n     113 |             return\\n     114 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/belt_item.py:118 \\u2500\\u2500\\n     115 |         # Get end position and direction\\n     116 |         if self._dest:\\n     117 |             end_pos = self._dest.input_port_pos(self.belt.dest_port_index)\\n>>>  118 |             end_dir = self._dest.input_port_direction(self.belt.dest_port_index)\\n     119 |         elif self._dest_placement:\\n     120 |             end_pos = self._dest_placement.input_port_pos(self.belt.dest_port_index, document)\\n     121 |             end_dir = self._dest_placement.input_port_direction(self.belt.dest_port_index)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/belt_item.py:121 \\u2500\\u2500\\n     118 |             end_dir = self._dest.input_port_direction(self.belt.dest_port_index)\\n     119 |         elif self._dest_placement:\\n     120 |             end_pos = self._dest_placement.input_port_pos(self.belt.dest_port_index, document)\\n>>>  121 |             end_dir = self._dest_placement.input_port_direction(self.belt.dest_port_index)\\n     122 |         else:\\n     123 |             return\\n     124 | \",\n  \"success\": true,\n  \"total_matches\": 10\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue - `RoomPlacement.input_port_direction` and `output_port_direction` already have the correct logic with the document parameter, but the callers in `belt_item.py` and `belt_connector.py` aren't passing `document`. Let me fix those callers:\n\n<edit file=\"src/satisfactory_planner/ui/items/belt_item.py\">\n<search>\n            start_dir = self._source_placement.output_port_direction(self.belt.source_port_index)\n</search>\n<replace>\n            start_dir = self._source_placement.output_port_direction(\n                self.belt.source_port_index, document\n            )\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/items/belt_item.py\">\n<search>\n            end_dir = self._dest_placement.input_port_direction(self.belt.dest_port_index)\n</search>\n<replace>\n            end_dir = self._dest_placement.input_port_direction(\n                self.belt.dest_port_index, document\n            )\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/belt_connector.py\">\n<search>\n                self._drag_start_dir = placement.output_port_direction(port_index)\n</search>\n<replace>\n                self._drag_start_dir = placement.output_port_direction(\n                    port_index, self.canvas.document\n                )\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Fix belt directions for rotated room ports - pass document to direction methods\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/belt_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/belt_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/belt_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/belt_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/belt_connector.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/belt_connector.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n1 file reformatted, 76 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_gb03gr_e\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_gb03gr_e\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/belt_item.py"
+          ],
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n1 file reformatted, 76 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_gb03gr_e\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_gb03gr_e\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "files_modified",
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "3e29700cae62",
+          "message": "Committed: 3 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

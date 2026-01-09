@@ -108,7 +108,9 @@ class BeltItem(QGraphicsPathItem):
             start_pos = self._source_placement.output_port_pos(
                 self.belt.source_port_index, document
             )
-            start_dir = self._source_placement.output_port_direction(self.belt.source_port_index)
+            start_dir = self._source_placement.output_port_direction(
+                self.belt.source_port_index, document
+            )
         else:
             return
 
@@ -118,7 +120,7 @@ class BeltItem(QGraphicsPathItem):
             end_dir = self._dest.input_port_direction(self.belt.dest_port_index)
         elif self._dest_placement:
             end_pos = self._dest_placement.input_port_pos(self.belt.dest_port_index, document)
-            end_dir = self._dest_placement.input_port_direction(self.belt.dest_port_index)
+            end_dir = self._dest_placement.input_port_direction(self.belt.dest_port_index, document)
         else:
             return
 

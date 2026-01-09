@@ -638,13 +638,49 @@ class RoomPlacement:
             return (self.x + local_pos[0], self.y + local_pos[1])
         return (self.x, self.y)
 
-    def input_port_direction(self, index: int) -> float:
+    def input_port_direction(self, index: int, document: Document) -> float:
         """Get direction (radians) a belt is TRAVELING when it enters this input port."""
-        return 0.0  # Traveling right, into left side
+        import math
 
-    def output_port_direction(self, index: int) -> float:
+        room = self.get_room(document)
+        if room:
+            port = room.get_port_by_index(index, is_output=False)
+            if port:
+                # Direction based on PORT rotation (which edge it's on)
+                # 0° = left edge, belt travels right (0)
+                # 180° = right edge, belt travels left (π)
+                # 90° = top edge, belt travels down (π/2)
+                # 270° = bottom edge, belt travels up (-π/2)
+                rotation_to_dir = {
+                    0: 0.0,
+                    180: math.pi,
+                    90: math.pi / 2,
+                    270: -math.pi / 2,
+                }
+                return rotation_to_dir.get(port.rotation, 0.0)
+        return 0.0  # Fallback: traveling right
+
+    def output_port_direction(self, index: int, document: Document) -> float:
         """Get direction (radians) a belt is TRAVELING when it leaves this output port."""
-        return 0.0  # Traveling right, out of right side
+        import math
+
+        room = self.get_room(document)
+        if room:
+            port = room.get_port_by_index(index, is_output=True)
+            if port:
+                # Direction based on PORT rotation (which edge it's on)
+                # 0° = left edge, belt travels left (-π, away from room)
+                # 180° = right edge, belt travels right (0, away from room)
+                # 90° = top edge, belt travels up (-π/2, away from room)
+                # 270° = bottom edge, belt travels down (π/2, away from room)
+                rotation_to_dir = {
+                    0: math.pi,  # Left edge, output goes left (out of room)
+                    180: 0.0,  # Right edge, output goes right (out of room)
+                    90: -math.pi / 2,  # Top edge, output goes up (out of room)
+                    270: math.pi / 2,  # Bottom edge, output goes down (out of room)
+                }
+                return rotation_to_dir.get(port.rotation, 0.0)
+        return 0.0  # Fallback: traveling right
 
 
 @dataclass

@@ -75,7 +75,9 @@ class BeltConnector:
             # Check if it's a room placement
             placement = self.canvas.document.room_placements.get(building_id)
             if placement:
-                self._drag_start_dir = placement.output_port_direction(port_index)
+                self._drag_start_dir = placement.output_port_direction(
+                    port_index, self.canvas.document
+                )
             else:
                 self._drag_start_dir = 0
 
