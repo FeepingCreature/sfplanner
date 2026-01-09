@@ -1634,6 +1634,24 @@
       "streaming": true,
       "actual_cost": 0.42165875,
       "generation_id": "gen-1767964589-aQcoArSovTJngCZpRBQk"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767964641193.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767964641193.json",
+      "timestamp": 1767964641.1943803,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.41196625,
+      "generation_id": "gen-1767964641-3J6bwapyLkMr683SOjGV"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1767964801527.json",
+      "response_file": "/tmp/forge_debug/response_stream_1767964801527.json",
+      "timestamp": 1767964801.5282285,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0911605,
+      "generation_id": "gen-1767964801-joh75pEUq0CJd42MyewA"
     }
   ],
   "messages": [
@@ -6594,6 +6612,73 @@
         {
           "commit": "6049643fdc9f",
           "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: cbd3f82d",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Yeah that fixed it. Explain what was going on?"
+    },
+    {
+      "role": "assistant",
+      "content": "The issue was a mismatch between how Qt positions items and how rotation works.\n\n**The problem:**\n- `setPos(x, y)` positions the **top-left corner of the unrotated bounding rect**\n- `BuildingItem.paint()` rotates the painter **around the center** of the building\n- For a 20x40 building rotated 90\u00b0, the visual shape becomes 40x20, but the rotation happens around the original center point (10, 20)\n\n**What happened:**\nWhen a PORT (20x40) is placed at y=0 and rotated 90\u00b0:\n1. Qt positions top-left at (x, 0)\n2. The painter rotates around center (10, 20)\n3. After rotation, the visual rect is no longer at y=0 - it's shifted down because the rotation pivot (20 pixels from top) swings the visual shape downward\n\n**The fix:**\nWe calculate `y_offset = (base_w - base_h) / 2 = (20 - 40) / 2 = -10`\n\nFor top edge: `y = -10` (actually `y = y_offset = -10`)\n\nWait, that's not quite right either. Looking at the code:\n- `y_offset = (base_w - base_h) / 2 = -10`\n- For top: `return (clamped_x, y_offset, \"top\")` \u2192 y = -10\n\nThis shifts the unrotated top-left UP by 10 pixels, so that after rotation around center, the visual top edge lands exactly at y=0 on the room boundary.\n\nFor bottom: we do `room_height - h - y_offset`, which accounts for both the rotated height (h=20) and the offset, placing the visual bottom edge exactly at the room's bottom edge."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 90f1093f",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Confusing innit. Well I trust you. OKay, quite possibly final fix for the IN PORT. The room's RoomPortItem is now positioned wrong at the top edge. It's floating above the top edge and slightly to the right. At the bottom edge it's ... wait hang on the bottom snap is still wrong, you're snapping it to the wrong side of the wall. Invert the sign of whatever you did? Anyway, then the building port will have the same issue as on the top edge."
+    },
+    {
+      "role": "assistant",
+      "content": "You're right! Let me fix both issues:\n\n1. Bottom edge snap is going outside the room - invert the offset sign\n2. The room's PortItem (external connector) needs the same offset compensation\n\n<edit file=\"src/satisfactory_planner/core/models.py\">\n<search>\n    elif min_dist == dist_top:\n        # Rotated 90\u00b0, visual dimensions swap: w=base_h, h=base_w\n        w, h = base_h, base_w\n        # Offset to compensate for rotation around center\n        # Original center.y = base_h/2, rotated center.y = base_w/2\n        # Offset = base_w/2 - base_h/2 = (base_w - base_h) / 2\n        y_offset = (base_w - base_h) / 2\n        clamped_x = max(0, min(target_x, room_width - w))\n        return (clamped_x, y_offset, \"top\")\n    else:  # dist_bottom\n        # Rotated 270\u00b0, visual dimensions swap: w=base_h, h=base_w\n        w, h = base_h, base_w\n        # Same offset logic, but from bottom\n        y_offset = (base_w - base_h) / 2\n        clamped_x = max(0, min(target_x, room_width - w))\n        return (clamped_x, room_height - h - y_offset, \"bottom\")\n</search>\n<replace>\n    elif min_dist == dist_top:\n        # Rotated 90\u00b0, visual dimensions swap: w=base_h, h=base_w\n        w, h = base_h, base_w\n        # Offset to compensate for rotation around center\n        # The painter rotates around (base_w/2, base_h/2), shifting the visual rect\n        y_offset = (base_h - base_w) / 2  # = (40 - 20) / 2 = 10\n        clamped_x = max(0, min(target_x, room_width - w))\n        return (clamped_x, y_offset, \"top\")\n    else:  # dist_bottom\n        # Rotated 270\u00b0, visual dimensions swap: w=base_h, h=base_w\n        w, h = base_h, base_w\n        # Same offset but inverted for bottom edge\n        y_offset = (base_h - base_w) / 2\n        clamped_x = max(0, min(target_x, room_width - w))\n        return (clamped_x, room_height - h + y_offset, \"bottom\")\n</replace>\n</edit>\n\nNow fix the room's external PortItem position - it needs to account for the same rotation offset:\n\n<edit file=\"src/satisfactory_planner/ui/items/room_item.py\">\n<search>\n    def _get_room_port_position(self, building: Building) -> tuple[float, float, float]:\n        \"\"\"Get room port position and angle based on PORT building position/rotation.\n\n        Returns (x, y, angle) for the room's external port (the PortItem on room edge).\n\n        Port angles follow the puzzle piece model:\n        - Output ports (tabs): half-circle curves OUTWARD from room\n        - Input ports (blanks): half-circle curves INWARD into room\n\n        The angle is where the curved part faces.\n        \"\"\"\n        w, h = building._get_rotated_display_size()\n        is_output = building.building_type == BuildingType.PORT_OUT\n\n        # Use building rotation to determine which edge it's on\n        # 0\u00b0 = left, 180\u00b0 = right, 90\u00b0 = top, 270\u00b0 = bottom\n        rotation = building.rotation\n\n        if rotation == 0:\n            # Left edge - port on left side of building\n            x = building.x\n            y = building.y + h / 2\n            # PORT_IN: blank faces right (into room), PORT_OUT: tab faces left (out)\n            angle = 0 if not is_output else 180\n        elif rotation == 180:\n            # Right edge - port on right side of building\n            x = building.x + w\n            y = building.y + h / 2\n            # PORT_IN: blank faces left (into room), PORT_OUT: tab faces right (out)\n            angle = 180 if not is_output else 0\n        elif rotation == 90:\n            # Top edge - port on top of building\n            x = building.x + w / 2\n            y = building.y\n            # PORT_IN: blank faces down (into room), PORT_OUT: tab faces up (out)\n            angle = 90 if not is_output else 270\n        else:  # rotation == 270\n            # Bottom edge - port on bottom of building\n            x = building.x + w / 2\n            y = building.y + h\n            # PORT_IN: blank faces up (into room), PORT_OUT: tab faces down (out)\n            angle = 270 if not is_output else 90\n\n        return (x, y, angle)\n</search>\n<replace>\n    def _get_room_port_position(self, building: Building) -> tuple[float, float, float]:\n        \"\"\"Get room port position and angle based on PORT building position/rotation.\n\n        Returns (x, y, angle) for the room's external port (the PortItem on room edge).\n\n        Port angles follow the puzzle piece model:\n        - Output ports (tabs): half-circle curves OUTWARD from room\n        - Input ports (blanks): half-circle curves INWARD into room\n\n        The angle is where the curved part faces.\n        \"\"\"\n        w, h = building._get_rotated_display_size()\n        base_w, base_h = building._get_display_size()\n        is_output = building.building_type == BuildingType.PORT_OUT\n\n        # Use building rotation to determine which edge it's on\n        # 0\u00b0 = left, 180\u00b0 = right, 90\u00b0 = top, 270\u00b0 = bottom\n        rotation = building.rotation\n\n        if rotation == 0:\n            # Left edge - port on left side of building\n            x = building.x\n            y = building.y + h / 2\n            # PORT_IN: blank faces right (into room), PORT_OUT: tab faces left (out)\n            angle = 0 if not is_output else 180\n        elif rotation == 180:\n            # Right edge - port on right side of building\n            x = building.x + w\n            y = building.y + h / 2\n            # PORT_IN: blank faces left (into room), PORT_OUT: tab faces right (out)\n            angle = 180 if not is_output else 0\n        elif rotation == 90:\n            # Top edge - port on top of building\n            # Compensate for rotation offset (same as snap_port_to_room_edge)\n            y_offset = (base_h - base_w) / 2\n            x = building.x + w / 2\n            y = building.y + y_offset  # Visual top after rotation\n            # PORT_IN: blank faces down (into room), PORT_OUT: tab faces up (out)\n            angle = 90 if not is_output else 270\n        else:  # rotation == 270\n            # Bottom edge - port on bottom of building\n            y_offset = (base_h - base_w) / 2\n            x = building.x + w / 2\n            y = building.y + h - y_offset  # Visual bottom after rotation\n            # PORT_IN: blank faces up (into room), PORT_OUT: tab faces down (out)\n            angle = 270 if not is_output else 90\n\n        return (x, y, angle)\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Fix PORT rotation offsets for snapping and room port positioning\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/core/models.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/models.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/room_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/room_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_70xn8uex\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_70xn8uex\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n77 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 46 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_70xn8uex\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.14s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_70xn8uex\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "738448352be1",
+          "message": "Committed: 2 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

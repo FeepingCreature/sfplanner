@@ -778,15 +778,14 @@ def snap_port_to_room_edge(
         # Rotated 90°, visual dimensions swap: w=base_h, h=base_w
         w, h = base_h, base_w
         # Offset to compensate for rotation around center
-        # Original center.y = base_h/2, rotated center.y = base_w/2
-        # Offset = base_w/2 - base_h/2 = (base_w - base_h) / 2
-        y_offset = (base_w - base_h) / 2
+        # The painter rotates around (base_w/2, base_h/2), shifting the visual rect
+        y_offset = (base_h - base_w) / 2  # = (40 - 20) / 2 = 10
         clamped_x = max(0, min(target_x, room_width - w))
         return (clamped_x, y_offset, "top")
     else:  # dist_bottom
         # Rotated 270°, visual dimensions swap: w=base_h, h=base_w
         w, h = base_h, base_w
-        # Same offset logic, but from bottom
-        y_offset = (base_w - base_h) / 2
+        # Same offset but inverted for bottom edge
+        y_offset = (base_h - base_w) / 2
         clamped_x = max(0, min(target_x, room_width - w))
-        return (clamped_x, room_height - h - y_offset, "bottom")
+        return (clamped_x, room_height - h + y_offset, "bottom")

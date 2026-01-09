@@ -223,6 +223,7 @@ class RoomItem(QGraphicsRectItem):
         The angle is where the curved part faces.
         """
         w, h = building._get_rotated_display_size()
+        base_w, base_h = building._get_display_size()
         is_output = building.building_type == BuildingType.PORT_OUT
 
         # Use building rotation to determine which edge it's on
@@ -243,14 +244,17 @@ class RoomItem(QGraphicsRectItem):
             angle = 180 if not is_output else 0
         elif rotation == 90:
             # Top edge - port on top of building
+            # Compensate for rotation offset (same as snap_port_to_room_edge)
+            y_offset = (base_h - base_w) / 2
             x = building.x + w / 2
-            y = building.y
+            y = building.y + y_offset  # Visual top after rotation
             # PORT_IN: blank faces down (into room), PORT_OUT: tab faces up (out)
             angle = 90 if not is_output else 270
         else:  # rotation == 270
             # Bottom edge - port on bottom of building
+            y_offset = (base_h - base_w) / 2
             x = building.x + w / 2
-            y = building.y + h
+            y = building.y + h - y_offset  # Visual bottom after rotation
             # PORT_IN: blank faces up (into room), PORT_OUT: tab faces down (out)
             angle = 270 if not is_output else 90
 
