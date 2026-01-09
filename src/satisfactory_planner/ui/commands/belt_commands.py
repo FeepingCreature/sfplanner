@@ -73,7 +73,9 @@ class SetBeltTierCommand(Command):
     canvas: FactoryCanvas
 
     def execute(self, document: Document) -> None:
+        logger.info(f"SetBeltTierCommand.execute: belt_id={self.belt_id}, scene_room_id={self.scene_room_id}, new_tier={self.new_tier}")
         scene = get_scene(document, self.scene_room_id)
+        logger.info(f"  scene type: {type(scene).__name__}, belts in scene: {list(scene.belts.keys())}")
         belt = scene.belts.get(self.belt_id)
         if not belt:
             logger.warning(f"SetBeltTierCommand.execute: belt {self.belt_id} not found")
@@ -81,6 +83,7 @@ class SetBeltTierCommand(Command):
         if belt.tier == self.new_tier:
             logger.warning(f"SetBeltTierCommand.execute: tier already set to {self.new_tier}")
             return
+        logger.info(f"  changing tier from {belt.tier} to {self.new_tier}")
         belt.tier = self.new_tier
         self.canvas.refresh_belt(self.belt_id, self.scene_room_id)
         self.canvas.notify_mutation()
