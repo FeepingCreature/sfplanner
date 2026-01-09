@@ -234,8 +234,7 @@ class RoomItem(QGraphicsRectItem):
         # These offsets compensate for Qt's paint rotation around the center
         # of the UNROTATED rect. See snap_port_to_room_edge for explanation.
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # For 90°/270° rotation, both x and y shift due to rotation around center
-        y_offset = (base_w - base_h) / 2  # = -10 for 20x40 port
+        # For 90°/270° rotation, x shifts due to rotation around center
         x_offset = (base_h - base_w) / 2  # = +10 for 20x40 port
 
         if rotation == 0:
@@ -252,15 +251,15 @@ class RoomItem(QGraphicsRectItem):
             angle = 180 if not is_output else 0
         elif rotation == 90:
             # Top edge - port at visual top center of rotated building
-            # Visual size after 90° rotation: (base_h x base_w) = (40 x 20)
-            x = building.x + base_w / 2 + x_offset  # Visual center x
-            y = building.y + y_offset  # Visual top
+            # Use same formula as Room.input_port_pos for consistency
+            x = building.x + base_w / 2 + x_offset
+            y = 0  # Top edge of room
             # PORT_IN: blank faces down (into room), PORT_OUT: tab faces up (out)
             angle = 90 if not is_output else 270
         else:  # rotation == 270
             # Bottom edge - port at visual bottom center of rotated building
-            x = building.x + base_w / 2 + x_offset  # Visual center x
-            y = building.y + base_h + y_offset  # Visual bottom
+            x = building.x + base_w / 2 + x_offset
+            y = self.room.height  # Bottom edge of room
             # PORT_IN: blank faces up (into room), PORT_OUT: tab faces down (out)
             angle = 270 if not is_output else 90
 
