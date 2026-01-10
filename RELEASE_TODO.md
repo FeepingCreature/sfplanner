@@ -3,7 +3,7 @@
 ## Critical Bugs
 
 - [ ] **Room deletion doesn't clean up connected belts** - When deleting a room, belts leading to its ports are not removed
-- [ ] **Flow rates disappear after room operations** - Flow rates stop displaying after room ops until toggled off/on
+- [x] **Flow rates disappear after room operations** - Flow rates stop displaying after room ops until toggled off/on
 - [ ] **Belt properties panel broken** - Belts with flow show "Item (no item)" and "Current Flow: -"
 - [ ] **Room copypaste cannot be undone** - it doesn't even show up on the context stack.
 

@@ -511,17 +511,18 @@ class PropertiesPanel(QWidget):
                     # Try to infer from source building's recipe
                     scene = self._get_scene()
                     source = scene.buildings.get(belt.source_building_id)
-                    if source and source.recipe_id:
-                        recipe = self.document.recipes.get(source.recipe_id)
-                        if recipe and recipe.outputs:
-                            item_display = (
-                                recipe.outputs[belt.source_port_index].item_id
-                                if belt.source_port_index < len(recipe.outputs)
-                                else None
-                            )
-                    elif source and source.item_id:
-                        # Source/Sink/Miner use item_id directly
-                        item_display = source.item_id
+                    if source:
+                        if self._is_source_type(source.building_type):
+                            # Source/Sink/Miner store item_id in recipe_id field
+                            item_display = source.recipe_id or source.item_id
+                        elif source.recipe_id:
+                            recipe = self.document.recipes.get(source.recipe_id)
+                            if recipe and recipe.outputs:
+                                item_display = (
+                                    recipe.outputs[belt.source_port_index].item_id
+                                    if belt.source_port_index < len(recipe.outputs)
+                                    else None
+                                )
                 self.item_label.setText(item_display or "(unknown)")
 
                 # Get current flow from flow solver
