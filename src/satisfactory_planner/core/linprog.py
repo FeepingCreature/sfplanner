@@ -238,7 +238,7 @@ def _pivot_in_variable(a, b, basis, pivot_row, pivot_col, num):
     basis[pivot_row] = pivot_col
 
 
-def _reduce_c_row(c, a, b, basis, num):
+def _reduce_c_row(c, a, basis, num):
     """Reduce the objective function coefficients for basis variables.
     
     For each basis variable, subtract its row from c to make c[basis_var] = 0.
@@ -254,18 +254,9 @@ def _reduce_c_row(c, a, b, basis, num):
     return c_reduced
 
 
-def simplex_canonical(a, b, c, basis, num, verbose=False, do_coerce=True, c_is_reduced=False):
-    """Simplex method in canonical form, when initial basis is fully known.
-    
-    Args:
-        c_is_reduced: If True, skip diagonalizing c row (already done by caller)
-    """
-    if do_coerce:
-        a = num.coerce_mtx(a)
-        b = num.coerce_vec(b)
-        c = num.coerce_vec(c)
-
-    solver = SimplexSolver(a, b, c, basis, numclass=num, clean_c_row=not c_is_reduced)
+def _simplex_with_basis(a, b, c, basis, num, verbose=False):
+    """Internal simplex solver when basis is known and c is already reduced."""
+    solver = SimplexSolver(a, b, c, basis, numclass=num, clean_c_row=False)
     if verbose:
         print("############ Regular simplex:#############")
         solver.show()
@@ -279,18 +270,15 @@ def simplex_canonical(a, b, c, basis, num, verbose=False, do_coerce=True, c_is_r
     return solver.resolution, solver.vertex()
 
 
-def simplex_canonical_m(a, b, c, basis, num, verbose=False, do_coerce=True):
+def _simplex_canonical_m(a, b, c, basis, num, verbose=False):
     """Simplex method in canonical form, when initial basis is not fully known."""
-    if do_coerce:
-        a = num.coerce_mtx(a)
-        b = num.coerce_vec(b)
-        c = num.coerce_vec(c)
-
     n_artificial = sum(int(bi is None) for bi in basis)
     n = len(c)
 
     if n_artificial == 0:
-        return simplex_canonical(a, b, c, basis, num, verbose=verbose, do_coerce=False)
+        # All basis variables known - reduce c and solve directly
+        c_reduced = _reduce_c_row(c, a, basis, num)
+        return _simplex_with_basis(a, b, c_reduced, basis, num, verbose=verbose)
 
     zeros = [num.zero()] * n_artificial
     a = [a_j + zeros for a_j in a]
@@ -376,11 +364,9 @@ def simplex_canonical_m(a, b, c, basis, num, verbose=False, do_coerce=True):
         return RESOLUTION_SOLVED, [num.zero()] * n
     
     # Reduce c for the current basis and continue optimizing
-    c_reduced = _reduce_c_row(c, new_a, new_b, new_basis, num)
+    c_reduced = _reduce_c_row(c, new_a, new_basis, num)
     
-    return simplex_canonical(
-        new_a, new_b, c_reduced, new_basis, num=num, verbose=verbose, do_coerce=False, c_is_reduced=True
-    )
+    return _simplex_with_basis(new_a, new_b, c_reduced, new_basis, num, verbose=verbose)
 
 
 def linsolve(
@@ -479,14 +465,18 @@ def linsolve(
         b_extended.append(bi)
         basis.append(None)
 
-    resolution, solution = simplex_canonical_m(
+    if do_coerce:
+        a_extended = num.coerce_mtx(a_extended)
+        b_extended = num.coerce_vec(b_extended)
+        c_nonneg = num.coerce_vec(c_nonneg)
+
+    resolution, solution = _simplex_canonical_m(
         a_extended,
         b_extended,
         c_nonneg + [num.zero()] * num_inequalities,
         basis,
         num=num,
         verbose=verbose,
-        do_coerce=do_coerce,
     )
 
     if resolution == RESOLUTION_SOLVED:
