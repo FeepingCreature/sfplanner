@@ -34,6 +34,24 @@
       "streaming": false,
       "actual_cost": 0.00177,
       "generation_id": "gen-1768077660-kEgTPcD4EUkc6e8JtSji"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768077690066.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768077690066.json",
+      "timestamp": 1768077690.066558,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.15521875,
+      "generation_id": "gen-1768077690-2hx9eSWRyoUp7TH2I5Sz"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768077697116.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768077697116.json",
+      "timestamp": 1768077697.1165342,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.018974,
+      "generation_id": "gen-1768077699-AIL6IvoshaS4b09rPNSq"
     }
   ],
   "messages": [
@@ -112,6 +130,44 @@
           "success": true
         }
       ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 7265ef14",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "I'm sorry, something is very broken on my end. Can you try to hello world call that tool please?"
+    },
+    {
+      "role": "assistant",
+      "content": "I'll call the `web_query` tool with a simple test:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"url\": \"https://example.com\", \"question\": \"What is this website about?\"}",
+            "name": "web_query"
+          },
+          "id": "toolu_vrtx_01GwWGdwsGQh9BT6wFw1KW9Y",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01GwWGdwsGQh9BT6wFw1KW9Y",
+      "content": "{\"error\": \"Tool web_query is not approved. Cannot execute.\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `web_query`\n```json\n{\n  \"question\": \"What is this website about?\",\n  \"url\": \"https://example.com\"\n}\n```\n**Result:**\n```json\n{\n  \"error\": \"Tool web_query is not approved. Cannot execute.\"\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Ah, the tool needs to be approved first. That's expected behavior - custom tools require user approval before they can execute. The error message \"Tool web_query is not approved. Cannot execute.\" means the tool was created correctly, but you need to approve it on your end.\n\nThe approval process should prompt you to review the tool's code and approve it. Once approved, its hash is stored in `.forge/approved_tools.json` and it can be executed.\n\nIs there something specific that seems broken beyond the approval step? Or were you expecting the approval prompt to appear and it didn't?"
     }
   ]
 }
