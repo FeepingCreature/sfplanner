@@ -97,9 +97,7 @@ class TestFlowSolver:
         # This tests that item types flow through multiple logistics nodes
 
         # Source: Miner producing Iron Ore
-        miner = Building(
-            id="miner", building_type=BuildingType.MINER, x=0, y=0, recipe_id="iron_ore"
-        )
+        miner = Building(id="miner", building_type=BuildingType.MINER, x=0, y=0, item_id="Iron Ore")
         doc.add_building(miner)
 
         # Chain of splitters
@@ -110,10 +108,10 @@ class TestFlowSolver:
 
         # Two smelters
         smelter1 = Building(
-            id="smelt1", building_type=BuildingType.SMELTER, x=300, y=-50, recipe_id="iron_ingot"
+            id="smelt1", building_type=BuildingType.SMELTER, x=300, y=-50, recipe_id="Iron Ingot"
         )
         smelter2 = Building(
-            id="smelt2", building_type=BuildingType.SMELTER, x=300, y=50, recipe_id="iron_ingot"
+            id="smelt2", building_type=BuildingType.SMELTER, x=300, y=50, recipe_id="Iron Ingot"
         )
         doc.add_building(smelter1)
         doc.add_building(smelter2)
@@ -126,7 +124,7 @@ class TestFlowSolver:
 
         # Sink
         sink = Building(
-            id="sink", building_type=BuildingType.SINK, x=600, y=0, recipe_id="iron_ingot"
+            id="sink", building_type=BuildingType.SINK, x=600, y=0, item_id="Iron Ingot"
         )
         doc.add_building(sink)
 
@@ -247,7 +245,7 @@ class TestFlowSolver:
             building_type=BuildingType.MINER,
             x=0,
             y=0,
-            recipe_id="iron_ore",
+            item_id="Iron Ore",
             tier=2,  # 120/min
         )
         doc.add_building(miner)
@@ -262,13 +260,13 @@ class TestFlowSolver:
 
         # 3 smelters (30/min input each)
         smelter1 = Building(
-            id="smelt1", building_type=BuildingType.SMELTER, x=200, y=-100, recipe_id="iron_ingot"
+            id="smelt1", building_type=BuildingType.SMELTER, x=200, y=-100, recipe_id="Iron Ingot"
         )
         smelter2 = Building(
-            id="smelt2", building_type=BuildingType.SMELTER, x=300, y=-100, recipe_id="iron_ingot"
+            id="smelt2", building_type=BuildingType.SMELTER, x=300, y=-100, recipe_id="Iron Ingot"
         )
         smelter3 = Building(
-            id="smelt3", building_type=BuildingType.SMELTER, x=400, y=-100, recipe_id="iron_ingot"
+            id="smelt3", building_type=BuildingType.SMELTER, x=400, y=-100, recipe_id="Iron Ingot"
         )
         doc.add_building(smelter1)
         doc.add_building(smelter2)
@@ -282,7 +280,7 @@ class TestFlowSolver:
 
         # Sink
         sink = Building(
-            id="sink", building_type=BuildingType.SINK, x=700, y=0, recipe_id="iron_ingot"
+            id="sink", building_type=BuildingType.SINK, x=700, y=0, item_id="Iron Ingot"
         )
         doc.add_building(sink)
 
@@ -451,7 +449,7 @@ class TestFlowSolver:
             building_type=BuildingType.SMELTER,
             x=0,
             y=100,
-            recipe_id="iron_ingot",
+            recipe_id="Iron Ingot",
         )
         doc.add_building(smelter)
 
@@ -549,7 +547,7 @@ class TestFlowSolver:
             building_type=BuildingType.MINER,
             x=0,
             y=0,
-            recipe_id="iron_ore",
+            item_id="Iron Ore",
             tier=2,  # 120/min
         )
         doc.add_building(miner)
@@ -560,7 +558,7 @@ class TestFlowSolver:
             building_type=BuildingType.SINK,
             x=200,
             y=0,
-            recipe_id="iron_ore",
+            item_id="Iron Ore",
         )
         doc.add_building(sink)
 

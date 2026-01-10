@@ -31,7 +31,7 @@ from satisfactory_planner.core import (
     RoomPlacement,
 )
 from satisfactory_planner.core.item_key import ItemKey
-from satisfactory_planner.core.persistence import load_all_recipes
+from satisfactory_planner.core.persistence import load_all_recipes, load_items
 from satisfactory_planner.ui.commands import (
     CommandStack,
     DelinkRoomCommand,
@@ -294,18 +294,22 @@ class PropertiesPanel(QWidget):
 
     def _update_recipe_combo(self, building_type: BuildingType | None = None) -> None:
         """Update recipe combo with available recipes filtered by building type."""
-        # Load all recipes (base game + user) into the document
+        # Load all recipes (base game + user), merging with document recipes
         all_recipes = load_all_recipes()
-        for recipe_id, recipe in all_recipes.items():
-            if recipe_id not in self.document.recipes:
-                self.document.recipes[recipe_id] = recipe
+        # Document recipes override base/user recipes (for embedded custom recipes)
+        merged_recipes = {**all_recipes, **self.document.recipes}
 
         self.recipe_combo.clear()
         self.recipe_combo.addItem("(No recipe)", None)
-        for recipe_id, recipe in self.document.recipes.items():
-            # Filter by building type if specified
-            if building_type is None or recipe.building_type == building_type:
+
+        # Use a set to track added recipe IDs and avoid duplicates
+        added_ids: set[str] = set()
+        for recipe_id, recipe in merged_recipes.items():
+            # Filter by building type if specified, and skip duplicates
+            matches_type = building_type is None or recipe.building_type == building_type
+            if matches_type and recipe_id not in added_ids:
                 self.recipe_combo.addItem(recipe.name, recipe_id)
+                added_ids.add(recipe_id)
 
     def set_document(
         self, document: Document, command_stack: CommandStack, canvas: FactoryCanvas
@@ -686,39 +690,18 @@ class PropertiesPanel(QWidget):
         self.item_combo.clear()
         self.item_combo.addItem("(No item)", None)
 
-        # Get items from recipes
-        items: set[str] = set()
-        for recipe in self.document.recipes.values():
-            for inp in recipe.inputs:
-                items.add(inp.item_id)
-            for out in recipe.outputs:
-                items.add(out.item_id)
+        # Load items from game_data.json
+        items = load_items()
 
-        # For miners, filter to ores only
+        # For miners, filter to non-fluid items (ores, coal, etc.)
         if building_type == BuildingType.MINER:
-            ore_items = [
-                i
-                for i in sorted(items)
-                if "Ore" in i
-                or i
-                in (
-                    "Coal",
-                    "Sulfur",
-                    "Bauxite",
-                    "Uranium",
-                    "Raw Quartz",
-                    "Caterium Ore",
-                    "Limestone",
-                    "Copper Ore",
-                    "Iron Ore",
-                )
-            ]
-            for item_id in ore_items:
-                self.item_combo.addItem(item_id, item_id)
+            for item_id, name, is_fluid in items:
+                if not is_fluid:
+                    self.item_combo.addItem(name, item_id)
         else:
             # Source/Sink can use any item
-            for item_id in sorted(items):
-                self.item_combo.addItem(item_id, item_id)
+            for item_id, name, _is_fluid in items:
+                self.item_combo.addItem(name, item_id)
 
     def _make_item_key(self, element_id: str) -> ItemKey:
         """Create a ItemKey for an element in the current selection context."""

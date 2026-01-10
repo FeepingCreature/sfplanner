@@ -72,23 +72,49 @@ def dict_to_recipe(data: dict[str, Any]) -> Recipe:
     )
 
 
-def load_base_recipes() -> dict[RecipeId, Recipe]:
-    """Load base game recipes from game_data.json."""
+def _load_game_data() -> dict[str, Any]:
+    """Load and cache game_data.json."""
     import importlib.resources
 
     try:
-        # Load from package data
         files = importlib.resources.files("satisfactory_planner.data")
         game_data_file = files.joinpath("game_data.json")
-        data = json.loads(game_data_file.read_text())
+        result: dict[str, Any] = json.loads(game_data_file.read_text())
+        return result
+    except (json.JSONDecodeError, FileNotFoundError):
+        return {}
 
+
+def load_base_recipes() -> dict[RecipeId, Recipe]:
+    """Load base game recipes from game_data.json."""
+    try:
+        data = _load_game_data()
         recipes = {}
         for recipe_data in data.get("recipes", []):
             recipe = dict_to_recipe(recipe_data)
             recipes[recipe.id] = recipe
         return recipes
-    except (json.JSONDecodeError, KeyError, TypeError, FileNotFoundError):
+    except (KeyError, TypeError):
         return {}
+
+
+def load_items() -> list[tuple[ItemId, str, bool]]:
+    """Load items from game_data.json.
+
+    Returns:
+        List of (item_id, display_name, is_fluid) tuples.
+    """
+    try:
+        data = _load_game_data()
+        items = []
+        for item_data in data.get("items", []):
+            item_id = ItemId(item_data["id"])
+            name = item_data.get("name", item_data["id"])
+            is_fluid = item_data.get("is_fluid", False)
+            items.append((item_id, name, is_fluid))
+        return items
+    except (KeyError, TypeError):
+        return []
 
 
 def load_user_recipes() -> dict[RecipeId, Recipe]:
