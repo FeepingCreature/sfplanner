@@ -321,7 +321,8 @@ class BuildingItem(QGraphicsRectItem):
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, name)
 
         # Draw efficiency underlay if enabled (behind selection)
-        if self._show_efficiency and self._efficiency_value is not None:
+        # Check canvas toggle, not internal flag
+        if self.canvas.show_efficiency and self._efficiency_value is not None:
             painter.save()
             if self.rotation_angle != 0:
                 painter.translate(w / 2, h / 2)

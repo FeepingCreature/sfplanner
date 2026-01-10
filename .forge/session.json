@@ -1,5 +1,6 @@
 {
   "active_files": [
+    "src/satisfactory_planner/ui/items/building_item.py",
     "RELEASE_TODO.md",
     "src/satisfactory_planner/ui/items/belt_item.py",
     "src/satisfactory_planner/ui/canvas/visual_sync_manager.py",
@@ -150,6 +151,42 @@
       "streaming": true,
       "actual_cost": 0.0403075,
       "generation_id": "gen-1768072466-AVdp095X8N4WsfXrWsWZ"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768072539975.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768072539975.json",
+      "timestamp": 1768072539.9758122,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.15014,
+      "generation_id": "gen-1768072540-BCeRXPQI1vCVgBAFWqnG"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768072546313.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768072546313.json",
+      "timestamp": 1768072546.313586,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.04711,
+      "generation_id": "gen-1768072546-iZPTqOrdiSUgCqt9O0WK"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768072555852.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768072555852.json",
+      "timestamp": 1768072555.853562,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06671275,
+      "generation_id": "gen-1768072556-rfO3iZPfpd4WRDXkUjxl"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768072566569.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768072566569.json",
+      "timestamp": 1768072566.570379,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.07480675,
+      "generation_id": "gen-1768072566-6ozjwzkryoLHI2A1CSEZ"
     }
   ],
   "messages": [
@@ -391,6 +428,122 @@
         },
         {
           "commit": "47e778ea10f0",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: cb1aebbd",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Perfect! Now there's a super-strange issue: the efficiency toggle does nothing, and it's all hooked to the rates toggle."
+    },
+    {
+      "role": "assistant",
+      "content": "Let me check how efficiency is displayed in building items - I suspect it's also checking `show_flow_rate` instead of `show_efficiency`.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"show_efficiency|_efficiency|duty_cycle\", \"file\": \"src/satisfactory_planner/ui/items/building_item.py\", \"max_matches\": 15}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01A8YiKGH23M56krs2Ak7YPx",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01A8YiKGH23M56krs2Ak7YPx",
+      "content": "{\"message\": \"Found 15 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:62 \\u2500\\u2500\\n      59 |         self._multi_drag_offsets: dict[str, QPointF] = {}\\n      60 | \\n      61 |         # Efficiency overlay state\\n>>>   62 |         self._show_efficiency = False\\n      63 |         self._efficiency_value: float | None = None  # 0.0 - 1.0\\n      64 |         self._is_starved = False\\n      65 |         self._is_blocked = False\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:63 \\u2500\\u2500\\n      60 | \\n      61 |         # Efficiency overlay state\\n      62 |         self._show_efficiency = False\\n>>>   63 |         self._efficiency_value: float | None = None  # 0.0 - 1.0\\n      64 |         self._is_starved = False\\n      65 |         self._is_blocked = False\\n      66 |         self._placement_id: str | None = None  # Set when building is inside a room placement\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:305 \\u2500\\u2500\\n     302 |             )\\n     303 | \\n     304 |             # Load factor (efficiency) at bottom\\n>>>  305 |             if self._efficiency_value is not None:\\n     306 |                 pct = self._efficiency_value * 100\\n     307 |                 if pct >= 99.9:\\n     308 |                     eff_text = \\\"\\u2713 100%\\\"\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:306 \\u2500\\u2500\\n     303 | \\n     304 |             # Load factor (efficiency) at bottom\\n     305 |             if self._efficiency_value is not None:\\n>>>  306 |                 pct = self._efficiency_value * 100\\n     307 |                 if pct >= 99.9:\\n     308 |                     eff_text = \\\"\\u2713 100%\\\"\\n     309 |                     eff_color = QColor(100, 255, 100)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:324 \\u2500\\u2500\\n     321 |             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, name)\\n     322 | \\n     323 |         # Draw efficiency underlay if enabled (behind selection)\\n>>>  324 |         if self._show_efficiency and self._efficiency_value is not None:\\n     325 |             painter.save()\\n     326 |             if self.rotation_angle != 0:\\n     327 |                 painter.translate(w / 2, h / 2)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:332 \\u2500\\u2500\\n     329 |                 painter.translate(-w / 2, -h / 2)\\n     330 | \\n     331 |             # Color based on efficiency: green (100%) -> yellow (50%) -> red (0%)\\n>>>  332 |             eff = self._efficiency_value\\n     333 |             if eff >= 0.99:\\n     334 |                 eff_color = QColor(80, 255, 80, 180)  # Bright green\\n     335 |             elif eff >= 0.5:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:476 \\u2500\\u2500\\n     473 |         \\\"\\\"\\\"Set the scene this building belongs to.\\\"\\\"\\\"\\n     474 |         self._scene = scene\\n     475 | \\n>>>  476 |     def set_show_efficiency(self, show: bool) -> None:\\n     477 |         \\\"\\\"\\\"Toggle efficiency overlay display.\\\"\\\"\\\"\\n     478 |         self._show_efficiency = show\\n     479 |         if show:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:478 \\u2500\\u2500\\n     475 | \\n     476 |     def set_show_efficiency(self, show: bool) -> None:\\n     477 |         \\\"\\\"\\\"Toggle efficiency overlay display.\\\"\\\"\\\"\\n>>>  478 |         self._show_efficiency = show\\n     479 |         if show:\\n     480 |             self._update_efficiency_from_solver()\\n     481 |         self.update()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:480 \\u2500\\u2500\\n     477 |         \\\"\\\"\\\"Toggle efficiency overlay display.\\\"\\\"\\\"\\n     478 |         self._show_efficiency = show\\n     479 |         if show:\\n>>>  480 |             self._update_efficiency_from_solver()\\n     481 |         self.update()\\n     482 | \\n     483 |     def set_efficiency(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:483 \\u2500\\u2500\\n     480 |             self._update_efficiency_from_solver()\\n     481 |         self.update()\\n     482 | \\n>>>  483 |     def set_efficiency(\\n     484 |         self, value: float | None, starved: bool = False, blocked: bool = False\\n     485 |     ) -> None:\\n     486 |         \\\"\\\"\\\"Set the efficiency value for overlay display.\\\"\\\"\\\"\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:487 \\u2500\\u2500\\n     484 |         self, value: float | None, starved: bool = False, blocked: bool = False\\n     485 |     ) -> None:\\n     486 |         \\\"\\\"\\\"Set the efficiency value for overlay display.\\\"\\\"\\\"\\n>>>  487 |         self._efficiency_value = value\\n     488 |         self._is_starved = starved\\n     489 |         self._is_blocked = blocked\\n     490 |         self.update()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:501 \\u2500\\u2500\\n     498 |         \\\"\\\"\\\"Set the placement ID for buildings inside room placements.\\\"\\\"\\\"\\n     499 |         self._placement_id = placement_id\\n     500 | \\n>>>  501 |     def _update_efficiency_from_solver(self) -> None:\\n     502 |         \\\"\\\"\\\"Fetch efficiency from flow solver.\\\"\\\"\\\"\\n     503 |         main_window = self.canvas.window()\\n     504 |         if not main_window or not main_window.current_tab:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:509 \\u2500\\u2500\\n     506 | \\n     507 |         flow_solver = main_window.current_tab.flow_solver\\n     508 |         if flow_solver:\\n>>>  509 |             eff = flow_solver.get_efficiency(self.item_key)\\n     510 |             if eff:\\n     511 |                 self.set_efficiency(eff.duty_cycle)\\n     512 |             else:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:511 \\u2500\\u2500\\n     508 |         if flow_solver:\\n     509 |             eff = flow_solver.get_efficiency(self.item_key)\\n     510 |             if eff:\\n>>>  511 |                 self.set_efficiency(eff.duty_cycle)\\n     512 |             else:\\n     513 |                 self.set_efficiency(None)\\n     514 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:513 \\u2500\\u2500\\n     510 |             if eff:\\n     511 |                 self.set_efficiency(eff.duty_cycle)\\n     512 |             else:\\n>>>  513 |                 self.set_efficiency(None)\\n     514 | \", \"success\": true, \"total_matches\": 15}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"file\": \"src/satisfactory_planner/ui/items/building_item.py\",\n  \"max_matches\": 15,\n  \"pattern\": \"show_efficiency|_efficiency|duty_cycle\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 15 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:62 \\u2500\\u2500\\n      59 |         self._multi_drag_offsets: dict[str, QPointF] = {}\\n      60 | \\n      61 |         # Efficiency overlay state\\n>>>   62 |         self._show_efficiency = False\\n      63 |         self._efficiency_value: float | None = None  # 0.0 - 1.0\\n      64 |         self._is_starved = False\\n      65 |         self._is_blocked = False\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:63 \\u2500\\u2500\\n      60 | \\n      61 |         # Efficiency overlay state\\n      62 |         self._show_efficiency = False\\n>>>   63 |         self._efficiency_value: float | None = None  # 0.0 - 1.0\\n      64 |         self._is_starved = False\\n      65 |         self._is_blocked = False\\n      66 |         self._placement_id: str | None = None  # Set when building is inside a room placement\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:305 \\u2500\\u2500\\n     302 |             )\\n     303 | \\n     304 |             # Load factor (efficiency) at bottom\\n>>>  305 |             if self._efficiency_value is not None:\\n     306 |                 pct = self._efficiency_value * 100\\n     307 |                 if pct >= 99.9:\\n     308 |                     eff_text = \\\"\\u2713 100%\\\"\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:306 \\u2500\\u2500\\n     303 | \\n     304 |             # Load factor (efficiency) at bottom\\n     305 |             if self._efficiency_value is not None:\\n>>>  306 |                 pct = self._efficiency_value * 100\\n     307 |                 if pct >= 99.9:\\n     308 |                     eff_text = \\\"\\u2713 100%\\\"\\n     309 |                     eff_color = QColor(100, 255, 100)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:324 \\u2500\\u2500\\n     321 |             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, name)\\n     322 | \\n     323 |         # Draw efficiency underlay if enabled (behind selection)\\n>>>  324 |         if self._show_efficiency and self._efficiency_value is not None:\\n     325 |             painter.save()\\n     326 |             if self.rotation_angle != 0:\\n     327 |                 painter.translate(w / 2, h / 2)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:332 \\u2500\\u2500\\n     329 |                 painter.translate(-w / 2, -h / 2)\\n     330 | \\n     331 |             # Color based on efficiency: green (100%) -> yellow (50%) -> red (0%)\\n>>>  332 |             eff = self._efficiency_value\\n     333 |             if eff >= 0.99:\\n     334 |                 eff_color = QColor(80, 255, 80, 180)  # Bright green\\n     335 |             elif eff >= 0.5:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:476 \\u2500\\u2500\\n     473 |         \\\"\\\"\\\"Set the scene this building belongs to.\\\"\\\"\\\"\\n     474 |         self._scene = scene\\n     475 | \\n>>>  476 |     def set_show_efficiency(self, show: bool) -> None:\\n     477 |         \\\"\\\"\\\"Toggle efficiency overlay display.\\\"\\\"\\\"\\n     478 |         self._show_efficiency = show\\n     479 |         if show:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:478 \\u2500\\u2500\\n     475 | \\n     476 |     def set_show_efficiency(self, show: bool) -> None:\\n     477 |         \\\"\\\"\\\"Toggle efficiency overlay display.\\\"\\\"\\\"\\n>>>  478 |         self._show_efficiency = show\\n     479 |         if show:\\n     480 |             self._update_efficiency_from_solver()\\n     481 |         self.update()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:480 \\u2500\\u2500\\n     477 |         \\\"\\\"\\\"Toggle efficiency overlay display.\\\"\\\"\\\"\\n     478 |         self._show_efficiency = show\\n     479 |         if show:\\n>>>  480 |             self._update_efficiency_from_solver()\\n     481 |         self.update()\\n     482 | \\n     483 |     def set_efficiency(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:483 \\u2500\\u2500\\n     480 |             self._update_efficiency_from_solver()\\n     481 |         self.update()\\n     482 | \\n>>>  483 |     def set_efficiency(\\n     484 |         self, value: float | None, starved: bool = False, blocked: bool = False\\n     485 |     ) -> None:\\n     486 |         \\\"\\\"\\\"Set the efficiency value for overlay display.\\\"\\\"\\\"\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:487 \\u2500\\u2500\\n     484 |         self, value: float | None, starved: bool = False, blocked: bool = False\\n     485 |     ) -> None:\\n     486 |         \\\"\\\"\\\"Set the efficiency value for overlay display.\\\"\\\"\\\"\\n>>>  487 |         self._efficiency_value = value\\n     488 |         self._is_starved = starved\\n     489 |         self._is_blocked = blocked\\n     490 |         self.update()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:501 \\u2500\\u2500\\n     498 |         \\\"\\\"\\\"Set the placement ID for buildings inside room placements.\\\"\\\"\\\"\\n     499 |         self._placement_id = placement_id\\n     500 | \\n>>>  501 |     def _update_efficiency_from_solver(self) -> None:\\n     502 |         \\\"\\\"\\\"Fetch efficiency from flow solver.\\\"\\\"\\\"\\n     503 |         main_window = self.canvas.window()\\n     504 |         if not main_window or not main_window.current_tab:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:509 \\u2500\\u2500\\n     506 | \\n     507 |         flow_solver = main_window.current_tab.flow_solver\\n     508 |         if flow_solver:\\n>>>  509 |             eff = flow_solver.get_efficiency(self.item_key)\\n     510 |             if eff:\\n     511 |                 self.set_efficiency(eff.duty_cycle)\\n     512 |             else:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:511 \\u2500\\u2500\\n     508 |         if flow_solver:\\n     509 |             eff = flow_solver.get_efficiency(self.item_key)\\n     510 |             if eff:\\n>>>  511 |                 self.set_efficiency(eff.duty_cycle)\\n     512 |             else:\\n     513 |                 self.set_efficiency(None)\\n     514 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:513 \\u2500\\u2500\\n     510 |             if eff:\\n     511 |                 self.set_efficiency(eff.duty_cycle)\\n     512 |             else:\\n>>>  513 |                 self.set_efficiency(None)\\n     514 | \",\n  \"success\": true,\n  \"total_matches\": 15\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see - the building item has its own `_show_efficiency` flag that gets set via `set_show_efficiency()`. Now let me check `update_flow_visualization` in the visual sync manager to see if it's actually calling `set_show_efficiency` on building items:\n\nLooking at `visual_sync_manager.py` lines 232-265, I see the problem! The `update_flow_visualization` method calls `building_item.set_efficiency(eff.duty_cycle)` but never calls `building_item.set_show_efficiency()`. The building item's `_show_efficiency` flag is never being set based on the canvas toggle.\n\nThe fix should mirror what we did for belts - have the building item check `canvas.show_efficiency` in its `paint()` method instead of relying on its own internal flag:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/items/building_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01QD2auxTUzghEStvo4cvNi1",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01QD2auxTUzghEStvo4cvNi1",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/items/building_item.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I see the issue clearly. Looking at the code:\n\n1. `building_item._show_efficiency` is a local flag that controls whether the efficiency underlay is drawn (line 324)\n2. `update_flow_visualization()` in visual_sync_manager.py calls `building_item.set_efficiency(eff.duty_cycle)` but never sets `_show_efficiency`\n3. The building item never checks `canvas.show_efficiency` - it uses its own internal `_show_efficiency` flag\n\nThe fix should be consistent with belts - have the building item check `canvas.show_efficiency` in its `paint()` method:\n\n<edit file=\"src/satisfactory_planner/ui/items/building_item.py\">\n<search>\n        # Draw efficiency underlay if enabled (behind selection)\n        if self._show_efficiency and self._efficiency_value is not None:\n</search>\n<replace>\n        # Draw efficiency underlay if enabled (behind selection)\n        # Check canvas toggle, not internal flag\n        if self.canvas.show_efficiency and self._efficiency_value is not None:\n</replace>\n</edit>\n\nNow I need to make sure `canvas.show_efficiency` property exists. Let me check:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"show_efficiency\", \"file\": \"src/satisfactory_planner/ui/canvas/factory_canvas.py\"}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01HrNsptrVU9srGVJnyq7d2j",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/building_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/building_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01HrNsptrVU9srGVJnyq7d2j",
+      "content": "{\"message\": \"Found 5 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:118 \\u2500\\u2500\\n     115 | \\n     116 |         # Rendering settings\\n     117 |         self._show_flow_rate: bool = False\\n>>>  118 |         self._show_efficiency: bool = False\\n     119 | \\n     120 |         # Initialize managers BEFORE _setup_scene (which uses _selection)\\n     121 |         from satisfactory_planner.ui.canvas.belt_connector import BeltConnector\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:905 \\u2500\\u2500\\n     902 |     def show_flow_rate(self) -> bool:\\n     903 |         return self._show_flow_rate\\n     904 | \\n>>>  905 |     def set_show_efficiency(self, show: bool) -> None:\\n     906 |         self._show_efficiency = show\\n     907 | \\n     908 |     @property\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:906 \\u2500\\u2500\\n     903 |         return self._show_flow_rate\\n     904 | \\n     905 |     def set_show_efficiency(self, show: bool) -> None:\\n>>>  906 |         self._show_efficiency = show\\n     907 | \\n     908 |     @property\\n     909 |     def show_efficiency(self) -> bool:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:909 \\u2500\\u2500\\n     906 |         self._show_efficiency = show\\n     907 | \\n     908 |     @property\\n>>>  909 |     def show_efficiency(self) -> bool:\\n     910 |         return self._show_efficiency\\n     911 | \\n     912 |     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:910 \\u2500\\u2500\\n     907 | \\n     908 |     @property\\n     909 |     def show_efficiency(self) -> bool:\\n>>>  910 |         return self._show_efficiency\\n     911 | \\n     912 |     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]\\n     913 |         \\\"\\\"\\\"Draw the grid background.\\\"\\\"\\\"\", \"success\": true, \"total_matches\": 5}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"file\": \"src/satisfactory_planner/ui/canvas/factory_canvas.py\",\n  \"pattern\": \"show_efficiency\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 5 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:118 \\u2500\\u2500\\n     115 | \\n     116 |         # Rendering settings\\n     117 |         self._show_flow_rate: bool = False\\n>>>  118 |         self._show_efficiency: bool = False\\n     119 | \\n     120 |         # Initialize managers BEFORE _setup_scene (which uses _selection)\\n     121 |         from satisfactory_planner.ui.canvas.belt_connector import BeltConnector\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:905 \\u2500\\u2500\\n     902 |     def show_flow_rate(self) -> bool:\\n     903 |         return self._show_flow_rate\\n     904 | \\n>>>  905 |     def set_show_efficiency(self, show: bool) -> None:\\n     906 |         self._show_efficiency = show\\n     907 | \\n     908 |     @property\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:906 \\u2500\\u2500\\n     903 |         return self._show_flow_rate\\n     904 | \\n     905 |     def set_show_efficiency(self, show: bool) -> None:\\n>>>  906 |         self._show_efficiency = show\\n     907 | \\n     908 |     @property\\n     909 |     def show_efficiency(self) -> bool:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:909 \\u2500\\u2500\\n     906 |         self._show_efficiency = show\\n     907 | \\n     908 |     @property\\n>>>  909 |     def show_efficiency(self) -> bool:\\n     910 |         return self._show_efficiency\\n     911 | \\n     912 |     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:910 \\u2500\\u2500\\n     907 | \\n     908 |     @property\\n     909 |     def show_efficiency(self) -> bool:\\n>>>  910 |         return self._show_efficiency\\n     911 | \\n     912 |     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]\\n     913 |         \\\"\\\"\\\"Draw the grid background.\\\"\\\"\\\"\",\n  \"success\": true,\n  \"total_matches\": 5\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good, `canvas.show_efficiency` property exists. The edit I made should fix it. Let me run tests and commit:\n\n<run_tests/>\n<commit message=\"Fix efficiency toggle not working - was checking internal flag instead of canvas toggle\n\nBuilding items were checking their own _show_efficiency flag instead of\ncanvas.show_efficiency. This meant the toggle had no effect since the\ninternal flag was never being set. Now building items check the canvas\ntoggle directly, consistent with how belt items check canvas.show_flow_rate.\n\"/>\n\nDone! The fix was the same pattern as the belt fix - the building item was checking its own internal `_show_efficiency` flag instead of `canvas.show_efficiency`. Now both toggles work independently:\n- **Rates toggle** \u2192 controls belt flow rate visualization (`canvas.show_flow_rate`)\n- **Efficiency toggle** \u2192 controls building efficiency overlay (`canvas.show_efficiency`)",
+      "_inline_results": [
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n81 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 50 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_7nt64ti0\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.16s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_7nt64ti0\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n81 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 50 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_7nt64ti0\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.16s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_7nt64ti0\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "3df927092930",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
