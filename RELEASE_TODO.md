@@ -39,6 +39,10 @@
 - [ ] **Version compatibility** - Document file format version, handle upgrades gracefully
 - [x] **License file** - GPL-3.0 (MIT linprog is compatible)
 
+## Error Handling
+
+- [ ] **File load errors** - Log errors to console and show error dialog on corrupted/incompatible files
+
 ## Nice-to-Have (Post 1.0)
 
 - [ ] Blueprint library organization (folders/tags)
