@@ -155,9 +155,12 @@ class BeltItem(QGraphicsPathItem):
     ) -> None:
         """Paint the belt with flow direction indicators."""
         # Draw utilization underlay first (wider, behind) - green to yellow to red
-        # Only show when flow rate OR efficiency visualization is enabled
-        show_overlay = self.canvas.show_flow_rate or self.canvas.show_efficiency
-        if show_overlay and self._flow_rate is not None and not self.is_over_capacity:
+        # Only show when efficiency visualization is enabled
+        if (
+            self.canvas.show_efficiency
+            and self._flow_rate is not None
+            and not self.is_over_capacity
+        ):
             util = self._flow_rate / self.belt.capacity
             if util >= 0.9:
                 util_color = QColor(80, 255, 80, 180)  # Bright green - well utilized
@@ -172,8 +175,8 @@ class BeltItem(QGraphicsPathItem):
             painter.drawPath(self.path())
 
         # Draw overcapacity underlay (wider, behind, red)
-        # Only show when flow rate OR efficiency visualization is enabled
-        if show_overlay and self.is_over_capacity:
+        # Only show when efficiency visualization is enabled
+        if self.canvas.show_efficiency and self.is_over_capacity:
             overcap_pen = QPen(QColor(255, 80, 80), self.pen().widthF() + 6)
             overcap_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             painter.setPen(overcap_pen)
