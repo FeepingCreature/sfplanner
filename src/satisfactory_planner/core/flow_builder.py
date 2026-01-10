@@ -46,7 +46,7 @@ class FatalError:
 
     error_type: FatalErrorType
     message: str
-    element_id: str  # ID of the problematic element
+    item_key: ItemKey  # Key of the problematic element
 
 
 @dataclass
@@ -316,7 +316,7 @@ def build_flow_graph(document: Document, recipes: dict[RecipeId, Recipe]) -> Bui
             FatalError(
                 error_type=FatalErrorType.SOURCELESS_CYCLE,
                 message=f"Pure logistics loop detected: {loop_str}",
-                element_id=logistics_loop[0].element_id,
+                item_key=logistics_loop[0],
             )
         )
 
@@ -461,7 +461,7 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
                 if node.node_type == NodeType.MERGER and len(incoming_item_ids) > 1:
                     # Check if we already reported this merger
                     already_reported = any(
-                        e.element_id == node.id.element_id
+                        e.item_key == node.id
                         and e.error_type == FatalErrorType.MERGER_TYPE_CONFLICT
                         for e in errors
                     )
@@ -476,7 +476,7 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
                             FatalError(
                                 error_type=FatalErrorType.MERGER_TYPE_CONFLICT,
                                 message=f"Merger receives different item types:\n{detail_str}",
-                                element_id=node.id.element_id,
+                                item_key=node.id,
                             )
                         )
                     continue  # Don't propagate conflicting types
@@ -560,12 +560,13 @@ def _build_scene(
     """Build flow graph nodes and edges from a scene (Document or Room)."""
     # Phase 1: Check for disconnected belts
     for belt_id, belt in scene.belts.items():
+        belt_key = _make_item_key(belt_id, placement_id)
         if belt.source_building_id is None:
             errors.append(
                 FatalError(
                     error_type=FatalErrorType.DISCONNECTED_BELT,
                     message=f"Belt {belt_id} has no source building",
-                    element_id=belt_id,
+                    item_key=belt_key,
                 )
             )
         else:
@@ -579,7 +580,7 @@ def _build_scene(
                     FatalError(
                         error_type=FatalErrorType.DISCONNECTED_BELT,
                         message=f"Belt {belt_id} source building not found",
-                        element_id=belt_id,
+                        item_key=belt_key,
                     )
                 )
 
@@ -588,7 +589,7 @@ def _build_scene(
                 FatalError(
                     error_type=FatalErrorType.DISCONNECTED_BELT,
                     message=f"Belt {belt_id} has no destination building",
-                    element_id=belt_id,
+                    item_key=belt_key,
                 )
             )
         else:
@@ -602,7 +603,7 @@ def _build_scene(
                     FatalError(
                         error_type=FatalErrorType.DISCONNECTED_BELT,
                         message=f"Belt {belt_id} destination building not found",
-                        element_id=belt_id,
+                        item_key=belt_key,
                     )
                 )
 
@@ -617,7 +618,7 @@ def _build_scene(
                 FatalError(
                     error_type=FatalErrorType.RECIPE_NOT_SET,
                     message=f"Building {building_id} ({building.building_type.value}) has no recipe",
-                    element_id=building_id,
+                    item_key=_make_item_key(building_id, placement_id),
                 )
             )
 
@@ -685,7 +686,7 @@ def _build_scene(
                         f"Item mismatch: {src_name} outputs {source_item_id}, "
                         f"but {dst_name} expects {dest_item_id}"
                     ),
-                    element_id=belt_id,
+                    item_key=_make_item_key(belt_id, placement_id),
                 )
             )
             continue

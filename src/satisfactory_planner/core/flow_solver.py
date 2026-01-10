@@ -84,7 +84,7 @@ class FlowSolver:
                     Warning(
                         type=warning_type,
                         message=error.message,
-                        item_key=ItemKey(error.element_id),
+                        item_key=error.item_key,
                         severity=1.0,
                     )
                 )
