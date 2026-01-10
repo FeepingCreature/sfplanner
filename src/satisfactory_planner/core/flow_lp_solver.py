@@ -427,7 +427,13 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
         inequality_rows.append(row)
         inequality_rhs.append(upper_bound)
 
-    # Log constraint summary
+    # Log all equality constraints for debugging
+    logger.debug(f"EQUALITY CONSTRAINTS ({len(equality_rows)}):")
+    for i, (row, rhs) in enumerate(zip(equality_rows, equality_rhs)):
+        nonzero = [(edge_ids[j], coef) for j, coef in enumerate(row) if coef != 0]
+        terms = " + ".join(f"{coef}*{eid[:8]}" for eid, coef in nonzero)
+        logger.debug(f"  EQ{i}: {terms} = {rhs}")
+
     logger.debug(f"  {len(inequality_rows)} inequality constraints, {len(equality_rows)} equality constraints")
 
     # Solve using pylinprog (vendored, untyped)
