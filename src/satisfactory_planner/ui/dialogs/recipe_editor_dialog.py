@@ -109,16 +109,9 @@ class RecipeEditorDialog(QDialog):
         self.name_edit.textChanged.connect(self._on_field_changed)
         self.details_layout.addRow("Name:", self.name_edit)
 
-        self.building_combo = QComboBox()
-        for bt in BuildingType:
-            if bt not in (
-                BuildingType.SPLITTER,
-                BuildingType.MERGER,
-                BuildingType.MINER,
-            ):
-                self.building_combo.addItem(bt.value, bt)
-        self.building_combo.currentIndexChanged.connect(self._on_building_changed)
-        self.details_layout.addRow("Building:", self.building_combo)
+        # Building type shown read-only (determined by filter dropdown)
+        self.building_label = QLabel("-")
+        self.details_layout.addRow("Building:", self.building_label)
 
         # Power display (read-only, determined by building)
         self.power_label = QLabel("-")
@@ -204,10 +197,11 @@ class RecipeEditorDialog(QDialog):
         self.duplicate_btn.setEnabled(has_selection)
         self.delete_btn.setEnabled(has_selection)
 
-    def _on_building_changed(self, index: int) -> None:
-        """Handle building type change - update IO fields visibility and auto-save."""
-        self._update_io_visibility()
-        self._auto_save()
+    def _get_selected_building_type(self) -> BuildingType:
+        """Get the building type from the filter dropdown."""
+        building_type = self.filter_combo.currentData()
+        # Default to Smelter if "All Buildings" is selected
+        return building_type if building_type else BuildingType.SMELTER
 
     def _on_field_changed(self) -> None:
         """Handle any field change - auto-save the recipe."""
@@ -225,11 +219,12 @@ class RecipeEditorDialog(QDialog):
         from satisfactory_planner.core.models import ItemId, ItemRate, Recipe
 
         recipe_id = current.data(Qt.ItemDataRole.UserRole)
-        building_type = self.building_combo.currentData()
-        if not building_type:
+        recipe = self.document.recipes.get(recipe_id)
+        if not recipe:
             return
 
-        num_inputs, num_outputs = get_building_io_counts(building_type)
+        # Use the recipe's actual building type for IO counts
+        num_inputs, num_outputs = get_building_io_counts(recipe.building_type)
 
         # Gather inputs based on building's input count
         inputs = []
@@ -248,12 +243,12 @@ class RecipeEditorDialog(QDialog):
                 outputs.append(ItemRate(ItemId(item_id), rate))
 
         # Power is determined by building type
-        power = get_building_power(building_type)
+        power = get_building_power(recipe.building_type)
 
         recipe = Recipe(
             id=recipe_id,
             name=self.name_edit.text(),
-            building_type=building_type,
+            building_type=recipe.building_type,
             inputs=inputs,
             outputs=outputs,
             power_mw=power,
@@ -265,11 +260,12 @@ class RecipeEditorDialog(QDialog):
         current.setText(recipe.name)
 
     def _update_io_visibility(self) -> None:
-        """Show/hide input/output rows based on selected building type."""
-        building_type = self.building_combo.currentData()
-        if not building_type:
-            return
+        """Show/hide input/output rows based on filter dropdown."""
+        building_type = self._get_selected_building_type()
+        self._update_io_visibility_for_type(building_type)
 
+    def _update_io_visibility_for_type(self, building_type: BuildingType) -> None:
+        """Show/hide input/output rows for a specific building type."""
         num_inputs, num_outputs = get_building_io_counts(building_type)
         power = get_building_power(building_type)
 
@@ -304,6 +300,7 @@ class RecipeEditorDialog(QDialog):
     def _on_filter_changed(self, index: int) -> None:
         """Handle building filter change."""
         self._load_recipes()
+        self._update_io_visibility()
 
     def _load_recipes(self) -> None:
         """Load recipes into list, filtered by building type."""
@@ -342,18 +339,19 @@ class RecipeEditorDialog(QDialog):
 
         self.name_edit.setText(recipe.name)
 
-        # Set building type (this will trigger _update_io_visibility)
-        for i in range(self.building_combo.count()):
-            if self.building_combo.itemData(i) == recipe.building_type:
-                self.building_combo.setCurrentIndex(i)
-                break
+        # Show building type (read-only)
+        self.building_label.setText(recipe.building_type.value)
+
+        # Update IO visibility based on recipe's building type
+        # (temporarily set filter to match recipe's building type for correct IO count)
+        self._update_io_visibility_for_type(recipe.building_type)
 
         # Clear all input/output fields first
         for item_combo, rate_spin, _ in self.input_rows:
-            item_combo.setCurrentIndex(0)  # (No item)
+            item_combo.set_current_data(None)  # (No item)
             rate_spin.setValue(0)
         for item_combo, rate_spin, _ in self.output_rows:
-            item_combo.setCurrentIndex(0)  # (No item)
+            item_combo.set_current_data(None)  # (No item)
             rate_spin.setValue(0)
 
         # Set inputs
@@ -374,14 +372,17 @@ class RecipeEditorDialog(QDialog):
         """Add a new recipe."""
         from satisfactory_planner.core.models import Recipe, RecipeId, generate_id
 
+        building_type = self._get_selected_building_type()
+        power = get_building_power(building_type)
+
         recipe_id = RecipeId(generate_id())
         recipe = Recipe(
             id=recipe_id,
             name="New Recipe",
-            building_type=self.building_combo.currentData() or BuildingType.SMELTER,
+            building_type=building_type,
             inputs=[],
             outputs=[],
-            power_mw=0,
+            power_mw=power,
             crafting_time=1.0,
         )
         self.document.recipes[recipe_id] = recipe

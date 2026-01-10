@@ -87,14 +87,20 @@ def _load_game_data() -> dict[str, Any]:
 
 def load_base_recipes() -> dict[RecipeId, Recipe]:
     """Load base game recipes from game_data.json."""
+    import logging
+
+    logger = logging.getLogger(__name__)
     try:
         data = _load_game_data()
         recipes = {}
         for recipe_data in data.get("recipes", []):
             recipe = dict_to_recipe(recipe_data)
             recipes[recipe.id] = recipe
+            logger.debug(f"Loaded base recipe: {recipe.id} ({recipe.name})")
+        logger.info(f"Loaded {len(recipes)} base recipes from game_data.json")
         return recipes
-    except (KeyError, TypeError):
+    except (KeyError, TypeError) as e:
+        logger.error(f"Failed to load base recipes: {e}")
         return {}
 
 
@@ -119,8 +125,13 @@ def load_items() -> list[tuple[ItemId, str, bool]]:
 
 def load_user_recipes() -> dict[RecipeId, Recipe]:
     """Load user recipes from XDG data directory."""
+    import logging
+
+    logger = logging.getLogger(__name__)
     path = get_user_recipes_path()
+    logger.debug(f"Looking for user recipes at: {path}")
     if not path.exists():
+        logger.debug("No user recipes file found")
         return {}
 
     try:
@@ -129,8 +140,11 @@ def load_user_recipes() -> dict[RecipeId, Recipe]:
         for recipe_data in data.get("recipes", []):
             recipe = dict_to_recipe(recipe_data)
             recipes[recipe.id] = recipe
+            logger.debug(f"Loaded user recipe: {recipe.id} ({recipe.name})")
+        logger.info(f"Loaded {len(recipes)} user recipes from {path}")
         return recipes
-    except (json.JSONDecodeError, KeyError, TypeError):
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        logger.error(f"Failed to load user recipes from {path}: {e}")
         return {}
 
 
