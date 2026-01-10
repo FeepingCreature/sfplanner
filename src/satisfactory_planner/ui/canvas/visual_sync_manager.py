@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem
 
-from satisfactory_planner.core import BuildingType
+from satisfactory_planner.core import BuildingType, ItemKey
 from satisfactory_planner.core.flow_solver import Warning
 from satisfactory_planner.core.models import Scene
 from satisfactory_planner.ui.items.belt_item import BeltItem
@@ -275,7 +275,7 @@ class VisualSyncManager:
             if not isinstance(warning, Warning):
                 continue
 
-            position = self._get_element_position(warning.element_id)
+            position = self._get_element_position(warning.item_key)
             if position:
                 # Offset slightly so icon doesn't cover the element
                 offset_pos = QPointF(position.x() + 30, position.y() - 10)
@@ -283,21 +283,42 @@ class VisualSyncManager:
                 self.canvas._scene.addItem(icon)
                 self._warning_icons.append(icon)
 
-    def _get_element_position(self, element_id: str) -> QPointF | None:
+    def _get_element_position(self, item_key: ItemKey) -> QPointF | None:
         """Get the scene position for an element (building or belt)."""
-        # Check buildings
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        element_id = item_key.element_id
+        placement_id = item_key.placement_id
+
+        # If inside a room placement, look in that room item
+        if placement_id:
+            room_item = self.canvas._room_items.get(placement_id)
+            if isinstance(room_item, RoomItem):
+                # Check buildings in room
+                if element_id in room_item._building_items:
+                    building_item = room_item._building_items[element_id]
+                    rect = building_item.boundingRect()
+                    return building_item.mapToScene(rect.center())
+                # Check belts in room
+                if element_id in room_item._belt_items:
+                    belt_item = room_item._belt_items[element_id]
+                    path = belt_item.path()
+                    if path.length() > 0:
+                        point = path.pointAtPercent(0.5)
+                        return belt_item.mapToScene(point)
+            return None
+
+        # Check top-level buildings
         if element_id in self.canvas._building_items:
             building_item = self.canvas._building_items[element_id]
             rect = building_item.boundingRect()
-            # Use mapToScene to handle buildings inside rooms correctly
             return building_item.mapToScene(rect.center())
 
-        # Check belts - use midpoint
+        # Check top-level belts - use midpoint
         if element_id in self.canvas._belt_items:
             belt_item = self.canvas._belt_items[element_id]
             path = belt_item.path()
             if path.length() > 0:
-                # Use mapToScene to handle belts inside rooms correctly
                 point = path.pointAtPercent(0.5)
                 return belt_item.mapToScene(point)
 

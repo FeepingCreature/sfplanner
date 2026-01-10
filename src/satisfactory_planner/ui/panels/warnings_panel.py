@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from satisfactory_planner.core import Document, FlowSolver, Warning, WarningType
+from satisfactory_planner.core import Document, FlowSolver, ItemKey, Warning, WarningType
 
 if TYPE_CHECKING:
     pass
@@ -37,7 +37,7 @@ class WarningsPanel(QWidget):
     """Panel for displaying factory validation warnings."""
 
     # Emitted when a warning is clicked (to navigate to the element)
-    warning_clicked = Signal(str)  # Element ID
+    warning_clicked = Signal(ItemKey)  # ItemKey for the element
 
     def __init__(
         self,
@@ -123,7 +123,7 @@ class WarningsPanel(QWidget):
     def _add_warning_item(self, parent: QTreeWidgetItem, warning: Warning) -> None:
         """Add a warning item with its causal chain as nested children."""
         warning_item = QTreeWidgetItem([warning.message])
-        warning_item.setData(0, Qt.ItemDataRole.UserRole, warning.element_id)
+        warning_item.setData(0, Qt.ItemDataRole.UserRole, warning.item_key)
         parent.addChild(warning_item)
 
         # Add causal chain as nested children
@@ -132,9 +132,9 @@ class WarningsPanel(QWidget):
 
     def _on_item_clicked(self, item: QTreeWidgetItem, column: int) -> None:
         """Handle clicking on a warning."""
-        element_id = item.data(0, Qt.ItemDataRole.UserRole)
-        if element_id:
-            self.warning_clicked.emit(element_id)
+        item_key = item.data(0, Qt.ItemDataRole.UserRole)
+        if item_key:
+            self.warning_clicked.emit(item_key)
 
     def _on_item_double_clicked(self, item: QTreeWidgetItem, column: int) -> None:
         """Copy warning message to clipboard on double-click."""

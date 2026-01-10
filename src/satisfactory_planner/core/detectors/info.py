@@ -26,9 +26,6 @@ def detect_spare_capacity(model: SolvedModel) -> list[Warning]:
         if node.node_type != NodeType.SPLITTER:
             continue
 
-        # Use element_id for UI references
-        element_id = node_id.element_id
-
         incoming = model.graph.get_incoming_edges(node_id)
         outgoing = model.graph.get_outgoing_edges(node_id)
 
@@ -47,7 +44,7 @@ def detect_spare_capacity(model: SolvedModel) -> list[Warning]:
                 Warning(
                     type=WarningType.LEFTOVER_ITEMS,
                     message=f"Splitter {node_id}: {spare:.1f}/min spare capacity on {n_open} open output(s)",
-                    element_id=element_id,
+                    item_key=node_id,
                     severity=0.3,
                 )
             )

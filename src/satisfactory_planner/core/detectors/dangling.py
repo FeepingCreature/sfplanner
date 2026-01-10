@@ -20,9 +20,6 @@ def detect_dangling_ports(graph: FlowGraph) -> list[Warning]:
         if node.node_type != NodeType.PRODUCER:
             continue
 
-        # Use element_id for UI references (the raw building ID)
-        element_id = node_id.element_id
-
         # Check for unconnected inputs
         incoming = graph.get_incoming_edges(node_id)
         connected_input_indices = {e.dest_port_index for e in incoming}
@@ -38,7 +35,7 @@ def detect_dangling_ports(graph: FlowGraph) -> list[Warning]:
                 Warning(
                     type=WarningType.LEFTOVER_ITEMS,
                     message=f"{node_id}: No inputs connected. Assuming infinite supply of {items}.",
-                    element_id=element_id,
+                    item_key=node_id,
                     severity=0.1,
                 )
             )
@@ -48,7 +45,7 @@ def detect_dangling_ports(graph: FlowGraph) -> list[Warning]:
                 Warning(
                     type=WarningType.RESOURCE_UNDERFLOW,
                     message=f"{node_id}: Missing input(s): {items}. Building will not function correctly.",
-                    element_id=element_id,
+                    item_key=node_id,
                     severity=0.8,
                 )
             )
@@ -68,7 +65,7 @@ def detect_dangling_ports(graph: FlowGraph) -> list[Warning]:
                 Warning(
                     type=WarningType.LEFTOVER_ITEMS,
                     message=f"{node_id}: No outputs connected. Production of {items} will be sunk.",
-                    element_id=element_id,
+                    item_key=node_id,
                     severity=0.1,
                 )
             )
@@ -78,7 +75,7 @@ def detect_dangling_ports(graph: FlowGraph) -> list[Warning]:
                 Warning(
                     type=WarningType.LEFTOVER_ITEMS,
                     message=f"{node_id}: Unconnected output(s): {items}. Items will be sunk.",
-                    element_id=element_id,
+                    item_key=node_id,
                     severity=0.3,
                 )
             )

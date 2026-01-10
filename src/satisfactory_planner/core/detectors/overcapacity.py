@@ -33,8 +33,8 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
     if model.bottlenecks:
         for edge_id, (theoretical, actual) in model.bottlenecks.items():
             edge = model.graph.edges[edge_id]
-            # Use element_id for UI references
-            element_id = edge.belt_id.element_id if edge.belt_id else edge_id.element_id
+            # Use belt_id if available, otherwise fall back to edge_id
+            item_key = edge.belt_id if edge.belt_id else edge_id
             warnings.append(
                 Warning(
                     type=WarningType.BELT_OVERCAPACITY,
@@ -43,7 +43,7 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
                         f"but belt capacity is {edge.capacity:.0f}/min "
                         f"(actual flow: {actual:.0f}/min)"
                     ),
-                    element_id=element_id,
+                    item_key=item_key,
                     severity=min(1.0, (theoretical - actual) / actual) if actual > 0 else 1.0,
                 )
             )
@@ -70,11 +70,12 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
     for edge_id in filtered_overcap:
         edge = model.graph.edges[edge_id]
         flow = model.flows[edge_id]
+        item_key = edge.belt_id if edge.belt_id else edge_id
         warnings.append(
             Warning(
                 type=WarningType.BELT_OVERCAPACITY,
                 message=f"Belt {edge_id}: flow {flow:.1f}/min exceeds capacity {edge.capacity}/min",
-                element_id=edge_id.element_id,
+                item_key=item_key,
                 severity=(flow - edge.capacity) / edge.capacity,
             )
         )

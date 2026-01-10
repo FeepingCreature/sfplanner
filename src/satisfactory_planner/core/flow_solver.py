@@ -12,13 +12,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from satisfactory_planner.core.item_key import ItemKey
-
 if TYPE_CHECKING:
     from satisfactory_planner.core.flow_builder import FatalErrorType
     from satisfactory_planner.core.flow_lp_solver import SolvedModel
     from satisfactory_planner.core.flow_models import BuildingEfficiency
     from satisfactory_planner.core.models import Document, Recipe
+
+from satisfactory_planner.core.item_key import ItemKey
 
 
 class WarningType(Enum):
@@ -39,7 +39,7 @@ class Warning:
 
     type: WarningType
     message: str
-    element_id: str  # ID of the element with the issue
+    item_key: ItemKey  # The element with the issue
     severity: float = 1.0  # 0.0-1.0, for sorting
     details: dict[str, object] | None = None
     caused_by: list[Warning] = field(default_factory=list)  # Causal chain
@@ -84,7 +84,7 @@ class FlowSolver:
                     Warning(
                         type=warning_type,
                         message=error.message,
-                        element_id=error.element_id,
+                        item_key=ItemKey(error.element_id),
                         severity=1.0,
                     )
                 )
@@ -100,7 +100,7 @@ class FlowSolver:
                 Warning(
                     type=WarningType.DISCONNECTED_BELT,
                     message=self._solved_model.message,
-                    element_id="",
+                    item_key=ItemKey(""),
                 )
             )
             return self._warnings

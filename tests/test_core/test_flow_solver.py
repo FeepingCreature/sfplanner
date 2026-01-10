@@ -423,8 +423,8 @@ class TestFlowSolver:
         )
 
         # Check that the bottleneck belt is identified
-        assert any("b_m2_sink" in w.element_id for w in bottleneck_warnings), (
-            f"Bottleneck should be on sink belt: {[w.element_id for w in bottleneck_warnings]}"
+        assert any("b_m2_sink" in w.item_key.element_id for w in bottleneck_warnings), (
+            f"Bottleneck should be on sink belt: {[w.item_key for w in bottleneck_warnings]}"
         )
 
     def test_two_pass_detects_belt_bottleneck(self) -> None:

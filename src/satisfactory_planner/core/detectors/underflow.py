@@ -31,9 +31,6 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
         if node.node_type != NodeType.PRODUCER:
             continue
 
-        # Use element_id for UI references
-        element_id = node_id.element_id
-
         incoming = model.graph.get_incoming_edges(node_id)
         outgoing = model.graph.get_outgoing_edges(node_id)
 
@@ -48,7 +45,7 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                         Warning(
                             type=WarningType.RESOURCE_UNDERFLOW,
                             message=f"{node_id}: input {i} ({input_port.item_id}) not connected",
-                            element_id=element_id,
+                            item_key=node_id,
                             severity=1.0,
                         )
                     )
@@ -70,7 +67,7 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                     Warning(
                         type=WarningType.RESOURCE_UNDERFLOW,
                         message=f"{node_id}: input {i} ({input_port.item_id}) not connected",
-                        element_id=element_id,
+                        item_key=node_id,
                         severity=1.0,
                     )
                 )
@@ -85,7 +82,7 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                     Warning(
                         type=WarningType.RESOURCE_UNDERFLOW,
                         message=f"{node_id}: {input_port.item_id} {actual_flow:.1f} < {demanded:.1f}/min demanded",
-                        element_id=element_id,
+                        item_key=node_id,
                         severity=(demanded - actual_flow) / demanded,
                         caused_by=caused_by,
                     )
@@ -114,11 +111,12 @@ def _build_causal_chain(
 
     # Check if this belt is the bottleneck
     if actual_flow >= edge.capacity - 0.01:
+        item_key = edge.belt_id if edge.belt_id else edge_id
         causes.append(
             Warning(
                 type=WarningType.BELT_OVERCAPACITY,
                 message=f"Belt {edge_id} at capacity ({edge.capacity}/min)",
-                element_id=edge_id.element_id,
+                item_key=item_key,
                 severity=1.0,
             )
         )
@@ -126,7 +124,6 @@ def _build_causal_chain(
 
     # Otherwise, look upstream
     source_node = model.graph.nodes[edge.source_node_id]
-    source_element_id = source_node.id.element_id
 
     if source_node.node_type == NodeType.PRODUCER:
         for output in source_node.outputs:
@@ -135,7 +132,7 @@ def _build_causal_chain(
                     Warning(
                         type=WarningType.PRODUCTION_UNDERFLOW,
                         message=f"{source_node.id} produces {output.rate:.1f}/min, need {demanded:.1f}/min",
-                        element_id=source_element_id,
+                        item_key=source_node.id,
                         severity=(demanded - output.rate) / demanded,
                     )
                 )
@@ -147,7 +144,7 @@ def _build_causal_chain(
                     Warning(
                         type=WarningType.RESOURCE_UNDERFLOW,
                         message=f"Miner {source_node.id} outputs {output.rate:.1f}/min, need {demanded:.1f}/min",
-                        element_id=source_element_id,
+                        item_key=source_node.id,
                         severity=(demanded - output.rate) / demanded,
                     )
                 )

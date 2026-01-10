@@ -24,6 +24,7 @@ from satisfactory_planner.core import (
     DEFAULT_GRID_SIZE,
     Document,
     FlowSolver,
+    ItemKey,
     load_document,
     save_document,
 )
@@ -587,7 +588,7 @@ class MainWindow(QMainWindow):
         self.warnings_panel.refresh()
         self._update_undo_redo_state()
 
-    def _on_warning_clicked(self, element_id: str) -> None:
+    def _on_warning_clicked(self, item_key: ItemKey) -> None:
         """Navigate to and select the element referenced by a warning."""
         if not self.current_tab or not self.current_tab.canvas:
             return
@@ -595,12 +596,12 @@ class MainWindow(QMainWindow):
         canvas = self.current_tab.canvas
         doc = self.current_tab.document
 
-        # Handle composite IDs from room placements (format: "placement_id:building_id")
-        base_element_id = element_id.split(":")[-1] if ":" in element_id else element_id
+        element_id = item_key.element_id
+        placement_id = item_key.placement_id
 
         # Find the element (could be building or belt in document or rooms)
-        building = doc.find_building(base_element_id)
-        belt = doc.find_belt(base_element_id)
+        building = doc.find_building(element_id)
+        belt = doc.find_belt(element_id)
 
         if building:
             # Select and center on the building
@@ -608,7 +609,11 @@ class MainWindow(QMainWindow):
             for item in canvas.scene().items():
                 from satisfactory_planner.ui.items import BuildingItem
 
-                if isinstance(item, BuildingItem) and item.building.id == base_element_id:
+                if (
+                    isinstance(item, BuildingItem)
+                    and item.building.id == element_id
+                    and item._placement_id == placement_id
+                ):
                     item.setSelected(True)
                     canvas.centerOn(item)
                     break
@@ -618,7 +623,11 @@ class MainWindow(QMainWindow):
             for item in canvas.scene().items():
                 from satisfactory_planner.ui.items import BeltItem
 
-                if isinstance(item, BeltItem) and item.belt.id == base_element_id:
+                if (
+                    isinstance(item, BeltItem)
+                    and item.belt.id == element_id
+                    and item._placement_id == placement_id
+                ):
                     item.setSelected(True)
                     canvas.centerOn(item)
                     break
