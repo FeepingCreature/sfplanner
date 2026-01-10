@@ -317,9 +317,6 @@ class RoomItem(QGraphicsRectItem):
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Handle item changes."""
-        import logging
-        logger = logging.getLogger(__name__)
-
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():
             # Snap to grid
             new_pos = value
@@ -328,10 +325,6 @@ class RoomItem(QGraphicsRectItem):
                 x = round(new_pos.x() / grid) * grid
                 y = round(new_pos.y() / grid) * grid
                 new_pos = QPointF(x, y)
-            logger.debug(
-                f"RoomItem.itemChange (PositionChange): placement {self.placement.id} "
-                f"moving to ({new_pos.x() if isinstance(new_pos, QPointF) else new_pos})"
-            )
             return new_pos
 
         elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged and self.scene():
@@ -339,12 +332,7 @@ class RoomItem(QGraphicsRectItem):
             new_pos = self.pos()
             self.placement.x = new_pos.x()
             self.placement.y = new_pos.y()
-            logger.debug(
-                f"RoomItem.itemChange (PositionHasChanged): placement {self.placement.id} "
-                f"now at ({new_pos.x()}, {new_pos.y()})"
-            )
             # Update belts connected to this room's ports
-            logger.debug(f"  Calling _update_belts_for_placement({self.placement.id})")
             self.canvas._update_belts_for_placement(self.placement.id)
 
         return super().itemChange(change, value)

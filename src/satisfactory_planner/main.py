@@ -10,15 +10,9 @@ from satisfactory_planner.ui.main_window import MainWindow
 
 # Configure logging for debugging
 logging.basicConfig(
-    level=logging.WARNING,  # Default to WARNING for most modules
+    level=logging.DEBUG,
     format="%(name)s: %(message)s",
 )
-
-# Enable DEBUG for our UI modules to trace belt/building updates
-logging.getLogger("satisfactory_planner.ui.items.building_item").setLevel(logging.DEBUG)
-logging.getLogger("satisfactory_planner.ui.items.belt_item").setLevel(logging.DEBUG)
-logging.getLogger("satisfactory_planner.ui.items.room_item").setLevel(logging.DEBUG)
-logging.getLogger("satisfactory_planner.ui.canvas.factory_canvas").setLevel(logging.DEBUG)
 
 
 def main() -> None:

@@ -218,35 +218,12 @@ class FactoryCanvas(QGraphicsView):
         - A Building in the scene
         - A RoomPlacement (for belts crossing room boundaries)
         """
-        logger.debug(
-            f"update_belts_for_building: building_id={building_id}, "
-            f"scene={type(scene).__name__}, scene_room_id={scene.scene_room_id}"
-        )
-        
-        belts_for_building = list(scene.get_belts_for_building(building_id))
-        logger.debug(f"  Found {len(belts_for_building)} belts connected to building")
-        
-        for belt in belts_for_building:
-            logger.debug(f"  Processing belt {belt.id}")
+        for belt in scene.get_belts_for_building(building_id):
             belt_item = self._belt_items.get(belt.id)
-            logger.debug(f"    belt_item in canvas._belt_items: {belt_item is not None}")
             if belt_item:
                 # Use _update_path_from_endpoints which handles both
                 # Buildings and RoomPlacements
-                logger.debug(f"    Updating path for belt {belt.id}")
                 belt_item._update_path_from_endpoints()
-            else:
-                # Belt might be inside a room - check room items
-                logger.debug(f"    Belt not in canvas._belt_items, checking room items...")
-                from satisfactory_planner.ui.items.room_item import RoomItem
-                for placement_id, room_item in self._room_items.items():
-                    if isinstance(room_item, RoomItem):
-                        room_belt_item = room_item._belt_items.get(belt.id)
-                        if room_belt_item:
-                            logger.debug(
-                                f"    Found belt in room placement {placement_id}, updating"
-                            )
-                            room_belt_item._update_path_from_endpoints()
 
     # === Refresh ===
 
@@ -1090,24 +1067,14 @@ class FactoryCanvas(QGraphicsView):
 
     def _update_belts_for_placement(self, placement_id: str) -> None:
         """Redraw all belts connected to a room placement."""
-        logger.debug(f"_update_belts_for_placement: placement_id={placement_id}")
         # Belts to room placements are stored in document.belts (or parent scene)
         # and use the placement_id as source/dest_building_id
-        belts_found = 0
-        belts_updated = 0
         for belt in self.document.belts.values():
             if belt.source_building_id == placement_id or belt.dest_building_id == placement_id:
-                belts_found += 1
-                logger.debug(f"  Found belt {belt.id} connected to placement")
                 belt_item = self._belt_items.get(belt.id)
                 if belt_item:
-                    belts_updated += 1
-                    logger.debug(f"    Updating belt item path")
                     # Use _update_path_from_endpoints which handles placements
                     belt_item._update_path_from_endpoints()
-                else:
-                    logger.debug(f"    Belt item not found in canvas._belt_items!")
-        logger.debug(f"  Total: {belts_found} belts found, {belts_updated} updated")
 
     def set_show_flow_rate(self, show: bool) -> None:
         self._show_flow_rate = show

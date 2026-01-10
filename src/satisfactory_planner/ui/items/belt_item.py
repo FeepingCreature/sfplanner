@@ -98,21 +98,7 @@ class BeltItem(QGraphicsPathItem):
 
     def _update_path_from_endpoints(self) -> None:
         """Update the belt path from stored endpoints."""
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        logger.debug(f"BeltItem._update_path_from_endpoints: belt {self.belt.id}")
-        logger.debug(
-            f"  source: {self._source.id if self._source else None}, "
-            f"source_placement: {self._source_placement.id if self._source_placement else None}"
-        )
-        logger.debug(
-            f"  dest: {self._dest.id if self._dest else None}, "
-            f"dest_placement: {self._dest_placement.id if self._dest_placement else None}"
-        )
-        
         if not self.canvas:
-            logger.debug("  No canvas, returning")
             return
 
         document = self.canvas.document
@@ -121,7 +107,6 @@ class BeltItem(QGraphicsPathItem):
         if self._source:
             start_pos = self._source.output_port_pos(self.belt.source_port_index)
             start_dir = self._source.output_port_direction(self.belt.source_port_index)
-            logger.debug(f"  start from source building: pos={start_pos}, dir={start_dir}")
         elif self._source_placement:
             start_pos = self._source_placement.output_port_pos(
                 self.belt.source_port_index, document
@@ -129,33 +114,26 @@ class BeltItem(QGraphicsPathItem):
             start_dir = self._source_placement.output_port_direction(
                 self.belt.source_port_index, document
             )
-            logger.debug(f"  start from source placement: pos={start_pos}, dir={start_dir}")
         else:
-            logger.debug("  No source, returning")
             return
 
         # Get end position and direction
         if self._dest:
             end_pos = self._dest.input_port_pos(self.belt.dest_port_index)
             end_dir = self._dest.input_port_direction(self.belt.dest_port_index)
-            logger.debug(f"  end from dest building: pos={end_pos}, dir={end_dir}")
         elif self._dest_placement:
             end_pos = self._dest_placement.input_port_pos(self.belt.dest_port_index, document)
             end_dir = self._dest_placement.input_port_direction(self.belt.dest_port_index, document)
-            logger.debug(f"  end from dest placement: pos={end_pos}, dir={end_dir}")
         else:
-            logger.debug("  No dest, returning")
             return
 
         start = Point(start_pos[0], start_pos[1])
         end = Point(end_pos[0], end_pos[1])
-        logger.debug(f"  Computing path from {start} to {end}")
 
         # Compute Dubins path and convert to QPainterPath
         belt_path = compute_belt_path(start, start_dir, end, end_dir)
         path = belt_path_to_painter_path(start, end, belt_path)
         self.setPath(path)
-        logger.debug(f"  Path updated, length={path.length():.1f}")
 
     def update_path(self, source: Building, dest: Building) -> None:
         """Update the belt path between source and dest buildings.
