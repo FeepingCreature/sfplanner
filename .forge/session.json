@@ -34,6 +34,24 @@
       "streaming": true,
       "actual_cost": 0.14270325,
       "generation_id": "gen-1768054395-eTq31mLrbNanq5c8KvFG"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1768054408235.json",
+      "response_file": "/tmp/forge_debug/response_1768054408235.json",
+      "timestamp": 1768054408.2353702,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000223,
+      "generation_id": "gen-1768054408-8r9oTLBkEal1pMfPsGqV"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768054733343.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768054733343.json",
+      "timestamp": 1768054733.3440561,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.402945,
+      "generation_id": "gen-1768054733-Xh3xkFmTFxWq1btcx3VH"
     }
   ],
   "messages": [
@@ -201,6 +219,171 @@
     {
       "role": "assistant",
       "content": "Good, logging is already configured in main.py with DEBUG level. The logging I added to `flow_lp_solver.py` should now show up when you run the app.\n\nLet me verify the edits look correct and run the type checker:\n\n<check/>\n\nNow when you run the app and connect some belts, you should see detailed logging output like:\n\n```\nsatisfactory_planner.core.flow_lp_solver: ============================================================\nsatisfactory_planner.core.flow_lp_solver: LP SOLVE (belt_limits=False)\nsatisfactory_planner.core.flow_lp_solver: ============================================================\nsatisfactory_planner.core.flow_lp_solver: NODES:\nsatisfactory_planner.core.flow_lp_solver:   building_123: MINER\nsatisfactory_planner.core.flow_lp_solver:     outputs: [iron_ore@60.0/min]\n...\nsatisfactory_planner.core.flow_lp_solver: EDGES:\nsatisfactory_planner.core.flow_lp_solver:   belt_456: building_123[0] -> building_789[0] (cap=60, item=iron_ore)\n...\nsatisfactory_planner.core.flow_lp_solver: INEQUALITY CONSTRAINTS (<=):\nsatisfactory_planner.core.flow_lp_solver:   MINER building_123: edge[belt_456] <= 60.0\n...\nsatisfactory_planner.core.flow_lp_solver: SOLUTION:\nsatisfactory_planner.core.flow_lp_solver:   belt_456: 60.00/min (capacity=60)\n```\n\nThis will show you:\n1. All nodes with their types and port rates\n2. All edges with source/dest and capacity\n3. Every constraint being added to the LP\n4. The final flow solution for each edge\n\nRun the app and try connecting some buildings - the console output should help identify what's going wrong with the belt calculations."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 2e709449",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Thanks! This is hard to read. Can you write it out as a dot file with annotations please? Stuff it to the gills, I have widescreen, I just need to see the links."
+    },
+    {
+      "role": "assistant",
+      "content": "Great idea! I'll modify the logging to output a GraphViz DOT file instead. This will be much easier to visualize.\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n\"\"\"LP-based flow solver.\n\nSolves for steady-state flow rates using linear programming.\nUses pylinprog (pure Python simplex) instead of scipy for smaller package size.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport logging\nfrom dataclasses import dataclass, field\n\nfrom satisfactory_planner.core.flow_models import (\n</search>\n<replace>\n\"\"\"LP-based flow solver.\n\nSolves for steady-state flow rates using linear programming.\nUses pylinprog (pure Python simplex) instead of scipy for smaller package size.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport logging\nfrom dataclasses import dataclass, field\nfrom pathlib import Path\n\nfrom satisfactory_planner.core.flow_models import (\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\ndef _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, float], str]:\n    \"\"\"Run the LP solver.\n\n    Args:\n        graph: The flow graph to solve\n        use_belt_limits: If True, apply belt capacity constraints\n\n    Returns:\n        (success, flows, error_message)\n    \"\"\"\n    logger.info(\"=\" * 60)\n    logger.info(f\"LP SOLVE (belt_limits={use_belt_limits})\")\n    logger.info(\"=\" * 60)\n\n    # Log graph structure\n    logger.info(\"NODES:\")\n    for node_id, node in graph.nodes.items():\n        inputs_str = \", \".join(f\"{p.item_id}@{p.rate}/min\" for p in node.inputs)\n        outputs_str = \", \".join(f\"{p.item_id}@{p.rate}/min\" for p in node.outputs)\n        logger.info(f\"  {node_id}: {node.node_type.name}\")\n        if inputs_str:\n            logger.info(f\"    inputs: [{inputs_str}]\")\n        if outputs_str:\n            logger.info(f\"    outputs: [{outputs_str}]\")\n\n    logger.info(\"EDGES:\")\n    for edge_id, edge in graph.edges.items():\n        logger.info(\n            f\"  {edge_id}: {edge.source_node_id}[{edge.source_port_index}] \"\n            f\"-> {edge.dest_node_id}[{edge.dest_port_index}] \"\n            f\"(cap={edge.capacity}, item={edge.item_id})\"\n        )\n\n    # Create edge index mapping\n</search>\n<replace>\ndef _write_dot_file(\n    graph: FlowGraph,\n    flows: dict[str, float],\n    theoretical_flows: dict[str, float],\n    bottlenecks: dict[str, tuple[float, float]],\n    suffix: str = \"\",\n) -> None:\n    \"\"\"Write the flow graph to a DOT file for visualization.\"\"\"\n    dot_path = Path.home() / f\"flow_graph{suffix}.dot\"\n\n    lines = [\n        \"digraph FlowGraph {\",\n        \"  rankdir=LR;\",\n        \"  node [shape=record, fontname=\\\"Courier\\\", fontsize=10];\",\n        \"  edge [fontname=\\\"Courier\\\", fontsize=9];\",\n        \"\",\n    ]\n\n    # Node colors by type\n    node_colors = {\n        NodeType.MINER: \"#90EE90\",      # Light green\n        NodeType.PRODUCER: \"#87CEEB\",   # Light blue\n        NodeType.SPLITTER: \"#FFD700\",   # Gold\n        NodeType.MERGER: \"#FFA500\",     # Orange\n        NodeType.SINK: \"#FF6B6B\",       # Light red\n        NodeType.PORT_IN: \"#DDA0DD\",    # Plum\n        NodeType.PORT_OUT: \"#DDA0DD\",   # Plum\n    }\n\n    # Nodes with full details\n    for node_id, node in graph.nodes.items():\n        color = node_colors.get(node.node_type, \"#FFFFFF\")\n        safe_id = node_id.replace(\"-\", \"_\").replace(\":\", \"_\")\n\n        # Build port details\n        in_ports = []\n        for i, p in enumerate(node.inputs):\n            rate_str = f\"{p.rate:.0f}\" if p.rate < 10000 else \"\u221e\"\n            in_ports.append(f\"IN{i}: {p.item_id or '?'}@{rate_str}\")\n\n        out_ports = []\n        for i, p in enumerate(node.outputs):\n            rate_str = f\"{p.rate:.0f}\" if p.rate < 10000 else \"\u221e\"\n            out_ports.append(f\"OUT{i}: {p.item_id or '?'}@{rate_str}\")\n\n        # Recipe info for producers\n        recipe_str = \"\"\n        if node.recipe_id:\n            recipe_str = f\"\\\\nrecipe: {node.recipe_id}\"\n        if node.clock_speed != 1.0:\n            recipe_str += f\"\\\\nclock: {node.clock_speed:.0%}\"\n\n        # Build label\n        label_parts = [f\"{node.node_type.name}\\\\n{node_id[:12]}...{recipe_str}\"]\n        if in_ports:\n            label_parts.append(\"| {\" + \" | \".join(in_ports) + \"}\")\n        if out_ports:\n            label_parts.append(\"| {\" + \" | \".join(out_ports) + \"}\")\n\n        label = \"{\" + \"\".join(label_parts) + \"}\"\n        lines.append(f'  {safe_id} [label=\"{label}\", style=filled, fillcolor=\"{color}\"];')\n\n    lines.append(\"\")\n\n    # Edges with flow info\n    for edge_id, edge in graph.edges.items():\n        src_safe = edge.source_node_id.replace(\"-\", \"_\").replace(\":\", \"_\")\n        dst_safe = edge.dest_node_id.replace(\"-\", \"_\").replace(\":\", \"_\")\n\n        actual = flows.get(edge_id, 0.0)\n        theoretical = theoretical_flows.get(edge_id, actual)\n        cap = edge.capacity\n\n        # Color based on status\n        if edge_id in bottlenecks:\n            color = \"red\"\n            penwidth = \"3\"\n        elif actual >= cap * 0.9:\n            color = \"darkgreen\"\n            penwidth = \"2\"\n        elif actual < cap * 0.5 and actual > 0:\n            color = \"orange\"\n            penwidth = \"1.5\"\n        else:\n            color = \"black\"\n            penwidth = \"1\"\n\n        # Label with all the info\n        label_parts = [\n            f\"{edge.item_id or '?'}\",\n            f\"actual: {actual:.1f}/min\",\n            f\"cap: {cap}/min\",\n        ]\n        if theoretical != actual:\n            label_parts.append(f\"theo: {theoretical:.1f}\")\n        if edge_id in bottlenecks:\n            label_parts.append(\"\u26a0 BOTTLENECK\")\n\n        label = \"\\\\n\".join(label_parts)\n\n        lines.append(\n            f'  {src_safe} -> {dst_safe} '\n            f'[label=\"{label}\", color=\"{color}\", penwidth=\"{penwidth}\"];'\n        )\n\n    lines.append(\"}\")\n\n    dot_path.write_text(\"\\n\".join(lines))\n    logger.info(f\"Wrote flow graph to {dot_path}\")\n    logger.info(f\"  View with: dot -Tpng {dot_path} -o ~/flow_graph.png && open ~/flow_graph.png\")\n\n\ndef _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, float], str]:\n    \"\"\"Run the LP solver.\n\n    Args:\n        graph: The flow graph to solve\n        use_belt_limits: If True, apply belt capacity constraints\n\n    Returns:\n        (success, flows, error_message)\n    \"\"\"\n    logger.debug(f\"LP SOLVE (belt_limits={use_belt_limits})\")\n\n    # Create edge index mapping\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n    # Log constraints\n    logger.info(\"INEQUALITY CONSTRAINTS (<=):\")\n    for desc in constraint_descriptions:\n        logger.info(f\"  {desc}\")\n    logger.info(\"EQUALITY CONSTRAINTS (=):\")\n    for desc in eq_constraint_descriptions:\n        logger.info(f\"  {desc}\")\n    logger.info(f\"OBJECTIVE: maximize sum of all {n_edges} edge flows\")\n\n    # Solve using pylinprog (vendored, untyped)\n</search>\n<replace>\n    # Log constraint summary\n    logger.debug(f\"  {len(inequality_rows)} inequality constraints, {len(equality_rows)} equality constraints\")\n\n    # Solve using pylinprog (vendored, untyped)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n    # Extract flows\n    flows = {edge_ids[i]: max(0.0, solution[i]) for i in range(n_edges)}\n\n    # Log results\n    logger.info(\"SOLUTION:\")\n    for edge_id, flow in flows.items():\n        edge = graph.edges[edge_id]\n        logger.info(f\"  {edge_id}: {flow:.2f}/min (capacity={edge.capacity})\")\n    logger.info(\"=\" * 60)\n\n    return (True, flows, \"\")\n</search>\n<replace>\n    # Extract flows\n    flows = {edge_ids[i]: max(0.0, solution[i]) for i in range(n_edges)}\n    return (True, flows, \"\")\n</replace>\n</edit>\n\nNow add the DOT file writing after we have both theoretical and actual flows:\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n    # Identify belt bottlenecks: where theoretical > actual\n    bottlenecks: dict[str, tuple[float, float]] = {}\n    for edge_id, edge in graph.edges.items():\n        theo = theoretical_flows.get(edge_id, 0.0)\n        actual = actual_flows.get(edge_id, 0.0)\n        # A belt is a bottleneck if:\n        # 1. Theoretical flow exceeds actual\n        # 2. Actual flow is at or near belt capacity\n        if theo > actual + BOTTLENECK_TOLERANCE and actual >= edge.capacity - BOTTLENECK_TOLERANCE:\n            bottlenecks[edge_id] = (theo, actual)\n\n    # Compute efficiencies using actual flows\n</search>\n<replace>\n    # Identify belt bottlenecks: where theoretical > actual\n    bottlenecks: dict[str, tuple[float, float]] = {}\n    for edge_id, edge in graph.edges.items():\n        theo = theoretical_flows.get(edge_id, 0.0)\n        actual = actual_flows.get(edge_id, 0.0)\n        # A belt is a bottleneck if:\n        # 1. Theoretical flow exceeds actual\n        # 2. Actual flow is at or near belt capacity\n        if theo > actual + BOTTLENECK_TOLERANCE and actual >= edge.capacity - BOTTLENECK_TOLERANCE:\n            bottlenecks[edge_id] = (theo, actual)\n\n    # Write DOT file for visualization\n    _write_dot_file(graph, actual_flows, theoretical_flows, bottlenecks)\n\n    # Compute efficiencies using actual flows\n</replace>\n</edit>\n\nNow let me also clean up the unused constraint description variables since we're not logging them anymore:\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n    # We'll build equality constraints: A_eq @ x = b_eq\n    # And inequality constraints: A_ub @ x <= b_ub\n    equality_rows: list[list[float]] = []\n    equality_rhs: list[float] = []\n    inequality_rows: list[list[float]] = []\n    inequality_rhs: list[float] = []\n    # Track constraint descriptions for logging\n    constraint_descriptions: list[str] = []\n    eq_constraint_descriptions: list[str] = []\n</search>\n<replace>\n    # We'll build equality constraints: A_eq @ x = b_eq\n    # And inequality constraints: A_ub @ x <= b_ub\n    equality_rows: list[list[float]] = []\n    equality_rhs: list[float] = []\n    inequality_rows: list[list[float]] = []\n    inequality_rhs: list[float] = []\n</replace>\n</edit>\n\nNow remove all the constraint description appends:\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n                    inequality_rows.append(row)\n                    inequality_rhs.append(node.outputs[i].rate)\n                    constraint_descriptions.append(\n                        f\"MINER {node_id}: edge[{out_edge.id}] <= {node.outputs[i].rate}\"\n                    )\n</search>\n<replace>\n                    inequality_rows.append(row)\n                    inequality_rhs.append(node.outputs[i].rate)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n                        inequality_rows.append(row)\n                        inequality_rhs.append(demand)\n                        constraint_descriptions.append(\n                            f\"PRODUCER {node_id}: edge[{out_edge.id}] <= downstream_demand({demand})\"\n                        )\n\n                    # Output also can't exceed production capacity\n                    row = [0.0] * n_edges\n                    row[edge_to_idx[out_edge.id]] = 1.0\n                    inequality_rows.append(row)\n                    inequality_rhs.append(node.outputs[i].rate)\n                    constraint_descriptions.append(\n                        f\"PRODUCER {node_id}: edge[{out_edge.id}] <= production_cap({node.outputs[i].rate})\"\n                    )\n</search>\n<replace>\n                        inequality_rows.append(row)\n                        inequality_rhs.append(demand)\n\n                    # Output also can't exceed production capacity\n                    row = [0.0] * n_edges\n                    row[edge_to_idx[out_edge.id]] = 1.0\n                    inequality_rows.append(row)\n                    inequality_rhs.append(node.outputs[i].rate)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n                        inequality_rows.append(row)\n                        inequality_rhs.append(node.inputs[i].rate)\n                        constraint_descriptions.append(\n                            f\"PRODUCER {node_id}: edge[{in_edge.id}] <= input_cap({node.inputs[i].rate})\"\n                        )\n\n                # Recipe ratio constraint\n</search>\n<replace>\n                        inequality_rows.append(row)\n                        inequality_rhs.append(node.inputs[i].rate)\n\n                # Recipe ratio constraint\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n                        equality_rows.append(row)\n                        equality_rhs.append(0.0)\n                        eq_constraint_descriptions.append(\n                            f\"PRODUCER {node_id}: {ref_out_rate}*in[{ref_in_edge.id}] = {ref_in_rate}*out[{ref_out_edge.id}] (ratio)\"\n                        )\n</search>\n<replace>\n                        equality_rows.append(row)\n                        equality_rhs.append(0.0)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n                equality_rows.append(row)\n                equality_rhs.append(0.0)\n                in_ids = [e.id for e in incoming]\n                out_ids = [e.id for e in outgoing]\n                eq_constraint_descriptions.append(\n                    f\"SPLITTER {node_id}: sum(out[{out_ids}]) = sum(in[{in_ids}])\"\n                )\n\n                # Each output is limited by downstream demand (or belt capacity)\n                # We DON'T force equal outputs - that breaks tree layouts\n                # Instead, we let the LP optimize flow based on actual demand\n                for out_edge in outgoing:\n                    dest_node = graph.nodes[out_edge.dest_node_id]\n                    demand = _get_downstream_demand(dest_node, out_edge.dest_port_index)\n                    if demand is not None:\n                        row = [0.0] * n_edges\n                        row[edge_to_idx[out_edge.id]] = 1.0\n                        inequality_rows.append(row)\n                        inequality_rhs.append(demand)\n                        constraint_descriptions.append(\n                            f\"SPLITTER {node_id}: edge[{out_edge.id}] <= downstream_demand({demand})\"\n                        )\n</search>\n<replace>\n                equality_rows.append(row)\n                equality_rhs.append(0.0)\n\n                # Each output is limited by downstream demand (or belt capacity)\n                # We DON'T force equal outputs - that breaks tree layouts\n                # Instead, we let the LP optimize flow based on actual demand\n                for out_edge in outgoing:\n                    dest_node = graph.nodes[out_edge.dest_node_id]\n                    demand = _get_downstream_demand(dest_node, out_edge.dest_port_index)\n                    if demand is not None:\n                        row = [0.0] * n_edges\n                        row[edge_to_idx[out_edge.id]] = 1.0\n                        inequality_rows.append(row)\n                        inequality_rhs.append(demand)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n                equality_rows.append(row)\n                equality_rhs.append(0.0)\n                in_ids = [e.id for e in incoming]\n                out_ids = [e.id for e in outgoing]\n                eq_constraint_descriptions.append(\n                    f\"MERGER {node_id}: sum(in[{in_ids}]) = sum(out[{out_ids}])\"\n                )\n</search>\n<replace>\n                equality_rows.append(row)\n                equality_rhs.append(0.0)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n                    inequality_rows.append(row)\n                    inequality_rhs.append(node.inputs[i].rate)\n                    constraint_descriptions.append(\n                        f\"SINK {node_id}: edge[{in_edge.id}] <= {node.inputs[i].rate}\"\n                    )\n</search>\n<replace>\n                    inequality_rows.append(row)\n                    inequality_rhs.append(node.inputs[i].rate)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n            equality_rows.append(row)\n            equality_rhs.append(0.0)\n            in_ids = [e.id for e in incoming]\n            out_ids = [e.id for e in outgoing]\n            eq_constraint_descriptions.append(\n                f\"PORT {node_id}: sum(in[{in_ids}]) = sum(out[{out_ids}])\"\n            )\n</search>\n<replace>\n            equality_rows.append(row)\n            equality_rhs.append(0.0)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>\n        inequality_rows.append(row)\n        inequality_rhs.append(upper_bound)\n        constraint_descriptions.append(f\"EDGE {edge_id}: flow <= {upper_bound}\")\n</search>\n<replace>\n        inequality_rows.append(row)\n        inequality_rhs.append(upper_bound)\n</replace>\n</edit>\n\n<check/>\n\nDone! Now when you run the app and solve flows, it will write `~/flow_graph.dot` with:\n\n- **Nodes** colored by type (green=miner, blue=producer, gold=splitter, orange=merger, red=sink, plum=ports)\n- **Node labels** showing type, ID, recipe, clock speed, and all port rates\n- **Edges** showing item type, actual flow, capacity, and theoretical flow (if different)\n- **Red thick edges** for bottlenecks\n- **Dark green edges** for well-utilized belts (>90%)\n- **Orange edges** for underutilized belts (<50%)\n\nView it with:\n```bash\ndot -Tpng ~/flow_graph.dot -o ~/flow_graph.png && open ~/flow_graph.png\n```\n\nOr use an online viewer like https://dreampuf.github.io/GraphvizOnline/",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
     }
   ]
 }
