@@ -31,17 +31,13 @@
 
 ---
 
-## Additional Considerations
+## Additional Items
 
-- [ ] **Keyboard shortcuts documentation** - Help menu or tooltip showing all shortcuts
-- [ ] **Undo/redo state after save** - Verify dirty flag and undo stack behavior on save/load
-- [ ] **Error handling on file load** - Graceful handling of corrupted/incompatible save files
 - [ ] **Recent files menu** - File > Recent Files for quick access
 - [ ] **Zoom to fit** - Button/shortcut to zoom canvas to show all content
 - [ ] **Export to image** - Export factory layout as PNG/SVG for sharing
 - [ ] **Version compatibility** - Document file format version, handle upgrades gracefully
-- [ ] **License file** - Ensure LICENSE is present and correct
-- [ ] **Performance with large factories** - Test/profile with 100+ buildings
+- [x] **License file** - GPL-3.0 (MIT linprog is compatible)
 
 ## Nice-to-Have (Post 1.0)
 
@@ -49,3 +45,4 @@
 - [ ] Search/filter in recipe selector
 - [ ] Dark/light theme toggle
 - [ ] Localization support
+- [ ] Keyboard shortcuts documentation
