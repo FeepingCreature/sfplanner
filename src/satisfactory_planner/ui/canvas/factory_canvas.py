@@ -730,25 +730,30 @@ class FactoryCanvas(QGraphicsView):
             self.command_stack.execute(cmd)
 
     def _emit_selection_changed(self) -> None:
-        """Emit signal with current selection and scene context."""
+        """Emit signal with current selection and context.
+
+        The second parameter is now the placement_id (for items inside room placements)
+        or None (for items at document level). This allows properties panel to construct
+        correct FlowKeys for flow solver lookups.
+        """
         from satisfactory_planner.ui.items.room_item import RoomItem
 
         selected_ids = []
-        scene_room_id: str | None = None
+        placement_id: str | None = None
 
         for item in self._scene.selectedItems():
             if isinstance(item, BuildingItem):
                 selected_ids.append(item.building.id)
-                if scene_room_id is None:
-                    scene_room_id = item.building_scene.scene_room_id
+                if placement_id is None:
+                    placement_id = item._placement_id
             elif isinstance(item, BeltItem):
                 selected_ids.append(item.belt.id)
-                if scene_room_id is None:
-                    scene_room_id = item.belt_scene.scene_room_id
+                if placement_id is None:
+                    placement_id = item._placement_id
             elif isinstance(item, RoomItem):
                 selected_ids.append(item.placement.id)
 
-        self.selection_changed.emit(selected_ids, scene_room_id)
+        self.selection_changed.emit(selected_ids, placement_id)
 
     def select_all(self) -> None:
         """Select all buildings and belts."""

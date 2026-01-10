@@ -64,6 +64,7 @@ class PropertiesPanel(QWidget):
         self.canvas: FactoryCanvas | None = None  # Set by MainWindow
         self._selected_ids: list[str] = []
         self._scene_room_id: str | None = None  # Room ID for current selection
+        self._placement_id: str | None = None  # Placement ID for items in rooms
         self._updating = False  # Prevent signal loops
 
         self._setup_ui()
@@ -318,15 +319,22 @@ class PropertiesPanel(QWidget):
         self._update_recipe_combo()
         self._update_display()
 
-    def set_selection(self, selected_ids: list[str], scene_room_id: str | None = None) -> None:
+    def set_selection(self, selected_ids: list[str], placement_id: str | None = None) -> None:
         """Update the displayed properties for the selection.
 
         Args:
             selected_ids: List of selected item IDs
-            scene_room_id: The room ID containing the selection, or None for root document
+            placement_id: The RoomPlacement ID if items are inside a room, or None for root
         """
         self._selected_ids = selected_ids
-        self._scene_room_id = scene_room_id
+        self._placement_id = placement_id
+
+        # Derive scene_room_id from placement_id for scene lookups
+        if placement_id and placement_id in self.document.room_placements:
+            self._scene_room_id = self.document.room_placements[placement_id].room_id
+        else:
+            self._scene_room_id = None
+
         self._update_display()
 
     def _get_scene(self) -> Document | Room:
@@ -728,13 +736,8 @@ class PropertiesPanel(QWidget):
                 self.item_combo.addItem(item_id, item_id)
 
     def _make_flow_key(self, element_id: str) -> FlowKey:
-        """Create a FlowKey for an element in the current scene context."""
-        if self._scene_room_id:
-            # Find a placement that uses this room
-            for placement in self.document.room_placements.values():
-                if placement.room_id == self._scene_room_id:
-                    return FlowKey(element_id=element_id, placement_id=placement.id)
-        return FlowKey(element_id=element_id)
+        """Create a FlowKey for an element in the current selection context."""
+        return FlowKey(element_id=element_id, placement_id=self._placement_id)
 
     def _get_belt_flow_rate(self, belt_id: str) -> float | None:
         """Get flow rate for a belt from flow solver."""
