@@ -8,7 +8,7 @@ echo "Installing build dependencies..."
 pip install nuitka patchelf 2>/dev/null || pip install nuitka
 
 echo "Building with pyside6-deploy..."
-pyside6-deploy src/satisfactory_planner/main.py --name satisfactory-planner -f
+pyside6-deploy -c pysidedeploy.spec
 
 echo ""
 echo "Build complete! Output:"

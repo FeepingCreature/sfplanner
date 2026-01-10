@@ -51,15 +51,15 @@ jobs:
 
       - name: Build with pyside6-deploy
         run: |
-          pyside6-deploy src/satisfactory_planner/main.py --name satisfactory-planner -f
+          pyside6-deploy -c pysidedeploy.spec
 
-      - name: Upload artifact
+      - name: Find and upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: |
-            satisfactory-planner${{ matrix.extension }}
-            satisfactory-planner.app
+            **/main${{ matrix.extension }}
+            **/main.app
           if-no-files-found: warn
 
   release:
