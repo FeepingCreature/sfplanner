@@ -506,6 +506,32 @@ def _propagate_item_types(graph: FlowGraph) -> None:
     for edge in graph.edges.values():
         logger.debug(f"  Final edge {edge.id}: item_id={edge.item_id}")
 
+    # Log nodes/edges with unknown item types
+    unknown_edges = [e for e in graph.edges.values() if e.item_id is None]
+    if unknown_edges:
+        logger.warning("Edges with unknown item_id after propagation:")
+        for edge in unknown_edges:
+            src = graph.nodes.get(edge.source_node_id)
+            dst = graph.nodes.get(edge.dest_node_id)
+            src_type = src.node_type.name if src else "?"
+            dst_type = dst.node_type.name if dst else "?"
+            logger.warning(f"  {edge.id}: {src_type} -> {dst_type}")
+
+    unknown_nodes = []
+    for node in graph.nodes.values():
+        if node.node_type in logistics_types and any(
+            p.item_id is None for p in node.inputs + node.outputs
+        ):
+            unknown_nodes.append(node)
+    if unknown_nodes:
+        logger.warning("Logistics nodes with unknown port item_ids after propagation:")
+        for node in unknown_nodes:
+            in_items = [p.item_id for p in node.inputs]
+            out_items = [p.item_id for p in node.outputs]
+            logger.warning(
+                f"  {node.id} ({node.node_type.name}): inputs={in_items}, outputs={out_items}"
+            )
+
 
 def _make_item_key(element_id: str, placement_id: str | None) -> ItemKey:
     """Create a ItemKey for a building or belt."""
