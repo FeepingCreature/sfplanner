@@ -313,16 +313,67 @@ def simplex_canonical_m(a, b, c, basis, num, verbose=False, do_coerce=True):
                     print("### Already optimal, returning solution directly")
                 return RESOLUTION_SOLVED, solution
             
-            # Not optimal yet - but we can't just fall through because basis has artificial vars
-            # We need to build a valid basis with only real variables
+            # Not optimal yet - need to pivot out artificial variables and continue
+            # Since artificial vars have value 0, we can replace them with any real var
+            # that has a non-zero coefficient in that row
             if verbose:
-                print("### Not optimal, need to continue but have artificial vars in basis")
+                print("### Not optimal, pivoting out artificial variables")
                 print(f"### Current basis: {m_solver.basis}")
-                print(f"### n (real vars): {n}")
             
-            # For now, just return the current solution - it's feasible even if not optimal
-            # This handles the all-zeros case where we forced disconnected edges to 0
-            return RESOLUTION_SOLVED, solution
+            # Build new basis and matrix with artificial vars removed
+            new_basis = m_solver.basis[:]
+            new_a = [row[:n] for row in m_solver.a]  # Trim to real vars only
+            new_b = m_solver.b[:]
+            
+            rows_to_remove = []
+            for j, bi in enumerate(new_basis):
+                if bi >= n:
+                    # Find a real variable to pivot in
+                    pivot_col = None
+                    for i in range(n):
+                        if not num.iszero(new_a[j][i]) and i not in new_basis:
+                            pivot_col = i
+                            break
+                    
+                    if pivot_col is not None:
+                        # Pivot this variable in
+                        if verbose:
+                            print(f"###   Row {j}: replacing artificial {bi} with real {pivot_col}")
+                        new_basis[j] = pivot_col
+                        # Need to actually do the pivot to maintain diagonal form
+                        pivot_val = new_a[j][pivot_col]
+                        # Normalize pivot row
+                        new_b[j] /= pivot_val
+                        for i in range(n):
+                            new_a[j][i] /= pivot_val
+                        # Eliminate from other rows
+                        for j2 in range(len(new_a)):
+                            if j2 != j:
+                                factor = new_a[j2][pivot_col]
+                                if not num.iszero(factor):
+                                    new_b[j2] -= factor * new_b[j]
+                                    for i in range(n):
+                                        new_a[j2][i] -= factor * new_a[j][i]
+                    else:
+                        # Row is all zeros in real variables - it's redundant
+                        if verbose:
+                            print(f"###   Row {j}: removing redundant constraint")
+                        rows_to_remove.append(j)
+            
+            # Remove redundant rows (in reverse order to keep indices valid)
+            for j in reversed(rows_to_remove):
+                del new_a[j]
+                del new_b[j]
+                del new_basis[j]
+            
+            if not new_a:
+                # All constraints redundant - return current solution
+                return RESOLUTION_SOLVED, solution
+            
+            # Now continue with regular simplex
+            return simplex_canonical(
+                new_a, new_b, c, new_basis, num=num, verbose=verbose, do_coerce=False
+            )
         else:
             if verbose:
                 print("### Empty simplex")
