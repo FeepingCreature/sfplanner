@@ -1,10 +1,16 @@
 name: Build Release
 
+# Trigger: push a tag like v1.0.0, or run manually from Actions tab
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      skip_release:
+        description: 'Build only, skip creating GitHub release'
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -59,7 +65,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && !inputs.skip_release
 
     steps:
       - name: Download all artifacts
