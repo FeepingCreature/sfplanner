@@ -359,9 +359,28 @@ def _propagate_item_types(graph: FlowGraph) -> None:
     Convergence: Each iteration must make progress (set at least one item_id).
     With N logistics nodes, we converge in at most N iterations.
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     # Count logistics nodes for convergence check (includes PORT_IN/PORT_OUT)
     logistics_types = (NodeType.SPLITTER, NodeType.MERGER, NodeType.PORT_IN, NodeType.PORT_OUT)
     logistics_count = sum(1 for n in graph.nodes.values() if n.node_type in logistics_types)
+
+    logger.debug(f"Starting item type propagation with {logistics_count} logistics nodes")
+
+    # Log initial state
+    for edge in graph.edges.values():
+        logger.debug(
+            f"  Edge {edge.id}: item_id={edge.item_id}, {edge.source_node_id} -> {edge.dest_node_id}"
+        )
+    for node in graph.nodes.values():
+        if node.node_type in logistics_types:
+            in_items = [p.item_id for p in node.inputs]
+            out_items = [p.item_id for p in node.outputs]
+            logger.debug(
+                f"  Node {node.id} ({node.node_type}): inputs={in_items}, outputs={out_items}"
+            )
 
     # Iterate until no more changes
     changed = True
@@ -370,6 +389,7 @@ def _propagate_item_types(graph: FlowGraph) -> None:
     while changed:
         changed = False
         iteration += 1
+        logger.debug(f"Iteration {iteration}")
 
         # Safety check: should never exceed logistics node count
         if iteration > logistics_count + 1:
@@ -389,6 +409,9 @@ def _propagate_item_types(graph: FlowGraph) -> None:
             if source_node and edge.source_port_index < len(source_node.outputs):
                 source_item = source_node.outputs[edge.source_port_index].item_id
                 if source_item is not None:
+                    logger.debug(
+                        f"  Edge {edge.id}: got item_id={source_item} from source node {source_node.id}"
+                    )
                     edge.item_id = source_item
                     changed = True
                     continue
@@ -398,6 +421,9 @@ def _propagate_item_types(graph: FlowGraph) -> None:
             if dest_node and edge.dest_port_index < len(dest_node.inputs):
                 dest_item = dest_node.inputs[edge.dest_port_index].item_id
                 if dest_item is not None:
+                    logger.debug(
+                        f"  Edge {edge.id}: got item_id={dest_item} from dest node {dest_node.id}"
+                    )
                     edge.item_id = dest_item
                     changed = True
 
@@ -424,11 +450,17 @@ def _propagate_item_types(graph: FlowGraph) -> None:
                     # Update all ports with this item type
                     for port in node.inputs:
                         if port.item_id != item_id:
+                            logger.debug(
+                                f"  Splitter {node.id}: setting input port item_id={item_id}"
+                            )
                             port.item_id = item_id
                             port.rate = 100000.0  # High capacity
                             changed = True
                     for port in node.outputs:
                         if port.item_id != item_id:
+                            logger.debug(
+                                f"  Splitter {node.id}: setting output port item_id={item_id}"
+                            )
                             port.item_id = item_id
                             port.rate = 100000.0  # High capacity
                             changed = True
@@ -454,14 +486,25 @@ def _propagate_item_types(graph: FlowGraph) -> None:
                     # Update all ports with this item type
                     for port in node.inputs:
                         if port.item_id != item_id:
+                            logger.debug(
+                                f"  {node.node_type} {node.id}: setting input port item_id={item_id}"
+                            )
                             port.item_id = item_id
                             port.rate = 100000.0  # High capacity
                             changed = True
                     for port in node.outputs:
                         if port.item_id != item_id:
+                            logger.debug(
+                                f"  {node.node_type} {node.id}: setting output port item_id={item_id}"
+                            )
                             port.item_id = item_id
                             port.rate = 100000.0  # High capacity
                             changed = True
+
+    # Log final state
+    logger.debug(f"Item type propagation complete after {iteration} iterations")
+    for edge in graph.edges.values():
+        logger.debug(f"  Final edge {edge.id}: item_id={edge.item_id}")
 
 
 def _make_item_key(element_id: str, placement_id: str | None) -> ItemKey:
