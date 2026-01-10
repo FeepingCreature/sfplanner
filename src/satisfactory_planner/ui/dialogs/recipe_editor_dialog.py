@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
@@ -22,7 +21,8 @@ from PySide6.QtWidgets import (
 
 from satisfactory_planner.core import BuildingType, Document
 from satisfactory_planner.core.models import get_building_io_counts, get_building_power
-from satisfactory_planner.core.persistence import save_user_recipes
+from satisfactory_planner.core.persistence import load_items, save_user_recipes
+from satisfactory_planner.ui.widgets import SearchableComboBox
 
 
 class RecipeEditorDialog(QDialog):
@@ -127,12 +127,15 @@ class RecipeEditorDialog(QDialog):
         self.inputs_label = QLabel("<b>Inputs (per minute):</b>")
         self.details_layout.addRow(self.inputs_label)
 
+        # Load items for searchable combos
+        self._item_list = self._load_item_list()
+
         # Input fields (up to 4 for Manufacturer/Blender)
-        self.input_rows: list[tuple[QLineEdit, QDoubleSpinBox, QWidget]] = []
+        self.input_rows: list[tuple[SearchableComboBox, QDoubleSpinBox, QWidget]] = []
         for i in range(4):
-            name_edit = QLineEdit()
-            name_edit.setPlaceholderText("Item name")
-            name_edit.textChanged.connect(self._on_field_changed)
+            item_combo = SearchableComboBox(placeholder="Search items...")
+            item_combo.set_items(self._item_list, include_none=True, none_text="(No item)")
+            item_combo.selection_changed.connect(self._on_field_changed)
             rate_spin = QDoubleSpinBox()
             rate_spin.setRange(0, 10000)
             rate_spin.setDecimals(2)
@@ -140,20 +143,20 @@ class RecipeEditorDialog(QDialog):
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
-            row_layout.addWidget(name_edit)
-            row_layout.addWidget(rate_spin)
+            row_layout.addWidget(item_combo, 2)
+            row_layout.addWidget(rate_spin, 1)
             self.details_layout.addRow(f"Input {i + 1}:", row_widget)
-            self.input_rows.append((name_edit, rate_spin, row_widget))
+            self.input_rows.append((item_combo, rate_spin, row_widget))
 
         self.outputs_label = QLabel("<b>Outputs (per minute):</b>")
         self.details_layout.addRow(self.outputs_label)
 
         # Output fields (up to 2 for Refinery/Packager/Blender)
-        self.output_rows: list[tuple[QLineEdit, QDoubleSpinBox, QWidget]] = []
+        self.output_rows: list[tuple[SearchableComboBox, QDoubleSpinBox, QWidget]] = []
         for i in range(2):
-            name_edit = QLineEdit()
-            name_edit.setPlaceholderText("Item name")
-            name_edit.textChanged.connect(self._on_field_changed)
+            item_combo = SearchableComboBox(placeholder="Search items...")
+            item_combo.set_items(self._item_list, include_none=True, none_text="(No item)")
+            item_combo.selection_changed.connect(self._on_field_changed)
             rate_spin = QDoubleSpinBox()
             rate_spin.setRange(0, 10000)
             rate_spin.setDecimals(2)
@@ -161,10 +164,10 @@ class RecipeEditorDialog(QDialog):
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
-            row_layout.addWidget(name_edit)
-            row_layout.addWidget(rate_spin)
+            row_layout.addWidget(item_combo, 2)
+            row_layout.addWidget(rate_spin, 1)
             self.details_layout.addRow(f"Output {i + 1}:", row_widget)
-            self.output_rows.append((name_edit, rate_spin, row_widget))
+            self.output_rows.append((item_combo, rate_spin, row_widget))
 
         content_layout.addWidget(details_widget, 2)
         layout.addLayout(content_layout)
@@ -187,6 +190,12 @@ class RecipeEditorDialog(QDialog):
 
         # Update button states
         self._update_button_states()
+
+    def _load_item_list(self) -> list[tuple[str, str]]:
+        """Load items from game_data.json as (name, id) tuples."""
+        items = load_items()
+        # Return as (display_name, item_id) for SearchableComboBox
+        return [(name, item_id) for item_id, name, _is_fluid in items]
 
     def _update_button_states(self) -> None:
         """Enable/disable buttons based on selection."""
@@ -224,18 +233,18 @@ class RecipeEditorDialog(QDialog):
         # Gather inputs based on building's input count
         inputs = []
         for i in range(num_inputs):
-            name = self.input_rows[i][0].text()
+            item_id = self.input_rows[i][0].get_current_data()
             rate = self.input_rows[i][1].value()
-            if name and rate > 0:
-                inputs.append(ItemRate(ItemId(name), rate))
+            if item_id and rate > 0:
+                inputs.append(ItemRate(ItemId(item_id), rate))
 
         # Gather outputs based on building's output count
         outputs = []
         for i in range(num_outputs):
-            name = self.output_rows[i][0].text()
+            item_id = self.output_rows[i][0].get_current_data()
             rate = self.output_rows[i][1].value()
-            if name and rate > 0:
-                outputs.append(ItemRate(ItemId(name), rate))
+            if item_id and rate > 0:
+                outputs.append(ItemRate(ItemId(item_id), rate))
 
         # Power is determined by building type
         power = get_building_power(building_type)
@@ -339,23 +348,23 @@ class RecipeEditorDialog(QDialog):
                 break
 
         # Clear all input/output fields first
-        for name_edit, rate_spin, _ in self.input_rows:
-            name_edit.clear()
+        for item_combo, rate_spin, _ in self.input_rows:
+            item_combo.setCurrentIndex(0)  # (No item)
             rate_spin.setValue(0)
-        for name_edit, rate_spin, _ in self.output_rows:
-            name_edit.clear()
+        for item_combo, rate_spin, _ in self.output_rows:
+            item_combo.setCurrentIndex(0)  # (No item)
             rate_spin.setValue(0)
 
         # Set inputs
         for i, item_rate in enumerate(recipe.inputs):
             if i < len(self.input_rows):
-                self.input_rows[i][0].setText(item_rate.item_id)
+                self.input_rows[i][0].set_current_data(item_rate.item_id)
                 self.input_rows[i][1].setValue(item_rate.rate)
 
         # Set outputs
         for i, item_rate in enumerate(recipe.outputs):
             if i < len(self.output_rows):
-                self.output_rows[i][0].setText(item_rate.item_id)
+                self.output_rows[i][0].set_current_data(item_rate.item_id)
                 self.output_rows[i][1].setValue(item_rate.rate)
 
         self._updating = False

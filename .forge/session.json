@@ -1,10 +1,10 @@
 {
   "active_files": [
-    "tools/web_query.py",
-    "tools/web_search.py",
-    "tools/wiki_query.py",
-    "src/satisfactory_planner/data/game_data.json",
+    "src/satisfactory_planner/ui/widgets/searchable_combo.py",
+    "src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py",
+    "src/satisfactory_planner/ui/widgets/__init__.py",
     "CLAUDE.md",
+    "src/satisfactory_planner/ui/panels/properties_panel.py",
     "RELEASE_TODO.md"
   ],
   "request_log_entries": [
@@ -448,6 +448,60 @@
       "streaming": true,
       "actual_cost": 0.589295,
       "generation_id": "gen-1768078957-lXiY7KVtbp7PwF8cJXmS"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768079386197.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768079386197.json",
+      "timestamp": 1768079386.198238,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.28845,
+      "generation_id": "gen-1768079387-bH2YtQZYAY52pUrANfph"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768079394333.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768079394333.json",
+      "timestamp": 1768079394.3343601,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.03010475,
+      "generation_id": "gen-1768079395-wN250SBvzjYfVPupyvUW"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768079400373.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768079400373.json",
+      "timestamp": 1768079400.3739474,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.03902375,
+      "generation_id": "gen-1768079401-UxHTiiiemum5Gp1JYS10"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768079405354.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768079405354.json",
+      "timestamp": 1768079405.3553133,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.30510675,
+      "generation_id": "gen-1768079405-jcXDvsxOpXV0vbvy0EoG"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1768079520847.json",
+      "response_file": "/tmp/forge_debug/response_1768079520847.json",
+      "timestamp": 1768079520.8474562,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000467,
+      "generation_id": "gen-1768079521-i2XgDnafmf9oA5EVZCn9"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1768079525110.json",
+      "response_file": "/tmp/forge_debug/response_1768079525110.json",
+      "timestamp": 1768079525.110464,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.00195,
+      "generation_id": "gen-1768079525-P5BjmnQewuKlE53U5wGj"
     }
   ],
   "messages": [
@@ -1489,6 +1543,292 @@
         {
           "commit": "47055cfafc0f",
           "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 173ee4df",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "yeah forget the alternates that's what we have an editor for.\n\nALRIGHT. Now, can you do a refine pass over the recipe editor and then add a widget for recipe/item search? That stuff in the UI all predates game_data.json."
+    },
+    {
+      "role": "assistant",
+      "content": "I'll load the recipe editor and related UI files to understand the current state, then refactor to use game_data.json properly and add searchable dropdowns.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/dialogs/recipe_editor.py\", \"src/satisfactory_planner/ui/panels/properties_panel.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01LLihRf6JapYa6omeDgsXUS",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01LLihRf6JapYa6omeDgsXUS",
+      "content": "{\"error\": \"File not found: src/satisfactory_planner/ui/dialogs/recipe_editor.py\", \"success\": false}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\u274c **update_context** failed: File not found: src/satisfactory_planner/ui/dialogs/recipe_editor.py",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "wait, other way around",
+      "_mid_turn": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me find the recipe editor first:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"RecipeEditorDialog|recipe.*editor\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_011YzJ82d3KdBZHquknfXrSY",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_011YzJ82d3KdBZHquknfXrSY",
+      "content": "{\"message\": \"Found 10 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/__init__.py:19 \\u2500\\u2500\\n      16 |     SetClockSpeedCommand,\\n      17 |     SetRecipeCommand,\\n      18 | )\\n>>>   19 | from satisfactory_planner.ui.dialogs import RecipeEditorDialog, SettingsDialog\\n      20 | \\n      21 | __all__ = [\\n      22 |     \\\"BuildingMove\\\",\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/__init__.py:32 \\u2500\\u2500\\n      29 |     \\\"MoveBuildingsCommand\\\",\\n      30 |     \\\"PlaceBlueprintCommand\\\",\\n      31 |     \\\"PlaceBuildingCommand\\\",\\n>>>   32 |     \\\"RecipeEditorDialog\\\",\\n      33 |     \\\"SetBeltTierCommand\\\",\\n      34 |     \\\"SetClockSpeedCommand\\\",\\n      35 |     \\\"SetRecipeCommand\\\",\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/dialogs/__init__.py:3 \\u2500\\u2500\\n       1 | \\\"\\\"\\\"Dialog components for the factory planner.\\\"\\\"\\\"\\n       2 | \\n>>>    3 | from satisfactory_planner.ui.dialogs.recipe_editor_dialog import RecipeEditorDialog\\n       4 | from satisfactory_planner.ui.dialogs.settings_dialog import SettingsDialog\\n       5 | \\n       6 | __all__ = [\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/dialogs/__init__.py:7 \\u2500\\u2500\\n       4 | from satisfactory_planner.ui.dialogs.settings_dialog import SettingsDialog\\n       5 | \\n       6 | __all__ = [\\n>>>    7 |     \\\"RecipeEditorDialog\\\",\\n       8 |     \\\"SettingsDialog\\\",\\n       9 | ]\\n      10 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py:28 \\u2500\\u2500\\n      25 | from satisfactory_planner.core.persistence import save_user_recipes\\n      26 | \\n      27 | \\n>>>   28 | class RecipeEditorDialog(QDialog):\\n      29 |     \\\"\\\"\\\"Dialog for viewing and editing recipes.\\n      30 | \\n      31 |     Features auto-save: changes are applied immediately when fields change.\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:43 \\u2500\\u2500\\n      40 |     SetItemCommand,\\n      41 |     SetRecipeCommand,\\n      42 | )\\n>>>   43 | from satisfactory_planner.ui.dialogs import RecipeEditorDialog\\n      44 | \\n      45 | if TYPE_CHECKING:\\n      46 |     from satisfactory_planner.ui.canvas import FactoryCanvas\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:107 \\u2500\\u2500\\n     104 |         self.recipe_edit_btn.setText(\\\"\\u270e\\\")\\n     105 |         self.recipe_edit_btn.setToolTip(\\\"Edit recipes...\\\")\\n     106 |         self.recipe_edit_btn.setAutoRaise(True)  # Flat look, highlights on hover\\n>>>  107 |         self.recipe_edit_btn.clicked.connect(self._open_recipe_editor)\\n     108 |         recipe_layout.addWidget(self.recipe_edit_btn)\\n     109 | \\n     110 |         building_layout.addRow(\\\"Recipe:\\\", recipe_layout)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:289 \\u2500\\u2500\\n     286 | \\n     287 |         layout.addStretch()\\n     288 | \\n>>>  289 |     def _open_recipe_editor(self) -> None:\\n     290 |         \\\"\\\"\\\"Open the recipe editor dialog.\\\"\\\"\\\"\\n     291 |         dialog = RecipeEditorDialog(self.document, self)\\n     292 |         dialog.exec()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:290 \\u2500\\u2500\\n     287 |         layout.addStretch()\\n     288 | \\n     289 |     def _open_recipe_editor(self) -> None:\\n>>>  290 |         \\\"\\\"\\\"Open the recipe editor dialog.\\\"\\\"\\\"\\n     291 |         dialog = RecipeEditorDialog(self.document, self)\\n     292 |         dialog.exec()\\n     293 |         # Refresh recipe combo\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:291 \\u2500\\u2500\\n     288 | \\n     289 |     def _open_recipe_editor(self) -> None:\\n     290 |         \\\"\\\"\\\"Open the recipe editor dialog.\\\"\\\"\\\"\\n>>>  291 |         dialog = RecipeEditorDialog(self.document, self)\\n     292 |         dialog.exec()\\n     293 |         # Refresh recipe combo\\n     294 |         self._update_recipe_combo()\", \"success\": true, \"total_matches\": 10}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"RecipeEditorDialog|recipe.*editor\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 10 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/__init__.py:19 \\u2500\\u2500\\n      16 |     SetClockSpeedCommand,\\n      17 |     SetRecipeCommand,\\n      18 | )\\n>>>   19 | from satisfactory_planner.ui.dialogs import RecipeEditorDialog, SettingsDialog\\n      20 | \\n      21 | __all__ = [\\n      22 |     \\\"BuildingMove\\\",\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/__init__.py:32 \\u2500\\u2500\\n      29 |     \\\"MoveBuildingsCommand\\\",\\n      30 |     \\\"PlaceBlueprintCommand\\\",\\n      31 |     \\\"PlaceBuildingCommand\\\",\\n>>>   32 |     \\\"RecipeEditorDialog\\\",\\n      33 |     \\\"SetBeltTierCommand\\\",\\n      34 |     \\\"SetClockSpeedCommand\\\",\\n      35 |     \\\"SetRecipeCommand\\\",\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/dialogs/__init__.py:3 \\u2500\\u2500\\n       1 | \\\"\\\"\\\"Dialog components for the factory planner.\\\"\\\"\\\"\\n       2 | \\n>>>    3 | from satisfactory_planner.ui.dialogs.recipe_editor_dialog import RecipeEditorDialog\\n       4 | from satisfactory_planner.ui.dialogs.settings_dialog import SettingsDialog\\n       5 | \\n       6 | __all__ = [\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/dialogs/__init__.py:7 \\u2500\\u2500\\n       4 | from satisfactory_planner.ui.dialogs.settings_dialog import SettingsDialog\\n       5 | \\n       6 | __all__ = [\\n>>>    7 |     \\\"RecipeEditorDialog\\\",\\n       8 |     \\\"SettingsDialog\\\",\\n       9 | ]\\n      10 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py:28 \\u2500\\u2500\\n      25 | from satisfactory_planner.core.persistence import save_user_recipes\\n      26 | \\n      27 | \\n>>>   28 | class RecipeEditorDialog(QDialog):\\n      29 |     \\\"\\\"\\\"Dialog for viewing and editing recipes.\\n      30 | \\n      31 |     Features auto-save: changes are applied immediately when fields change.\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:43 \\u2500\\u2500\\n      40 |     SetItemCommand,\\n      41 |     SetRecipeCommand,\\n      42 | )\\n>>>   43 | from satisfactory_planner.ui.dialogs import RecipeEditorDialog\\n      44 | \\n      45 | if TYPE_CHECKING:\\n      46 |     from satisfactory_planner.ui.canvas import FactoryCanvas\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:107 \\u2500\\u2500\\n     104 |         self.recipe_edit_btn.setText(\\\"\\u270e\\\")\\n     105 |         self.recipe_edit_btn.setToolTip(\\\"Edit recipes...\\\")\\n     106 |         self.recipe_edit_btn.setAutoRaise(True)  # Flat look, highlights on hover\\n>>>  107 |         self.recipe_edit_btn.clicked.connect(self._open_recipe_editor)\\n     108 |         recipe_layout.addWidget(self.recipe_edit_btn)\\n     109 | \\n     110 |         building_layout.addRow(\\\"Recipe:\\\", recipe_layout)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:289 \\u2500\\u2500\\n     286 | \\n     287 |         layout.addStretch()\\n     288 | \\n>>>  289 |     def _open_recipe_editor(self) -> None:\\n     290 |         \\\"\\\"\\\"Open the recipe editor dialog.\\\"\\\"\\\"\\n     291 |         dialog = RecipeEditorDialog(self.document, self)\\n     292 |         dialog.exec()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:290 \\u2500\\u2500\\n     287 |         layout.addStretch()\\n     288 | \\n     289 |     def _open_recipe_editor(self) -> None:\\n>>>  290 |         \\\"\\\"\\\"Open the recipe editor dialog.\\\"\\\"\\\"\\n     291 |         dialog = RecipeEditorDialog(self.document, self)\\n     292 |         dialog.exec()\\n     293 |         # Refresh recipe combo\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:291 \\u2500\\u2500\\n     288 | \\n     289 |     def _open_recipe_editor(self) -> None:\\n     290 |         \\\"\\\"\\\"Open the recipe editor dialog.\\\"\\\"\\\"\\n>>>  291 |         dialog = RecipeEditorDialog(self.document, self)\\n     292 |         dialog.exec()\\n     293 |         # Refresh recipe combo\\n     294 |         self._update_recipe_combo()\",\n  \"success\": true,\n  \"total_matches\": 10\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me load the recipe editor and properties panel files:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py\", \"src/satisfactory_planner/ui/panels/properties_panel.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01HA3NHzrPokV5V4bBMojAjL",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01HA3NHzrPokV5V4bBMojAjL",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py\", \"src/satisfactory_planner/ui/panels/properties_panel.py\"], \"message\": \"Added 2 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I can see the current state. The recipe editor uses free-text `QLineEdit` for item names, and the properties panel has basic `QComboBox` for items/recipes. Let me:\n\n1. Create a reusable `SearchableComboBox` widget\n2. Update the recipe editor to use it for item selection (with items from game_data.json)\n3. Update the properties panel to use searchable dropdowns\n4. Sort items/recipes alphabetically\n\n<edit file=\"src/satisfactory_planner/ui/widgets/__init__.py\">\n\"\"\"Reusable UI widgets.\"\"\"\n\nfrom satisfactory_planner.ui.widgets.searchable_combo import SearchableComboBox\n\n__all__ = [\n    \"SearchableComboBox\",\n]\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/widgets/searchable_combo.py\">\n\"\"\"Searchable combo box widget with filtering.\"\"\"\n\nfrom __future__ import annotations\n\nfrom typing import Any\n\nfrom PySide6.QtCore import Qt, Signal\nfrom PySide6.QtWidgets import (\n    QComboBox,\n    QCompleter,\n    QLineEdit,\n)\n\n\nclass SearchableComboBox(QComboBox):\n    \"\"\"A combo box with search/filter capability.\n\n    Features:\n    - Type to filter items\n    - Items sorted alphabetically\n    - Completion suggestions as you type\n    - Clear selection option\n    \"\"\"\n\n    # Emitted when selection changes (includes None for cleared)\n    selection_changed = Signal(object)  # Emits the item data\n\n    def __init__(self, parent=None, placeholder: str = \"Search...\"):\n        super().__init__(parent)\n        self.setEditable(True)\n        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)\n\n        # Store items for filtering\n        self._all_items: list[tuple[str, Any]] = []  # (display_text, data)\n        self._placeholder = placeholder\n        self._updating = False\n\n        # Setup line edit\n        line_edit = self.lineEdit()\n        if line_edit:\n            line_edit.setPlaceholderText(placeholder)\n            line_edit.textEdited.connect(self._on_text_edited)\n\n        # Setup completer for suggestions\n        self._completer = QCompleter(self)\n        self._completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)\n        self._completer.setFilterMode(Qt.MatchFlag.MatchContains)\n        self._completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)\n        self.setCompleter(self._completer)\n\n        # Connect selection\n        self.currentIndexChanged.connect(self._on_index_changed)\n\n    def set_items(\n        self,\n        items: list[tuple[str, Any]],\n        include_none: bool = True,\n        none_text: str = \"(None)\",\n    ) -> None:\n        \"\"\"Set the items in the combo box.\n\n        Args:\n            items: List of (display_text, data) tuples\n            include_none: Whether to include a \"None\" option at the top\n            none_text: Text to display for the None option\n        \"\"\"\n        self._updating = True\n\n        # Sort items alphabetically by display text\n        sorted_items = sorted(items, key=lambda x: x[0].lower())\n\n        # Store for filtering\n        self._all_items = sorted_items.copy()\n\n        # Clear and repopulate\n        self.clear()\n\n        if include_none:\n            self.addItem(none_text, None)\n\n        for display_text, data in sorted_items:\n            self.addItem(display_text, data)\n\n        # Update completer model\n        self._update_completer()\n\n        self._updating = False\n\n    def _update_completer(self) -> None:\n        \"\"\"Update the completer with current items.\"\"\"\n        from PySide6.QtCore import QStringListModel\n\n        texts = [item[0] for item in self._all_items]\n        model = QStringListModel(texts, self)\n        self._completer.setModel(model)\n\n    def _on_text_edited(self, text: str) -> None:\n        \"\"\"Handle text editing - filter items.\"\"\"\n        if self._updating:\n            return\n\n        # Show popup with filtered items\n        self.showPopup()\n\n    def _on_index_changed(self, index: int) -> None:\n        \"\"\"Handle index change.\"\"\"\n        if self._updating:\n            return\n\n        data = self.currentData()\n        self.selection_changed.emit(data)\n\n    def set_current_data(self, data: Any) -> None:\n        \"\"\"Set current selection by data value.\"\"\"\n        self._updating = True\n        for i in range(self.count()):\n            if self.itemData(i) == data:\n                self.setCurrentIndex(i)\n                break\n        self._updating = False\n\n    def get_current_data(self) -> Any:\n        \"\"\"Get the currently selected data.\"\"\"\n        return self.currentData()\n</edit>\n\nNow update the recipe editor to use the new searchable combo for items:\n\n<edit file=\"src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py\">\n<search>\n\"\"\"Recipe editor dialog for viewing and editing recipes.\"\"\"\n\nfrom __future__ import annotations\n\nfrom PySide6.QtCore import Qt\nfrom PySide6.QtWidgets import (\n    QComboBox,\n    QDialog,\n    QDoubleSpinBox,\n    QFormLayout,\n    QHBoxLayout,\n    QLabel,\n    QLineEdit,\n    QListWidget,\n    QListWidgetItem,\n    QMessageBox,\n    QPushButton,\n    QToolButton,\n    QVBoxLayout,\n    QWidget,\n)\n\nfrom satisfactory_planner.core import BuildingType, Document\nfrom satisfactory_planner.core.models import get_building_io_counts, get_building_power\nfrom satisfactory_planner.core.persistence import save_user_recipes\n</search>\n<replace>\n\"\"\"Recipe editor dialog for viewing and editing recipes.\"\"\"\n\nfrom __future__ import annotations\n\nfrom PySide6.QtCore import Qt\nfrom PySide6.QtWidgets import (\n    QComboBox,\n    QDialog,\n    QDoubleSpinBox,\n    QFormLayout,\n    QHBoxLayout,\n    QLabel,\n    QListWidget,\n    QListWidgetItem,\n    QMessageBox,\n    QPushButton,\n    QToolButton,\n    QVBoxLayout,\n    QWidget,\n)\n\nfrom satisfactory_planner.core import BuildingType, Document\nfrom satisfactory_planner.core.models import get_building_io_counts, get_building_power\nfrom satisfactory_planner.core.persistence import load_items, save_user_recipes\nfrom satisfactory_planner.ui.widgets import SearchableComboBox\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py\">\n<search>\n        # Input fields (up to 4 for Manufacturer/Blender)\n        self.input_rows: list[tuple[QLineEdit, QDoubleSpinBox, QWidget]] = []\n        for i in range(4):\n            name_edit = QLineEdit()\n            name_edit.setPlaceholderText(\"Item name\")\n            name_edit.textChanged.connect(self._on_field_changed)\n            rate_spin = QDoubleSpinBox()\n            rate_spin.setRange(0, 10000)\n            rate_spin.setDecimals(2)\n            rate_spin.valueChanged.connect(self._on_field_changed)\n            row_widget = QWidget()\n            row_layout = QHBoxLayout(row_widget)\n            row_layout.setContentsMargins(0, 0, 0, 0)\n            row_layout.addWidget(name_edit)\n            row_layout.addWidget(rate_spin)\n            self.details_layout.addRow(f\"Input {i + 1}:\", row_widget)\n            self.input_rows.append((name_edit, rate_spin, row_widget))\n\n        self.outputs_label = QLabel(\"<b>Outputs (per minute):</b>\")\n        self.details_layout.addRow(self.outputs_label)\n\n        # Output fields (up to 2 for Refinery/Packager/Blender)\n        self.output_rows: list[tuple[QLineEdit, QDoubleSpinBox, QWidget]] = []\n        for i in range(2):\n            name_edit = QLineEdit()\n            name_edit.setPlaceholderText(\"Item name\")\n            name_edit.textChanged.connect(self._on_field_changed)\n            rate_spin = QDoubleSpinBox()\n            rate_spin.setRange(0, 10000)\n            rate_spin.setDecimals(2)\n            rate_spin.valueChanged.connect(self._on_field_changed)\n            row_widget = QWidget()\n            row_layout = QHBoxLayout(row_widget)\n            row_layout.setContentsMargins(0, 0, 0, 0)\n            row_layout.addWidget(name_edit)\n            row_layout.addWidget(rate_spin)\n            self.details_layout.addRow(f\"Output {i + 1}:\", row_widget)\n            self.output_rows.append((name_edit, rate_spin, row_widget))\n</search>\n<replace>\n        # Load items for searchable combos\n        self._item_list = self._load_item_list()\n\n        # Input fields (up to 4 for Manufacturer/Blender)\n        self.input_rows: list[tuple[SearchableComboBox, QDoubleSpinBox, QWidget]] = []\n        for i in range(4):\n            item_combo = SearchableComboBox(placeholder=\"Search items...\")\n            item_combo.set_items(self._item_list, include_none=True, none_text=\"(No item)\")\n            item_combo.selection_changed.connect(self._on_field_changed)\n            rate_spin = QDoubleSpinBox()\n            rate_spin.setRange(0, 10000)\n            rate_spin.setDecimals(2)\n            rate_spin.valueChanged.connect(self._on_field_changed)\n            row_widget = QWidget()\n            row_layout = QHBoxLayout(row_widget)\n            row_layout.setContentsMargins(0, 0, 0, 0)\n            row_layout.addWidget(item_combo, 2)\n            row_layout.addWidget(rate_spin, 1)\n            self.details_layout.addRow(f\"Input {i + 1}:\", row_widget)\n            self.input_rows.append((item_combo, rate_spin, row_widget))\n\n        self.outputs_label = QLabel(\"<b>Outputs (per minute):</b>\")\n        self.details_layout.addRow(self.outputs_label)\n\n        # Output fields (up to 2 for Refinery/Packager/Blender)\n        self.output_rows: list[tuple[SearchableComboBox, QDoubleSpinBox, QWidget]] = []\n        for i in range(2):\n            item_combo = SearchableComboBox(placeholder=\"Search items...\")\n            item_combo.set_items(self._item_list, include_none=True, none_text=\"(No item)\")\n            item_combo.selection_changed.connect(self._on_field_changed)\n            rate_spin = QDoubleSpinBox()\n            rate_spin.setRange(0, 10000)\n            rate_spin.setDecimals(2)\n            rate_spin.valueChanged.connect(self._on_field_changed)\n            row_widget = QWidget()\n            row_layout = QHBoxLayout(row_widget)\n            row_layout.setContentsMargins(0, 0, 0, 0)\n            row_layout.addWidget(item_combo, 2)\n            row_layout.addWidget(rate_spin, 1)\n            self.details_layout.addRow(f\"Output {i + 1}:\", row_widget)\n            self.output_rows.append((item_combo, rate_spin, row_widget))\n</replace>\n</edit>\n\nAdd the helper method to load items:\n\n<edit file=\"src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py\">\n<search>\n    def _update_button_states(self) -> None:\n        \"\"\"Enable/disable buttons based on selection.\"\"\"\n        has_selection = self.recipe_list.currentItem() is not None\n        self.duplicate_btn.setEnabled(has_selection)\n        self.delete_btn.setEnabled(has_selection)\n</search>\n<replace>\n    def _load_item_list(self) -> list[tuple[str, str]]:\n        \"\"\"Load items from game_data.json as (name, id) tuples.\"\"\"\n        items = load_items()\n        # Return as (display_name, item_id) for SearchableComboBox\n        return [(name, item_id) for item_id, name, _is_fluid in items]\n\n    def _update_button_states(self) -> None:\n        \"\"\"Enable/disable buttons based on selection.\"\"\"\n        has_selection = self.recipe_list.currentItem() is not None\n        self.duplicate_btn.setEnabled(has_selection)\n        self.delete_btn.setEnabled(has_selection)\n</replace>\n</edit>\n\nUpdate the auto-save method to use combo box data:\n\n<edit file=\"src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py\">\n<search>\n        # Gather inputs based on building's input count\n        inputs = []\n        for i in range(num_inputs):\n            name = self.input_rows[i][0].text()\n            rate = self.input_rows[i][1].value()\n            if name and rate > 0:\n                inputs.append(ItemRate(ItemId(name), rate))\n\n        # Gather outputs based on building's output count\n        outputs = []\n        for i in range(num_outputs):\n            name = self.output_rows[i][0].text()\n            rate = self.output_rows[i][1].value()\n            if name and rate > 0:\n                outputs.append(ItemRate(ItemId(name), rate))\n</search>\n<replace>\n        # Gather inputs based on building's input count\n        inputs = []\n        for i in range(num_inputs):\n            item_id = self.input_rows[i][0].get_current_data()\n            rate = self.input_rows[i][1].value()\n            if item_id and rate > 0:\n                inputs.append(ItemRate(ItemId(item_id), rate))\n\n        # Gather outputs based on building's output count\n        outputs = []\n        for i in range(num_outputs):\n            item_id = self.output_rows[i][0].get_current_data()\n            rate = self.output_rows[i][1].value()\n            if item_id and rate > 0:\n                outputs.append(ItemRate(ItemId(item_id), rate))\n</replace>\n</edit>\n\nUpdate the recipe selection handler to use combo box:\n\n<edit file=\"src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py\">\n<search>\n        # Clear all input/output fields first\n        for name_edit, rate_spin, _ in self.input_rows:\n            name_edit.clear()\n            rate_spin.setValue(0)\n        for name_edit, rate_spin, _ in self.output_rows:\n            name_edit.clear()\n            rate_spin.setValue(0)\n\n        # Set inputs\n        for i, item_rate in enumerate(recipe.inputs):\n            if i < len(self.input_rows):\n                self.input_rows[i][0].setText(item_rate.item_id)\n                self.input_rows[i][1].setValue(item_rate.rate)\n\n        # Set outputs\n        for i, item_rate in enumerate(recipe.outputs):\n            if i < len(self.output_rows):\n                self.output_rows[i][0].setText(item_rate.item_id)\n                self.output_rows[i][1].setValue(item_rate.rate)\n</search>\n<replace>\n        # Clear all input/output fields first\n        for item_combo, rate_spin, _ in self.input_rows:\n            item_combo.setCurrentIndex(0)  # (No item)\n            rate_spin.setValue(0)\n        for item_combo, rate_spin, _ in self.output_rows:\n            item_combo.setCurrentIndex(0)  # (No item)\n            rate_spin.setValue(0)\n\n        # Set inputs\n        for i, item_rate in enumerate(recipe.inputs):\n            if i < len(self.input_rows):\n                self.input_rows[i][0].set_current_data(item_rate.item_id)\n                self.input_rows[i][1].setValue(item_rate.rate)\n\n        # Set outputs\n        for i, item_rate in enumerate(recipe.outputs):\n            if i < len(self.output_rows):\n                self.output_rows[i][0].set_current_data(item_rate.item_id)\n                self.output_rows[i][1].setValue(item_rate.rate)\n</replace>\n</edit>\n\nNow update the properties panel to use SearchableComboBox and sort items:\n\n<edit file=\"src/satisfactory_planner/ui/panels/properties_panel.py\">\n<search>\nfrom satisfactory_planner.ui.dialogs import RecipeEditorDialog\n\nif TYPE_CHECKING:\n    from satisfactory_planner.ui.canvas import FactoryCanvas\n</search>\n<replace>\nfrom satisfactory_planner.ui.dialogs import RecipeEditorDialog\nfrom satisfactory_planner.ui.widgets import SearchableComboBox\n\nif TYPE_CHECKING:\n    from satisfactory_planner.ui.canvas import FactoryCanvas\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/panels/properties_panel.py\">\n<search>\n        # Recipe selector with edit button on right\n        recipe_layout = QHBoxLayout()\n        recipe_layout.setSpacing(4)\n\n        self.recipe_combo = QComboBox()\n        self.recipe_combo.addItem(\"(No recipe)\", None)\n        self.recipe_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)\n        self.recipe_combo.currentIndexChanged.connect(self._on_recipe_changed)\n        recipe_layout.addWidget(self.recipe_combo, 1)\n</search>\n<replace>\n        # Recipe selector with edit button on right\n        recipe_layout = QHBoxLayout()\n        recipe_layout.setSpacing(4)\n\n        self.recipe_combo = SearchableComboBox(placeholder=\"Search recipes...\")\n        self.recipe_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)\n        self.recipe_combo.selection_changed.connect(self._on_recipe_changed)\n        recipe_layout.addWidget(self.recipe_combo, 1)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/panels/properties_panel.py\">\n<search>\n        # Item selector\n        self.item_combo = QComboBox()\n        self.item_combo.addItem(\"(No item)\", None)\n        self.item_combo.currentIndexChanged.connect(self._on_item_changed)\n        source_layout.addRow(\"Item:\", self.item_combo)\n</search>\n<replace>\n        # Item selector\n        self.item_combo = SearchableComboBox(placeholder=\"Search items...\")\n        self.item_combo.selection_changed.connect(self._on_item_changed)\n        source_layout.addRow(\"Item:\", self.item_combo)\n</replace>\n</edit>\n\nUpdate the recipe combo update method:\n\n<edit file=\"src/satisfactory_planner/ui/panels/properties_panel.py\">\n<search>\n    def _update_recipe_combo(self, building_type: BuildingType | None = None) -> None:\n        \"\"\"Update recipe combo with available recipes filtered by building type.\"\"\"\n        # Load all recipes (base game + user), merging with document recipes\n        all_recipes = load_all_recipes()\n        # Document recipes override base/user recipes (for embedded custom recipes)\n        merged_recipes = {**all_recipes, **self.document.recipes}\n\n        self.recipe_combo.clear()\n        self.recipe_combo.addItem(\"(No recipe)\", None)\n\n        # Use a set to track added recipe IDs and avoid duplicates\n        added_ids: set[str] = set()\n        for recipe_id, recipe in merged_recipes.items():\n            # Filter by building type if specified, and skip duplicates\n            matches_type = building_type is None or recipe.building_type == building_type\n            if matches_type and recipe_id not in added_ids:\n                self.recipe_combo.addItem(recipe.name, recipe_id)\n                added_ids.add(recipe_id)\n</search>\n<replace>\n    def _update_recipe_combo(self, building_type: BuildingType | None = None) -> None:\n        \"\"\"Update recipe combo with available recipes filtered by building type.\"\"\"\n        # Load all recipes (base game + user), merging with document recipes\n        all_recipes = load_all_recipes()\n        # Document recipes override base/user recipes (for embedded custom recipes)\n        merged_recipes = {**all_recipes, **self.document.recipes}\n\n        # Build list of (name, id) tuples, filtered and deduplicated\n        recipe_items: list[tuple[str, str]] = []\n        added_ids: set[str] = set()\n        for recipe_id, recipe in merged_recipes.items():\n            # Filter by building type if specified, and skip duplicates\n            matches_type = building_type is None or recipe.building_type == building_type\n            if matches_type and recipe_id not in added_ids:\n                recipe_items.append((recipe.name, recipe_id))\n                added_ids.add(recipe_id)\n\n        # Use SearchableComboBox's set_items (handles sorting)\n        self.recipe_combo.set_items(recipe_items, include_none=True, none_text=\"(No recipe)\")\n</replace>\n</edit>\n\nUpdate the item combo population method:\n\n<edit file=\"src/satisfactory_planner/ui/panels/properties_panel.py\">\n<search>\n    def _populate_item_combo(self, building_type: BuildingType) -> None:\n        \"\"\"Populate item combo based on building type.\"\"\"\n        self.item_combo.clear()\n        self.item_combo.addItem(\"(No item)\", None)\n\n        # Load items from game_data.json\n        items = load_items()\n\n        # For miners, filter to non-fluid items (ores, coal, etc.)\n        if building_type == BuildingType.MINER:\n            for item_id, name, is_fluid in items:\n                if not is_fluid:\n                    self.item_combo.addItem(name, item_id)\n        else:\n            # Source/Sink can use any item\n            for item_id, name, _is_fluid in items:\n                self.item_combo.addItem(name, item_id)\n</search>\n<replace>\n    def _populate_item_combo(self, building_type: BuildingType) -> None:\n        \"\"\"Populate item combo based on building type.\"\"\"\n        # Load items from game_data.json\n        items = load_items()\n\n        # Build list of (name, id) tuples\n        item_list: list[tuple[str, str]] = []\n\n        # For miners, filter to non-fluid items (ores, coal, etc.)\n        if building_type == BuildingType.MINER:\n            for item_id, name, is_fluid in items:\n                if not is_fluid:\n                    item_list.append((name, item_id))\n        else:\n            # Source/Sink can use any item\n            for item_id, name, _is_fluid in items:\n                item_list.append((name, item_id))\n\n        # Use SearchableComboBox's set_items (handles sorting)\n        self.item_combo.set_items(item_list, include_none=True, none_text=\"(No item)\")\n</replace>\n</edit>\n\nFix the recipe selection handler to work with SearchableComboBox:\n\n<edit file=\"src/satisfactory_planner/ui/panels/properties_panel.py\">\n<search>\n    def _on_recipe_changed(self, index: int) -> None:\n        \"\"\"Handle recipe selection change.\"\"\"\n        if self._updating or not self.canvas:\n            return\n\n        if len(self._selected_ids) == 1:\n            building_id = self._selected_ids[0]\n            # Look up building in the correct scene\n            building = self._get_building(building_id)\n            if building:\n                recipe_id = self.recipe_combo.currentData()\n                cmd = SetRecipeCommand(\n                    scene_room_id=self._scene_room_id,\n                    building_id=building_id,\n                    old_recipe_id=building.recipe_id,\n                    new_recipe_id=recipe_id,\n                    canvas=self.canvas,\n                )\n                self.command_stack.execute(cmd)\n</search>\n<replace>\n    def _on_recipe_changed(self, data: object) -> None:\n        \"\"\"Handle recipe selection change.\"\"\"\n        if self._updating or not self.canvas:\n            return\n\n        if len(self._selected_ids) == 1:\n            building_id = self._selected_ids[0]\n            # Look up building in the correct scene\n            building = self._get_building(building_id)\n            if building:\n                recipe_id = data if isinstance(data, str) else None\n                cmd = SetRecipeCommand(\n                    scene_room_id=self._scene_room_id,\n                    building_id=building_id,\n                    old_recipe_id=building.recipe_id,\n                    new_recipe_id=recipe_id,\n                    canvas=self.canvas,\n                )\n                self.command_stack.execute(cmd)\n</replace>\n</edit>\n\nFix the item selection handler:\n\n<edit file=\"src/satisfactory_planner/ui/panels/properties_panel.py\">\n<search>\n    def _on_item_changed(self, index: int) -> None:\n        \"\"\"Handle item selection change for Source/Sink/Miner.\"\"\"\n        if self._updating or not self.canvas:\n            return\n\n        self._save_source_item()\n</search>\n<replace>\n    def _on_item_changed(self, data: object) -> None:\n        \"\"\"Handle item selection change for Source/Sink/Miner.\"\"\"\n        if self._updating or not self.canvas:\n            return\n\n        self._save_source_item()\n</replace>\n</edit>\n\nFix the _save_source_item method:\n\n<edit file=\"src/satisfactory_planner/ui/panels/properties_panel.py\">\n<search>\n    def _save_source_item(self) -> None:\n        \"\"\"Save Source/Sink/Miner item selection to item_id field.\"\"\"\n        if len(self._selected_ids) != 1:\n            return\n\n        building_id = self._selected_ids[0]\n        building = self._get_building(building_id)\n        if not building or not self._is_source_type(building.building_type):\n            return\n\n        item_id = self.item_combo.currentData()\n\n        old_item_id = building.item_id\n        if item_id != old_item_id and self.canvas is not None:\n            cmd = SetItemCommand(\n                scene_room_id=self._scene_room_id,\n                building_id=building_id,\n                old_item_id=old_item_id,\n                new_item_id=item_id,\n                canvas=self.canvas,\n            )\n            self.command_stack.execute(cmd)\n</search>\n<replace>\n    def _save_source_item(self) -> None:\n        \"\"\"Save Source/Sink/Miner item selection to item_id field.\"\"\"\n        if len(self._selected_ids) != 1:\n            return\n\n        building_id = self._selected_ids[0]\n        building = self._get_building(building_id)\n        if not building or not self._is_source_type(building.building_type):\n            return\n\n        item_id = self.item_combo.get_current_data()\n\n        old_item_id = building.item_id\n        if item_id != old_item_id and self.canvas is not None:\n            cmd = SetItemCommand(\n                scene_room_id=self._scene_room_id,\n                building_id=building_id,\n                old_item_id=old_item_id,\n                new_item_id=item_id,\n                canvas=self.canvas,\n            )\n            self.command_stack.execute(cmd)\n</replace>\n</edit>\n\nUpdate the recipe selection in _update_display to use set_current_data:\n\n<edit file=\"src/satisfactory_planner/ui/panels/properties_panel.py\">\n<search>\n                    # Select current recipe in combo\n                    if building.recipe_id:\n                        for i in range(self.recipe_combo.count()):\n                            if self.recipe_combo.itemData(i) == building.recipe_id:\n                                self.recipe_combo.setCurrentIndex(i)\n                                break\n                    else:\n                        self.recipe_combo.setCurrentIndex(0)\n</search>\n<replace>\n                    # Select current recipe in combo\n                    self.recipe_combo.set_current_data(building.recipe_id)\n</replace>\n</edit>\n\nUpdate item selection in _update_display:\n\n<edit file=\"src/satisfactory_planner/ui/panels/properties_panel.py\">\n<search>\n                    # Get item from item_id field\n                    if building.item_id:\n                        for i in range(self.item_combo.count()):\n                            if self.item_combo.itemData(i) == building.item_id:\n                                self.item_combo.setCurrentIndex(i)\n                                break\n</search>\n<replace>\n                    # Get item from item_id field\n                    self.item_combo.set_current_data(building.item_id)\n</replace>\n</edit>\n\nNow update the RELEASE_TODO to check off the searchable dropdowns item:\n\n<edit file=\"RELEASE_TODO.md\">\n<search>\n- [ ] **Searchable dropdowns** - Recipe and item selectors should be name-sorted with search/filter capability\n</search>\n<replace>\n- [x] **Searchable dropdowns** - Recipe and item selectors should be name-sorted with search/filter capability\n</replace>\n</edit>\n\n<check/>\n\n<commit message=\"Add searchable dropdowns for recipes and items\n\n- Create SearchableComboBox widget with type-to-filter capability\n- Update RecipeEditorDialog to use searchable item selectors instead\n  of free-text input (items now come from game_data.json)\n- Update PropertiesPanel to use SearchableComboBox for recipe and\n  item selection\n- All dropdowns now sorted alphabetically\n- Includes completion suggestions as you type\n\nCloses: Searchable dropdowns TODO item\"/>\n\nDone! I've added:\n\n1. **`SearchableComboBox` widget** (`ui/widgets/searchable_combo.py`):\n   - Editable combo with type-to-filter\n   - Items sorted alphabetically  \n   - Completion suggestions as you type\n   - Clear \"(None)\" option at top\n\n2. **Updated Recipe Editor**:\n   - Input/output item fields now use `SearchableComboBox` instead of free-text `QLineEdit`\n   - Items loaded from `game_data.json`\n   - Can search/filter the 84 items we added\n\n3. **Updated Properties Panel**:\n   - Recipe selector uses `SearchableComboBox`\n   - Item selector (for Source/Sink/Miner) uses `SearchableComboBox`\n   - Both are sorted alphabetically",
+      "_inline_results": [
+        {
+          "message": "Wrote 148 bytes to src/satisfactory_planner/ui/widgets/__init__.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/widgets/__init__.py"
+          ],
+          "new_files": [
+            "src/satisfactory_planner/ui/widgets/__init__.py"
+          ],
+          "side_effects": [
+            "files_modified",
+            "new_files_created"
+          ],
+          "success": true
+        },
+        {
+          "message": "Wrote 3728 bytes to src/satisfactory_planner/ui/widgets/searchable_combo.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/widgets/searchable_combo.py"
+          ],
+          "new_files": [
+            "src/satisfactory_planner/ui/widgets/searchable_combo.py"
+          ],
+          "side_effects": [
+            "files_modified",
+            "new_files_created"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/properties_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/properties_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/properties_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/properties_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/properties_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/properties_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/properties_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/properties_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/properties_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/properties_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/properties_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/properties_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/properties_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/properties_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/properties_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/properties_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/properties_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/properties_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/properties_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/properties_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in RELEASE_TODO.md",
+          "modified_files": [
+            "RELEASE_TODO.md"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "commit": "c0287bee1d0d",
+          "message": "Committed: 5 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

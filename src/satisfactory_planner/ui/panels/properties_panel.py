@@ -41,6 +41,7 @@ from satisfactory_planner.ui.commands import (
     SetRecipeCommand,
 )
 from satisfactory_planner.ui.dialogs import RecipeEditorDialog
+from satisfactory_planner.ui.widgets import SearchableComboBox
 
 if TYPE_CHECKING:
     from satisfactory_planner.ui.canvas import FactoryCanvas
@@ -94,10 +95,9 @@ class PropertiesPanel(QWidget):
         recipe_layout = QHBoxLayout()
         recipe_layout.setSpacing(4)
 
-        self.recipe_combo = QComboBox()
-        self.recipe_combo.addItem("(No recipe)", None)
+        self.recipe_combo = SearchableComboBox(placeholder="Search recipes...")
         self.recipe_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.recipe_combo.currentIndexChanged.connect(self._on_recipe_changed)
+        self.recipe_combo.selection_changed.connect(self._on_recipe_changed)
         recipe_layout.addWidget(self.recipe_combo, 1)
 
         self.recipe_edit_btn = QToolButton()
@@ -125,9 +125,8 @@ class PropertiesPanel(QWidget):
         source_layout = QFormLayout(self.source_group)
 
         # Item selector
-        self.item_combo = QComboBox()
-        self.item_combo.addItem("(No item)", None)
-        self.item_combo.currentIndexChanged.connect(self._on_item_changed)
+        self.item_combo = SearchableComboBox(placeholder="Search items...")
+        self.item_combo.selection_changed.connect(self._on_item_changed)
         source_layout.addRow("Item:", self.item_combo)
 
         # Tier dropdown for Miner
@@ -300,17 +299,18 @@ class PropertiesPanel(QWidget):
         # Document recipes override base/user recipes (for embedded custom recipes)
         merged_recipes = {**all_recipes, **self.document.recipes}
 
-        self.recipe_combo.clear()
-        self.recipe_combo.addItem("(No recipe)", None)
-
-        # Use a set to track added recipe IDs and avoid duplicates
+        # Build list of (name, id) tuples, filtered and deduplicated
+        recipe_items: list[tuple[str, str]] = []
         added_ids: set[str] = set()
         for recipe_id, recipe in merged_recipes.items():
             # Filter by building type if specified, and skip duplicates
             matches_type = building_type is None or recipe.building_type == building_type
             if matches_type and recipe_id not in added_ids:
-                self.recipe_combo.addItem(recipe.name, recipe_id)
+                recipe_items.append((recipe.name, recipe_id))
                 added_ids.add(recipe_id)
+
+        # Use SearchableComboBox's set_items (handles sorting)
+        self.recipe_combo.set_items(recipe_items, include_none=True, none_text="(No recipe)")
 
     def set_document(
         self, document: Document, command_stack: CommandStack, canvas: FactoryCanvas
@@ -454,11 +454,7 @@ class PropertiesPanel(QWidget):
                         self.max_rate_spin.setValue(building.max_rate or 0)
 
                     # Get item from item_id field
-                    if building.item_id:
-                        for i in range(self.item_combo.count()):
-                            if self.item_combo.itemData(i) == building.item_id:
-                                self.item_combo.setCurrentIndex(i)
-                                break
+                    self.item_combo.set_current_data(building.item_id)
 
                     self.source_group.show()
                     self.building_group.hide()  # Hide recipe selector
@@ -469,13 +465,7 @@ class PropertiesPanel(QWidget):
                     self._update_recipe_combo(building.building_type)
 
                     # Select current recipe in combo
-                    if building.recipe_id:
-                        for i in range(self.recipe_combo.count()):
-                            if self.recipe_combo.itemData(i) == building.recipe_id:
-                                self.recipe_combo.setCurrentIndex(i)
-                                break
-                    else:
-                        self.recipe_combo.setCurrentIndex(0)
+                    self.recipe_combo.set_current_data(building.recipe_id)
 
                     # Splitter/Merger don't have recipes or production stats
                     is_logistics = building.building_type in (
@@ -590,7 +580,7 @@ class PropertiesPanel(QWidget):
                 )
                 self.command_stack.execute(cmd)
 
-    def _on_recipe_changed(self, index: int) -> None:
+    def _on_recipe_changed(self, data: object) -> None:
         """Handle recipe selection change."""
         if self._updating or not self.canvas:
             return
@@ -600,7 +590,7 @@ class PropertiesPanel(QWidget):
             # Look up building in the correct scene
             building = self._get_building(building_id)
             if building:
-                recipe_id = self.recipe_combo.currentData()
+                recipe_id = data if isinstance(data, str) else None
                 cmd = SetRecipeCommand(
                     scene_room_id=self._scene_room_id,
                     building_id=building_id,
@@ -686,21 +676,24 @@ class PropertiesPanel(QWidget):
 
     def _populate_item_combo(self, building_type: BuildingType) -> None:
         """Populate item combo based on building type."""
-        self.item_combo.clear()
-        self.item_combo.addItem("(No item)", None)
-
         # Load items from game_data.json
         items = load_items()
+
+        # Build list of (name, id) tuples
+        item_list: list[tuple[str, str]] = []
 
         # For miners, filter to non-fluid items (ores, coal, etc.)
         if building_type == BuildingType.MINER:
             for item_id, name, is_fluid in items:
                 if not is_fluid:
-                    self.item_combo.addItem(name, item_id)
+                    item_list.append((name, item_id))
         else:
             # Source/Sink can use any item
             for item_id, name, _is_fluid in items:
-                self.item_combo.addItem(name, item_id)
+                item_list.append((name, item_id))
+
+        # Use SearchableComboBox's set_items (handles sorting)
+        self.item_combo.set_items(item_list, include_none=True, none_text="(No item)")
 
     def _make_item_key(self, element_id: str) -> ItemKey:
         """Create a ItemKey for an element in the current selection context."""
@@ -889,7 +882,7 @@ class PropertiesPanel(QWidget):
             # Notify mutation to trigger visual refresh
             self.canvas.notify_mutation()
 
-    def _on_item_changed(self, index: int) -> None:
+    def _on_item_changed(self, data: object) -> None:
         """Handle item selection change for Source/Sink/Miner."""
         if self._updating or not self.canvas:
             return
@@ -936,7 +929,7 @@ class PropertiesPanel(QWidget):
         if not building or not self._is_source_type(building.building_type):
             return
 
-        item_id = self.item_combo.currentData()
+        item_id = self.item_combo.get_current_data()
 
         old_item_id = building.item_id
         if item_id != old_item_id and self.canvas is not None:
