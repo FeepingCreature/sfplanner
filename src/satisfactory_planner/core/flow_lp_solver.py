@@ -480,7 +480,7 @@ def _compute_efficiencies(
     graph: FlowGraph, flows: dict[FlowKey, float]
 ) -> dict[FlowKey, BuildingEfficiency]:
     """Compute duty cycle and limiting factor for each producer."""
-    efficiencies: dict[str, BuildingEfficiency] = {}
+    efficiencies: dict[FlowKey, BuildingEfficiency] = {}
 
     for node_id, node in graph.nodes.items():
         if node.node_type != NodeType.PRODUCER:

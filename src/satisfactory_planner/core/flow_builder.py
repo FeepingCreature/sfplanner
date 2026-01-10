@@ -336,7 +336,7 @@ def build_flow_graph(document: Document, recipes: dict[str, Recipe]) -> BuildRes
                     FatalError(
                         error_type=FatalErrorType.MERGER_TYPE_CONFLICT,
                         message=f"Merger receives different item types:\n{detail_str}",
-                        element_id=node.id,
+                        element_id=node.id.element_id,
                     )
                 )
 

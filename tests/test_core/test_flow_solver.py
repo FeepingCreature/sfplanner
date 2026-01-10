@@ -1,5 +1,6 @@
 """Tests for flow solver."""
 
+from satisfactory_planner.core.flow_key import FlowKey
 from satisfactory_planner.core.flow_solver import FlowSolver, WarningType
 from satisfactory_planner.core.models import Belt, Building, BuildingType, Document
 
@@ -225,7 +226,7 @@ class TestFlowSolver:
         )
 
         # Should have flow rates on belts
-        flow_rate = solver.get_flow_rate("b1")
+        flow_rate = solver.get_flow_rate(FlowKey(element_id="b1"))
         assert flow_rate is not None
         assert flow_rate > 0
 
