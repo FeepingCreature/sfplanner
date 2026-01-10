@@ -59,7 +59,6 @@ class BuildingItem(QGraphicsRectItem):
         self._multi_drag_offsets: dict[str, QPointF] = {}
 
         # Efficiency overlay state
-        self._show_efficiency = False
         self._efficiency_value: float | None = None  # 0.0 - 1.0
         self._is_starved = False
         self._is_blocked = False
@@ -474,13 +473,6 @@ class BuildingItem(QGraphicsRectItem):
         """Set the scene this building belongs to."""
         self._scene = scene
 
-    def set_show_efficiency(self, show: bool) -> None:
-        """Toggle efficiency overlay display."""
-        self._show_efficiency = show
-        if show:
-            self._update_efficiency_from_solver()
-        self.update()
-
     def set_efficiency(
         self, value: float | None, starved: bool = False, blocked: bool = False
     ) -> None:
@@ -498,17 +490,3 @@ class BuildingItem(QGraphicsRectItem):
     def set_placement_id(self, placement_id: str | None) -> None:
         """Set the placement ID for buildings inside room placements."""
         self._placement_id = placement_id
-
-    def _update_efficiency_from_solver(self) -> None:
-        """Fetch efficiency from flow solver."""
-        main_window = self.canvas.window()
-        if not main_window or not main_window.current_tab:
-            return
-
-        flow_solver = main_window.current_tab.flow_solver
-        if flow_solver:
-            eff = flow_solver.get_efficiency(self.item_key)
-            if eff:
-                self.set_efficiency(eff.duty_cycle)
-            else:
-                self.set_efficiency(None)

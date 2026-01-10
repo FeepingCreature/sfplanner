@@ -187,6 +187,15 @@
       "streaming": true,
       "actual_cost": 0.07480675,
       "generation_id": "gen-1768072566-6ozjwzkryoLHI2A1CSEZ"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768072615897.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768072615897.json",
+      "timestamp": 1768072615.8984015,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.07517675,
+      "generation_id": "gen-1768072616-wUrnxKpCXhLXOJVpGkxZ"
     }
   ],
   "messages": [
@@ -545,6 +554,80 @@
         {
           "commit": "3df927092930",
           "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 5f12006c",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Alright! However we have to do that in belts too. Rn efficiency only shows on buildings. While we're at it, we should remove the item set/show efficiency code everywhere. We want to take that from canvas reliably."
+    },
+    {
+      "role": "assistant",
+      "content": "Got it! I need to:\n1. Add efficiency visualization to belts (show overcapacity based on `show_efficiency` toggle)\n2. Remove the unused `set_show_efficiency` and `_show_efficiency` from building items\n3. Clean up any related dead code\n\nLet me check what efficiency visualization should look like on belts - the overcapacity indicator seems like the right thing to tie to the efficiency toggle:\n\n<edit file=\"src/satisfactory_planner/ui/items/belt_item.py\">\n<search>\n        # Draw utilization underlay first (wider, behind) - green to yellow to red\n        # Only show when flow rate visualization is enabled\n        if self.canvas.show_flow_rate and self._flow_rate is not None and not self.is_over_capacity:\n            util = self._flow_rate / self.belt.capacity\n            if util >= 0.9:\n                util_color = QColor(80, 255, 80, 180)  # Bright green - well utilized\n            elif util >= 0.5:\n                t = (util - 0.5) / 0.4\n                util_color = QColor(int(255 - t * 175), int(220 + t * 35), 50, 180)\n            else:\n                util_color = QColor(255, 220, 50, 140)  # Yellow - underutilized\n            util_pen = QPen(util_color, self.pen().widthF() + 5)\n            util_pen.setCapStyle(Qt.PenCapStyle.RoundCap)\n            painter.setPen(util_pen)\n            painter.drawPath(self.path())\n\n        # Draw overcapacity underlay (wider, behind, red)\n        # Only show when flow rate visualization is enabled\n        if self.canvas.show_flow_rate and self.is_over_capacity:\n            overcap_pen = QPen(QColor(255, 80, 80), self.pen().widthF() + 6)\n            overcap_pen.setCapStyle(Qt.PenCapStyle.RoundCap)\n            painter.setPen(overcap_pen)\n            painter.drawPath(self.path())\n</search>\n<replace>\n        # Draw utilization underlay first (wider, behind) - green to yellow to red\n        # Only show when flow rate OR efficiency visualization is enabled\n        show_overlay = self.canvas.show_flow_rate or self.canvas.show_efficiency\n        if show_overlay and self._flow_rate is not None and not self.is_over_capacity:\n            util = self._flow_rate / self.belt.capacity\n            if util >= 0.9:\n                util_color = QColor(80, 255, 80, 180)  # Bright green - well utilized\n            elif util >= 0.5:\n                t = (util - 0.5) / 0.4\n                util_color = QColor(int(255 - t * 175), int(220 + t * 35), 50, 180)\n            else:\n                util_color = QColor(255, 220, 50, 140)  # Yellow - underutilized\n            util_pen = QPen(util_color, self.pen().widthF() + 5)\n            util_pen.setCapStyle(Qt.PenCapStyle.RoundCap)\n            painter.setPen(util_pen)\n            painter.drawPath(self.path())\n\n        # Draw overcapacity underlay (wider, behind, red)\n        # Only show when flow rate OR efficiency visualization is enabled\n        if show_overlay and self.is_over_capacity:\n            overcap_pen = QPen(QColor(255, 80, 80), self.pen().widthF() + 6)\n            overcap_pen.setCapStyle(Qt.PenCapStyle.RoundCap)\n            painter.setPen(overcap_pen)\n            painter.drawPath(self.path())\n</replace>\n</edit>\n\nNow remove the dead `set_show_efficiency` and `_show_efficiency` from building_item.py:\n\n<edit file=\"src/satisfactory_planner/ui/items/building_item.py\">\n<search>\n        # Efficiency overlay state\n        self._show_efficiency = False\n        self._efficiency_value: float | None = None  # 0.0 - 1.0\n</search>\n<replace>\n        # Efficiency overlay state\n        self._efficiency_value: float | None = None  # 0.0 - 1.0\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/items/building_item.py\">\n<search>\n    def set_show_efficiency(self, show: bool) -> None:\n        \"\"\"Toggle efficiency overlay display.\"\"\"\n        self._show_efficiency = show\n        if show:\n            self._update_efficiency_from_solver()\n        self.update()\n\n    def set_efficiency(\n</search>\n<replace>\n    def set_efficiency(\n</replace>\n</edit>\n\nAlso remove `_update_efficiency_from_solver` since it's no longer needed:\n\n<edit file=\"src/satisfactory_planner/ui/items/building_item.py\">\n<search>\n    def set_placement_id(self, placement_id: str | None) -> None:\n        \"\"\"Set the placement ID for buildings inside room placements.\"\"\"\n        self._placement_id = placement_id\n\n    def _update_efficiency_from_solver(self) -> None:\n        \"\"\"Fetch efficiency from flow solver.\"\"\"\n        main_window = self.canvas.window()\n        if not main_window or not main_window.current_tab:\n            return\n\n        flow_solver = main_window.current_tab.flow_solver\n        if flow_solver:\n            eff = flow_solver.get_efficiency(self.item_key)\n            if eff:\n                self.set_efficiency(eff.duty_cycle)\n            else:\n                self.set_efficiency(None)\n</search>\n<replace>\n    def set_placement_id(self, placement_id: str | None) -> None:\n        \"\"\"Set the placement ID for buildings inside room placements.\"\"\"\n        self._placement_id = placement_id\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Unify efficiency visualization for belts and buildings\n\n- Belt utilization/overcapacity overlays now show when either flow rate\n  OR efficiency toggle is enabled (they're related visualizations)\n- Removed dead code from BuildingItem: _show_efficiency flag,\n  set_show_efficiency(), and _update_efficiency_from_solver()\n- Both item types now consistently check canvas toggle state directly\n\"/>\n\nDone! The changes:\n1. Belt overlays (utilization colors, overcapacity red) now show when **either** `show_flow_rate` or `show_efficiency` is enabled\n2. Removed the unused `_show_efficiency` flag, `set_show_efficiency()`, and `_update_efficiency_from_solver()` from BuildingItem\n3. Both buildings and belts now consistently check the canvas toggle state directly in their `paint()` methods",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/belt_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/belt_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/building_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/building_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/building_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/building_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/building_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/building_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n81 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 50 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_z8ym4n1o\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_z8ym4n1o\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n81 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 50 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_z8ym4n1o\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_z8ym4n1o\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "ed504bb660f1",
+          "message": "Committed: 2 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],
