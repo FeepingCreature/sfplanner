@@ -46,7 +46,6 @@ class DocumentTab:
         self.name = name
         self.document = Document()
         self.command_stack = CommandStack(self.document)
-        self.flow_solver = FlowSolver(self.document)
         self.canvas: FactoryCanvas | None = None
         self.file_path: str | None = None
         self.dirty: bool = False  # Track unsaved changes
@@ -352,8 +351,10 @@ class MainWindow(QMainWindow):
             canvas.set_show_flow_rate(self.show_flow_rates_action.isChecked())
             canvas.set_show_efficiency(self.show_bottlenecks_action.isChecked())
 
-        # Set flow solver on canvas
-        canvas.set_flow_solver(tab.flow_solver)
+        # Initialize flow solver on canvas
+        flow_solver = FlowSolver(tab.document)
+        flow_solver.solve()
+        canvas.set_flow_solver(flow_solver)
 
         # Connect signals
         canvas.selection_changed.connect(self.properties_panel.set_selection)
@@ -409,9 +410,10 @@ class MainWindow(QMainWindow):
                     self.current_tab.command_stack,
                     self.current_tab.canvas,
                 )
-            self.warnings_panel.set_document(
-                self.current_tab.document, self.current_tab.flow_solver
-            )
+            if self.current_tab.canvas and self.current_tab.canvas.flow_solver:
+                self.warnings_panel.set_document(
+                    self.current_tab.document, self.current_tab.canvas.flow_solver
+                )
             self._update_warnings()
             self._update_undo_redo_state()
 
@@ -447,7 +449,6 @@ class MainWindow(QMainWindow):
             tab = DocumentTab(Path(path).stem)
             tab.document = document
             tab.command_stack = CommandStack(document)
-            tab.flow_solver = FlowSolver(document)
             tab.file_path = path
 
             canvas = FactoryCanvas(tab.document, tab.command_stack)
@@ -457,8 +458,10 @@ class MainWindow(QMainWindow):
             canvas.set_show_flow_rate(self.show_flow_rates_action.isChecked())
             canvas.set_show_efficiency(self.show_bottlenecks_action.isChecked())
 
-            # Set flow solver on canvas
-            canvas.set_flow_solver(tab.flow_solver)
+            # Initialize flow solver on canvas
+            flow_solver = FlowSolver(document)
+            flow_solver.solve()
+            canvas.set_flow_solver(flow_solver)
 
             # Refresh canvas to show loaded buildings/belts
             canvas.refresh()
@@ -591,11 +594,9 @@ class MainWindow(QMainWindow):
             return
 
         # Re-solve flows (always, so warnings are up-to-date)
-        tab.flow_solver = FlowSolver(tab.document)
-        tab.flow_solver.solve()
-
-        # Update canvas's flow solver reference
-        tab.canvas.set_flow_solver(tab.flow_solver)
+        flow_solver = FlowSolver(tab.document)
+        flow_solver.solve()
+        tab.canvas.set_flow_solver(flow_solver)
 
         # Always update visualization - individual items check toggle state
         tab.canvas.update_flow_visualization()
