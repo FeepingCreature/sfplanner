@@ -406,6 +406,12 @@ class FactoryCanvas(QGraphicsView):
                     and other_placement_id != placement_id
                 ):
                     other_room_item.refresh()
+            # Re-apply flow visualization after refresh recreates belt items
+            # (only if we're in a MainWindow - tests may not have one)
+            from satisfactory_planner.ui.main_window import MainWindow
+
+            if isinstance(super(FactoryCanvas, self).window(), MainWindow):
+                self.update_flow_visualization()
 
         QTimer.singleShot(0, deferred_refresh)
 
