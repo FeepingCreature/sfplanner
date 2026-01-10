@@ -36,6 +36,7 @@
 
 ## Additional Items
 
+- [ ] **Searchable dropdowns** - Recipe and item selectors should be name-sorted with search/filter capability
 - [ ] **Recent files menu** - File > Recent Files for quick access
 - [ ] **Zoom to fit** - Button/shortcut to zoom canvas to show all content
 - [ ] **Export to image** - Export factory layout as PNG/SVG for sharing
