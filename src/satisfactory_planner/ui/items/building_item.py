@@ -404,6 +404,9 @@ class BuildingItem(QGraphicsRectItem):
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: object) -> object:
         """Handle item changes."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and self.scene():
             # Snap to grid
             new_pos = value
@@ -437,7 +440,45 @@ class BuildingItem(QGraphicsRectItem):
             new_pos = self.pos()
             self.building.x = new_pos.x()
             self.building.y = new_pos.y()
+            
+            logger.debug(
+                f"BuildingItem.itemChange: building {self.building.id} moved to ({new_pos.x()}, {new_pos.y()})"
+            )
+            logger.debug(
+                f"  scene type: {type(self._scene).__name__}, "
+                f"scene_room_id: {self._scene.scene_room_id}"
+            )
+            logger.debug(f"  placement_id: {self._placement_id}")
+            
+            # Check if this building is inside a room (has a parent RoomItem)
+            parent = self.parentItem()
+            logger.debug(f"  parentItem: {type(parent).__name__ if parent else None}")
+            
             self.canvas.update_belts_for_building(self.building.id, self._scene)
+            
+            # If inside a room, also refresh other RoomItems showing the same room
+            if self._scene.scene_room_id:
+                room_id = self._scene.scene_room_id
+                logger.debug(f"  Building is in room {room_id}, checking for linked room items...")
+                for placement_id, room_item in self.canvas._room_items.items():
+                    from satisfactory_planner.ui.items.room_item import RoomItem
+                    if isinstance(room_item, RoomItem) and room_item.room.id == room_id:
+                        logger.debug(f"    Found RoomItem placement {placement_id}")
+                        # Update belts in this room item
+                        if self.building.id in room_item._belt_items:
+                            logger.debug(f"    (but building not source of belts in this item)")
+                        for belt_id, belt_item in room_item._belt_items.items():
+                            belt = self._scene.belts.get(belt_id)
+                            if belt and (belt.source_building_id == self.building.id or 
+                                        belt.dest_building_id == self.building.id):
+                                logger.debug(f"    Updating belt {belt_id} in placement {placement_id}")
+                                belt_item._update_path_from_endpoints()
+                        
+                        # If this is a PORT building, update room ports too
+                        if self.building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
+                            logger.debug(f"    PORT building moved, updating room ports")
+                            room_item.update_room_ports()
+            
             # Update selection outline during drag
             self.canvas._update_selection_outline()
         return super().itemChange(change, value)
