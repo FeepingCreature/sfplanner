@@ -284,52 +284,43 @@ def simplex_canonical_m(a, b, c, basis, num, verbose=False, do_coerce=True):
         if all(num.iszero(v) for v in artificial_values):
             if verbose:
                 print("### Real vertex reached (artificial variables are zero)")
+            # Construct solution directly - we have the vertex from m_solver
+            # Just extract the real variable values
+            solution = [num.zero()] * n
+            for j, bi in enumerate(m_solver.basis):
+                if bi < n:
+                    solution[bi] = m_solver.b[j]
+            # Now continue with regular simplex to optimize (if needed)
+            # But first check if we're already optimal
+            c_reduced = c[:]
+            for j, bi in enumerate(m_solver.basis):
+                if bi < n and not num.iszero(c_reduced[bi]):
+                    # Subtract row to zero out c at basis position
+                    row = m_solver.a[j][:n]
+                    k = c_reduced[bi]
+                    for i in range(n):
+                        c_reduced[i] -= k * row[i]
+            
+            # Check if optimal (all c >= 0 for minimization means we're done)
+            # Actually for maximization (our case), we want all c <= 0
+            # But we're minimizing -flow, so c = [-1, -1, ...] 
+            # After reduction, if all reduced costs are non-negative, we're optimal
+            if all(num.nonnegative(ci) for ci in c_reduced):
+                if verbose:
+                    print("### Already optimal, returning solution directly")
+                return RESOLUTION_SOLVED, solution
+            
+            # Need to continue optimizing - fall through to regular simplex
             real_vertex_reached = True
         else:
             if verbose:
                 print("### Empty simplex")
             return RESOLUTION_INCOMPATIBLE, None
 
-    # Trim artificial variable columns and handle degenerate rows
-    a_trimmed = []
-    b_trimmed = []
-    final_basis = []
-    
-    for j, bi in enumerate(m_solver.basis):
-        row = m_solver.a[j][:n]  # Trim to real variables only
-        
-        if bi >= n:
-            # Artificial variable in basis - need to replace or remove row
-            # Find a real variable with non-zero coefficient to pivot in
-            pivot_col = None
-            for i in range(n):
-                if not num.iszero(row[i]) and i not in final_basis:
-                    pivot_col = i
-                    break
-            
-            if pivot_col is not None:
-                # Can pivot this real variable into basis
-                a_trimmed.append(row)
-                b_trimmed.append(m_solver.b[j])
-                final_basis.append(pivot_col)
-            else:
-                # Row is all zeros (or only has variables already in basis)
-                # This is a redundant constraint - skip it entirely
-                if verbose:
-                    print(f"### Removing redundant constraint row {j}")
-                continue
-        else:
-            # Real variable already in basis - keep the row
-            a_trimmed.append(row)
-            b_trimmed.append(m_solver.b[j])
-            final_basis.append(bi)
-    
-    if not a_trimmed:
-        # All constraints were redundant - trivial solution
-        return RESOLUTION_SOLVED, [num.zero()] * n
-    
+    # All basis variables are real - just trim and continue
+    a = [a_row[:n] for a_row in m_solver.a]
     return simplex_canonical(
-        a_trimmed, b_trimmed, c, final_basis, num=num, verbose=verbose, do_coerce=False
+        a, m_solver.b, c, m_solver.basis, num=num, verbose=verbose, do_coerce=False
     )
 
 
