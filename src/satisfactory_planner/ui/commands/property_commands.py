@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from satisfactory_planner.ui.commands.base import Command, get_scene
 
 if TYPE_CHECKING:
-    from satisfactory_planner.core.models import Document, RecipeId
+    from satisfactory_planner.core.models import Document, ItemId, RecipeId
     from satisfactory_planner.ui.canvas import FactoryCanvas
 
 logger = logging.getLogger(__name__)
@@ -48,6 +48,43 @@ class SetRecipeCommand(Command):
             logger.warning(f"SetRecipeCommand.undo: recipe already set to {self.old_recipe_id}")
             return
         building.recipe_id = self.old_recipe_id
+        self.canvas.refresh_building(self.building_id)
+        self.canvas.notify_mutation()
+
+
+@dataclass(frozen=True)
+class SetItemCommand(Command):
+    """Command to set a building's item_id (for Source/Sink/Miner)."""
+
+    scene_room_id: str | None  # None = root document, else room ID
+    building_id: str
+    old_item_id: ItemId | None
+    new_item_id: ItemId | None
+    canvas: FactoryCanvas
+
+    def execute(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        building = scene.buildings.get(self.building_id)
+        if not building:
+            logger.warning(f"SetItemCommand.execute: building {self.building_id} not found")
+            return
+        if building.item_id == self.new_item_id:
+            logger.warning(f"SetItemCommand.execute: item_id already set to {self.new_item_id}")
+            return
+        building.item_id = self.new_item_id
+        self.canvas.refresh_building(self.building_id)
+        self.canvas.notify_mutation()
+
+    def undo(self, document: Document) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        building = scene.buildings.get(self.building_id)
+        if not building:
+            logger.warning(f"SetItemCommand.undo: building {self.building_id} not found")
+            return
+        if building.item_id == self.old_item_id:
+            logger.warning(f"SetItemCommand.undo: item_id already set to {self.old_item_id}")
+            return
+        building.item_id = self.old_item_id
         self.canvas.refresh_building(self.building_id)
         self.canvas.notify_mutation()
 

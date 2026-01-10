@@ -37,6 +37,7 @@ from satisfactory_planner.ui.commands import (
     DelinkRoomCommand,
     SetBeltTierCommand,
     SetClockSpeedCommand,
+    SetItemCommand,
     SetRecipeCommand,
 )
 from satisfactory_planner.ui.dialogs import RecipeEditorDialog
@@ -452,12 +453,10 @@ class PropertiesPanel(QWidget):
                         self.min_rate_spin.setValue(building.min_rate or 0)
                         self.max_rate_spin.setValue(building.max_rate or 0)
 
-                    # Get item from recipe_id (which stores item_id for these types)
-                    if building.recipe_id:
-                        # For Source/Sink/Miner, recipe_id is the item_id
+                    # Get item from item_id field
+                    if building.item_id:
                         for i in range(self.item_combo.count()):
-                            # Compare as strings since item_id is str and recipe_id is RecipeId
-                            if self.item_combo.itemData(i) == str(building.recipe_id):
+                            if self.item_combo.itemData(i) == building.item_id:
                                 self.item_combo.setCurrentIndex(i)
                                 break
 
@@ -895,14 +894,14 @@ class PropertiesPanel(QWidget):
         if self._updating or not self.canvas:
             return
 
-        self._save_source_recipe()
+        self._save_source_item()
 
     def _on_source_rate_changed(self, value: float) -> None:
         """Handle rate change for Source/Sink/Miner."""
         if self._updating or not self.canvas:
             return
 
-        self._save_source_recipe()
+        self._save_source_item()
 
     def _on_min_max_changed(self, value: float) -> None:
         """Handle min/max rate change for Source/Sink."""
@@ -927,8 +926,8 @@ class PropertiesPanel(QWidget):
             building.max_rate = new_max if new_max > 0 else None
             self.canvas.notify_mutation()
 
-    def _save_source_recipe(self) -> None:
-        """Save Source/Sink/Miner item selection - just store item_id in recipe_id."""
+    def _save_source_item(self) -> None:
+        """Save Source/Sink/Miner item selection to item_id field."""
         if len(self._selected_ids) != 1:
             return
 
@@ -939,15 +938,13 @@ class PropertiesPanel(QWidget):
 
         item_id = self.item_combo.currentData()
 
-        # For Source/Sink/Miner, we store item_id directly in recipe_id
-        # The flow_builder handles these specially
-        old_recipe_id = building.recipe_id
-        if item_id != old_recipe_id and self.canvas is not None:
-            cmd = SetRecipeCommand(
+        old_item_id = building.item_id
+        if item_id != old_item_id and self.canvas is not None:
+            cmd = SetItemCommand(
                 scene_room_id=self._scene_room_id,
                 building_id=building_id,
-                old_recipe_id=old_recipe_id,
-                new_recipe_id=item_id,
+                old_item_id=old_item_id,
+                new_item_id=item_id,
                 canvas=self.canvas,
             )
             self.command_stack.execute(cmd)
