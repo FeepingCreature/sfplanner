@@ -190,7 +190,7 @@ def _write_dot_file(
             label_parts.append("| {" + " | ".join(out_ports) + "}")
 
         label = "{" + "".join(label_parts) + "}"
-        lines.append(f'  {safe_id} [label="{label}", style=filled, fillcolor="{color}"];')
+        lines.append(f'  "{safe_id}" [label="{label}", style=filled, fillcolor="{color}"];')
 
     lines.append("")
 
@@ -231,7 +231,7 @@ def _write_dot_file(
         label = "\\n".join(label_parts)
 
         lines.append(
-            f'  {src_safe} -> {dst_safe} '
+            f'  "{src_safe}" -> "{dst_safe}" '
             f'[label="{label}", color="{color}", penwidth="{penwidth}"];'
         )
 
