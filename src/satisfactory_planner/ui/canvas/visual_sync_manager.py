@@ -225,11 +225,7 @@ class VisualSyncManager:
         """
         from satisfactory_planner.ui.items.room_item import RoomItem
 
-        main_window = self.canvas.window()
-        if not main_window or not main_window.current_tab:
-            return
-
-        flow_solver = main_window.current_tab.flow_solver
+        flow_solver = self.canvas.flow_solver
         solved = flow_solver._solved_model if flow_solver else None
 
         # Update all belt items - each uses its item_key to look up results
@@ -259,7 +255,8 @@ class VisualSyncManager:
                 building_item.set_efficiency(eff.duty_cycle if eff else None)
 
         # Update warning icons
-        self._update_warning_icons(flow_solver._warnings)
+        if flow_solver:
+            self._update_warning_icons(flow_solver._warnings)
 
     def _update_warning_icons(self, warnings: list[Warning]) -> None:
         """Update warning icons based on current warnings."""

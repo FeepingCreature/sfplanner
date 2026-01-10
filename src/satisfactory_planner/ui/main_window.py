@@ -352,6 +352,9 @@ class MainWindow(QMainWindow):
             canvas.set_show_flow_rate(self.show_flow_rates_action.isChecked())
             canvas.set_show_efficiency(self.show_bottlenecks_action.isChecked())
 
+        # Set flow solver on canvas
+        canvas.set_flow_solver(tab.flow_solver)
+
         # Connect signals
         canvas.selection_changed.connect(self.properties_panel.set_selection)
         canvas.selection_changed.connect(self._update_selection_actions)
@@ -453,6 +456,9 @@ class MainWindow(QMainWindow):
             # Sync canvas visualization state with toolbar toggles
             canvas.set_show_flow_rate(self.show_flow_rates_action.isChecked())
             canvas.set_show_efficiency(self.show_bottlenecks_action.isChecked())
+
+            # Set flow solver on canvas
+            canvas.set_flow_solver(tab.flow_solver)
 
             # Refresh canvas to show loaded buildings/belts
             canvas.refresh()
@@ -587,6 +593,9 @@ class MainWindow(QMainWindow):
         # Re-solve flows (always, so warnings are up-to-date)
         tab.flow_solver = FlowSolver(tab.document)
         tab.flow_solver.solve()
+
+        # Update canvas's flow solver reference
+        tab.canvas.set_flow_solver(tab.flow_solver)
 
         # Always update visualization - individual items check toggle state
         tab.canvas.update_flow_visualization()

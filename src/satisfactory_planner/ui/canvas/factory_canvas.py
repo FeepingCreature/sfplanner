@@ -31,6 +31,7 @@ from satisfactory_planner.core import (
     Building,
     BuildingType,
     Document,
+    FlowSolver,
     Room,
 )
 from satisfactory_planner.core.models import Scene
@@ -116,6 +117,9 @@ class FactoryCanvas(QGraphicsView):
         # Rendering settings
         self._show_flow_rate: bool = False
         self._show_efficiency: bool = False
+
+        # Flow solver - set by MainWindow, accessed by visual items
+        self._flow_solver: FlowSolver | None = None
 
         # Initialize managers BEFORE _setup_scene (which uses _selection)
         from satisfactory_planner.ui.canvas.belt_connector import BeltConnector
@@ -908,6 +912,15 @@ class FactoryCanvas(QGraphicsView):
     @property
     def show_efficiency(self) -> bool:
         return self._show_efficiency
+
+    @property
+    def flow_solver(self) -> FlowSolver | None:
+        """Get the flow solver for this canvas."""
+        return self._flow_solver
+
+    def set_flow_solver(self, solver: FlowSolver | None) -> None:
+        """Set the flow solver for this canvas."""
+        self._flow_solver = solver
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]
         """Draw the grid background."""

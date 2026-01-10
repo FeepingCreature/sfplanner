@@ -169,11 +169,7 @@ class PortItem(QGraphicsItem):
 
     def _update_spare_capacity(self) -> None:
         """Fetch spare capacity from flow solver."""
-        main_window = self.canvas.window()
-        if not main_window.current_tab:
-            return
-
-        flow_solver = main_window.current_tab.flow_solver
+        flow_solver = self.canvas.flow_solver
         if not flow_solver or not flow_solver._solved_model:
             return
 

@@ -314,7 +314,6 @@ class PropertiesPanel(QWidget):
         self.document = document
         self.command_stack = command_stack
         self.canvas = canvas
-        self.flow_solver = getattr(canvas, "_flow_solver", None)
         self._selected_ids = []
         self._update_recipe_combo()
         self._update_display()
@@ -727,15 +726,11 @@ class PropertiesPanel(QWidget):
 
     def _get_belt_item_id(self, belt_id: str) -> str | None:
         """Get item type for a belt from flow solver's graph."""
-        if not self.canvas:
+        if not self.canvas or not self.canvas.flow_solver:
             return None
 
-        main_window = self.canvas.window()
-        if not hasattr(main_window, "current_tab") or not main_window.current_tab:
-            return None
-
-        flow_solver = main_window.current_tab.flow_solver
-        if flow_solver and flow_solver._solved_model:
+        flow_solver = self.canvas.flow_solver
+        if flow_solver._solved_model:
             key = self._make_item_key(belt_id)
             edge = flow_solver._solved_model.graph.edges.get(key)
             if edge:
@@ -744,30 +739,11 @@ class PropertiesPanel(QWidget):
 
     def _get_belt_flow_rate(self, belt_id: str) -> float | None:
         """Get flow rate for a belt from flow solver."""
-        import logging
-
-        logger = logging.getLogger(__name__)
-
-        if not self.canvas:
+        if not self.canvas or not self.canvas.flow_solver:
             return None
 
-        main_window = self.canvas.window()
-        if not hasattr(main_window, "current_tab") or not main_window.current_tab:
-            return None
-
-        flow_solver = main_window.current_tab.flow_solver
-        if flow_solver:
-            key = self._make_item_key(belt_id)
-            result: float | None = flow_solver.get_flow_rate(key)
-            logger.debug(f"Belt flow lookup: belt_id={belt_id}, key={key}, result={result}")
-
-            # Log available keys for debugging
-            if result is None and flow_solver._solved_model:
-                available_keys = list(flow_solver._solved_model.flows.keys())
-                logger.debug(f"  Available flow keys: {available_keys}")
-
-            return result
-        return None
+        key = self._make_item_key(belt_id)
+        return self.canvas.flow_solver.get_flow_rate(key)
 
     def _get_sink_flow(self, building_id: str) -> float | None:
         """Get the actual flow into a sink from flow solver."""
@@ -883,18 +859,12 @@ class PropertiesPanel(QWidget):
 
     def _update_efficiency_display(self, building_id: str) -> None:
         """Update the efficiency display for a building."""
-        # Try to get flow solver from main window
-        flow_solver = None
-        if self.canvas:
-            # Access flow solver through main window's current tab
-            main_window = self.canvas.window()
-            if hasattr(main_window, "current_tab") and main_window.current_tab:
-                flow_solver = main_window.current_tab.flow_solver
-
-        if flow_solver is None:
+        if not self.canvas or not self.canvas.flow_solver:
             self.efficiency_label.setText("-")
             self.status_label.setText("-")
             return
+
+        flow_solver = self.canvas.flow_solver
 
         # Use ItemKey for lookup
         key = self._make_item_key(building_id)
