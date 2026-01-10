@@ -33,6 +33,16 @@ ruff check src/
 ruff format src/
 ```
 
+## IMPORTANT: run_tests Formats Files
+
+`run_tests` (which runs `make test`) includes `ruff format` which auto-formats all Python files. This means:
+
+1. After `run_tests`, file contents may have changed (line wrapping, import sorting, trailing commas, etc.)
+2. If you need to do a follow-up edit after `run_tests`, the search text must match the **formatted** version, not what you originally wrote
+3. When chaining multiple edits with `run_tests` in between, be aware the file has been reformatted
+
+Example: You write a multi-line function signature, but ruff collapses it to one line. Your next edit searching for the multi-line version will fail.
+
 ## Port Rendering Model
 
 **Ports are puzzle pieces** - Input and output ports are complementary shapes that fit together:
