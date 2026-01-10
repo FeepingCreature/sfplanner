@@ -22,8 +22,8 @@ A PCB-style factory floor planner for [Satisfactory](https://www.satisfactorygam
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/satisfactory-planner.git
-cd satisfactory-planner
+git clone https://github.com/FeepingCreature/sfplanner.git
+cd sfplanner
 
 # Install in development mode
 pip install -e ".[dev]"
@@ -34,7 +34,7 @@ satisfactory-planner
 
 ### Pre-built Binaries
 
-Download the latest release for your platform from the [Releases](https://github.com/yourusername/satisfactory-planner/releases) page:
+Download the latest release for your platform from the [Releases](https://github.com/FeepingCreature/sfplanner/releases) page:
 
 - **Windows**: `satisfactory-planner-windows.exe`
 - **Linux**: `satisfactory-planner-linux.bin`
