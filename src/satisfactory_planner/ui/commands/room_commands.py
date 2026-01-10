@@ -407,6 +407,7 @@ class DeleteRoomPlacementCommand(Command):
     _placement: RoomPlacement | None = None
     _room: Room | None = None
     _was_last_placement: bool = False
+    _removed_belts: tuple[Belt, ...] = ()  # External belts connected to room ports
 
     def execute(self, document: Document) -> None:
         placement = document.room_placements.get(self.placement_id)
@@ -431,6 +432,19 @@ class DeleteRoomPlacementCommand(Command):
         placements = document.get_placements_for_room(placement.room_id)
         is_last = len(placements) <= 1
         object.__setattr__(self, "_was_last_placement", is_last)
+
+        # Find and remove belts connected to this placement's ports
+        parent = get_scene(document, placement.parent_room_id)
+        removed_belts: list[Belt] = []
+        for belt in list(parent.belts.values()):
+            if (
+                belt.source_building_id == self.placement_id
+                or belt.dest_building_id == self.placement_id
+            ):
+                removed_belts.append(copy.deepcopy(belt))
+                parent.remove_belt(belt.id)
+                self.canvas.remove_belt_item(belt.id)
+        object.__setattr__(self, "_removed_belts", tuple(removed_belts))
 
         # Remove room item from canvas
         self.canvas.remove_room_item(self.placement_id)
@@ -462,6 +476,14 @@ class DeleteRoomPlacementCommand(Command):
         room = document.rooms.get(placement_copy.room_id)
         if room:
             self.canvas.add_room_item(placement_copy, room)
+
+        # Restore removed belts
+        if self._removed_belts:
+            parent = get_scene(document, self._placement.parent_room_id)
+            for belt in self._removed_belts:
+                belt_copy = copy.deepcopy(belt)
+                parent.add_belt(belt_copy)
+                self.canvas.add_belt_item(belt_copy)
 
         self.canvas.notify_mutation()
 
