@@ -92,11 +92,6 @@ class SearchableDropdown(QWidget):
         self._popup.setMinimumWidth(self.width())
         self._popup.show()
 
-        # Pre-fill search with current selection text for easy editing
-        if self._current_data is not None:
-            self._search_edit.setText(self._display.text())
-            self._search_edit.selectAll()
-
         # Focus the search field
         self._search_edit.setFocus()
 
