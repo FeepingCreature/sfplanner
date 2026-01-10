@@ -388,16 +388,10 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
     """
     errors: list[FatalError] = []
 
-    # Count total edges + logistics ports for convergence check
-    # Each iteration should set at least one item_name, so max iterations is
-    # the number of things that can be updated (edges + logistics ports)
-    logistics_types = (NodeType.SPLITTER, NodeType.MERGER, NodeType.PORT_IN, NodeType.PORT_OUT)
-    total_logistics_ports = sum(
-        len(n.inputs) + len(n.outputs)
-        for n in graph.nodes.values()
-        if n.node_type in logistics_types
-    )
-    max_iterations = len(graph.edges) + total_logistics_ports + 1
+    # Propagation flows through the entire graph - each node participates.
+    # With N nodes, we need at most N iterations for item types to propagate
+    # from sources to sinks through any chain of nodes.
+    max_iterations = len(graph.nodes) + 1
 
     # Iterate until no more changes
     changed = True
