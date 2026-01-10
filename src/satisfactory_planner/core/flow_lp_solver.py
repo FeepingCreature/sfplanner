@@ -114,8 +114,8 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
         if theo > actual + BOTTLENECK_TOLERANCE and actual >= edge.capacity - BOTTLENECK_TOLERANCE:
             bottlenecks[edge_id] = (theo, actual)
 
-    # Write DOT file for visualization
-    _write_dot_file(graph, actual_flows, theoretical_flows, bottlenecks)
+    # Write DOT file for visualization (disabled for now)
+    # _write_dot_file(graph, actual_flows, theoretical_flows, bottlenecks)
 
     # Compute efficiencies using actual flows
     efficiencies = _compute_efficiencies(graph, actual_flows)
