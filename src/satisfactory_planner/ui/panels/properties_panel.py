@@ -295,10 +295,19 @@ class PropertiesPanel(QWidget):
 
     def _update_recipe_combo(self, building_type: BuildingType | None = None) -> None:
         """Update recipe combo with available recipes filtered by building type."""
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         # Load all recipes (base game + user), merging with document recipes
         all_recipes = load_all_recipes()
         # Document recipes override base/user recipes (for embedded custom recipes)
         merged_recipes = {**all_recipes, **self.document.recipes}
+
+        logger.debug(
+            f"Updating recipe combo: {len(all_recipes)} base, "
+            f"{len(self.document.recipes)} document, filter={building_type}"
+        )
 
         # Build list of (name, id) tuples, filtered and deduplicated
         recipe_items: list[tuple[str, str]] = []
@@ -309,6 +318,8 @@ class PropertiesPanel(QWidget):
             if matches_type and recipe_id not in added_ids:
                 recipe_items.append((recipe.name, recipe_id))
                 added_ids.add(recipe_id)
+
+        logger.debug(f"Recipe combo items: {len(recipe_items)} recipes for {building_type}")
 
         # Use SearchableComboBox's set_items (handles sorting)
         self.recipe_combo.set_items(recipe_items, include_none=True, none_text="(No recipe)")

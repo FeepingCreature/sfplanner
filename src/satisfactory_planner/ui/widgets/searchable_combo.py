@@ -86,11 +86,16 @@ class SearchableDropdown(QWidget):
         self._search_edit.clear()
         self._repopulate_list()
 
-        # Position popup below the display field
-        global_pos = self.mapToGlobal(self._display.geometry().bottomLeft())
+        # Position popup to overlay the display field (not below it)
+        global_pos = self.mapToGlobal(self._display.geometry().topLeft())
         self._popup.move(global_pos)
         self._popup.setMinimumWidth(self.width())
         self._popup.show()
+
+        # Pre-fill search with current selection text for easy editing
+        if self._current_data is not None:
+            self._search_edit.setText(self._display.text())
+            self._search_edit.selectAll()
 
         # Focus the search field
         self._search_edit.setFocus()
@@ -159,6 +164,10 @@ class SearchableDropdown(QWidget):
 
     def set_current_data(self, data: Any) -> None:
         """Set current selection by data value."""
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         self._current_data = data
 
         if data is None:
@@ -171,7 +180,10 @@ class SearchableDropdown(QWidget):
                 self._display.setText(display_text)
                 return
 
-        # Data not found in items
+        # Data not found in items - log warning
+        logger.warning(
+            f"SearchableDropdown: data '{data}' not found in {len(self._all_items)} items"
+        )
         self._display.setText(str(data))
 
     def get_current_data(self) -> Any:

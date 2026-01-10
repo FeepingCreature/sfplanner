@@ -629,6 +629,24 @@
       "streaming": true,
       "actual_cost": 0.59652625,
       "generation_id": "gen-1768080450-uxYoJY4Xf39QnOCqpteR"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768080639448.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768080639448.json",
+      "timestamp": 1768080639.4494061,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.5938725,
+      "generation_id": "gen-1768080640-7ohSONJyBcU15Ogiq7Ft"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768080655221.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768080655221.json",
+      "timestamp": 1768080655.222678,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.61518875,
+      "generation_id": "gen-1768080656-sakwFGAS1Q0jCIVr8f89"
     }
   ],
   "messages": [
@@ -2262,6 +2280,97 @@
         },
         {
           "commit": "b6776431be3d",
+          "message": "Committed: 2 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: cbe5e702",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Nice nice. Minor fixes: -The item selector should overlap the search box with what would normally be the item display.\n\nIe. rn it's\n\n[Item Name]\n  [Search Field]\n  [Search Results]\n\nand it should be\nclosed:\n[Item Name]\nopen:\n[Search Field]\n[Search Results].\n\n\nAlso, the factory item now says \"No Recipe\". It definitely has a recipe."
+    },
+    {
+      "role": "assistant",
+      "content": "Let me fix both issues:\n\n1. Make the popup overlay the display field (search field takes its place)\n2. Debug the \"No Recipe\" issue - likely the recipe combo isn't finding the recipe\n\n<edit file=\"src/satisfactory_planner/ui/widgets/searchable_combo.py\">\n<search>\n    def _show_popup(self) -> None:\n        \"\"\"Show the dropdown popup.\"\"\"\n        self._search_edit.clear()\n        self._repopulate_list()\n\n        # Position popup below the display field\n        global_pos = self.mapToGlobal(self._display.geometry().bottomLeft())\n        self._popup.move(global_pos)\n        self._popup.setMinimumWidth(self.width())\n        self._popup.show()\n\n        # Focus the search field\n        self._search_edit.setFocus()\n</search>\n<replace>\n    def _show_popup(self) -> None:\n        \"\"\"Show the dropdown popup.\"\"\"\n        self._search_edit.clear()\n        self._repopulate_list()\n\n        # Position popup to overlay the display field (not below it)\n        global_pos = self.mapToGlobal(self._display.geometry().topLeft())\n        self._popup.move(global_pos)\n        self._popup.setMinimumWidth(self.width())\n        self._popup.show()\n\n        # Pre-fill search with current selection text for easy editing\n        if self._current_data is not None:\n            self._search_edit.setText(self._display.text())\n            self._search_edit.selectAll()\n\n        # Focus the search field\n        self._search_edit.setFocus()\n</replace>\n</edit>\n\nNow let me check the properties panel recipe combo logic - it might not be finding the recipe because IDs don't match:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"set_current_data.*recipe\", \"file\": \"src/satisfactory_planner/ui/panels/properties_panel.py\"}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01HSU1kSwb3RDGnsyBYont9n",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/widgets/searchable_combo.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/widgets/searchable_combo.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01HSU1kSwb3RDGnsyBYont9n",
+      "content": "{\"message\": \"Found 1 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:469 \\u2500\\u2500\\n     466 |                     self._update_recipe_combo(building.building_type)\\n     467 | \\n     468 |                     # Select current recipe in combo\\n>>>  469 |                     self.recipe_combo.set_current_data(building.recipe_id)\\n     470 | \\n     471 |                     # Splitter/Merger don't have recipes or production stats\\n     472 |                     is_logistics = building.building_type in (\", \"success\": true, \"total_matches\": 1}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"file\": \"src/satisfactory_planner/ui/panels/properties_panel.py\",\n  \"pattern\": \"set_current_data.*recipe\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 1 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:469 \\u2500\\u2500\\n     466 |                     self._update_recipe_combo(building.building_type)\\n     467 | \\n     468 |                     # Select current recipe in combo\\n>>>  469 |                     self.recipe_combo.set_current_data(building.recipe_id)\\n     470 | \\n     471 |                     # Splitter/Merger don't have recipes or production stats\\n     472 |                     is_logistics = building.building_type in (\",\n  \"success\": true,\n  \"total_matches\": 1\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue - the popup overlay code is already in place (I can see in the context). The recipe issue is likely that the recipe IDs from base recipes don't match what's in the document. Let me add some logging and check:\n\n<edit file=\"src/satisfactory_planner/ui/panels/properties_panel.py\">\n<search>\n    def _update_recipe_combo(self, building_type: BuildingType | None = None) -> None:\n        \"\"\"Update recipe combo with available recipes filtered by building type.\"\"\"\n        # Load all recipes (base game + user), merging with document recipes\n        all_recipes = load_all_recipes()\n        # Document recipes override base/user recipes (for embedded custom recipes)\n        merged_recipes = {**all_recipes, **self.document.recipes}\n\n        # Build list of (name, id) tuples, filtered and deduplicated\n        recipe_items: list[tuple[str, str]] = []\n        added_ids: set[str] = set()\n        for recipe_id, recipe in merged_recipes.items():\n            # Filter by building type if specified, and skip duplicates\n            matches_type = building_type is None or recipe.building_type == building_type\n            if matches_type and recipe_id not in added_ids:\n                recipe_items.append((recipe.name, recipe_id))\n                added_ids.add(recipe_id)\n\n        # Use SearchableComboBox's set_items (handles sorting)\n        self.recipe_combo.set_items(recipe_items, include_none=True, none_text=\"(No recipe)\")\n</search>\n<replace>\n    def _update_recipe_combo(self, building_type: BuildingType | None = None) -> None:\n        \"\"\"Update recipe combo with available recipes filtered by building type.\"\"\"\n        import logging\n\n        logger = logging.getLogger(__name__)\n\n        # Load all recipes (base game + user), merging with document recipes\n        all_recipes = load_all_recipes()\n        # Document recipes override base/user recipes (for embedded custom recipes)\n        merged_recipes = {**all_recipes, **self.document.recipes}\n\n        logger.debug(\n            f\"Updating recipe combo: {len(all_recipes)} base, \"\n            f\"{len(self.document.recipes)} document, filter={building_type}\"\n        )\n\n        # Build list of (name, id) tuples, filtered and deduplicated\n        recipe_items: list[tuple[str, str]] = []\n        added_ids: set[str] = set()\n        for recipe_id, recipe in merged_recipes.items():\n            # Filter by building type if specified, and skip duplicates\n            matches_type = building_type is None or recipe.building_type == building_type\n            if matches_type and recipe_id not in added_ids:\n                recipe_items.append((recipe.name, recipe_id))\n                added_ids.add(recipe_id)\n\n        logger.debug(f\"Recipe combo items: {len(recipe_items)} recipes for {building_type}\")\n\n        # Use SearchableComboBox's set_items (handles sorting)\n        self.recipe_combo.set_items(recipe_items, include_none=True, none_text=\"(No recipe)\")\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/widgets/searchable_combo.py\">\n<search>\n    def set_current_data(self, data: Any) -> None:\n        \"\"\"Set current selection by data value.\"\"\"\n        self._current_data = data\n\n        if data is None:\n            self._display.setText(\"\")\n            return\n\n        # Find display text for this data\n        for display_text, item_data in self._all_items:\n            if item_data == data:\n                self._display.setText(display_text)\n                return\n\n        # Data not found in items\n        self._display.setText(str(data))\n</search>\n<replace>\n    def set_current_data(self, data: Any) -> None:\n        \"\"\"Set current selection by data value.\"\"\"\n        import logging\n\n        logger = logging.getLogger(__name__)\n\n        self._current_data = data\n\n        if data is None:\n            self._display.setText(\"\")\n            return\n\n        # Find display text for this data\n        for display_text, item_data in self._all_items:\n            if item_data == data:\n                self._display.setText(display_text)\n                return\n\n        # Data not found in items - log warning\n        logger.warning(\n            f\"SearchableDropdown: data '{data}' not found in {len(self._all_items)} items\"\n        )\n        self._display.setText(str(data))\n</replace>\n</edit>\n\n<run_tests/>\n\n<commit message=\"Fix searchable dropdown popup overlay and add recipe debugging\n\n- Popup now overlays the display field (search replaces item name)\n- Pre-fills search with current selection for easy editing\n- Add logging to recipe combo population for debugging\n- Add warning when set_current_data can't find matching item\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/properties_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/properties_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/widgets/searchable_combo.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/widgets/searchable_combo.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_an8_pn2m\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 50 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .........                            [ 36%]\ntests/test_core/test_models.py .........                                 [ 54%]\ntests/test_core/test_room_commands.py ..............                     [ 82%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 50 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_an8_pn2m\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_an8_pn2m\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 50 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .........                            [ 36%]\ntests/test_core/test_models.py .........                                 [ 54%]\ntests/test_core/test_room_commands.py ..............                     [ 82%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 50 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_an8_pn2m\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "72eb4f0e6b2a",
           "message": "Committed: 2 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
