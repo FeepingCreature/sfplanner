@@ -33,6 +33,10 @@ ruff check src/
 ruff format src/
 ```
 
+## IMPORTANT: Always Run Tests Before Committing
+
+Always run `<run_tests/>` before `<commit/>`. The test suite includes type checking (mypy) which catches type errors that would otherwise slip through. Never commit without passing tests.
+
 ## IMPORTANT: run_tests Formats Files
 
 `run_tests` (which runs `make test`) includes `ruff format` which auto-formats all Python files. This means:

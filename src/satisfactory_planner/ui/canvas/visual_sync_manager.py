@@ -15,10 +15,10 @@ from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QGraphicsItem
 
 from satisfactory_planner.core import BuildingType
+from satisfactory_planner.core.flow_solver import Warning
 from satisfactory_planner.core.models import Scene
 from satisfactory_planner.ui.items.belt_item import BeltItem
 from satisfactory_planner.ui.items.building_item import BuildingItem
-from satisfactory_planner.core.flow_solver import Warning
 from satisfactory_planner.ui.items.warning_icon_item import WarningIconItem
 
 if TYPE_CHECKING:

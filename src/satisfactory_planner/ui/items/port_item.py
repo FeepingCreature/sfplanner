@@ -178,7 +178,6 @@ class PortItem(QGraphicsItem):
             return
 
         # Find the node for this building
-        from satisfactory_planner.core.flow_key import FlowKey
 
         graph = flow_solver._solved_model.graph
         for node in graph.nodes.values():
