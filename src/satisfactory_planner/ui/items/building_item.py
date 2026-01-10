@@ -433,44 +433,15 @@ class BuildingItem(QGraphicsRectItem):
 
             return new_pos
         elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged and self.scene():
-            # Update model position and redraw belts during drag
+            # Update model position
             new_pos = self.pos()
             self.building.x = new_pos.x()
             self.building.y = new_pos.y()
-            
-            self.canvas.update_belts_for_building(self.building.id, self._scene)
-            
-            # If inside a room, also refresh other RoomItems showing the same room
-            if self._scene.scene_room_id:
-                room_id = self._scene.scene_room_id
-                for placement_id, room_item in self.canvas._room_items.items():
-                    from satisfactory_planner.ui.items.room_item import RoomItem
-                    if isinstance(room_item, RoomItem) and room_item.room.id == room_id:
-                        # Update the same building in other room placements
-                        other_building_item = room_item._building_items.get(self.building.id)
-                        if other_building_item and other_building_item is not self:
-                            # Update position without triggering another itemChange cascade
-                            other_building_item.setFlag(
-                                QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, False
-                            )
-                            other_building_item.setPos(new_pos)
-                            other_building_item.setFlag(
-                                QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True
-                            )
-                        
-                        # Update belts in this room item
-                        for belt_id, belt_item in room_item._belt_items.items():
-                            belt = self._scene.belts.get(belt_id)
-                            if belt and (belt.source_building_id == self.building.id or 
-                                        belt.dest_building_id == self.building.id):
-                                belt_item._update_path_from_endpoints()
-                        
-                        # If this is a PORT building, update room ports too
-                        if self.building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
-                            room_item.update_room_ports()
-            
-            # Update selection outline during drag
-            self.canvas._update_selection_outline()
+
+            # Let canvas handle all visual updates (linked rooms, belts, ports)
+            self.canvas.sync_building_moved(
+                self.building.id, self._scene.scene_room_id, source_item=self
+            )
         return super().itemChange(change, value)
 
     def wheelEvent(self, event: object) -> None:

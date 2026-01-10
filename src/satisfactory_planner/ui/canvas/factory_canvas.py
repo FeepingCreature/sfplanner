@@ -385,6 +385,73 @@ class FactoryCanvas(QGraphicsView):
                 item.setPos(building.x, building.y)
             item.update()
 
+    def sync_building_moved(
+        self, building_id: str, scene_room_id: str | None, source_item: object = None
+    ) -> None:
+        """Sync all visual items after a building's position changed in the model.
+
+        This is the central method for propagating position changes to all visual
+        representations of a building (including linked room placements).
+
+        Args:
+            building_id: The building that moved
+            scene_room_id: The room the building is in (None for document-level)
+            source_item: The item that initiated the move (will be skipped to avoid feedback)
+        """
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        # Get the scene and building
+        if scene_room_id and scene_room_id in self.document.rooms:
+            scene: Scene = self.document.rooms[scene_room_id]
+        else:
+            scene = self.document
+
+        building = scene.buildings.get(building_id)
+        if not building:
+            return
+
+        new_pos = QPointF(building.x, building.y)
+
+        if scene_room_id:
+            # Building is inside a room - update ALL RoomItems displaying this room
+            for _placement_id, room_item in self._room_items.items():
+                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
+                    # Update building position
+                    building_item = room_item._building_items.get(building_id)
+                    if building_item and building_item is not source_item:
+                        # Suppress itemChange to avoid feedback loop
+                        building_item.setFlag(
+                            QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, False
+                        )
+                        building_item.setPos(new_pos)
+                        building_item.setFlag(
+                            QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True
+                        )
+
+                    # Update belts connected to this building in this room item
+                    for belt_id, belt_item in room_item._belt_items.items():
+                        belt = scene.belts.get(belt_id)
+                        if belt and (
+                            belt.source_building_id == building_id
+                            or belt.dest_building_id == building_id
+                        ):
+                            belt_item._update_path_from_endpoints()
+
+                    # If this is a PORT building, update room ports too
+                    if building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
+                        room_item.update_room_ports()
+        else:
+            # Top-level building
+            item = self._building_items.get(building_id)
+            if item and item is not source_item:
+                item.setPos(new_pos)
+
+            # Update connected belts
+            self.update_belts_for_building(building_id, scene)
+
+        # Update selection outline
+        self._update_selection_outline()
+
     def refresh_belts_for_building(self, building_id: str, scene: Scene) -> None:
         """Refresh belts connected to a building."""
         for room_id, room in self.document.rooms.items():
