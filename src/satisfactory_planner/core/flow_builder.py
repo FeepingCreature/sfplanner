@@ -324,29 +324,9 @@ def build_flow_graph(document: Document, recipes: dict[RecipeId, Recipe]) -> Bui
         return BuildResult(errors=errors)
 
     # Phase: Propagate item types through splitters/mergers
-    # This must happen BEFORE checking merger conflicts, so that item types
-    # from upstream producers are propagated through splitters to mergers
-    _propagate_item_types(graph)
-
-    # Phase: Check merger type conflicts (after propagation)
-    for node in graph.nodes.values():
-        if node.node_type == NodeType.MERGER:
-            incoming_edges = graph.get_incoming_edges(node.id)
-            item_ids = {e.item_id for e in incoming_edges if e.item_id is not None}
-            if len(item_ids) > 1:
-                # Build detailed message showing which belts bring which items
-                details = []
-                for edge in incoming_edges:
-                    if edge.item_id:
-                        details.append(f"  • Input {edge.dest_port_index}: {edge.item_id}")
-                detail_str = "\n".join(details)
-                errors.append(
-                    FatalError(
-                        error_type=FatalErrorType.MERGER_TYPE_CONFLICT,
-                        message=f"Merger receives different item types:\n{detail_str}",
-                        element_id=node.id.element_id,
-                    )
-                )
+    # This detects merger type conflicts during propagation
+    propagation_errors = _propagate_item_types(graph)
+    errors.extend(propagation_errors)
 
     if errors:
         return BuildResult(errors=errors)
@@ -354,7 +334,7 @@ def build_flow_graph(document: Document, recipes: dict[RecipeId, Recipe]) -> Bui
     return BuildResult(graph=graph)
 
 
-def _propagate_item_types(graph: FlowGraph) -> None:
+def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
     """Propagate item types through splitters and mergers.
 
     Splitters/mergers don't have recipes, so their port item types
@@ -367,6 +347,8 @@ def _propagate_item_types(graph: FlowGraph) -> None:
     import logging
 
     logger = logging.getLogger(__name__)
+
+    errors: list[FatalError] = []
 
     # Count logistics nodes for convergence check (includes PORT_IN/PORT_OUT)
     logistics_types = (NodeType.SPLITTER, NodeType.MERGER, NodeType.PORT_IN, NodeType.PORT_OUT)
@@ -471,13 +453,28 @@ def _propagate_item_types(graph: FlowGraph) -> None:
                             changed = True
 
             elif node.node_type in (NodeType.MERGER, NodeType.PORT_IN, NodeType.PORT_OUT):
-                # Get item type from any incoming edge that has one
+                # Get item types from all incoming edges
                 incoming = graph.get_incoming_edges(node.id)
-                item_id = None
-                for edge in incoming:
-                    if edge.item_id is not None:
-                        item_id = edge.item_id
-                        break
+                incoming_item_ids = {e.item_id for e in incoming if e.item_id is not None}
+
+                # Check for merger type conflict
+                if node.node_type == NodeType.MERGER and len(incoming_item_ids) > 1:
+                    # Build detailed message showing which belts bring which items
+                    details = []
+                    for edge in incoming:
+                        if edge.item_id:
+                            details.append(f"  • Input {edge.dest_port_index}: {edge.item_id}")
+                    detail_str = "\n".join(details)
+                    errors.append(
+                        FatalError(
+                            error_type=FatalErrorType.MERGER_TYPE_CONFLICT,
+                            message=f"Merger receives different item types:\n{detail_str}",
+                            element_id=node.id.element_id,
+                        )
+                    )
+                    continue  # Don't propagate conflicting types
+
+                item_id = next(iter(incoming_item_ids), None)
 
                 # Also check outgoing edge
                 if item_id is None:
@@ -536,6 +533,8 @@ def _propagate_item_types(graph: FlowGraph) -> None:
             logger.warning(
                 f"  {node.id} ({node.node_type.name}): inputs={in_items}, outputs={out_items}"
             )
+
+    return errors
 
 
 def _make_item_key(element_id: str, placement_id: str | None) -> ItemKey:
