@@ -143,20 +143,20 @@ def _write_dot_file(
     lines = [
         "digraph FlowGraph {",
         "  rankdir=LR;",
-        "  node [shape=record, fontname=\"Courier\", fontsize=10];",
-        "  edge [fontname=\"Courier\", fontsize=9];",
+        '  node [shape=record, fontname="Courier", fontsize=10];',
+        '  edge [fontname="Courier", fontsize=9];',
         "",
     ]
 
     # Node colors by type
     node_colors = {
-        NodeType.MINER: "#90EE90",      # Light green
-        NodeType.PRODUCER: "#87CEEB",   # Light blue
-        NodeType.SPLITTER: "#FFD700",   # Gold
-        NodeType.MERGER: "#FFA500",     # Orange
-        NodeType.SINK: "#FF6B6B",       # Light red
-        NodeType.PORT_IN: "#DDA0DD",    # Plum
-        NodeType.PORT_OUT: "#DDA0DD",   # Plum
+        NodeType.MINER: "#90EE90",  # Light green
+        NodeType.PRODUCER: "#87CEEB",  # Light blue
+        NodeType.SPLITTER: "#FFD700",  # Gold
+        NodeType.MERGER: "#FFA500",  # Orange
+        NodeType.SINK: "#FF6B6B",  # Light red
+        NodeType.PORT_IN: "#DDA0DD",  # Plum
+        NodeType.PORT_OUT: "#DDA0DD",  # Plum
     }
 
     # Nodes with full details
@@ -367,7 +367,9 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
 
         elif node.node_type == NodeType.PORT_IN:
             # PORT_IN: receives from external belt, passes to internal
-            logger.debug(f"PORT_IN {node_id}: incoming={[e.id for e in incoming]}, outgoing={[e.id for e in outgoing]}")
+            logger.debug(
+                f"PORT_IN {node_id}: incoming={[e.id for e in incoming]}, outgoing={[e.id for e in outgoing]}"
+            )
             if incoming and outgoing:
                 # Pass-through: sum(inputs) = sum(outputs)
                 row = [0.0] * n_edges
@@ -380,7 +382,7 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
             elif not incoming and outgoing:
                 # No external connection - outputs must be 0
                 # Use inequality <= 0 combined with non-negativity to force = 0
-                logger.debug(f"  -> Constraining outputs to 0 (no incoming)")
+                logger.debug("  -> Constraining outputs to 0 (no incoming)")
                 for out_edge in outgoing:
                     row = [0.0] * n_edges
                     row[edge_to_idx[out_edge.id]] = 1.0
@@ -389,7 +391,9 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
 
         elif node.node_type == NodeType.PORT_OUT:
             # PORT_OUT: receives from internal, passes to external belt
-            logger.debug(f"PORT_OUT {node_id}: incoming={[e.id for e in incoming]}, outgoing={[e.id for e in outgoing]}")
+            logger.debug(
+                f"PORT_OUT {node_id}: incoming={[e.id for e in incoming]}, outgoing={[e.id for e in outgoing]}"
+            )
             if incoming and outgoing:
                 # Pass-through: sum(inputs) = sum(outputs)
                 row = [0.0] * n_edges
@@ -402,7 +406,7 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
             elif incoming and not outgoing:
                 # No external connection - inputs must be 0
                 # Use inequality <= 0 combined with non-negativity to force = 0
-                logger.debug(f"  -> Constraining inputs to 0 (no outgoing)")
+                logger.debug("  -> Constraining inputs to 0 (no outgoing)")
                 for in_edge in incoming:
                     row = [0.0] * n_edges
                     row[edge_to_idx[in_edge.id]] = 1.0
@@ -429,7 +433,9 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
         inequality_rows.append(row)
         inequality_rhs.append(upper_bound)
 
-    logger.debug(f"  {len(inequality_rows)} inequality constraints, {len(equality_rows)} equality constraints")
+    logger.debug(
+        f"  {len(inequality_rows)} inequality constraints, {len(equality_rows)} equality constraints"
+    )
 
     # Solve using pylinprog (vendored, untyped)
     resolution, solution = linsolve(  # type: ignore[no-untyped-call]

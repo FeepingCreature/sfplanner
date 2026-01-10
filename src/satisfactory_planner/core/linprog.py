@@ -276,9 +276,19 @@ def simplex_canonical_m(a, b, c, basis, num, verbose=False, do_coerce=True):
             break
 
     if not real_vertex_reached:
-        if verbose:
-            print("### Empty simplex")
-        return RESOLUTION_INCOMPATIBLE, None
+        # Check if all artificial variables are zero - this is still a valid solution
+        # (happens when the solution is all zeros or has degenerate constraints)
+        artificial_values = [
+            m_solver.b[j] for j, bi in enumerate(m_solver.basis) if bi >= n
+        ]
+        if all(num.iszero(v) for v in artificial_values):
+            if verbose:
+                print("### Real vertex reached (artificial variables are zero)")
+            real_vertex_reached = True
+        else:
+            if verbose:
+                print("### Empty simplex")
+            return RESOLUTION_INCOMPATIBLE, None
 
     a = [a_row[:n] for a_row in m_solver.a]
     return simplex_canonical(
