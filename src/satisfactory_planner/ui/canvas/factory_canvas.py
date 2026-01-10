@@ -35,8 +35,8 @@ from satisfactory_planner.core import (
     Recipe,
     RecipeId,
     Room,
-    load_all_recipes,
     load_items,
+    load_recipes,
 )
 from satisfactory_planner.core.models import Scene
 from satisfactory_planner.ui.commands import (
@@ -933,8 +933,8 @@ class FactoryCanvas(QGraphicsView):
 
         This is the canonical way to get recipes - document recipes override base.
         """
-        base = load_all_recipes()
-        return {**base, **self.document.recipes}
+        recipes = load_recipes()
+        return {**recipes, **self.document.recipes}
 
     def get_recipe(self, recipe_id: RecipeId | None) -> Recipe | None:
         """Look up a recipe by ID from merged recipes."""

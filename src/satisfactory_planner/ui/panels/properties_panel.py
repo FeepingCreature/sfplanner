@@ -295,22 +295,10 @@ class PropertiesPanel(QWidget):
 
     def _update_recipe_combo(self, building_type: BuildingType | None = None) -> None:
         """Update recipe combo with available recipes filtered by building type."""
-        import logging
-
-        logger = logging.getLogger(__name__)
-
         # Get merged recipes via canvas (canonical source)
-        if self.canvas:
-            merged_recipes = self.canvas.get_all_recipes()
-        else:
-            # Fallback for initialization before canvas is set
-            from satisfactory_planner.core.persistence import load_all_recipes
-
-            merged_recipes = {**load_all_recipes(), **self.document.recipes}
-
-        logger.debug(
-            f"Updating recipe combo: {len(merged_recipes)} recipes, filter={building_type}"
-        )
+        if not self.canvas:
+            return
+        merged_recipes = self.canvas.get_all_recipes()
 
         # Build list of (name, id) tuples, filtered and deduplicated
         recipe_items: list[tuple[str, str]] = []
@@ -321,8 +309,6 @@ class PropertiesPanel(QWidget):
             if matches_type and recipe_id not in added_ids:
                 recipe_items.append((recipe.name, recipe_id))
                 added_ids.add(recipe_id)
-
-        logger.debug(f"Recipe combo items: {len(recipe_items)} recipes for {building_type}")
 
         # Use SearchableComboBox's set_items (handles sorting)
         self.recipe_combo.set_items(recipe_items, include_none=True, none_text="(No recipe)")

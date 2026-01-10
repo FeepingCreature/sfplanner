@@ -85,22 +85,16 @@ def _load_game_data() -> dict[str, Any]:
         return {}
 
 
-def load_base_recipes() -> dict[RecipeId, Recipe]:
+def load_recipes() -> dict[RecipeId, Recipe]:
     """Load base game recipes from game_data.json."""
-    import logging
-
-    logger = logging.getLogger(__name__)
     try:
         data = _load_game_data()
         recipes = {}
         for recipe_data in data.get("recipes", []):
             recipe = dict_to_recipe(recipe_data)
             recipes[recipe.id] = recipe
-            logger.debug(f"Loaded base recipe: {recipe.id} ({recipe.name})")
-        logger.info(f"Loaded {len(recipes)} base recipes from game_data.json")
         return recipes
-    except (KeyError, TypeError) as e:
-        logger.error(f"Failed to load base recipes: {e}")
+    except (KeyError, TypeError):
         return {}
 
 
@@ -121,49 +115,6 @@ def load_items() -> list[tuple[ItemId, str, bool]]:
         return items
     except (KeyError, TypeError):
         return []
-
-
-def load_user_recipes() -> dict[RecipeId, Recipe]:
-    """Load user recipes from XDG data directory."""
-    import logging
-
-    logger = logging.getLogger(__name__)
-    path = get_user_recipes_path()
-    logger.debug(f"Looking for user recipes at: {path}")
-    if not path.exists():
-        logger.debug("No user recipes file found")
-        return {}
-
-    try:
-        data = json.loads(path.read_text())
-        recipes = {}
-        for recipe_data in data.get("recipes", []):
-            recipe = dict_to_recipe(recipe_data)
-            recipes[recipe.id] = recipe
-            logger.debug(f"Loaded user recipe: {recipe.id} ({recipe.name})")
-        logger.info(f"Loaded {len(recipes)} user recipes from {path}")
-        return recipes
-    except (json.JSONDecodeError, KeyError, TypeError) as e:
-        logger.error(f"Failed to load user recipes from {path}: {e}")
-        return {}
-
-
-def load_all_recipes() -> dict[RecipeId, Recipe]:
-    """Load all recipes (base game only).
-
-    Custom/user recipes are stored per-document, not globally.
-    """
-    return load_base_recipes()
-
-
-def save_user_recipes(recipes: dict[RecipeId, Recipe]) -> None:
-    """Save user recipes to XDG data directory."""
-    path = get_user_recipes_path()
-    data = {
-        "version": 1,
-        "recipes": [recipe_to_dict(r) for r in recipes.values()],
-    }
-    path.write_text(json.dumps(data, indent=2))
 
 
 # --- Building Serialization ---

@@ -52,9 +52,9 @@ class FlowSolver:
     then runs detectors to find issues.
     """
 
-    def __init__(self, document: Document, recipes: dict[RecipeId, Recipe] | None = None) -> None:
+    def __init__(self, document: Document, recipes: dict[RecipeId, Recipe]) -> None:
         self.document = document
-        self._recipes: dict[RecipeId, Recipe] | None = recipes
+        self._recipes = recipes
         self._solved_model: SolvedModel | None = None
         self._warnings: list[Warning] = []
 
@@ -64,18 +64,11 @@ class FlowSolver:
         from satisfactory_planner.core.detectors import detect_all_warnings
         from satisfactory_planner.core.flow_builder import build_flow_graph
         from satisfactory_planner.core.flow_lp_solver import solve_flows
-        from satisfactory_planner.core.persistence import load_all_recipes
-
-        # Get recipes - prefer provided, otherwise load base only
-        # Note: Callers should pass merged recipes (base + document) for full coverage
-        recipes = self._recipes
-        if recipes is None:
-            recipes = load_all_recipes()
 
         self._warnings = []
 
         # Step 1: Build flow graph
-        build_result = build_flow_graph(self.document, recipes)
+        build_result = build_flow_graph(self.document, self._recipes)
 
         if not build_result.success:
             # Convert fatal errors to warnings

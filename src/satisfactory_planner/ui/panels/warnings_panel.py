@@ -42,7 +42,7 @@ class WarningsPanel(QWidget):
     def __init__(
         self,
         document: Document,
-        flow_solver: FlowSolver,
+        flow_solver: FlowSolver | None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -87,6 +87,8 @@ class WarningsPanel(QWidget):
         """Refresh the warnings list."""
         self.tree.clear()
 
+        if not self.flow_solver:
+            return
         warnings = self.flow_solver.solve()
 
         if not warnings:

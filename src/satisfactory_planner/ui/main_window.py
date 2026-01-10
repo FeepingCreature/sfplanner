@@ -124,7 +124,7 @@ class MainWindow(QMainWindow):
         self.dock_manager.addDockWidget(ads.DockWidgetArea.RightDockWidgetArea, props_dock)
 
         # Warnings panel - below properties panel (smaller)
-        self.warnings_panel = WarningsPanel(Document(), FlowSolver(Document()))
+        self.warnings_panel = WarningsPanel(Document(), None)
         self.warnings_panel.warning_clicked.connect(self._on_warning_clicked)
         warnings_dock = ads.CDockWidget("Warnings")
         warnings_dock.setWidget(self.warnings_panel)

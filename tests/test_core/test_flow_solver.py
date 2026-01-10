@@ -11,7 +11,7 @@ class TestFlowSolver:
     def test_no_warnings_empty_document(self) -> None:
         """Empty document has no warnings."""
         doc = Document()
-        solver = FlowSolver(doc)
+        solver = FlowSolver(doc, {})
 
         warnings = solver.solve()
         assert len(warnings) == 0
@@ -34,7 +34,7 @@ class TestFlowSolver:
         # Add destination building
         doc.add_building(Building(id="b1", building_type=BuildingType.CONSTRUCTOR, x=0, y=0))
 
-        solver = FlowSolver(doc)
+        solver = FlowSolver(doc, {})
         warnings = solver.solve()
 
         assert len(warnings) >= 1
@@ -58,7 +58,7 @@ class TestFlowSolver:
         )
         doc.add_belt(belt)
 
-        solver = FlowSolver(doc)
+        solver = FlowSolver(doc, {})
         warnings = solver.solve()
 
         assert len(warnings) >= 1
@@ -83,7 +83,7 @@ class TestFlowSolver:
         )
         doc.add_belt(belt)
 
-        solver = FlowSolver(doc)
+        solver = FlowSolver(doc, {})
         warnings = solver.solve()
 
         # Should not have disconnected belt warnings
@@ -210,7 +210,7 @@ class TestFlowSolver:
             )
         )
 
-        solver = FlowSolver(doc)
+        solver = FlowSolver(doc, {})
         warnings = solver.solve()
 
         # Debug: print warnings if test fails
@@ -402,7 +402,7 @@ class TestFlowSolver:
             )
         )
 
-        solver = FlowSolver(doc)
+        solver = FlowSolver(doc, {})
         warnings = solver.solve()
 
         # LP should solve successfully
@@ -431,6 +431,8 @@ class TestFlowSolver:
         Scenario: Splitter carrying Iron Ore connects to a Merger that also
         receives Iron Ingots. This should produce an ITEM_MISMATCH error.
         """
+        from satisfactory_planner.core.persistence import load_recipes
+
         doc = Document()
 
         # Source of Iron Ore
@@ -523,7 +525,7 @@ class TestFlowSolver:
             )
         )
 
-        solver = FlowSolver(doc)
+        solver = FlowSolver(doc, load_recipes())
         warnings = solver.solve()
 
         # Should detect item mismatch at merger
@@ -538,6 +540,8 @@ class TestFlowSolver:
         Scenario: Miner(Iron Ore) -> Splitter -> Sink(expects Copper Ore)
         Should produce an ITEM_MISMATCH error after type propagation.
         """
+        from satisfactory_planner.core.persistence import load_recipes
+
         doc = Document()
 
         # Source of Iron Ore
@@ -591,7 +595,7 @@ class TestFlowSolver:
             )
         )
 
-        solver = FlowSolver(doc)
+        solver = FlowSolver(doc, load_recipes())
         warnings = solver.solve()
 
         # Should detect item mismatch at sink
@@ -647,7 +651,7 @@ class TestFlowSolver:
             )
         )
 
-        solver = FlowSolver(doc)
+        solver = FlowSolver(doc, {})
         warnings = solver.solve()
 
         # Should detect belt bottleneck as overcapacity
