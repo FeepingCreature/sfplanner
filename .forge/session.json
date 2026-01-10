@@ -61,6 +61,33 @@
       "streaming": true,
       "actual_cost": 0.0421385,
       "generation_id": "gen-1768058640-fE4VbqOT44xeIqZnaVUP"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1768058652550.json",
+      "response_file": "/tmp/forge_debug/response_1768058652550.json",
+      "timestamp": 1768058652.5508635,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000232,
+      "generation_id": "gen-1768058652-05WP7o1k130XrNBb1bZg"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768059368915.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768059368915.json",
+      "timestamp": 1768059368.916565,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.3166575,
+      "generation_id": "gen-1768059369-93otg0tD09MfX91Z9L6G"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768059399867.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768059399867.json",
+      "timestamp": 1768059399.8681974,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06060325,
+      "generation_id": "gen-1768059400-DPoFw07AmzqeZZlxAI2L"
     }
   ],
   "messages": [
@@ -150,6 +177,44 @@
           "message": "Replaced in src/satisfactory_planner/main.py",
           "modified_files": [
             "src/satisfactory_planner/main.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 79b82072",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "did you change something? it seems to partially work now."
+    },
+    {
+      "role": "assistant",
+      "content": "Yes! I added logic in `BuildingItem.itemChange()` to also update belts in other RoomItems that display the same room (for linked rooms). Here's what I added:\n\n```python\n# If inside a room, also refresh other RoomItems showing the same room\nif self._scene.scene_room_id:\n    room_id = self._scene.scene_room_id\n    for placement_id, room_item in self.canvas._room_items.items():\n        if isinstance(room_item, RoomItem) and room_item.room.id == room_id:\n            for belt_id, belt_item in room_item._belt_items.items():\n                belt = self._scene.belts.get(belt_id)\n                if belt and (belt.source_building_id == self.building.id or \n                            belt.dest_building_id == self.building.id):\n                    belt_item._update_path_from_endpoints()\n            \n            # If this is a PORT building, update room ports too\n            if self.building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):\n                room_item.update_room_ports()\n```\n\nWhat's \"partially\" working vs not working? Can you describe what you're seeing now? The debug logging should also give us clues - are you seeing any log output when you drag?"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: eccedeca",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "yeah- belts work now, but the same item in another room isn't being updated."
+    },
+    {
+      "role": "assistant",
+      "content": "Ah right - the building items themselves in linked rooms need to be updated too! Let me fix that:\n\n<edit file=\"src/satisfactory_planner/ui/items/building_item.py\">\n<search>\n            # If inside a room, also refresh other RoomItems showing the same room\n            if self._scene.scene_room_id:\n                room_id = self._scene.scene_room_id\n                logger.debug(f\"  Building is in room {room_id}, checking for linked room items...\")\n                for placement_id, room_item in self.canvas._room_items.items():\n                    from satisfactory_planner.ui.items.room_item import RoomItem\n                    if isinstance(room_item, RoomItem) and room_item.room.id == room_id:\n                        logger.debug(f\"    Found RoomItem placement {placement_id}\")\n                        # Update belts in this room item\n                        if self.building.id in room_item._belt_items:\n                            logger.debug(f\"    (but building not source of belts in this item)\")\n                        for belt_id, belt_item in room_item._belt_items.items():\n                            belt = self._scene.belts.get(belt_id)\n                            if belt and (belt.source_building_id == self.building.id or \n                                        belt.dest_building_id == self.building.id):\n                                logger.debug(f\"    Updating belt {belt_id} in placement {placement_id}\")\n                                belt_item._update_path_from_endpoints()\n                        \n                        # If this is a PORT building, update room ports too\n                        if self.building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):\n                            logger.debug(f\"    PORT building moved, updating room ports\")\n                            room_item.update_room_ports()\n</search>\n<replace>\n            # If inside a room, also refresh other RoomItems showing the same room\n            if self._scene.scene_room_id:\n                room_id = self._scene.scene_room_id\n                logger.debug(f\"  Building is in room {room_id}, checking for linked room items...\")\n                for placement_id, room_item in self.canvas._room_items.items():\n                    from satisfactory_planner.ui.items.room_item import RoomItem\n                    if isinstance(room_item, RoomItem) and room_item.room.id == room_id:\n                        logger.debug(f\"    Found RoomItem placement {placement_id}\")\n                        \n                        # Update the same building in other room placements\n                        other_building_item = room_item._building_items.get(self.building.id)\n                        if other_building_item and other_building_item is not self:\n                            logger.debug(f\"    Updating building position in placement {placement_id}\")\n                            # Update position without triggering another itemChange cascade\n                            other_building_item.setFlag(\n                                QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, False\n                            )\n                            other_building_item.setPos(new_pos)\n                            other_building_item.setFlag(\n                                QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True\n                            )\n                        \n                        # Update belts in this room item\n                        for belt_id, belt_item in room_item._belt_items.items():\n                            belt = self._scene.belts.get(belt_id)\n                            if belt and (belt.source_building_id == self.building.id or \n                                        belt.dest_building_id == self.building.id):\n                                logger.debug(f\"    Updating belt {belt_id} in placement {placement_id}\")\n                                belt_item._update_path_from_endpoints()\n                        \n                        # If this is a PORT building, update room ports too\n                        if self.building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):\n                            logger.debug(f\"    PORT building moved, updating room ports\")\n                            room_item.update_room_ports()\n</replace>\n</edit>\n\nThis now also updates the position of the same building in other RoomItems that display the same room. The key addition:\n\n```python\nother_building_item = room_item._building_items.get(self.building.id)\nif other_building_item and other_building_item is not self:\n    # Update position without triggering another itemChange cascade\n    other_building_item.setFlag(ItemSendsGeometryChanges, False)\n    other_building_item.setPos(new_pos)\n    other_building_item.setFlag(ItemSendsGeometryChanges, True)\n```",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/building_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/building_item.py"
           ],
           "side_effects": [
             "files_modified"

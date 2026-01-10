@@ -464,9 +464,21 @@ class BuildingItem(QGraphicsRectItem):
                     from satisfactory_planner.ui.items.room_item import RoomItem
                     if isinstance(room_item, RoomItem) and room_item.room.id == room_id:
                         logger.debug(f"    Found RoomItem placement {placement_id}")
+                        
+                        # Update the same building in other room placements
+                        other_building_item = room_item._building_items.get(self.building.id)
+                        if other_building_item and other_building_item is not self:
+                            logger.debug(f"    Updating building position in placement {placement_id}")
+                            # Update position without triggering another itemChange cascade
+                            other_building_item.setFlag(
+                                QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, False
+                            )
+                            other_building_item.setPos(new_pos)
+                            other_building_item.setFlag(
+                                QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True
+                            )
+                        
                         # Update belts in this room item
-                        if self.building.id in room_item._belt_items:
-                            logger.debug(f"    (but building not source of belts in this item)")
                         for belt_id, belt_item in room_item._belt_items.items():
                             belt = self._scene.belts.get(belt_id)
                             if belt and (belt.source_building_id == self.building.id or 
