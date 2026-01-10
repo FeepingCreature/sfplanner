@@ -500,10 +500,8 @@ class BuildingItem(QGraphicsRectItem):
 
     def _update_efficiency_from_solver(self) -> None:
         """Fetch efficiency from flow solver."""
-        from satisfactory_planner.ui.main_window import MainWindow
-
         main_window = self.canvas.window()
-        if not isinstance(main_window, MainWindow) or not main_window.current_tab:
+        if not main_window or not main_window.current_tab:
             return
 
         flow_solver = main_window.current_tab.flow_solver

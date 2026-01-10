@@ -7,6 +7,7 @@
     "src/satisfactory_planner/ui/items/belt_item.py",
     "src/satisfactory_planner/ui/canvas/visual_sync_manager.py",
     "src/satisfactory_planner/core/__init__.py",
+    "src/satisfactory_planner/ui/canvas/factory_canvas.py",
     "src/satisfactory_planner/ui/items/building_item.py"
   ],
   "request_log_entries": [
@@ -468,6 +469,24 @@
       "streaming": true,
       "actual_cost": 0.29038375,
       "generation_id": "gen-1768065578-kRTbNeKXY8YjVS9YNiUS"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768065660060.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768065660060.json",
+      "timestamp": 1768065660.0617483,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.11070325,
+      "generation_id": "gen-1768065660-X3r0PBKZxUSsrkqThcUi"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768065665490.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768065665490.json",
+      "timestamp": 1768065665.492003,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.10345375,
+      "generation_id": "gen-1768065665-XwEKoIYEVBc6pLJyufNo"
     }
   ],
   "messages": [
@@ -2004,6 +2023,89 @@
         {
           "commit": "8e47d2f844c9",
           "message": "Committed: 2 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 132e1af2",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Can we give canvas a narrowing overload for window() to return MainWIndow?"
+    },
+    {
+      "role": "assistant",
+      "content": "Yes! We can add a `window()` method override on `FactoryCanvas` that returns `MainWindow`. This is cleaner than sprinkling `isinstance` checks everywhere.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas/factory_canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_016bDDkPvwb7r23CB6z9Dm49",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_016bDDkPvwb7r23CB6z9Dm49",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/factory_canvas.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good idea! Let me add a `window()` override on `FactoryCanvas` that returns `MainWindow | None`:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\nif TYPE_CHECKING:\n    from satisfactory_planner.core.models import RoomPlacement\n</search>\n<replace>\nif TYPE_CHECKING:\n    from satisfactory_planner.core.models import RoomPlacement\n    from satisfactory_planner.ui.main_window import MainWindow\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def set_show_flow_rate(self, show: bool) -> None:\n        self._show_flow_rate = show\n</search>\n<replace>\n    def window(self) -> MainWindow | None:\n        \"\"\"Return the MainWindow that contains this canvas, or None.\"\"\"\n        from satisfactory_planner.ui.main_window import MainWindow\n\n        w = super().window()\n        return w if isinstance(w, MainWindow) else None\n\n    def set_show_flow_rate(self, show: bool) -> None:\n        self._show_flow_rate = show\n</replace>\n</edit>\n\nNow update the callers to use the simpler pattern:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/visual_sync_manager.py\">\n<search>\n    def update_flow_visualization(self) -> None:\n        \"\"\"Update visual state of items based on flow solver results.\n\n        Iterates visual items and lets each look up its own flow data using\n        its flow_key (which includes placement_id for items inside rooms).\n        \"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n        from satisfactory_planner.ui.main_window import MainWindow\n\n        main_window = self.canvas.window()\n        if not isinstance(main_window, MainWindow) or not main_window.current_tab:\n            return\n\n        flow_solver = main_window.current_tab.flow_solver\n        solved = flow_solver._solved_model if flow_solver else None\n</search>\n<replace>\n    def update_flow_visualization(self) -> None:\n        \"\"\"Update visual state of items based on flow solver results.\n\n        Iterates visual items and lets each look up its own flow data using\n        its flow_key (which includes placement_id for items inside rooms).\n        \"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        main_window = self.canvas.window()\n        if not main_window or not main_window.current_tab:\n            return\n\n        flow_solver = main_window.current_tab.flow_solver\n        solved = flow_solver._solved_model if flow_solver else None\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/items/building_item.py\">\n<search>\n    def _update_efficiency_from_solver(self) -> None:\n        \"\"\"Fetch efficiency from flow solver.\"\"\"\n        from satisfactory_planner.ui.main_window import MainWindow\n\n        main_window = self.canvas.window()\n        if not isinstance(main_window, MainWindow) or not main_window.current_tab:\n            return\n\n        flow_solver = main_window.current_tab.flow_solver\n        if flow_solver:\n            eff = flow_solver.get_efficiency(self.flow_key)\n            if eff:\n                self.set_efficiency(eff.duty_cycle)\n            else:\n                self.set_efficiency(None)\n</search>\n<replace>\n    def _update_efficiency_from_solver(self) -> None:\n        \"\"\"Fetch efficiency from flow solver.\"\"\"\n        main_window = self.canvas.window()\n        if not main_window or not main_window.current_tab:\n            return\n\n        flow_solver = main_window.current_tab.flow_solver\n        if flow_solver:\n            eff = flow_solver.get_efficiency(self.flow_key)\n            if eff:\n                self.set_efficiency(eff.duty_cycle)\n            else:\n                self.set_efficiency(None)\n</replace>\n</edit>\n\n<check/>\n\n<commit message=\"Add FactoryCanvas.window() override returning MainWindow | None\n\nThis provides type-safe access to MainWindow without isinstance checks\nat every call site, fixing the type hole that allowed FlowKey misuse.\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/visual_sync_manager.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/visual_sync_manager.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/building_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/building_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "commit": "e6340e7bdaca",
+          "message": "Committed: 3 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

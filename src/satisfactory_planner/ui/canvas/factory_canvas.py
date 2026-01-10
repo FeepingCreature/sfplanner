@@ -45,6 +45,7 @@ from satisfactory_planner.ui.items.building_item import BuildingItem
 
 if TYPE_CHECKING:
     from satisfactory_planner.core.models import RoomPlacement
+    from satisfactory_planner.ui.main_window import MainWindow
 
 
 logger = logging.getLogger(__name__)
@@ -872,6 +873,14 @@ class FactoryCanvas(QGraphicsView):
                 belt_item = self._belt_items.get(belt.id)
                 if belt_item:
                     belt_item._update_path_from_endpoints()
+
+    def window(self) -> MainWindow:
+        """Return the MainWindow that contains this canvas."""
+        from satisfactory_planner.ui.main_window import MainWindow
+
+        w = super().window()
+        assert isinstance(w, MainWindow)
+        return w
 
     def set_show_flow_rate(self, show: bool) -> None:
         self._show_flow_rate = show
