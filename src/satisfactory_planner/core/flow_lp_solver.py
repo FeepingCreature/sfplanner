@@ -445,6 +445,7 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
         eq_left=equality_rows,
         eq_right=equality_rhs,
         nonneg_variables=nonneg_vars,
+        verbose=True,  # DEBUG
     )
 
     if resolution != RESOLUTION_SOLVED:
