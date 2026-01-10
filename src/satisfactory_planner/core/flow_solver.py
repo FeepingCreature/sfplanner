@@ -66,7 +66,8 @@ class FlowSolver:
         from satisfactory_planner.core.flow_lp_solver import solve_flows
         from satisfactory_planner.core.persistence import load_all_recipes
 
-        # Get recipes if not provided
+        # Get recipes - prefer provided, otherwise load base only
+        # Note: Callers should pass merged recipes (base + document) for full coverage
         recipes = self._recipes
         if recipes is None:
             recipes = load_all_recipes()

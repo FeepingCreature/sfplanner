@@ -351,8 +351,8 @@ class MainWindow(QMainWindow):
             canvas.set_show_flow_rate(self.show_flow_rates_action.isChecked())
             canvas.set_show_efficiency(self.show_bottlenecks_action.isChecked())
 
-        # Initialize flow solver on canvas
-        flow_solver = FlowSolver(tab.document)
+        # Initialize flow solver on canvas with merged recipes
+        flow_solver = FlowSolver(tab.document, canvas.get_all_recipes())
         flow_solver.solve()
         canvas.set_flow_solver(flow_solver)
 
@@ -458,8 +458,8 @@ class MainWindow(QMainWindow):
             canvas.set_show_flow_rate(self.show_flow_rates_action.isChecked())
             canvas.set_show_efficiency(self.show_bottlenecks_action.isChecked())
 
-            # Initialize flow solver on canvas
-            flow_solver = FlowSolver(document)
+            # Initialize flow solver on canvas with merged recipes
+            flow_solver = FlowSolver(document, canvas.get_all_recipes())
             flow_solver.solve()
             canvas.set_flow_solver(flow_solver)
 
@@ -594,7 +594,7 @@ class MainWindow(QMainWindow):
             return
 
         # Re-solve flows (always, so warnings are up-to-date)
-        flow_solver = FlowSolver(tab.document)
+        flow_solver = FlowSolver(tab.document, tab.canvas.get_all_recipes())
         flow_solver.solve()
         tab.canvas.set_flow_solver(flow_solver)
 

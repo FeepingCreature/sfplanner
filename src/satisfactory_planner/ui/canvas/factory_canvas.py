@@ -32,7 +32,11 @@ from satisfactory_planner.core import (
     BuildingType,
     Document,
     FlowSolver,
+    Recipe,
+    RecipeId,
     Room,
+    load_all_recipes,
+    load_items,
 )
 from satisfactory_planner.core.models import Scene
 from satisfactory_planner.ui.commands import (
@@ -921,6 +925,33 @@ class FactoryCanvas(QGraphicsView):
     def set_flow_solver(self, solver: FlowSolver | None) -> None:
         """Set the flow solver for this canvas."""
         self._flow_solver = solver
+
+    # === Recipe and Item Lookups ===
+
+    def get_all_recipes(self) -> dict[RecipeId, Recipe]:
+        """Get all recipes: base recipes merged with document overrides.
+
+        This is the canonical way to get recipes - document recipes override base.
+        """
+        base = load_all_recipes()
+        return {**base, **self.document.recipes}
+
+    def get_recipe(self, recipe_id: RecipeId | None) -> Recipe | None:
+        """Look up a recipe by ID from merged recipes."""
+        if recipe_id is None:
+            return None
+        return self.get_all_recipes().get(recipe_id)
+
+    def get_item_name(self, item_id: str | None) -> str | None:
+        """Look up an item's display name by ID."""
+        if item_id is None:
+            return None
+        # Cache items on first access
+        if not hasattr(self, "_item_names"):
+            self._item_names: dict[str, str] = {}
+            for iid, name, _is_fluid in load_items():
+                self._item_names[iid] = name
+        return self._item_names.get(item_id, item_id)  # Fallback to ID if not found
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]
         """Draw the grid background."""

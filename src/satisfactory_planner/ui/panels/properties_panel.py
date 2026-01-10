@@ -32,7 +32,7 @@ from satisfactory_planner.core import (
     RoomPlacement,
 )
 from satisfactory_planner.core.item_key import ItemKey
-from satisfactory_planner.core.persistence import load_all_recipes, load_items
+from satisfactory_planner.core.persistence import load_items
 from satisfactory_planner.ui.commands import (
     CommandStack,
     DelinkRoomCommand,
@@ -299,14 +299,17 @@ class PropertiesPanel(QWidget):
 
         logger = logging.getLogger(__name__)
 
-        # Load all recipes (base game + user), merging with document recipes
-        all_recipes = load_all_recipes()
-        # Document recipes override base/user recipes (for embedded custom recipes)
-        merged_recipes = {**all_recipes, **self.document.recipes}
+        # Get merged recipes via canvas (canonical source)
+        if self.canvas:
+            merged_recipes = self.canvas.get_all_recipes()
+        else:
+            # Fallback for initialization before canvas is set
+            from satisfactory_planner.core.persistence import load_all_recipes
+
+            merged_recipes = {**load_all_recipes(), **self.document.recipes}
 
         logger.debug(
-            f"Updating recipe combo: {len(all_recipes)} base, "
-            f"{len(self.document.recipes)} document, filter={building_type}"
+            f"Updating recipe combo: {len(merged_recipes)} recipes, filter={building_type}"
         )
 
         # Build list of (name, id) tuples, filtered and deduplicated
@@ -821,13 +824,15 @@ class PropertiesPanel(QWidget):
         if not isinstance(building, Building):
             return
 
-        if not building.recipe_id or building.recipe_id not in self.document.recipes:
+        # Look up recipe via canvas (handles base + document merge)
+        recipe = self.canvas.get_recipe(building.recipe_id) if self.canvas else None
+        if recipe is None:
             self.power_label.setText("- MW")
             self.input_label.setText("-")
             self.output_label.setText("-")
             return
 
-        recipe = self.document.recipes[building.recipe_id].scaled(building.clock_speed)
+        recipe = recipe.scaled(building.clock_speed)
 
         # Power
         self.power_label.setText(f"{recipe.power_mw:.1f} MW")
