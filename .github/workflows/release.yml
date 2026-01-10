@@ -37,8 +37,22 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Create venv and install dependencies
         run: |
+          python -m venv .venv
+          
+      - name: Install dependencies (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install nuitka
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .venv\Scripts\activate
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
           pip install nuitka
@@ -49,8 +63,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y patchelf
 
-      - name: Build with pyside6-deploy
+      - name: Build with pyside6-deploy (Unix)
+        if: runner.os != 'Windows'
         run: |
+          source .venv/bin/activate
+          pyside6-deploy -c pysidedeploy.spec
+
+      - name: Build with pyside6-deploy (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .venv\Scripts\activate
           pyside6-deploy -c pysidedeploy.spec
 
       - name: Find and upload artifact
