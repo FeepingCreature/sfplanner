@@ -9,6 +9,7 @@
 
 ## UI/UX Improvements
 
+- [x] **Flow visualization toggles** - Efficiency and flow rate toggles now work independently and correctly on file load
 - [ ] **Warning panel click-to-select** - Many warnings don't support clicking to select the relevant element
 - [ ] **Merger/Splitter properties** - Show item type and per-port flow rates in properties panel
 - [ ] **Grid snap redraw** - Canvas doesn't redraw immediately when snap dropdown is changed
