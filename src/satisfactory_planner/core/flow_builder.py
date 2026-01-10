@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
-from satisfactory_planner.core.flow_key import FlowKey
 from satisfactory_planner.core.flow_models import (
     FlowEdge,
     FlowGraph,
@@ -18,6 +17,7 @@ from satisfactory_planner.core.flow_models import (
     FlowPort,
     NodeType,
 )
+from satisfactory_planner.core.item_key import ItemKey
 from satisfactory_planner.core.models import (
     BELT_CAPACITIES,
     MINER_RATES,
@@ -191,14 +191,14 @@ def _has_connections(building_id: str, belts: dict[str, Belt]) -> bool:
     return False
 
 
-def _find_logistics_loop(graph: FlowGraph) -> list[FlowKey] | None:
+def _find_logistics_loop(graph: FlowGraph) -> list[ItemKey] | None:
     """Find a pure logistics loop (splitters/mergers only, no producers).
 
-    Returns the cycle as a list of FlowKeys, or None if no such loop exists.
+    Returns the cycle as a list of ItemKeys, or None if no such loop exists.
     """
     logistics_types = {NodeType.SPLITTER, NodeType.MERGER}
 
-    def dfs(node_id: FlowKey, path: list[FlowKey], visited: set[FlowKey]) -> list[FlowKey] | None:
+    def dfs(node_id: ItemKey, path: list[ItemKey], visited: set[ItemKey]) -> list[ItemKey] | None:
         if node_id in path:
             cycle_start = path.index(node_id)
             return path[cycle_start:] + [node_id]
@@ -219,7 +219,7 @@ def _find_logistics_loop(graph: FlowGraph) -> list[FlowKey] | None:
         path.pop()
         return None
 
-    visited: set[FlowKey] = set()
+    visited: set[ItemKey] = set()
     for node_id, node in graph.nodes.items():
         if node.node_type in logistics_types and node_id not in visited:
             result = dfs(node_id, [], visited)
@@ -464,9 +464,9 @@ def _propagate_item_types(graph: FlowGraph) -> None:
                             changed = True
 
 
-def _make_flow_key(element_id: str, placement_id: str | None) -> FlowKey:
-    """Create a FlowKey for a building or belt."""
-    return FlowKey(element_id=element_id, placement_id=placement_id)
+def _make_item_key(element_id: str, placement_id: str | None) -> ItemKey:
+    """Create a ItemKey for a building or belt."""
+    return ItemKey(element_id=element_id, placement_id=placement_id)
 
 
 def _build_scene(
@@ -547,7 +547,7 @@ def _build_scene(
     # Phase 3: Build nodes
     for building_id, building in scene.buildings.items():
         inputs, outputs = _build_flow_ports(building, recipes)
-        node_key = _make_flow_key(building_id, placement_id)
+        node_key = _make_item_key(building_id, placement_id)
         node = FlowNode(
             id=node_key,
             node_type=_get_node_type(building.building_type),
@@ -613,18 +613,18 @@ def _build_scene(
         # Determine the item type for this edge
         item_id = source_item_id or dest_item_id
 
-        # Use FlowKeys for buildings in room placements
+        # Use ItemKeys for buildings in room placements
         # For endpoints resolved to room PORTs, use the placement_id from resolution
         # For regular buildings in the current scene, use the scene's placement_id
-        source_node_key = _make_flow_key(
+        source_node_key = _make_item_key(
             source_building_id, source_placement_id if source_placement_id else placement_id
         )
-        dest_node_key = _make_flow_key(
+        dest_node_key = _make_item_key(
             dest_building_id, dest_placement_id if dest_placement_id else placement_id
         )
 
         # Belt key uses the current scene's placement_id (belts belong to their scene)
-        edge_belt_key = _make_flow_key(belt_id, placement_id)
+        edge_belt_key = _make_item_key(belt_id, placement_id)
 
         edge = FlowEdge(
             id=edge_belt_key,

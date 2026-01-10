@@ -10,7 +10,6 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from satisfactory_planner.core.flow_key import FlowKey
 from satisfactory_planner.core.flow_models import (
     BOTTLENECK_TOLERANCE,
     FLOW_TOLERANCE,
@@ -21,6 +20,7 @@ from satisfactory_planner.core.flow_models import (
     LimitingFactor,
     NodeType,
 )
+from satisfactory_planner.core.item_key import ItemKey
 from satisfactory_planner.core.linprog import RESOLUTION_SOLVED, linsolve
 
 logger = logging.getLogger(__name__)
@@ -31,15 +31,15 @@ class SolvedModel:
     """Result of solving flow rates."""
 
     graph: FlowGraph
-    flows: dict[FlowKey, float] = field(default_factory=dict)  # edge_id → flow rate
-    efficiencies: dict[FlowKey, BuildingEfficiency] = field(
+    flows: dict[ItemKey, float] = field(default_factory=dict)  # edge_id → flow rate
+    efficiencies: dict[ItemKey, BuildingEfficiency] = field(
         default_factory=dict
     )  # node_id → efficiency
     success: bool = True
     message: str = ""
     # Two-pass results for bottleneck detection
-    theoretical_flows: dict[FlowKey, float] = field(default_factory=dict)
-    bottlenecks: dict[FlowKey, tuple[float, float]] = field(
+    theoretical_flows: dict[ItemKey, float] = field(default_factory=dict)
+    bottlenecks: dict[ItemKey, tuple[float, float]] = field(
         default_factory=dict
     )  # edge_id → (theoretical, actual)
 
@@ -105,7 +105,7 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
     actual_flows = actual_result[1]
 
     # Identify belt bottlenecks: where theoretical > actual
-    bottlenecks: dict[FlowKey, tuple[float, float]] = {}
+    bottlenecks: dict[ItemKey, tuple[float, float]] = {}
     for edge_id, edge in graph.edges.items():
         theo = theoretical_flows.get(edge_id, 0.0)
         actual = actual_flows.get(edge_id, 0.0)
@@ -133,9 +133,9 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
 
 def _write_dot_file(
     graph: FlowGraph,
-    flows: dict[FlowKey, float],
-    theoretical_flows: dict[FlowKey, float],
-    bottlenecks: dict[FlowKey, tuple[float, float]],
+    flows: dict[ItemKey, float],
+    theoretical_flows: dict[ItemKey, float],
+    bottlenecks: dict[ItemKey, tuple[float, float]],
     suffix: str = "",
 ) -> None:
     """Write the flow graph to a DOT file for visualization."""
@@ -256,7 +256,7 @@ def _write_dot_file(
     logger.info(f"  View with: dot -Tpng {dot_path} -o ~/flow_graph.png && open ~/flow_graph.png")
 
 
-def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[FlowKey, float], str]:
+def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemKey, float], str]:
     """Run the LP solver.
 
     Args:
@@ -477,10 +477,10 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[FlowK
 
 
 def _compute_efficiencies(
-    graph: FlowGraph, flows: dict[FlowKey, float]
-) -> dict[FlowKey, BuildingEfficiency]:
+    graph: FlowGraph, flows: dict[ItemKey, float]
+) -> dict[ItemKey, BuildingEfficiency]:
     """Compute duty cycle and limiting factor for each producer."""
-    efficiencies: dict[FlowKey, BuildingEfficiency] = {}
+    efficiencies: dict[ItemKey, BuildingEfficiency] = {}
 
     for node_id, node in graph.nodes.items():
         if node.node_type != NodeType.PRODUCER:
@@ -516,7 +516,7 @@ def _compute_efficiencies(
 
 def _find_limiting_factor(
     graph: FlowGraph,
-    flows: dict[FlowKey, float],
+    flows: dict[ItemKey, float],
     node: FlowNode,
     duty_cycle: float,
 ) -> tuple[LimitingFactor, str]:

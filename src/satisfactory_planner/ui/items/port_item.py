@@ -181,7 +181,7 @@ class PortItem(QGraphicsItem):
 
         graph = flow_solver._solved_model.graph
         for node in graph.nodes.values():
-            # node.building_id is FlowKey, compare element_id
+            # node.building_id is ItemKey, compare element_id
             if node.building_id and node.building_id.element_id == self.building_id:
                 if self.port_index < len(node.outputs):
                     port = node.outputs[self.port_index]

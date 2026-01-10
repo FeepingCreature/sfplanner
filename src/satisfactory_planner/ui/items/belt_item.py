@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import Belt, Building
-from satisfactory_planner.core.flow_key import FlowKey
+from satisfactory_planner.core.item_key import ItemKey
 from satisfactory_planner.core.models import RoomPlacement, Scene
 from satisfactory_planner.core.routing import Point, compute_belt_path
 from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
@@ -271,9 +271,9 @@ class BeltItem(QGraphicsPathItem):
         painter.drawText(bg_rect, Qt.AlignmentFlag.AlignCenter, text)
 
     @property
-    def flow_key(self) -> FlowKey:
+    def item_key(self) -> ItemKey:
         """Get the flow solver key for this belt."""
-        return FlowKey(element_id=self.belt.id, placement_id=self._placement_id)
+        return ItemKey(element_id=self.belt.id, placement_id=self._placement_id)
 
     def set_placement_id(self, placement_id: str | None) -> None:
         """Set the placement ID for belts inside room placements."""

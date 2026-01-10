@@ -1,8 +1,8 @@
-"""FlowKey: Unique identifier for buildings/belts in the flow graph.
+"""ItemKey: Unique identifier for buildings/belts in the factory.
 
-A FlowKey identifies a specific instance of a building or belt. Since Rooms
+An ItemKey identifies a specific instance of a building or belt. Since Rooms
 can be placed multiple times (as RoomPlacements), the same building ID can
-appear in multiple places. The FlowKey combines the placement context with
+appear in multiple places. The ItemKey combines the placement context with
 the element ID to create a unique identifier.
 
 For top-level buildings (not in a room), placement_id is None.
@@ -15,8 +15,8 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class FlowKey:
-    """Unique identifier for a building or belt instance in flow analysis.
+class ItemKey:
+    """Unique identifier for a building or belt instance in the UI, also used for flow analysis.
 
     Attributes:
         element_id: The Building.id or Belt.id
@@ -29,8 +29,8 @@ class FlowKey:
     def __str__(self) -> str:
         """String representation for debugging."""
         if self.placement_id:
-            return f"FlowKey({self.placement_id}:{self.element_id})"
-        return f"FlowKey({self.element_id})"
+            return f"ItemKey({self.placement_id}:{self.element_id})"
+        return f"ItemKey({self.element_id})"
 
     def __repr__(self) -> str:
         """Repr for debugging."""

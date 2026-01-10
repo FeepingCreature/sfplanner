@@ -221,7 +221,7 @@ class VisualSyncManager:
         """Update visual state of items based on flow solver results.
 
         Iterates visual items and lets each look up its own flow data using
-        its flow_key (which includes placement_id for items inside rooms).
+        its item_key (which includes placement_id for items inside rooms).
         """
         from satisfactory_planner.ui.items.room_item import RoomItem
 
@@ -232,15 +232,15 @@ class VisualSyncManager:
         flow_solver = main_window.current_tab.flow_solver
         solved = flow_solver._solved_model if flow_solver else None
 
-        # Update all belt items - each uses its flow_key to look up results
+        # Update all belt items - each uses its item_key to look up results
         for belt_item in self.canvas._belt_items.values():
-            flow_rate = solved.flows.get(belt_item.flow_key) if solved else None
-            optimal_flow_rate = solved.theoretical_flows.get(belt_item.flow_key) if solved else None
+            flow_rate = solved.flows.get(belt_item.item_key) if solved else None
+            optimal_flow_rate = solved.theoretical_flows.get(belt_item.item_key) if solved else None
             belt_item.set_flow_rate(flow_rate, optimal_flow_rate)
 
-        # Update all building items - each uses its flow_key to look up results
+        # Update all building items - each uses its item_key to look up results
         for building_item in self.canvas._building_items.values():
-            eff = solved.efficiencies.get(building_item.flow_key) if solved else None
+            eff = solved.efficiencies.get(building_item.item_key) if solved else None
             building_item.set_efficiency(eff.duty_cycle if eff else None)
 
         # Also update items inside room placements
@@ -248,14 +248,14 @@ class VisualSyncManager:
             if not isinstance(room_item, RoomItem):
                 continue
             for belt_item in room_item._belt_items.values():
-                flow_rate = solved.flows.get(belt_item.flow_key) if solved else None
+                flow_rate = solved.flows.get(belt_item.item_key) if solved else None
                 optimal_flow_rate = (
-                    solved.theoretical_flows.get(belt_item.flow_key) if solved else None
+                    solved.theoretical_flows.get(belt_item.item_key) if solved else None
                 )
                 belt_item.set_flow_rate(flow_rate, optimal_flow_rate)
 
             for building_item in room_item._building_items.values():
-                eff = solved.efficiencies.get(building_item.flow_key) if solved else None
+                eff = solved.efficiencies.get(building_item.item_key) if solved else None
                 building_item.set_efficiency(eff.duty_cycle if eff else None)
 
         # Update warning icons

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from satisfactory_planner.core.flow_key import FlowKey
 from satisfactory_planner.core.flow_solver import Warning, WarningType
+from satisfactory_planner.core.item_key import ItemKey
 
 if TYPE_CHECKING:
     from satisfactory_planner.core.flow_lp_solver import SolvedModel
@@ -50,7 +50,7 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
         return warnings
 
     # Fallback: old behavior for backward compatibility
-    overcap_edges: set[FlowKey] = set()
+    overcap_edges: set[ItemKey] = set()
     for edge_id, flow in model.flows.items():
         edge = model.graph.edges[edge_id]
         if flow > edge.capacity:
@@ -60,7 +60,7 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
         return []
 
     # Second pass: filter out belts that have an upstream overcapacity belt
-    filtered_overcap: set[FlowKey] = set()
+    filtered_overcap: set[ItemKey] = set()
 
     for edge_id in overcap_edges:
         if not _has_upstream_overcapacity(model, edge_id, overcap_edges):
@@ -84,9 +84,9 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
 
 def _has_upstream_overcapacity(
     model: SolvedModel,
-    edge_id: FlowKey,
-    overcap_edges: set[FlowKey],
-    visited: set[FlowKey] | None = None,
+    edge_id: ItemKey,
+    overcap_edges: set[ItemKey],
+    visited: set[ItemKey] | None = None,
 ) -> bool:
     """Check if there's an overcapacity belt upstream of this edge."""
     if visited is None:

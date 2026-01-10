@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from satisfactory_planner.core.flow_key import FlowKey
+from satisfactory_planner.core.item_key import ItemKey
 
 if TYPE_CHECKING:
     from satisfactory_planner.core.flow_builder import FatalErrorType
@@ -122,15 +122,15 @@ class FlowSolver:
         }
         return mapping.get(error_type, WarningType.DISCONNECTED_BELT)
 
-    def get_flow_rate(self, key: FlowKey) -> float | None:
+    def get_flow_rate(self, key: ItemKey) -> float | None:
         """Get the calculated flow rate for a belt."""
         if self._solved_model is None:
             return None
         return self._solved_model.flows.get(key)
 
-    def get_efficiency(self, key: FlowKey) -> BuildingEfficiency | None:
+    def get_efficiency(self, key: ItemKey) -> BuildingEfficiency | None:
         """Get efficiency info for a building."""
         if self._solved_model is None:
             return None
-        # Look up directly by FlowKey
+        # Look up directly by ItemKey
         return self._solved_model.efficiencies.get(key)

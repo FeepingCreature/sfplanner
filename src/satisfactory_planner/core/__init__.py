@@ -3,7 +3,6 @@
 Note: Commands have been moved to ui.commands as they are a UI concern (undo/redo).
 """
 
-from satisfactory_planner.core.flow_key import FlowKey
 from satisfactory_planner.core.flow_models import (
     BOTTLENECK_TOLERANCE,
     FLOW_TOLERANCE,
@@ -17,6 +16,7 @@ from satisfactory_planner.core.flow_models import (
     NodeType,
 )
 from satisfactory_planner.core.flow_solver import FlowSolver, Warning, WarningType
+from satisfactory_planner.core.item_key import ItemKey
 from satisfactory_planner.core.models import (
     BELT_CAPACITIES,
     BUILDING_COLORS,
@@ -75,7 +75,7 @@ __all__ = [
     "Document",
     "FlowEdge",
     "FlowGraph",
-    "FlowKey",
+    "ItemKey",
     "FlowNode",
     "FlowPort",
     "FlowSolver",

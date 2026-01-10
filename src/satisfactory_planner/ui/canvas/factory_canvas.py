@@ -734,7 +734,7 @@ class FactoryCanvas(QGraphicsView):
 
         The second parameter is now the placement_id (for items inside room placements)
         or None (for items at document level). This allows properties panel to construct
-        correct FlowKeys for flow solver lookups.
+        correct ItemKeys for flow solver lookups.
         """
         from satisfactory_planner.ui.items.room_item import RoomItem
 

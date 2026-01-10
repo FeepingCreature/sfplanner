@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from satisfactory_planner.core.flow_key import FlowKey
 from satisfactory_planner.core.flow_models import NodeType
 from satisfactory_planner.core.flow_solver import Warning, WarningType
+from satisfactory_planner.core.item_key import ItemKey
 
 if TYPE_CHECKING:
     from satisfactory_planner.core.flow_lp_solver import SolvedModel
@@ -96,9 +96,9 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
 
 def _build_causal_chain(
     model: SolvedModel,
-    edge_id: FlowKey,
+    edge_id: ItemKey,
     demanded: float,
-    visited: set[FlowKey] | None = None,
+    visited: set[ItemKey] | None = None,
 ) -> list[Warning]:
     """Build causal chain showing why flow is insufficient."""
     if visited is None:

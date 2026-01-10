@@ -7,7 +7,7 @@ the abstract flow of items through the factory for LP solving.
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
-from satisfactory_planner.core.flow_key import FlowKey
+from satisfactory_planner.core.item_key import ItemKey
 
 # Flow simulation constants
 INFINITE_RATE = 100000.0  # "Unlimited" rate for sources/sinks
@@ -50,9 +50,9 @@ class FlowNode:
     Each node represents something that produces, consumes, or routes items.
     """
 
-    id: FlowKey
+    id: ItemKey
     node_type: NodeType
-    building_id: FlowKey | None = None  # Reference back to visual Building
+    building_id: ItemKey | None = None  # Reference back to visual Building
 
     # Recipe info (for PRODUCER nodes)
     recipe_id: str | None = None
@@ -72,11 +72,11 @@ class FlowNode:
 class FlowEdge:
     """An edge in the flow graph (represents a belt or pipe)."""
 
-    id: FlowKey
-    belt_id: FlowKey  # Reference back to visual Belt
-    source_node_id: FlowKey
+    id: ItemKey
+    belt_id: ItemKey  # Reference back to visual Belt
+    source_node_id: ItemKey
     source_port_index: int
-    dest_node_id: FlowKey
+    dest_node_id: ItemKey
     dest_port_index: int
     capacity: float  # items/min (from belt tier)
     item_id: str | None = None  # Item type (inferred from source)
@@ -86,8 +86,8 @@ class FlowEdge:
 class FlowGraph:
     """The complete flow graph for simulation."""
 
-    nodes: dict[FlowKey, FlowNode] = field(default_factory=dict)
-    edges: dict[FlowKey, FlowEdge] = field(default_factory=dict)
+    nodes: dict[ItemKey, FlowNode] = field(default_factory=dict)
+    edges: dict[ItemKey, FlowEdge] = field(default_factory=dict)
 
     def add_node(self, node: FlowNode) -> None:
         """Add a node to the graph."""
@@ -97,11 +97,11 @@ class FlowGraph:
         """Add an edge to the graph."""
         self.edges[edge.id] = edge
 
-    def get_incoming_edges(self, node_id: FlowKey) -> list[FlowEdge]:
+    def get_incoming_edges(self, node_id: ItemKey) -> list[FlowEdge]:
         """Get all edges flowing into a node."""
         return [e for e in self.edges.values() if e.dest_node_id == node_id]
 
-    def get_outgoing_edges(self, node_id: FlowKey) -> list[FlowEdge]:
+    def get_outgoing_edges(self, node_id: ItemKey) -> list[FlowEdge]:
         """Get all edges flowing out of a node."""
         return [e for e in self.edges.values() if e.source_node_id == node_id]
 
@@ -135,8 +135,8 @@ class LimitingFactor(Enum):
 class BuildingEfficiency:
     """Efficiency state for a single building."""
 
-    building_id: FlowKey
-    node_id: FlowKey
+    building_id: ItemKey
+    node_id: ItemKey
     intended_rate: float  # What user designed for (output rate * clock)
     actual_rate: float  # What LP computed
     duty_cycle: float  # actual / intended (0.0 - 1.0)

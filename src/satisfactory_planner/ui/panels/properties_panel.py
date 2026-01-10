@@ -30,7 +30,7 @@ from satisfactory_planner.core import (
     Room,
     RoomPlacement,
 )
-from satisfactory_planner.core.flow_key import FlowKey
+from satisfactory_planner.core.item_key import ItemKey
 from satisfactory_planner.core.persistence import load_all_recipes
 from satisfactory_planner.ui.commands import (
     CommandStack,
@@ -735,9 +735,9 @@ class PropertiesPanel(QWidget):
             for item_id in sorted(items):
                 self.item_combo.addItem(item_id, item_id)
 
-    def _make_flow_key(self, element_id: str) -> FlowKey:
-        """Create a FlowKey for an element in the current selection context."""
-        return FlowKey(element_id=element_id, placement_id=self._placement_id)
+    def _make_item_key(self, element_id: str) -> ItemKey:
+        """Create a ItemKey for an element in the current selection context."""
+        return ItemKey(element_id=element_id, placement_id=self._placement_id)
 
     def _get_belt_flow_rate(self, belt_id: str) -> float | None:
         """Get flow rate for a belt from flow solver."""
@@ -750,7 +750,7 @@ class PropertiesPanel(QWidget):
 
         flow_solver = main_window.current_tab.flow_solver
         if flow_solver:
-            key = self._make_flow_key(belt_id)
+            key = self._make_item_key(belt_id)
             result: float | None = flow_solver.get_flow_rate(key)
             return result
         return None
@@ -882,8 +882,8 @@ class PropertiesPanel(QWidget):
             self.status_label.setText("-")
             return
 
-        # Use FlowKey for lookup
-        key = self._make_flow_key(building_id)
+        # Use ItemKey for lookup
+        key = self._make_item_key(building_id)
         efficiency: BuildingEfficiency | None = flow_solver.get_efficiency(key)
         if efficiency is None:
             self.efficiency_label.setText("-")
