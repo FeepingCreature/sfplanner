@@ -727,7 +727,11 @@ class PropertiesPanel(QWidget):
                 self.item_combo.addItem(item_id, item_id)
 
     def _get_belt_flow_rate(self, belt_id: str) -> float | None:
-        """Get flow rate for a belt from flow solver."""
+        """Get flow rate for a belt from flow solver.
+
+        The flow solver uses composite keys (placement_id:belt_id) for belts
+        inside rooms, so we need to construct the right key based on context.
+        """
         if not self.canvas:
             return None
 
@@ -737,8 +741,19 @@ class PropertiesPanel(QWidget):
 
         flow_solver = main_window.current_tab.flow_solver
         if flow_solver:
-            result: float | None = flow_solver.get_flow_rate(belt_id)
-            return result
+            # Construct composite key if we're in a room context
+            # The flow builder uses placement_id:belt_id for belts in room placements
+            if self._scene_room_id:
+                # Find placement(s) that use this room and try each
+                for placement in self.document.room_placements.values():
+                    if placement.room_id == self._scene_room_id:
+                        composite_key = f"{placement.id}:{belt_id}"
+                        composite_result: float | None = flow_solver.get_flow_rate(composite_key)
+                        if composite_result is not None:
+                            return composite_result
+            # Try direct lookup (for top-level belts)
+            direct_result: float | None = flow_solver.get_flow_rate(belt_id)
+            return direct_result
         return None
 
     def _get_sink_flow(self, building_id: str) -> float | None:
@@ -746,13 +761,14 @@ class PropertiesPanel(QWidget):
         if not self.canvas:
             return None
 
-        # Find belts connected to this sink's input
-        building = self.document.buildings.get(building_id)
+        # Find belts connected to this sink's input in the current scene
+        scene = self._get_scene()
+        building = scene.buildings.get(building_id)
         if not building:
             return None
 
         # Get belt connected to input port 0
-        belt = self.document.get_belt_at_port(building_id, 0, is_output=False)
+        belt = scene.get_belt_at_port(building_id, 0, is_output=False)
         if belt:
             return self._get_belt_flow_rate(belt.id)
         return None
@@ -852,6 +868,19 @@ class PropertiesPanel(QWidget):
         else:
             self.output_label.setText("-")
 
+    def _get_flow_solver_key(self, element_id: str) -> str:
+        """Get the composite key used by flow solver for an element.
+
+        The flow solver uses placement_id:element_id for elements inside
+        room placements. This constructs the appropriate key.
+        """
+        if self._scene_room_id:
+            # Find a placement that uses this room
+            for placement in self.document.room_placements.values():
+                if placement.room_id == self._scene_room_id:
+                    return f"{placement.id}:{element_id}"
+        return element_id
+
     def _update_efficiency_display(self, building_id: str) -> None:
         """Update the efficiency display for a building."""
         # Try to get flow solver from main window
@@ -867,7 +896,9 @@ class PropertiesPanel(QWidget):
             self.status_label.setText("-")
             return
 
-        efficiency: BuildingEfficiency | None = flow_solver.get_efficiency(building_id)
+        # Use composite key for buildings in room placements
+        lookup_key = self._get_flow_solver_key(building_id)
+        efficiency: BuildingEfficiency | None = flow_solver.get_efficiency(lookup_key)
         if efficiency is None:
             self.efficiency_label.setText("-")
             self.status_label.setText("-")
