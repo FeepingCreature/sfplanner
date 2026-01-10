@@ -48,6 +48,8 @@ from satisfactory_planner.ui.items.building_item import BuildingItem
 from satisfactory_planner.ui.items.warning_icon_item import WarningIconItem
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from satisfactory_planner.core.models import RoomPlacement
 
 logger = logging.getLogger(__name__)
@@ -322,15 +324,10 @@ class FactoryCanvas(QGraphicsView):
         from satisfactory_planner.ui.items.room_item import RoomItem
 
         if scene_room_id:
-            # Belt is inside a room - add to all RoomItems displaying this room
-            room = self.document.rooms.get(scene_room_id)
-            if not room:
-                return
-            for room_item in self._room_items.values():
-                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
+            for room_item in self._iter_room_items_for_room(scene_room_id):
+                if isinstance(room_item, RoomItem):
                     room_item.add_belt_item(belt_id)
         else:
-            # Top-level belt
             belt = self.document.belts.get(belt_id)
             if belt:
                 self.add_belt_item(belt)
@@ -340,12 +337,10 @@ class FactoryCanvas(QGraphicsView):
         from satisfactory_planner.ui.items.room_item import RoomItem
 
         if scene_room_id:
-            # Belt is inside a room - remove from all RoomItems displaying this room
-            for room_item in self._room_items.values():
-                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
+            for room_item in self._iter_room_items_for_room(scene_room_id):
+                if isinstance(room_item, RoomItem):
                     room_item.remove_belt_item(belt_id)
         else:
-            # Top-level belt
             self.remove_belt_item(belt_id)
 
     def sync_add_building(self, building_id: str, scene_room_id: str | None) -> None:
@@ -353,12 +348,10 @@ class FactoryCanvas(QGraphicsView):
         from satisfactory_planner.ui.items.room_item import RoomItem
 
         if scene_room_id:
-            # Building is inside a room - add to all RoomItems displaying this room
-            for room_item in self._room_items.values():
-                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
+            for room_item in self._iter_room_items_for_room(scene_room_id):
+                if isinstance(room_item, RoomItem):
                     room_item.add_building_item(building_id)
         else:
-            # Top-level building
             building = self.document.buildings.get(building_id)
             if building:
                 self.add_building_item(building)
@@ -368,12 +361,10 @@ class FactoryCanvas(QGraphicsView):
         from satisfactory_planner.ui.items.room_item import RoomItem
 
         if scene_room_id:
-            # Building is inside a room - remove from all RoomItems displaying this room
-            for room_item in self._room_items.values():
-                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
+            for room_item in self._iter_room_items_for_room(scene_room_id):
+                if isinstance(room_item, RoomItem):
                     room_item.remove_building_item(building_id)
         else:
-            # Top-level building
             self.remove_building_item(building_id)
 
     def refresh_building(self, building_id: str) -> None:
@@ -384,6 +375,54 @@ class FactoryCanvas(QGraphicsView):
             if building:
                 item.setPos(building.x, building.y)
             item.update()
+
+    # === Scene/item lookup helpers ===
+
+    def _get_scene(self, scene_room_id: str | None) -> Scene:
+        """Get the Scene for a room_id (or document if None)."""
+        if scene_room_id and scene_room_id in self.document.rooms:
+            return self.document.rooms[scene_room_id]
+        return self.document
+
+    def _iter_building_items(
+        self, building_id: str, scene_room_id: str | None
+    ) -> Iterator[BuildingItem]:
+        """Iterate all visual items for a building (including linked room placements)."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        if scene_room_id:
+            for room_item in self._room_items.values():
+                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
+                    item = room_item._building_items.get(building_id)
+                    if item:
+                        yield item
+        else:
+            item = self._building_items.get(building_id)
+            if item:
+                yield item
+
+    def _iter_belt_items(self, belt_id: str, scene_room_id: str | None) -> Iterator[BeltItem]:
+        """Iterate all visual items for a belt (including linked room placements)."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        if scene_room_id:
+            for room_item in self._room_items.values():
+                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
+                    item = room_item._belt_items.get(belt_id)
+                    if item:
+                        yield item
+        else:
+            item = self._belt_items.get(belt_id)
+            if item:
+                yield item
+
+    def _iter_room_items_for_room(self, room_id: str) -> Iterator[object]:
+        """Iterate all RoomItems displaying a given room."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        for room_item in self._room_items.values():
+            if isinstance(room_item, RoomItem) and room_item.room.id == room_id:
+                yield room_item
 
     def sync_building_moved(
         self, building_id: str, scene_room_id: str | None, source_item: object = None
@@ -400,54 +439,34 @@ class FactoryCanvas(QGraphicsView):
         """
         from satisfactory_planner.ui.items.room_item import RoomItem
 
-        # Get the scene and building
-        if scene_room_id and scene_room_id in self.document.rooms:
-            scene: Scene = self.document.rooms[scene_room_id]
-        else:
-            scene = self.document
-
+        scene = self._get_scene(scene_room_id)
         building = scene.buildings.get(building_id)
         if not building:
             return
 
         new_pos = QPointF(building.x, building.y)
 
-        if scene_room_id:
-            # Building is inside a room - update ALL RoomItems displaying this room
-            for _placement_id, room_item in self._room_items.items():
-                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
-                    # Update building position
-                    building_item = room_item._building_items.get(building_id)
-                    if building_item and building_item is not source_item:
-                        # Suppress itemChange to avoid feedback loop
-                        building_item.setFlag(
-                            QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, False
-                        )
-                        building_item.setPos(new_pos)
-                        building_item.setFlag(
-                            QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True
-                        )
-
-                    # Update belts connected to this building in this room item
-                    for belt_id, belt_item in room_item._belt_items.items():
-                        belt = scene.belts.get(belt_id)
-                        if belt and (
-                            belt.source_building_id == building_id
-                            or belt.dest_building_id == building_id
-                        ):
-                            belt_item._update_path_from_endpoints()
-
-                    # If this is a PORT building, update room ports too
-                    if building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
-                        room_item.update_room_ports()
-        else:
-            # Top-level building
-            item = self._building_items.get(building_id)
-            if item and item is not source_item:
+        # Update all visual items for this building
+        for item in self._iter_building_items(building_id, scene_room_id):
+            if item is not source_item:
+                # Suppress itemChange to avoid feedback loop
+                item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, False)
                 item.setPos(new_pos)
+                item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
 
-            # Update connected belts
-            self.update_belts_for_building(building_id, scene)
+        # Update all belts connected to this building
+        for belt in scene.get_belts_for_building(building_id):
+            for belt_item in self._iter_belt_items(belt.id, scene_room_id):
+                belt_item._update_path_from_endpoints()
+
+        # If this is a PORT building, update room ports on all room items
+        if (
+            building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT)
+            and scene_room_id
+        ):
+            for room_item in self._iter_room_items_for_room(scene_room_id):
+                if isinstance(room_item, RoomItem):
+                    room_item.update_room_ports()
 
         # Update selection outline
         self._update_selection_outline()
@@ -466,20 +485,12 @@ class FactoryCanvas(QGraphicsView):
         For belts in rooms, this updates ALL visual instances (since linked
         room placements share the same Room data).
         """
-        from satisfactory_planner.ui.items.room_item import RoomItem
-
-        # Get belt from correct scene
-        if scene_room_id and scene_room_id in self.document.rooms:
-            scene: Scene = self.document.rooms[scene_room_id]
-        else:
-            scene = self.document
-
+        scene = self._get_scene(scene_room_id)
         belt = scene.belts.get(belt_id)
         if not belt:
             return
 
-        def update_belt_item(belt_item: BeltItem) -> None:
-            """Update a single belt item's appearance and path."""
+        for belt_item in self._iter_belt_items(belt_id, scene_room_id):
             belt_item.belt = belt  # Update reference to get new tier
             belt_item._setup_appearance()
             source = scene.buildings.get(belt.source_building_id)
@@ -489,19 +500,6 @@ class FactoryCanvas(QGraphicsView):
             else:
                 belt_item._update_path_from_endpoints()
             belt_item.update()
-
-        if scene_room_id:
-            # Belt is inside a room - update ALL RoomItems displaying this room
-            for room_item in self._room_items.values():
-                if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:
-                    belt_item = room_item._belt_items.get(belt_id)
-                    if belt_item:
-                        update_belt_item(belt_item)
-        else:
-            # Top-level belt
-            belt_item = self._belt_items.get(belt_id)
-            if belt_item:
-                update_belt_item(belt_item)
 
     def add_room_item(self, placement: RoomPlacement, room: Room) -> None:
         """Add a room item to the scene."""
@@ -1246,8 +1244,8 @@ class FactoryCanvas(QGraphicsView):
         """Refresh all RoomItems displaying the given room."""
         from satisfactory_planner.ui.items.room_item import RoomItem
 
-        for _placement_id, room_item in self._room_items.items():
-            if isinstance(room_item, RoomItem) and room_item.room.id == room_id:
+        for room_item in self._iter_room_items_for_room(room_id):
+            if isinstance(room_item, RoomItem):
                 room_item.refresh()
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]
