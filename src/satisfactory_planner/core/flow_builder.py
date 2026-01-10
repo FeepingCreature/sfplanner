@@ -354,17 +354,25 @@ def _check_sink_item_types(graph: FlowGraph) -> list[FatalError]:
         if node.node_type != NodeType.SINK:
             continue
 
+        print(f"[DEBUG] Checking sink node: {node.id}")
+
         # Get the sink's expected item type (from its input port)
         if not node.inputs:
+            print(f"[DEBUG]   No inputs on sink")
             continue
         expected_item = node.inputs[0].item_name
+        print(f"[DEBUG]   Expected item: {expected_item}")
         if expected_item is None:
+            print(f"[DEBUG]   Sink has no item configured, skipping")
             continue  # Sink has no item configured
 
         # Check all incoming edges
         incoming = graph.get_incoming_edges(node.id)
+        print(f"[DEBUG]   Incoming edges: {len(incoming)}")
         for edge in incoming:
+            print(f"[DEBUG]   Edge {edge.id}: item_name={edge.item_name}")
             if edge.item_name is not None and edge.item_name != expected_item:
+                print(f"[DEBUG]   MISMATCH! {edge.item_name} != {expected_item}")
                 errors.append(
                     FatalError(
                         error_type=FatalErrorType.ITEM_MISMATCH,
