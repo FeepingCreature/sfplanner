@@ -453,7 +453,8 @@ class PropertiesPanel(QWidget):
                     if building.recipe_id:
                         # For Source/Sink/Miner, recipe_id is the item_id
                         for i in range(self.item_combo.count()):
-                            if self.item_combo.itemData(i) == building.recipe_id:
+                            # Compare as strings since item_id is str and recipe_id is RecipeId
+                            if self.item_combo.itemData(i) == str(building.recipe_id):
                                 self.item_combo.setCurrentIndex(i)
                                 break
 

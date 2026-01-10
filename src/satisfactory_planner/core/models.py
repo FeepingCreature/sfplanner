@@ -717,7 +717,7 @@ class Document:
 
     buildings: dict[str, Building] = field(default_factory=dict)
     belts: dict[str, Belt] = field(default_factory=dict)
-    recipes: dict[str, Recipe] = field(default_factory=dict)
+    recipes: dict[RecipeId, Recipe] = field(default_factory=dict)
 
     # Rooms and their placements
     rooms: dict[str, Room] = field(default_factory=dict)  # Room definitions

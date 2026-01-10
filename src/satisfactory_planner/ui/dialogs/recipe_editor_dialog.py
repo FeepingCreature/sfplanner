@@ -362,9 +362,9 @@ class RecipeEditorDialog(QDialog):
 
     def _add_recipe(self) -> None:
         """Add a new recipe."""
-        from satisfactory_planner.core.models import Recipe, generate_id
+        from satisfactory_planner.core.models import Recipe, RecipeId, generate_id
 
-        recipe_id = generate_id()
+        recipe_id = RecipeId(generate_id())
         recipe = Recipe(
             id=recipe_id,
             name="New Recipe",
@@ -388,7 +388,7 @@ class RecipeEditorDialog(QDialog):
         if not current:
             return
 
-        from satisfactory_planner.core.models import ItemRate, Recipe, generate_id
+        from satisfactory_planner.core.models import ItemRate, Recipe, RecipeId, generate_id
 
         source_id = current.data(Qt.ItemDataRole.UserRole)
         source = self.document.recipes.get(source_id)
@@ -396,7 +396,7 @@ class RecipeEditorDialog(QDialog):
             return
 
         # Create a copy with new ID and modified name
-        new_id = generate_id()
+        new_id = RecipeId(generate_id())
         new_recipe = Recipe(
             id=new_id,
             name=f"{source.name} (copy)",
@@ -444,10 +444,22 @@ class RecipeEditorDialog(QDialog):
 
     def accept(self) -> None:
         """Save recipes to XDG before closing."""
-        save_user_recipes(self.document.recipes)
+        from satisfactory_planner.core.models import Recipe, RecipeId
+
+        # Cast dict keys to RecipeId for type safety
+        recipes_typed: dict[RecipeId, Recipe] = {
+            RecipeId(k): v for k, v in self.document.recipes.items()
+        }
+        save_user_recipes(recipes_typed)
         super().accept()
 
     def reject(self) -> None:
         """Save recipes to XDG before closing (even on cancel/X)."""
-        save_user_recipes(self.document.recipes)
+        from satisfactory_planner.core.models import Recipe, RecipeId
+
+        # Cast dict keys to RecipeId for type safety
+        recipes_typed: dict[RecipeId, Recipe] = {
+            RecipeId(k): v for k, v in self.document.recipes.items()
+        }
+        save_user_recipes(recipes_typed)
         super().reject()

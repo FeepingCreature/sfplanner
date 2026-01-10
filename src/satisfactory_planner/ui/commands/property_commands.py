@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from satisfactory_planner.ui.commands.base import Command, get_scene
 
 if TYPE_CHECKING:
-    from satisfactory_planner.core.models import Document
+    from satisfactory_planner.core.models import Document, RecipeId
     from satisfactory_planner.ui.canvas import FactoryCanvas
 
 logger = logging.getLogger(__name__)
@@ -21,8 +21,8 @@ class SetRecipeCommand(Command):
 
     scene_room_id: str | None  # None = root document, else room ID
     building_id: str
-    old_recipe_id: str | None
-    new_recipe_id: str | None
+    old_recipe_id: RecipeId | None
+    new_recipe_id: RecipeId | None
     canvas: FactoryCanvas
 
     def execute(self, document: Document) -> None:

@@ -82,9 +82,7 @@ def _generate_crossing_belt_ids(
     """Generate IDs for crossing belt ports/belts at construction time."""
     from satisfactory_planner.core.models import generate_id
 
-    return tuple(
-        (belt.id, generate_id(), generate_id(), generate_id()) for belt in crossing_belts
-    )
+    return tuple((belt.id, generate_id(), generate_id(), generate_id()) for belt in crossing_belts)
 
 
 @dataclass(frozen=True)
@@ -439,16 +437,12 @@ class DeleteRoomPlacementCommand(Command):
         """Factory method that captures all required state from document."""
         placement = document.room_placements.get(placement_id)
         if not placement:
-            logger.warning(
-                f"DeleteRoomPlacementCommand.create: placement {placement_id} not found"
-            )
+            logger.warning(f"DeleteRoomPlacementCommand.create: placement {placement_id} not found")
             return None
 
         room = document.rooms.get(placement.room_id)
         if not room:
-            logger.warning(
-                f"DeleteRoomPlacementCommand.create: room {placement.room_id} not found"
-            )
+            logger.warning(f"DeleteRoomPlacementCommand.create: room {placement.room_id} not found")
             return None
 
         # Check if this is the last placement
@@ -459,10 +453,7 @@ class DeleteRoomPlacementCommand(Command):
         parent = get_scene(document, placement.parent_room_id)
         removed_belts: list[Belt] = []
         for belt in parent.belts.values():
-            if (
-                belt.source_building_id == placement_id
-                or belt.dest_building_id == placement_id
-            ):
+            if belt.source_building_id == placement_id or belt.dest_building_id == placement_id:
                 removed_belts.append(copy.deepcopy(belt))
 
         return DeleteRoomPlacementCommand(
@@ -587,15 +578,17 @@ class DissolveRoomCommand(Command):
                 internal_belt = room.get_belt_at_port(port.id, 0, is_output=True)
 
                 if external_belt and internal_belt:
-                    direct_belt_specs.append((
-                        generate_id(),
-                        external_belt.tier,
-                        external_belt.source_building_id,
-                        external_belt.source_port_index,
-                        internal_belt.dest_building_id,
-                        internal_belt.dest_port_index,
-                        external_belt.item_id or internal_belt.item_id,
-                    ))
+                    direct_belt_specs.append(
+                        (
+                            generate_id(),
+                            external_belt.tier,
+                            external_belt.source_building_id,
+                            external_belt.source_port_index,
+                            internal_belt.dest_building_id,
+                            internal_belt.dest_port_index,
+                            external_belt.item_id or internal_belt.item_id,
+                        )
+                    )
 
                 if external_belt:
                     removed_external.append(copy.deepcopy(external_belt))
@@ -607,15 +600,17 @@ class DissolveRoomCommand(Command):
                 internal_belt = room.get_belt_at_port(port.id, 0, is_output=False)
 
                 if external_belt and internal_belt:
-                    direct_belt_specs.append((
-                        generate_id(),
-                        external_belt.tier,
-                        internal_belt.source_building_id,
-                        internal_belt.source_port_index,
-                        external_belt.dest_building_id,
-                        external_belt.dest_port_index,
-                        internal_belt.item_id or external_belt.item_id,
-                    ))
+                    direct_belt_specs.append(
+                        (
+                            generate_id(),
+                            external_belt.tier,
+                            internal_belt.source_building_id,
+                            internal_belt.source_port_index,
+                            external_belt.dest_building_id,
+                            external_belt.dest_port_index,
+                            internal_belt.item_id or external_belt.item_id,
+                        )
+                    )
 
                 if external_belt:
                     removed_external.append(copy.deepcopy(external_belt))

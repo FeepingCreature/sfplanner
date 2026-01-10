@@ -27,7 +27,7 @@ from satisfactory_planner.core.models import (
 )
 
 if TYPE_CHECKING:
-    from satisfactory_planner.core.models import Belt, Document, Recipe
+    from satisfactory_planner.core.models import Belt, Document, Recipe, RecipeId
 
 
 class FatalErrorType(Enum):
@@ -81,7 +81,7 @@ def _get_node_type(building_type: BuildingType) -> NodeType:
 
 
 def _get_port_item_id(
-    building: Building, is_input: bool, port_index: int, recipes: dict[str, Recipe]
+    building: Building, is_input: bool, port_index: int, recipes: dict[RecipeId, Recipe]
 ) -> str | None:
     """Get the item ID for a port based on recipe or item_id field."""
     # Source/Sink/Miner use item_id field directly
@@ -116,7 +116,7 @@ def _get_port_item_id(
 
 
 def _build_flow_ports(
-    building: Building, recipes: dict[str, Recipe]
+    building: Building, recipes: dict[RecipeId, Recipe]
 ) -> tuple[list[FlowPort], list[FlowPort]]:
     """Build input and output FlowPorts for a building."""
     inputs: list[FlowPort] = []
@@ -275,7 +275,7 @@ def _resolve_belt_endpoint(
     return (port.id, 0, placement.id)
 
 
-def build_flow_graph(document: Document, recipes: dict[str, Recipe]) -> BuildResult:
+def build_flow_graph(document: Document, recipes: dict[RecipeId, Recipe]) -> BuildResult:
     """Build a FlowGraph from a Document.
 
     Args:
@@ -472,7 +472,7 @@ def _make_item_key(element_id: str, placement_id: str | None) -> ItemKey:
 def _build_scene(
     scene: Scene,
     document: Document,
-    recipes: dict[str, Recipe],
+    recipes: dict[RecipeId, Recipe],
     graph: FlowGraph,
     errors: list[FatalError],
     placement_id: str | None = None,

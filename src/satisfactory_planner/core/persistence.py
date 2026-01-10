@@ -14,6 +14,7 @@ from satisfactory_planner.core.models import (
     Document,
     ItemRate,
     Recipe,
+    RecipeId,
     Room,
     RoomPlacement,
 )
@@ -70,7 +71,7 @@ def dict_to_recipe(data: dict[str, Any]) -> Recipe:
     )
 
 
-def load_base_recipes() -> dict[str, Recipe]:
+def load_base_recipes() -> dict[RecipeId, Recipe]:
     """Load base game recipes from recipes.json."""
     import importlib.resources
 
@@ -89,7 +90,7 @@ def load_base_recipes() -> dict[str, Recipe]:
         return {}
 
 
-def load_user_recipes() -> dict[str, Recipe]:
+def load_user_recipes() -> dict[RecipeId, Recipe]:
     """Load user recipes from XDG data directory."""
     path = get_user_recipes_path()
     if not path.exists():
@@ -106,7 +107,7 @@ def load_user_recipes() -> dict[str, Recipe]:
         return {}
 
 
-def load_all_recipes() -> dict[str, Recipe]:
+def load_all_recipes() -> dict[RecipeId, Recipe]:
     """Load all recipes (base game + user recipes).
 
     User recipes override base recipes with the same ID.
@@ -116,7 +117,7 @@ def load_all_recipes() -> dict[str, Recipe]:
     return recipes
 
 
-def save_user_recipes(recipes: dict[str, Recipe]) -> None:
+def save_user_recipes(recipes: dict[RecipeId, Recipe]) -> None:
     """Save user recipes to XDG data directory."""
     path = get_user_recipes_path()
     data = {

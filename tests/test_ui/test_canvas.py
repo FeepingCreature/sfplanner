@@ -158,6 +158,9 @@ class TestFactoryCanvas:
             belt_ids=(),
             original_crossing_belts=(),
             canvas=canvas,
+            created_room_id=generate_id(),
+            created_placement_id=generate_id(),
+            crossing_belt_port_ids=(),
         )
         stack.execute(room_cmd)
 

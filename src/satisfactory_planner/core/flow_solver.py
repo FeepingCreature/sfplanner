@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from satisfactory_planner.core.flow_builder import FatalErrorType
     from satisfactory_planner.core.flow_lp_solver import SolvedModel
     from satisfactory_planner.core.flow_models import BuildingEfficiency
-    from satisfactory_planner.core.models import Document, Recipe
+    from satisfactory_planner.core.models import Document, Recipe, RecipeId
 
 from satisfactory_planner.core.item_key import ItemKey
 
@@ -52,9 +52,9 @@ class FlowSolver:
     then runs detectors to find issues.
     """
 
-    def __init__(self, document: Document, recipes: dict[str, Recipe] | None = None) -> None:
+    def __init__(self, document: Document, recipes: dict[RecipeId, Recipe] | None = None) -> None:
         self.document = document
-        self._recipes = recipes
+        self._recipes: dict[RecipeId, Recipe] | None = recipes
         self._solved_model: SolvedModel | None = None
         self._warnings: list[Warning] = []
 
