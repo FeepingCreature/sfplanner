@@ -302,12 +302,7 @@ def simplex_canonical_m(a, b, c, basis, num, verbose=False, do_coerce=True):
                         c_reduced[i] -= k * row[i]
             
             # Check if optimal (all c >= 0 for minimization means we're done)
-            # Actually for maximization (our case), we want all c <= 0
-            # But we're minimizing -flow, so c = [-1, -1, ...] 
             # After reduction, if all reduced costs are non-negative, we're optimal
-            if verbose:
-                print(f"### c_reduced = {c_reduced}")
-                print(f"### all nonnegative? {all(num.nonnegative(ci) for ci in c_reduced)}")
             if all(num.nonnegative(ci) for ci in c_reduced):
                 if verbose:
                     print("### Already optimal, returning solution directly")
@@ -318,7 +313,6 @@ def simplex_canonical_m(a, b, c, basis, num, verbose=False, do_coerce=True):
             # that has a non-zero coefficient in that row
             if verbose:
                 print("### Not optimal, pivoting out artificial variables")
-                print(f"### Current basis: {m_solver.basis}")
             
             # Build new basis and matrix with artificial vars removed
             new_basis = m_solver.basis[:]
