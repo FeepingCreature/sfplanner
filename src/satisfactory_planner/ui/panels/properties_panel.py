@@ -743,6 +743,10 @@ class PropertiesPanel(QWidget):
 
     def _get_belt_flow_rate(self, belt_id: str) -> float | None:
         """Get flow rate for a belt from flow solver."""
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         if not self.canvas:
             return None
 
@@ -754,6 +758,13 @@ class PropertiesPanel(QWidget):
         if flow_solver:
             key = self._make_item_key(belt_id)
             result: float | None = flow_solver.get_flow_rate(key)
+            logger.debug(f"Belt flow lookup: belt_id={belt_id}, key={key}, result={result}")
+
+            # Log available keys for debugging
+            if result is None and flow_solver._solved_model:
+                available_keys = list(flow_solver._solved_model.flows.keys())
+                logger.debug(f"  Available flow keys: {available_keys}")
+
             return result
         return None
 
