@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QPointF
 
 from satisfactory_planner.core import Belt, Building
-from satisfactory_planner.core.models import RoomPlacement, generate_id
+from satisfactory_planner.core.models import generate_id
 from satisfactory_planner.ui.commands import ConnectBeltCommand, PlaceBuildingCommand
 
 if TYPE_CHECKING:
@@ -113,16 +113,17 @@ class ClipboardManager:
             else:
                 base_x, base_y = offset, offset
 
-            new_placement = RoomPlacement(
-                id=generate_id(),
-                room_id=room_id,
+            # Use PlaceBlueprintCommand for proper undo/redo support
+            from satisfactory_planner.ui.commands.room_commands import PlaceBlueprintCommand
+
+            room_cmd = PlaceBlueprintCommand(
+                source_room=room,
                 x=base_x,
                 y=base_y,
-                parent_room_id=None,
+                canvas=self.canvas,
             )
-            self.canvas.document.room_placements[new_placement.id] = new_placement
-            self.canvas.add_room_item(new_placement, room)
-            new_item_ids.append(new_placement.id)
+            self.canvas.command_stack.execute(room_cmd)
+            new_item_ids.append(room_cmd.created_placement_id)
 
         self.canvas.notify_mutation()
 
