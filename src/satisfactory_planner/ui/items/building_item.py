@@ -19,6 +19,7 @@ from satisfactory_planner.core import (
     Building,
     BuildingType,
 )
+from satisfactory_planner.core.flow_key import FlowKey
 from satisfactory_planner.core.models import Scene
 from satisfactory_planner.ui.items.port_item import PortItem
 
@@ -489,15 +490,9 @@ class BuildingItem(QGraphicsRectItem):
         self.update()
 
     @property
-    def flow_key(self) -> str:
-        """Get the flow solver key for this building.
-
-        Returns composite key (placement_id:building_id) for buildings inside room placements,
-        or just building_id for top-level buildings.
-        """
-        if self._placement_id:
-            return f"{self._placement_id}:{self.building.id}"
-        return self.building.id
+    def flow_key(self) -> FlowKey:
+        """Get the flow solver key for this building."""
+        return FlowKey(element_id=self.building.id, placement_id=self._placement_id)
 
     def set_placement_id(self, placement_id: str | None) -> None:
         """Set the placement ID for buildings inside room placements."""
