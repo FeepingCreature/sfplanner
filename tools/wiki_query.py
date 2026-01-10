@@ -42,20 +42,59 @@ def get_schema() -> dict[str, Any]:
 
 
 def _search_ddg(query: str, max_results: int = 5) -> list[dict[str, str]]:
-    """Search DuckDuckGo and return results."""
+    """Search DuckDuckGo using direct HTML interface."""
     try:
-        from duckduckgo_search import DDGS
+        import requests
 
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=max_results))
-            return [
-                {
-                    "title": r.get("title", ""),
-                    "url": r.get("href", ""),
-                    "snippet": r.get("body", ""),
-                }
-                for r in results
-            ]
+        url = "https://html.duckduckgo.com/html/"
+        params = {"q": query}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+
+        response = requests.post(url, data=params, headers=headers, timeout=10)
+        response.raise_for_status()
+        html = response.text
+
+        results = []
+        result_pattern = re.compile(
+            r'<a rel="nofollow" class="result__a" href="([^"]+)"[^>]*>(.+?)</a>.*?'
+            r'<a class="result__snippet"[^>]*>(.+?)</a>',
+            re.DOTALL,
+        )
+
+        for match in result_pattern.finditer(html):
+            if len(results) >= max_results:
+                break
+
+            url_encoded = match.group(1)
+            title_html = match.group(2)
+            snippet_html = match.group(3)
+
+            # Decode DDG's URL redirect
+            if "uddg=" in url_encoded:
+                url_match = re.search(r"uddg=([^&]+)", url_encoded)
+                if url_match:
+                    url_decoded = urllib.parse.unquote(url_match.group(1))
+                else:
+                    url_decoded = url_encoded
+            else:
+                url_decoded = urllib.parse.unquote(url_encoded)
+
+            # Strip HTML tags
+            title = re.sub(r"<[^>]+>", "", title_html).strip()
+            snippet = re.sub(r"<[^>]+>", "", snippet_html).strip()
+
+            results.append({
+                "title": title,
+                "url": url_decoded,
+                "snippet": snippet,
+            })
+
+        return results
+
     except Exception as e:
         return [{"error": str(e)}]
 
