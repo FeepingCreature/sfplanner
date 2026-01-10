@@ -320,7 +320,15 @@ def build_flow_graph(document: Document, recipes: dict[RecipeId, Recipe]) -> Bui
             )
         )
 
-    # Phase: Check merger type conflicts
+    if errors:
+        return BuildResult(errors=errors)
+
+    # Phase: Propagate item types through splitters/mergers
+    # This must happen BEFORE checking merger conflicts, so that item types
+    # from upstream producers are propagated through splitters to mergers
+    _propagate_item_types(graph)
+
+    # Phase: Check merger type conflicts (after propagation)
     for node in graph.nodes.values():
         if node.node_type == NodeType.MERGER:
             incoming_edges = graph.get_incoming_edges(node.id)
@@ -342,9 +350,6 @@ def build_flow_graph(document: Document, recipes: dict[RecipeId, Recipe]) -> Bui
 
     if errors:
         return BuildResult(errors=errors)
-
-    # Phase: Propagate item types through splitters/mergers
-    _propagate_item_types(graph)
 
     return BuildResult(graph=graph)
 

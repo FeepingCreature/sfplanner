@@ -427,6 +427,113 @@ class TestFlowSolver:
             f"Bottleneck should be on sink belt: {[w.item_key for w in bottleneck_warnings]}"
         )
 
+    def test_merger_with_mismatched_item_types_via_splitter(self) -> None:
+        """Detects when a splitter feeds different item types into a merger.
+
+        Scenario: Splitter carrying Iron Ore connects to a Merger that also
+        receives Iron Ingots. This should produce an ITEM_MISMATCH error.
+        """
+        doc = Document()
+
+        # Source of Iron Ore
+        miner = Building(
+            id="miner",
+            building_type=BuildingType.MINER,
+            x=0,
+            y=0,
+            item_id="Iron Ore",
+        )
+        doc.add_building(miner)
+
+        # Source of Iron Ingots (from a smelter)
+        smelter = Building(
+            id="smelter",
+            building_type=BuildingType.SMELTER,
+            x=0,
+            y=100,
+            recipe_id="iron_ingot",
+        )
+        doc.add_building(smelter)
+
+        # Splitter carries Iron Ore
+        splitter = Building(
+            id="splitter",
+            building_type=BuildingType.SPLITTER,
+            x=100,
+            y=0,
+        )
+        doc.add_building(splitter)
+
+        # Merger receives from both splitter (Iron Ore) and smelter (Iron Ingot)
+        merger = Building(
+            id="merger",
+            building_type=BuildingType.MERGER,
+            x=200,
+            y=50,
+        )
+        doc.add_building(merger)
+
+        # Sink
+        sink = Building(
+            id="sink",
+            building_type=BuildingType.SINK,
+            x=300,
+            y=50,
+            item_id="Iron Ore",  # Doesn't matter, merger conflict should be caught first
+        )
+        doc.add_building(sink)
+
+        # Connect: miner -> splitter -> merger, smelter -> merger, merger -> sink
+        doc.add_belt(
+            Belt(
+                id="b1",
+                tier=1,
+                source_building_id="miner",
+                source_port_index=0,
+                dest_building_id="splitter",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b2",
+                tier=1,
+                source_building_id="splitter",
+                source_port_index=0,
+                dest_building_id="merger",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b3",
+                tier=1,
+                source_building_id="smelter",
+                source_port_index=0,
+                dest_building_id="merger",
+                dest_port_index=1,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b4",
+                tier=1,
+                source_building_id="merger",
+                source_port_index=0,
+                dest_building_id="sink",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc)
+        warnings = solver.solve()
+
+        # Should detect item mismatch at merger
+        mismatch_warnings = [w for w in warnings if w.type == WarningType.ITEM_MISMATCH]
+        assert len(mismatch_warnings) > 0, (
+            f"Expected item mismatch warning at merger, got: {[w.message for w in warnings]}"
+        )
+
     def test_two_pass_detects_belt_bottleneck(self) -> None:
         """Two-pass solver detects belt bottlenecks by comparing theoretical vs actual.
 
