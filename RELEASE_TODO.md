@@ -22,15 +22,15 @@
 
 ## Data & Configuration
 
-- [ ] **Recipe overhaul** - Buildings should only show recipes in their category, consistent naming, complete wiki coverage
+- [x] **Recipe overhaul** - Buildings should only show recipes in their category, consistent naming, complete wiki coverage
 - [ ] **Settings expansion** - Move user-modifiable constants into Settings dialog (grid sizes, colors, etc.)
 
 ## Documentation & Release
 
-- [ ] **README** - Project description, screenshots, installation instructions
+- [x] **README** - Project description, screenshots, installation instructions
 - [ ] **Screenshot** - High-quality screenshot for README/marketing
-- [ ] **Release process** - Build scripts for Linux, Windows, macOS binaries
-- [ ] **GitHub Actions** - CI/CD hook for automated release builds
+- [x] **Release process** - Build scripts for Linux, Windows, macOS binaries
+- [x] **GitHub Actions** - CI/CD hook for automated release builds
 
 ---
 
