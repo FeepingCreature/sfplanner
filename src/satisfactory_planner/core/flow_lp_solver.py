@@ -379,12 +379,13 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                 equality_rhs.append(0.0)
             elif not incoming and outgoing:
                 # No external connection - outputs must be 0
+                # Use inequality <= 0 combined with non-negativity to force = 0
                 logger.debug(f"  -> Constraining outputs to 0 (no incoming)")
                 for out_edge in outgoing:
                     row = [0.0] * n_edges
                     row[edge_to_idx[out_edge.id]] = 1.0
-                    equality_rows.append(row)
-                    equality_rhs.append(0.0)  # No flow allowed
+                    inequality_rows.append(row)
+                    inequality_rhs.append(0.0)  # x <= 0 combined with x >= 0 means x = 0
 
         elif node.node_type == NodeType.PORT_OUT:
             # PORT_OUT: receives from internal, passes to external belt
@@ -400,12 +401,13 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                 equality_rhs.append(0.0)
             elif incoming and not outgoing:
                 # No external connection - inputs must be 0
+                # Use inequality <= 0 combined with non-negativity to force = 0
                 logger.debug(f"  -> Constraining inputs to 0 (no outgoing)")
                 for in_edge in incoming:
                     row = [0.0] * n_edges
                     row[edge_to_idx[in_edge.id]] = 1.0
-                    equality_rows.append(row)
-                    equality_rhs.append(0.0)  # No flow allowed
+                    inequality_rows.append(row)
+                    inequality_rhs.append(0.0)  # x <= 0 combined with x >= 0 means x = 0
 
     # Objective: maximize total flow (minimize negative flow)
     c = [-1.0] * n_edges
@@ -426,13 +428,6 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
         row[idx] = 1.0
         inequality_rows.append(row)
         inequality_rhs.append(upper_bound)
-
-    # Log all equality constraints for debugging
-    logger.debug(f"EQUALITY CONSTRAINTS ({len(equality_rows)}):")
-    for i, (row, rhs) in enumerate(zip(equality_rows, equality_rhs)):
-        nonzero = [(edge_ids[j], coef) for j, coef in enumerate(row) if coef != 0]
-        terms = " + ".join(f"{coef}*{eid[:8]}" for eid, coef in nonzero)
-        logger.debug(f"  EQ{i}: {terms} = {rhs}")
 
     logger.debug(f"  {len(inequality_rows)} inequality constraints, {len(equality_rows)} equality constraints")
 
