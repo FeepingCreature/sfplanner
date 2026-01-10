@@ -457,21 +457,28 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
                 incoming = graph.get_incoming_edges(node.id)
                 incoming_item_ids = {e.item_id for e in incoming if e.item_id is not None}
 
-                # Check for merger type conflict
+                # Check for merger type conflict (only report once per merger)
                 if node.node_type == NodeType.MERGER and len(incoming_item_ids) > 1:
-                    # Build detailed message showing which belts bring which items
-                    details = []
-                    for edge in incoming:
-                        if edge.item_id:
-                            details.append(f"  • Input {edge.dest_port_index}: {edge.item_id}")
-                    detail_str = "\n".join(details)
-                    errors.append(
-                        FatalError(
-                            error_type=FatalErrorType.MERGER_TYPE_CONFLICT,
-                            message=f"Merger receives different item types:\n{detail_str}",
-                            element_id=node.id.element_id,
-                        )
+                    # Check if we already reported this merger
+                    already_reported = any(
+                        e.element_id == node.id.element_id
+                        and e.error_type == FatalErrorType.MERGER_TYPE_CONFLICT
+                        for e in errors
                     )
+                    if not already_reported:
+                        # Build detailed message showing which belts bring which items
+                        details = []
+                        for edge in incoming:
+                            if edge.item_id:
+                                details.append(f"  • Input {edge.dest_port_index}: {edge.item_id}")
+                        detail_str = "\n".join(details)
+                        errors.append(
+                            FatalError(
+                                error_type=FatalErrorType.MERGER_TYPE_CONFLICT,
+                                message=f"Merger receives different item types:\n{detail_str}",
+                                element_id=node.id.element_id,
+                            )
+                        )
                     continue  # Don't propagate conflicting types
 
                 item_id = next(iter(incoming_item_ids), None)
