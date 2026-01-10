@@ -291,8 +291,28 @@ def simplex_canonical_m(a, b, c, basis, num, verbose=False, do_coerce=True):
             return RESOLUTION_INCOMPATIBLE, None
 
     a = [a_row[:n] for a_row in m_solver.a]
+    
+    # Replace any artificial variables still in basis with real variables
+    # (they have value 0, so we can pivot them out)
+    final_basis = m_solver.basis[:]
+    for j, bi in enumerate(final_basis):
+        if bi >= n:
+            # Find a real variable to pivot in (any with non-zero coefficient in this row)
+            for i in range(n):
+                if not num.iszero(a[j][i]) and i not in final_basis:
+                    final_basis[j] = i
+                    break
+            else:
+                # No non-zero coefficient found - this row is all zeros
+                # The constraint is redundant, but we need a valid basis entry
+                # Use any variable not already in basis
+                for i in range(n):
+                    if i not in final_basis:
+                        final_basis[j] = i
+                        break
+    
     return simplex_canonical(
-        a, m_solver.b, c, m_solver.basis, num=num, verbose=verbose, do_coerce=False
+        a, m_solver.b, c, final_basis, num=num, verbose=verbose, do_coerce=False
     )
 
 
