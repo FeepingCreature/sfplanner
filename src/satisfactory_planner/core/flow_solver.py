@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from satisfactory_planner.core.flow_key import FlowKey
+
 if TYPE_CHECKING:
     from satisfactory_planner.core.flow_builder import FatalErrorType
     from satisfactory_planner.core.flow_lp_solver import SolvedModel
@@ -120,18 +122,15 @@ class FlowSolver:
         }
         return mapping.get(error_type, WarningType.DISCONNECTED_BELT)
 
-    def get_flow_rate(self, belt_id: str) -> float | None:
+    def get_flow_rate(self, key: FlowKey) -> float | None:
         """Get the calculated flow rate for a belt."""
         if self._solved_model is None:
             return None
-        return self._solved_model.flows.get(belt_id)
+        return self._solved_model.flows.get(key)
 
-    def get_efficiency(self, building_id: str) -> BuildingEfficiency | None:
+    def get_efficiency(self, key: FlowKey) -> BuildingEfficiency | None:
         """Get efficiency info for a building."""
         if self._solved_model is None:
             return None
-        # Find by building_id
-        for eff in self._solved_model.efficiencies.values():
-            if eff.building_id == building_id:
-                return eff
-        return None
+        # Look up directly by FlowKey
+        return self._solved_model.efficiencies.get(key)

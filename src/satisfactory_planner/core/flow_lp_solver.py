@@ -10,6 +10,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from satisfactory_planner.core.flow_key import FlowKey
 from satisfactory_planner.core.flow_models import (
     BOTTLENECK_TOLERANCE,
     FLOW_TOLERANCE,
@@ -30,15 +31,15 @@ class SolvedModel:
     """Result of solving flow rates."""
 
     graph: FlowGraph
-    flows: dict[str, float] = field(default_factory=dict)  # edge_id → flow rate
-    efficiencies: dict[str, BuildingEfficiency] = field(
+    flows: dict[FlowKey, float] = field(default_factory=dict)  # edge_id → flow rate
+    efficiencies: dict[FlowKey, BuildingEfficiency] = field(
         default_factory=dict
     )  # node_id → efficiency
     success: bool = True
     message: str = ""
     # Two-pass results for bottleneck detection
-    theoretical_flows: dict[str, float] = field(default_factory=dict)
-    bottlenecks: dict[str, tuple[float, float]] = field(
+    theoretical_flows: dict[FlowKey, float] = field(default_factory=dict)
+    bottlenecks: dict[FlowKey, tuple[float, float]] = field(
         default_factory=dict
     )  # edge_id → (theoretical, actual)
 
@@ -104,7 +105,7 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
     actual_flows = actual_result[1]
 
     # Identify belt bottlenecks: where theoretical > actual
-    bottlenecks: dict[str, tuple[float, float]] = {}
+    bottlenecks: dict[FlowKey, tuple[float, float]] = {}
     for edge_id, edge in graph.edges.items():
         theo = theoretical_flows.get(edge_id, 0.0)
         actual = actual_flows.get(edge_id, 0.0)
@@ -132,9 +133,9 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
 
 def _write_dot_file(
     graph: FlowGraph,
-    flows: dict[str, float],
-    theoretical_flows: dict[str, float],
-    bottlenecks: dict[str, tuple[float, float]],
+    flows: dict[FlowKey, float],
+    theoretical_flows: dict[FlowKey, float],
+    bottlenecks: dict[FlowKey, tuple[float, float]],
     suffix: str = "",
 ) -> None:
     """Write the flow graph to a DOT file for visualization."""
@@ -162,7 +163,7 @@ def _write_dot_file(
     # Nodes with full details
     for node_id, node in graph.nodes.items():
         color = node_colors.get(node.node_type, "#FFFFFF")
-        safe_id = node_id.replace("-", "_").replace(":", "_")
+        safe_id = str(node_id).replace("-", "_").replace(":", "_").replace("(", "").replace(")", "")
 
         # Build port details
         in_ports = []
@@ -183,7 +184,8 @@ def _write_dot_file(
             recipe_str += f"\\nclock: {node.clock_speed:.0%}"
 
         # Build label
-        label_parts = [f"{node.node_type.name}\\n{node_id[:12]}...{recipe_str}"]
+        node_id_str = str(node_id)
+        label_parts = [f"{node.node_type.name}\\n{node_id_str[:12]}...{recipe_str}"]
         if in_ports:
             label_parts.append("| {" + " | ".join(in_ports) + "}")
         if out_ports:
@@ -196,8 +198,20 @@ def _write_dot_file(
 
     # Edges with flow info
     for edge_id, edge in graph.edges.items():
-        src_safe = edge.source_node_id.replace("-", "_").replace(":", "_")
-        dst_safe = edge.dest_node_id.replace("-", "_").replace(":", "_")
+        src_safe = (
+            str(edge.source_node_id)
+            .replace("-", "_")
+            .replace(":", "_")
+            .replace("(", "")
+            .replace(")", "")
+        )
+        dst_safe = (
+            str(edge.dest_node_id)
+            .replace("-", "_")
+            .replace(":", "_")
+            .replace("(", "")
+            .replace(")", "")
+        )
 
         actual = flows.get(edge_id, 0.0)
         theoretical = theoretical_flows.get(edge_id, actual)
@@ -242,7 +256,7 @@ def _write_dot_file(
     logger.info(f"  View with: dot -Tpng {dot_path} -o ~/flow_graph.png && open ~/flow_graph.png")
 
 
-def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, float], str]:
+def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[FlowKey, float], str]:
     """Run the LP solver.
 
     Args:
@@ -463,8 +477,8 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
 
 
 def _compute_efficiencies(
-    graph: FlowGraph, flows: dict[str, float]
-) -> dict[str, BuildingEfficiency]:
+    graph: FlowGraph, flows: dict[FlowKey, float]
+) -> dict[FlowKey, BuildingEfficiency]:
     """Compute duty cycle and limiting factor for each producer."""
     efficiencies: dict[str, BuildingEfficiency] = {}
 
@@ -502,7 +516,7 @@ def _compute_efficiencies(
 
 def _find_limiting_factor(
     graph: FlowGraph,
-    flows: dict[str, float],
+    flows: dict[FlowKey, float],
     node: FlowNode,
     duty_cycle: float,
 ) -> tuple[LimitingFactor, str]:

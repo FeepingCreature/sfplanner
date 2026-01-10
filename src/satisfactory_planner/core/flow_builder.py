@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
+from satisfactory_planner.core.flow_key import FlowKey
 from satisfactory_planner.core.flow_models import (
     FlowEdge,
     FlowGraph,
@@ -190,14 +191,14 @@ def _has_connections(building_id: str, belts: dict[str, Belt]) -> bool:
     return False
 
 
-def _find_logistics_loop(graph: FlowGraph) -> list[str] | None:
+def _find_logistics_loop(graph: FlowGraph) -> list[FlowKey] | None:
     """Find a pure logistics loop (splitters/mergers only, no producers).
 
-    Returns the cycle as a list of node IDs, or None if no such loop exists.
+    Returns the cycle as a list of FlowKeys, or None if no such loop exists.
     """
     logistics_types = {NodeType.SPLITTER, NodeType.MERGER}
 
-    def dfs(node_id: str, path: list[str], visited: set[str]) -> list[str] | None:
+    def dfs(node_id: FlowKey, path: list[FlowKey], visited: set[FlowKey]) -> list[FlowKey] | None:
         if node_id in path:
             cycle_start = path.index(node_id)
             return path[cycle_start:] + [node_id]
@@ -218,7 +219,7 @@ def _find_logistics_loop(graph: FlowGraph) -> list[str] | None:
         path.pop()
         return None
 
-    visited: set[str] = set()
+    visited: set[FlowKey] = set()
     for node_id, node in graph.nodes.items():
         if node.node_type in logistics_types and node_id not in visited:
             result = dfs(node_id, [], visited)
@@ -310,11 +311,12 @@ def build_flow_graph(document: Document, recipes: dict[str, Recipe]) -> BuildRes
     # Phase: Check for pure logistics loops
     logistics_loop = _find_logistics_loop(graph)
     if logistics_loop:
+        loop_str = " -> ".join(str(k) for k in logistics_loop)
         errors.append(
             FatalError(
                 error_type=FatalErrorType.SOURCELESS_CYCLE,
-                message=f"Pure logistics loop detected: {' -> '.join(logistics_loop)}",
-                element_id=logistics_loop[0],
+                message=f"Pure logistics loop detected: {loop_str}",
+                element_id=logistics_loop[0].element_id,
             )
         )
 
@@ -462,11 +464,9 @@ def _propagate_item_types(graph: FlowGraph) -> None:
                             changed = True
 
 
-def _make_node_id(building_id: str, placement_id: str | None) -> str:
-    """Create a node ID, using composite key for buildings in room placements."""
-    if placement_id:
-        return f"{placement_id}:{building_id}"
-    return building_id
+def _make_flow_key(element_id: str, placement_id: str | None) -> FlowKey:
+    """Create a FlowKey for a building or belt."""
+    return FlowKey(element_id=element_id, placement_id=placement_id)
 
 
 def _build_scene(
@@ -547,11 +547,11 @@ def _build_scene(
     # Phase 3: Build nodes
     for building_id, building in scene.buildings.items():
         inputs, outputs = _build_flow_ports(building, recipes)
-        node_id = _make_node_id(building_id, placement_id)
+        node_key = _make_flow_key(building_id, placement_id)
         node = FlowNode(
-            id=node_id,
+            id=node_key,
             node_type=_get_node_type(building.building_type),
-            building_id=node_id,  # Use composite ID for flow result lookup
+            building_id=node_key,
             recipe_id=building.recipe_id,
             clock_speed=building.clock_speed,
             inputs=inputs,
@@ -613,25 +613,25 @@ def _build_scene(
         # Determine the item type for this edge
         item_id = source_item_id or dest_item_id
 
-        # Use composite node IDs for buildings in room placements
+        # Use FlowKeys for buildings in room placements
         # For endpoints resolved to room PORTs, use the placement_id from resolution
         # For regular buildings in the current scene, use the scene's placement_id
-        source_node_id = _make_node_id(
+        source_node_key = _make_flow_key(
             source_building_id, source_placement_id if source_placement_id else placement_id
         )
-        dest_node_id = _make_node_id(
+        dest_node_key = _make_flow_key(
             dest_building_id, dest_placement_id if dest_placement_id else placement_id
         )
 
-        # Belt ID uses the current scene's placement_id (belts belong to their scene)
-        edge_belt_id = _make_node_id(belt_id, placement_id)
+        # Belt key uses the current scene's placement_id (belts belong to their scene)
+        edge_belt_key = _make_flow_key(belt_id, placement_id)
 
         edge = FlowEdge(
-            id=edge_belt_id,
-            belt_id=edge_belt_id,
-            source_node_id=source_node_id,
+            id=edge_belt_key,
+            belt_id=edge_belt_key,
+            source_node_id=source_node_key,
             source_port_index=source_port_idx,
-            dest_node_id=dest_node_id,
+            dest_node_id=dest_node_key,
             dest_port_index=dest_port_idx,
             capacity=BELT_CAPACITIES[belt.tier],
             item_id=item_id,

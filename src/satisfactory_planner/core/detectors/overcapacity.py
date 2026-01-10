@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from satisfactory_planner.core.flow_key import FlowKey
 from satisfactory_planner.core.flow_solver import Warning, WarningType
 
 if TYPE_CHECKING:
@@ -32,6 +33,8 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
     if model.bottlenecks:
         for edge_id, (theoretical, actual) in model.bottlenecks.items():
             edge = model.graph.edges[edge_id]
+            # Use element_id for UI references
+            element_id = edge.belt_id.element_id if edge.belt_id else edge_id.element_id
             warnings.append(
                 Warning(
                     type=WarningType.BELT_OVERCAPACITY,
@@ -40,14 +43,14 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
                         f"but belt capacity is {edge.capacity:.0f}/min "
                         f"(actual flow: {actual:.0f}/min)"
                     ),
-                    element_id=edge.belt_id or edge_id,
+                    element_id=element_id,
                     severity=min(1.0, (theoretical - actual) / actual) if actual > 0 else 1.0,
                 )
             )
         return warnings
 
     # Fallback: old behavior for backward compatibility
-    overcap_edges: set[str] = set()
+    overcap_edges: set[FlowKey] = set()
     for edge_id, flow in model.flows.items():
         edge = model.graph.edges[edge_id]
         if flow > edge.capacity:
@@ -57,7 +60,7 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
         return []
 
     # Second pass: filter out belts that have an upstream overcapacity belt
-    filtered_overcap: set[str] = set()
+    filtered_overcap: set[FlowKey] = set()
 
     for edge_id in overcap_edges:
         if not _has_upstream_overcapacity(model, edge_id, overcap_edges):
@@ -71,7 +74,7 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
             Warning(
                 type=WarningType.BELT_OVERCAPACITY,
                 message=f"Belt {edge_id}: flow {flow:.1f}/min exceeds capacity {edge.capacity}/min",
-                element_id=edge_id,
+                element_id=edge_id.element_id,
                 severity=(flow - edge.capacity) / edge.capacity,
             )
         )
@@ -80,7 +83,10 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
 
 
 def _has_upstream_overcapacity(
-    model: SolvedModel, edge_id: str, overcap_edges: set[str], visited: set[str] | None = None
+    model: SolvedModel,
+    edge_id: FlowKey,
+    overcap_edges: set[FlowKey],
+    visited: set[FlowKey] | None = None,
 ) -> bool:
     """Check if there's an overcapacity belt upstream of this edge."""
     if visited is None:
