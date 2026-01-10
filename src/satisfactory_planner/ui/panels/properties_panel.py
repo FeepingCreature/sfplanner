@@ -27,6 +27,7 @@ from satisfactory_planner.core import (
     BuildingEfficiency,
     BuildingType,
     Document,
+    RecipeId,
     Room,
     RoomPlacement,
 )
@@ -590,7 +591,7 @@ class PropertiesPanel(QWidget):
             # Look up building in the correct scene
             building = self._get_building(building_id)
             if building:
-                recipe_id = data if isinstance(data, str) else None
+                recipe_id = RecipeId(data) if isinstance(data, str) else None
                 cmd = SetRecipeCommand(
                     scene_room_id=self._scene_room_id,
                     building_id=building_id,

@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QCompleter,
-    QLineEdit,
+    QWidget,
 )
 
 
@@ -25,7 +25,7 @@ class SearchableComboBox(QComboBox):
     # Emitted when selection changes (includes None for cleared)
     selection_changed = Signal(object)  # Emits the item data
 
-    def __init__(self, parent=None, placeholder: str = "Search..."):
+    def __init__(self, parent: QWidget | None = None, placeholder: str = "Search..."):
         super().__init__(parent)
         self.setEditable(True)
         self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
