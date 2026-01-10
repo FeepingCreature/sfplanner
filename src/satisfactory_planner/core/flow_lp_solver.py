@@ -252,8 +252,6 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
     Returns:
         (success, flows, error_message)
     """
-    logger.debug(f"LP SOLVE (belt_limits={use_belt_limits})")
-
     # Create edge index mapping
     edge_ids = list(graph.edges.keys())
     edge_to_idx = {eid: i for i, eid in enumerate(edge_ids)}
@@ -367,9 +365,6 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
 
         elif node.node_type == NodeType.PORT_IN:
             # PORT_IN: receives from external belt, passes to internal
-            logger.debug(
-                f"PORT_IN {node_id}: incoming={[e.id for e in incoming]}, outgoing={[e.id for e in outgoing]}"
-            )
             if incoming and outgoing:
                 # Pass-through: sum(inputs) = sum(outputs)
                 row = [0.0] * n_edges
@@ -382,18 +377,14 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
             elif not incoming and outgoing:
                 # No external connection - outputs must be 0
                 # Use inequality <= 0 combined with non-negativity to force = 0
-                logger.debug("  -> Constraining outputs to 0 (no incoming)")
                 for out_edge in outgoing:
                     row = [0.0] * n_edges
                     row[edge_to_idx[out_edge.id]] = 1.0
                     inequality_rows.append(row)
-                    inequality_rhs.append(0.0)  # x <= 0 combined with x >= 0 means x = 0
+                    inequality_rhs.append(0.0)
 
         elif node.node_type == NodeType.PORT_OUT:
             # PORT_OUT: receives from internal, passes to external belt
-            logger.debug(
-                f"PORT_OUT {node_id}: incoming={[e.id for e in incoming]}, outgoing={[e.id for e in outgoing]}"
-            )
             if incoming and outgoing:
                 # Pass-through: sum(inputs) = sum(outputs)
                 row = [0.0] * n_edges
@@ -406,12 +397,11 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
             elif incoming and not outgoing:
                 # No external connection - inputs must be 0
                 # Use inequality <= 0 combined with non-negativity to force = 0
-                logger.debug("  -> Constraining inputs to 0 (no outgoing)")
                 for in_edge in incoming:
                     row = [0.0] * n_edges
                     row[edge_to_idx[in_edge.id]] = 1.0
                     inequality_rows.append(row)
-                    inequality_rhs.append(0.0)  # x <= 0 combined with x >= 0 means x = 0
+                    inequality_rhs.append(0.0)
 
     # Objective: maximize total flow (minimize negative flow)
     c = [-1.0] * n_edges
@@ -432,10 +422,6 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
         row[idx] = 1.0
         inequality_rows.append(row)
         inequality_rhs.append(upper_bound)
-
-    logger.debug(
-        f"  {len(inequality_rows)} inequality constraints, {len(equality_rows)} equality constraints"
-    )
 
     # Solve using pylinprog (vendored, untyped)
     resolution, solution = linsolve(  # type: ignore[no-untyped-call]
