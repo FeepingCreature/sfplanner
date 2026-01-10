@@ -76,6 +76,17 @@ def _shallow_copy_room_with_new_ids(room: Room) -> tuple[Room, dict[str, str]]:
     return new_room, all_id_map
 
 
+def _generate_crossing_belt_ids(
+    crossing_belts: tuple[Belt, ...],
+) -> tuple[tuple[str, str, str, str], ...]:
+    """Generate IDs for crossing belt ports/belts at construction time."""
+    from satisfactory_planner.core.models import generate_id
+
+    return tuple(
+        (belt.id, generate_id(), generate_id(), generate_id()) for belt in crossing_belts
+    )
+
+
 @dataclass(frozen=True)
 class CreateRoomCommand(Command):
     """Command to create a room from selected buildings.
@@ -84,6 +95,9 @@ class CreateRoomCommand(Command):
 
     Fully immutable - all IDs are pre-generated at construction time. This means
     execute/undo/redo always produce identical results with the same IDs.
+
+    Callers should use CreateRoomCommand.create() factory method to ensure
+    all IDs are generated properly.
     """
 
     parent_scene_room_id: str | None  # None = root document
@@ -93,32 +107,37 @@ class CreateRoomCommand(Command):
     original_crossing_belts: tuple[Belt, ...]  # Belts crossing boundary (captured at creation)
     canvas: FactoryCanvas
 
-    # Pre-generated IDs - caller can supply or __post_init__ generates
-    created_room_id: str = ""
-    created_placement_id: str = ""
+    # Pre-generated IDs - must be provided at construction
+    created_room_id: str
+    created_placement_id: str
 
     # Pre-generated IDs for ports/belts created from crossing belts
     # Tuple of (original_belt_id, port_id, internal_belt_id, external_belt_id)
-    # Generated in __post_init__ based on original_crossing_belts
-    crossing_belt_port_ids: tuple[tuple[str, str, str, str], ...] = ()
+    crossing_belt_port_ids: tuple[tuple[str, str, str, str], ...]
 
-    def __post_init__(self) -> None:
-        """Generate all IDs needed for this command."""
+    @staticmethod
+    def create(
+        parent_scene_room_id: str | None,
+        rect: tuple[float, float, float, float],
+        building_ids: tuple[str, ...],
+        belt_ids: tuple[str, ...],
+        original_crossing_belts: tuple[Belt, ...],
+        canvas: FactoryCanvas,
+    ) -> CreateRoomCommand:
+        """Factory method that generates all required IDs."""
         from satisfactory_planner.core.models import generate_id
 
-        if not self.created_room_id:
-            object.__setattr__(self, "created_room_id", generate_id())
-        if not self.created_placement_id:
-            object.__setattr__(self, "created_placement_id", generate_id())
-
-        # Pre-generate IDs for each crossing belt:
-        # (original_belt_id, port_id, internal_belt_id, external_belt_id)
-        if not self.crossing_belt_port_ids and self.original_crossing_belts:
-            port_ids = tuple(
-                (belt.id, generate_id(), generate_id(), generate_id())
-                for belt in self.original_crossing_belts
-            )
-            object.__setattr__(self, "crossing_belt_port_ids", port_ids)
+        return CreateRoomCommand(
+            parent_scene_room_id=parent_scene_room_id,
+            rect=rect,
+            building_ids=building_ids,
+            belt_ids=belt_ids,
+            original_crossing_belts=original_crossing_belts,
+            canvas=canvas,
+            created_room_id=generate_id(),
+            created_placement_id=generate_id(),
+            crossing_belt_port_ids=_generate_crossing_belt_ids(original_crossing_belts),
+        )
 
     def execute(self, document: Document) -> None:
         from satisfactory_planner.core import Room, RoomPlacement
@@ -398,16 +417,62 @@ class DeleteRoomPlacementCommand(Command):
 
     If this is the last placement for a room, also deletes the room and all
     its contents. Use DissolveRoomCommand to restore contents instead.
+
+    State is captured at construction time by the caller who has document access.
     """
 
     placement_id: str
     canvas: FactoryCanvas
 
-    # Captured state for undo
-    _placement: RoomPlacement | None = None
-    _room: Room | None = None
-    _was_last_placement: bool = False
-    _removed_belts: tuple[Belt, ...] = ()  # External belts connected to room ports
+    # Captured state for undo - must be provided at construction
+    placement: RoomPlacement
+    room: Room
+    is_last_placement: bool
+    removed_belts: tuple[Belt, ...]  # External belts connected to room ports
+
+    @staticmethod
+    def create(
+        placement_id: str,
+        canvas: FactoryCanvas,
+        document: Document,
+    ) -> DeleteRoomPlacementCommand | None:
+        """Factory method that captures all required state from document."""
+        placement = document.room_placements.get(placement_id)
+        if not placement:
+            logger.warning(
+                f"DeleteRoomPlacementCommand.create: placement {placement_id} not found"
+            )
+            return None
+
+        room = document.rooms.get(placement.room_id)
+        if not room:
+            logger.warning(
+                f"DeleteRoomPlacementCommand.create: room {placement.room_id} not found"
+            )
+            return None
+
+        # Check if this is the last placement
+        placements = document.get_placements_for_room(placement.room_id)
+        is_last = len(placements) <= 1
+
+        # Find belts connected to this placement's ports
+        parent = get_scene(document, placement.parent_room_id)
+        removed_belts: list[Belt] = []
+        for belt in parent.belts.values():
+            if (
+                belt.source_building_id == placement_id
+                or belt.dest_building_id == placement_id
+            ):
+                removed_belts.append(copy.deepcopy(belt))
+
+        return DeleteRoomPlacementCommand(
+            placement_id=placement_id,
+            canvas=canvas,
+            placement=copy.deepcopy(placement),
+            room=copy.deepcopy(room),
+            is_last_placement=is_last,
+            removed_belts=tuple(removed_belts),
+        )
 
     def execute(self, document: Document) -> None:
         placement = document.room_placements.get(self.placement_id)
@@ -417,34 +482,11 @@ class DeleteRoomPlacementCommand(Command):
             )
             return
 
-        room = document.rooms.get(placement.room_id)
-        if not room:
-            logger.warning(
-                f"DeleteRoomPlacementCommand.execute: room {placement.room_id} not found"
-            )
-            return
-
-        # Capture state for undo (use object.__setattr__ for frozen dataclass)
-        object.__setattr__(self, "_placement", copy.deepcopy(placement))
-        object.__setattr__(self, "_room", copy.deepcopy(room))
-
-        # Check if this is the last placement
-        placements = document.get_placements_for_room(placement.room_id)
-        is_last = len(placements) <= 1
-        object.__setattr__(self, "_was_last_placement", is_last)
-
-        # Find and remove belts connected to this placement's ports
+        # Remove belts connected to this placement's ports
         parent = get_scene(document, placement.parent_room_id)
-        removed_belts: list[Belt] = []
-        for belt in list(parent.belts.values()):
-            if (
-                belt.source_building_id == self.placement_id
-                or belt.dest_building_id == self.placement_id
-            ):
-                removed_belts.append(copy.deepcopy(belt))
-                parent.remove_belt(belt.id)
-                self.canvas.remove_belt_item(belt.id)
-        object.__setattr__(self, "_removed_belts", tuple(removed_belts))
+        for belt in self.removed_belts:
+            parent.remove_belt(belt.id)
+            self.canvas.remove_belt_item(belt.id)
 
         # Remove room item from canvas
         self.canvas.remove_room_item(self.placement_id)
@@ -452,24 +494,20 @@ class DeleteRoomPlacementCommand(Command):
         # Remove placement
         document.room_placements.pop(self.placement_id, None)
 
-        if is_last:
+        if self.is_last_placement:
             # Remove room from document (contents are deleted with it)
-            document.rooms.pop(room.id, None)
+            document.rooms.pop(self.room.id, None)
 
         self.canvas.notify_mutation()
 
     def undo(self, document: Document) -> None:
-        if not self._placement or not self._room:
-            logger.warning("DeleteRoomPlacementCommand.undo: no captured state")
-            return
-
-        if self._was_last_placement:
+        if self.is_last_placement:
             # Re-add the room
-            room_copy = copy.deepcopy(self._room)
+            room_copy = copy.deepcopy(self.room)
             document.rooms[room_copy.id] = room_copy
 
         # Re-add placement
-        placement_copy = copy.deepcopy(self._placement)
+        placement_copy = copy.deepcopy(self.placement)
         document.room_placements[placement_copy.id] = placement_copy
 
         # Re-add room item
@@ -478,9 +516,9 @@ class DeleteRoomPlacementCommand(Command):
             self.canvas.add_room_item(placement_copy, room)
 
         # Restore removed belts
-        if self._removed_belts:
-            parent = get_scene(document, self._placement.parent_room_id)
-            for belt in self._removed_belts:
+        if self.removed_belts:
+            parent = get_scene(document, self.placement.parent_room_id)
+            for belt in self.removed_belts:
                 belt_copy = copy.deepcopy(belt)
                 parent.add_belt(belt_copy)
                 self.canvas.add_belt_item(belt_copy)
@@ -498,22 +536,102 @@ class DissolveRoomCommand(Command):
     Handles crossing belts: finds PORT_IN/PORT_OUT buildings, traces the
     internal belt (inside room) and external belt (in parent), and recreates
     a direct belt connecting the original source to original destination.
+
+    State is captured at construction time by the caller who has document access.
     """
 
     placement_id: str
     canvas: FactoryCanvas
 
-    # Captured state for undo
-    _placement: RoomPlacement | None = None
-    _room: Room | None = None
-    # External belts that were removed (for undo)
-    _removed_external_belts: tuple[Belt, ...] = ()
-    # Direct belts that were created (for undo)
-    _created_direct_belts: tuple[Belt, ...] = ()
+    # Captured state for undo - must be provided at construction
+    placement: RoomPlacement
+    room: Room
+    # External belts that will be removed (for undo)
+    removed_external_belts: tuple[Belt, ...]
+    # Pre-generated IDs for direct belts that will be created
+    # Tuple of (direct_belt_id, tier, source_building_id, source_port_index,
+    #           dest_building_id, dest_port_index, item_id)
+    direct_belt_specs: tuple[tuple[str, int, str, int, str, int, str | None], ...]
+
+    @staticmethod
+    def create(
+        placement_id: str,
+        canvas: FactoryCanvas,
+        document: Document,
+    ) -> DissolveRoomCommand | None:
+        """Factory method that captures all required state from document."""
+        from satisfactory_planner.core.models import BuildingType, generate_id
+
+        placement = document.room_placements.get(placement_id)
+        if not placement:
+            logger.warning(f"DissolveRoomCommand.create: placement {placement_id} not found")
+            return None
+
+        room = document.rooms.get(placement.room_id)
+        if not room:
+            logger.warning(f"DissolveRoomCommand.create: room {placement.room_id} not found")
+            return None
+
+        parent = get_scene(document, placement.parent_room_id)
+        removed_external: list[Belt] = []
+        direct_belt_specs: list[tuple[str, int, str, int, str, int, str | None]] = []
+
+        # Get all ports in the room
+        ports = room.get_ports()
+
+        for port in ports:
+            if port.building_type == BuildingType.PORT_IN:
+                external_belt = parent.get_belt_at_port(
+                    placement_id, port.port_index or 0, is_output=False
+                )
+                internal_belt = room.get_belt_at_port(port.id, 0, is_output=True)
+
+                if external_belt and internal_belt:
+                    direct_belt_specs.append((
+                        generate_id(),
+                        external_belt.tier,
+                        external_belt.source_building_id,
+                        external_belt.source_port_index,
+                        internal_belt.dest_building_id,
+                        internal_belt.dest_port_index,
+                        external_belt.item_id or internal_belt.item_id,
+                    ))
+
+                if external_belt:
+                    removed_external.append(copy.deepcopy(external_belt))
+
+            elif port.building_type == BuildingType.PORT_OUT:
+                external_belt = parent.get_belt_at_port(
+                    placement_id, port.port_index or 0, is_output=True
+                )
+                internal_belt = room.get_belt_at_port(port.id, 0, is_output=False)
+
+                if external_belt and internal_belt:
+                    direct_belt_specs.append((
+                        generate_id(),
+                        external_belt.tier,
+                        internal_belt.source_building_id,
+                        internal_belt.source_port_index,
+                        external_belt.dest_building_id,
+                        external_belt.dest_port_index,
+                        internal_belt.item_id or external_belt.item_id,
+                    ))
+
+                if external_belt:
+                    removed_external.append(copy.deepcopy(external_belt))
+
+        return DissolveRoomCommand(
+            placement_id=placement_id,
+            canvas=canvas,
+            placement=copy.deepcopy(placement),
+            room=copy.deepcopy(room),
+            removed_external_belts=tuple(removed_external),
+            direct_belt_specs=tuple(direct_belt_specs),
+        )
 
     def execute(self, document: Document) -> None:
         from satisfactory_planner.core.models import Belt as BeltModel
-        from satisfactory_planner.core.models import BuildingType, generate_id
+        from satisfactory_planner.core.models import BuildingType
 
         placement = document.room_placements.get(self.placement_id)
         if not placement:
@@ -525,80 +643,12 @@ class DissolveRoomCommand(Command):
             logger.warning(f"DissolveRoomCommand.execute: room {placement.room_id} not found")
             return
 
-        # Capture state for undo
-        object.__setattr__(self, "_placement", copy.deepcopy(placement))
-        object.__setattr__(self, "_room", copy.deepcopy(room))
-
         parent = get_scene(document, placement.parent_room_id)
 
-        # Find and remove external belts that reference this placement
-        # Also collect info to recreate direct belts
-        removed_external: list[Belt] = []
-        created_direct: list[Belt] = []
-
-        # Get all ports in the room
-        ports = room.get_ports()
-
-        for port in ports:
-            if port.building_type == BuildingType.PORT_IN:
-                # PORT_IN: external belt goes INTO the placement, internal belt goes OUT of port
-                # External: dest_building_id = placement_id, dest_port_index = port.port_index
-                # Internal: source_building_id = port.id
-                external_belt = parent.get_belt_at_port(
-                    self.placement_id, port.port_index or 0, is_output=False
-                )
-                internal_belt = room.get_belt_at_port(port.id, 0, is_output=True)
-
-                if external_belt and internal_belt:
-                    # Create direct belt: external source -> internal dest
-                    direct_belt = BeltModel(
-                        id=generate_id(),
-                        tier=external_belt.tier,
-                        source_building_id=external_belt.source_building_id,
-                        source_port_index=external_belt.source_port_index,
-                        dest_building_id=internal_belt.dest_building_id,
-                        dest_port_index=internal_belt.dest_port_index,
-                        item_id=external_belt.item_id or internal_belt.item_id,
-                    )
-                    created_direct.append(direct_belt)
-
-                # Remove external belt
-                if external_belt:
-                    removed_external.append(copy.deepcopy(external_belt))
-                    parent.remove_belt(external_belt.id)
-                    self.canvas.remove_belt_item(external_belt.id)
-
-            elif port.building_type == BuildingType.PORT_OUT:
-                # PORT_OUT: external belt goes OUT of the placement, internal belt goes INTO port
-                # External: source_building_id = placement_id, source_port_index = port.port_index
-                # Internal: dest_building_id = port.id
-                external_belt = parent.get_belt_at_port(
-                    self.placement_id, port.port_index or 0, is_output=True
-                )
-                internal_belt = room.get_belt_at_port(port.id, 0, is_output=False)
-
-                if external_belt and internal_belt:
-                    # Create direct belt: internal source -> external dest
-                    direct_belt = BeltModel(
-                        id=generate_id(),
-                        tier=external_belt.tier,
-                        source_building_id=internal_belt.source_building_id,
-                        source_port_index=internal_belt.source_port_index,
-                        dest_building_id=external_belt.dest_building_id,
-                        dest_port_index=external_belt.dest_port_index,
-                        item_id=internal_belt.item_id or external_belt.item_id,
-                    )
-                    created_direct.append(direct_belt)
-
-                # Remove external belt
-                if external_belt:
-                    removed_external.append(copy.deepcopy(external_belt))
-                    parent.remove_belt(external_belt.id)
-                    self.canvas.remove_belt_item(external_belt.id)
-
-        # Store for undo
-        object.__setattr__(self, "_removed_external_belts", tuple(removed_external))
-        object.__setattr__(self, "_created_direct_belts", tuple(created_direct))
+        # Remove external belts
+        for belt in self.removed_external_belts:
+            parent.remove_belt(belt.id)
+            self.canvas.remove_belt_item(belt.id)
 
         # Remove room item from canvas
         self.canvas.remove_room_item(self.placement_id)
@@ -606,30 +656,40 @@ class DissolveRoomCommand(Command):
         # Remove placement
         document.room_placements.pop(self.placement_id, None)
 
+        # Get port IDs for filtering
+        ports = room.get_ports()
+        port_ids = {p.id for p in ports}
+
         # Restore non-port buildings to parent scene
         for building in list(room.buildings.values()):
-            # Skip PORT_IN/PORT_OUT - they're synthetic
             if building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
                 continue
-            # Translate back to absolute coords
             building.x += placement.x
             building.y += placement.y
             parent.add_building(building)
             self.canvas.add_building_item(building)
 
-        # Restore non-port belts (belts that don't connect to ports)
-        port_ids = {p.id for p in ports}
+        # Restore non-port belts
         for belt in list(room.belts.values()):
-            # Skip belts that connect to ports
             if belt.source_building_id in port_ids or belt.dest_building_id in port_ids:
                 continue
             parent.add_belt(belt)
             self.canvas.add_belt_item(belt)
 
-        # Add the recreated direct belts
-        for belt in created_direct:
-            parent.add_belt(belt)
-            self.canvas.add_belt_item(belt)
+        # Create direct belts from pre-generated specs
+        for spec in self.direct_belt_specs:
+            belt_id, tier, src_id, src_port, dst_id, dst_port, item_id = spec
+            direct_belt = BeltModel(
+                id=belt_id,
+                tier=tier,
+                source_building_id=src_id,
+                source_port_index=src_port,
+                dest_building_id=dst_id,
+                dest_port_index=dst_port,
+                item_id=item_id,
+            )
+            parent.add_belt(direct_belt)
+            self.canvas.add_belt_item(direct_belt)
 
         # Remove room from document
         document.rooms.pop(room.id, None)
@@ -639,31 +699,28 @@ class DissolveRoomCommand(Command):
     def undo(self, document: Document) -> None:
         from satisfactory_planner.core.models import BuildingType
 
-        if not self._placement or not self._room:
-            logger.warning("DissolveRoomCommand.undo: no captured state")
-            return
+        parent = get_scene(document, self.placement.parent_room_id)
 
-        parent = get_scene(document, self._placement.parent_room_id)
-
-        # Re-add the room
-        room_copy = copy.deepcopy(self._room)
+        # Re-add the room first (before removing buildings that reference it)
+        room_copy = copy.deepcopy(self.room)
         document.rooms[room_copy.id] = room_copy
 
         # Remove created direct belts
-        for belt in self._created_direct_belts:
-            if belt.id in parent.belts:
-                parent.remove_belt(belt.id)
-                self.canvas.remove_belt_item(belt.id)
+        for spec in self.direct_belt_specs:
+            belt_id = spec[0]
+            if belt_id in parent.belts:
+                parent.remove_belt(belt_id)
+                self.canvas.remove_belt_item(belt_id)
 
         # Get port IDs to know which buildings/belts to skip
         port_ids = {
             b.id
-            for b in self._room.buildings.values()
+            for b in self.room.buildings.values()
             if b.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT)
         }
 
         # Remove restored buildings from parent (only non-port ones were restored)
-        for building_id, building in self._room.buildings.items():
+        for building_id, building in self.room.buildings.items():
             if building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
                 continue
             if building_id in parent.buildings:
@@ -671,7 +728,7 @@ class DissolveRoomCommand(Command):
                 self.canvas.remove_building_item(building_id)
 
         # Remove restored belts from parent (only non-port ones were restored)
-        for belt_id, belt in self._room.belts.items():
+        for belt_id, belt in self.room.belts.items():
             if belt.source_building_id in port_ids or belt.dest_building_id in port_ids:
                 continue
             if belt_id in parent.belts:
@@ -679,7 +736,7 @@ class DissolveRoomCommand(Command):
                 self.canvas.remove_belt_item(belt_id)
 
         # Re-add placement
-        placement_copy = copy.deepcopy(self._placement)
+        placement_copy = copy.deepcopy(self.placement)
         document.room_placements[placement_copy.id] = placement_copy
 
         # Re-add room item
@@ -688,7 +745,7 @@ class DissolveRoomCommand(Command):
             self.canvas.add_room_item(placement_copy, room)
 
         # Restore external belts that were removed
-        for belt in self._removed_external_belts:
+        for belt in self.removed_external_belts:
             belt_copy = copy.deepcopy(belt)
             parent.add_belt(belt_copy)
             self.canvas.add_belt_item(belt_copy)
@@ -702,24 +759,38 @@ class DelinkRoomCommand(Command):
 
     Creates a deep copy of the Room with new IDs for all contents,
     and points the placement at the new independent room.
+
+    State is captured at construction time by the caller who has document access.
     """
 
     placement_id: str  # The placement being delinked
     canvas: FactoryCanvas
 
-    # Captured at construction for undo
-    old_room_id: str = ""
+    # Captured at construction for undo - must be provided
+    old_room_id: str
     # Generated at construction for deterministic redo
-    new_room_id: str = ""
+    new_room_id: str
 
-    def __post_init__(self) -> None:
-        """Capture old room ID and pre-generate new room ID."""
+    @staticmethod
+    def create(
+        placement_id: str,
+        canvas: FactoryCanvas,
+        document: Document,
+    ) -> DelinkRoomCommand | None:
+        """Factory method that captures all required state from document."""
         from satisfactory_planner.core.models import generate_id
 
-        # Note: We can't look up placement here (no document access)
-        # old_room_id must be set by caller or we set it in execute
-        if not self.new_room_id:
-            object.__setattr__(self, "new_room_id", generate_id())
+        placement = document.room_placements.get(placement_id)
+        if not placement:
+            logger.warning(f"DelinkRoomCommand.create: placement {placement_id} not found")
+            return None
+
+        return DelinkRoomCommand(
+            placement_id=placement_id,
+            canvas=canvas,
+            old_room_id=placement.room_id,
+            new_room_id=generate_id(),
+        )
 
     def execute(self, document: Document) -> None:
         placement = document.room_placements.get(self.placement_id)
@@ -731,10 +802,6 @@ class DelinkRoomCommand(Command):
         if not old_room:
             logger.warning(f"DelinkRoomCommand.execute: room {placement.room_id} not found")
             return
-
-        # Capture old_room_id if not already set
-        if not self.old_room_id:
-            object.__setattr__(self, "old_room_id", placement.room_id)
 
         # Check if this is the only placement - nothing to delink
         placements = document.get_placements_for_room(placement.room_id)
@@ -796,6 +863,8 @@ class PlaceBlueprintCommand(Command):
     If the room ID already exists in the document, creates a linked placement.
     If it doesn't exist, adds the room and creates a placement.
     This allows blueprints to maintain linkage with existing rooms.
+
+    State is captured at construction time by the caller who has document access.
     """
 
     source_room: Room  # The blueprint room (preserves original ID)
@@ -803,28 +872,40 @@ class PlaceBlueprintCommand(Command):
     y: float
     canvas: FactoryCanvas
 
-    # Pre-generated placement ID for deterministic undo/redo
-    created_placement_id: str = ""
-    # Track whether we added the room (for undo)
-    _room_was_added: bool = False
+    # Pre-generated placement ID for deterministic undo/redo - must be provided
+    created_placement_id: str
+    # Track whether we will add the room (determined at construction)
+    room_will_be_added: bool
 
-    def __post_init__(self) -> None:
-        """Pre-generate placement ID for deterministic redo."""
+    @staticmethod
+    def create(
+        source_room: Room,
+        x: float,
+        y: float,
+        canvas: FactoryCanvas,
+        document: Document,
+    ) -> PlaceBlueprintCommand:
+        """Factory method that captures all required state from document."""
         from satisfactory_planner.core.models import generate_id
 
-        if not self.created_placement_id:
-            object.__setattr__(self, "created_placement_id", generate_id())
+        # Check if room already exists in document (linked case)
+        room_exists = source_room.id in document.rooms
+
+        return PlaceBlueprintCommand(
+            source_room=source_room,
+            x=x,
+            y=y,
+            canvas=canvas,
+            created_placement_id=generate_id(),
+            room_will_be_added=not room_exists,
+        )
 
     def execute(self, document: Document) -> None:
         from satisfactory_planner.core.models import RoomPlacement
 
-        # Check if room already exists in document (linked case)
-        room_exists = self.source_room.id in document.rooms
-
-        if not room_exists:
+        if self.room_will_be_added:
             # Add the room to document (preserving its ID)
             document.rooms[self.source_room.id] = self.source_room
-            object.__setattr__(self, "_room_was_added", True)
 
         # Get the room (either existing or just added)
         room = document.rooms[self.source_room.id]
@@ -851,7 +932,7 @@ class PlaceBlueprintCommand(Command):
         document.room_placements.pop(self.created_placement_id, None)
 
         # Only remove room if we added it
-        if self._room_was_added:
+        if self.room_will_be_added:
             document.rooms.pop(self.source_room.id, None)
 
         self.canvas.notify_mutation()

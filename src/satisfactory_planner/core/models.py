@@ -6,10 +6,14 @@ import math
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, NamedTuple, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, NamedTuple, NewType, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     pass
+
+# Typed IDs for type safety - prevents mixing up recipe_id and item_id
+RecipeId = NewType("RecipeId", str)
+ItemId = NewType("ItemId", str)
 
 
 @runtime_checkable
@@ -164,7 +168,7 @@ class ItemRate:
 class Recipe:
     """A crafting recipe."""
 
-    id: str
+    id: RecipeId
     name: str
     building_type: BuildingType
     inputs: list[ItemRate]
@@ -208,8 +212,8 @@ class Building:
     building_type: BuildingType
     x: float
     y: float
-    recipe_id: str | None = None  # For production buildings
-    item_id: str | None = None  # For MINER/SOURCE/SINK: the item being produced/consumed
+    recipe_id: RecipeId | None = None  # For production buildings (Smelter, Constructor, etc.)
+    item_id: ItemId | None = None  # For MINER/SOURCE/SINK: the item being produced/consumed
     clock_speed: float = 1.0  # 0.01 to 2.5
     rotation: int = 0  # 0, 90, 180, 270 degrees
     tier: int = 1  # For MINER: 1, 2, or 3

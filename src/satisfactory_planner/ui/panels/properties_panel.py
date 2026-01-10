@@ -1005,12 +1005,13 @@ class PropertiesPanel(QWidget):
             )
             return
 
-        cmd = DelinkRoomCommand(
+        cmd = DelinkRoomCommand.create(
             placement_id=placement.id,
             canvas=self.canvas,
-            old_room_id=room.id,
+            document=self.canvas.document,
         )
-        self.command_stack.execute(cmd)
+        if cmd:
+            self.command_stack.execute(cmd)
 
         # Refresh display
         self._update_display()

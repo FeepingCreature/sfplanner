@@ -171,7 +171,9 @@ class PlacementManager:
 
     def _place_blueprint(self, room: Room, x: float, y: float) -> None:
         """Place a blueprint at the given position."""
-        cmd = PlaceBlueprintCommand(source_room=room, x=x, y=y, canvas=self.canvas)
+        cmd = PlaceBlueprintCommand.create(
+            source_room=room, x=x, y=y, canvas=self.canvas, document=self.canvas.document
+        )
         self.canvas.command_stack.execute(cmd)
 
     # Drag-drop support

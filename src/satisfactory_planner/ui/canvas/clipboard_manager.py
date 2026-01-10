@@ -116,11 +116,12 @@ class ClipboardManager:
             # Use PlaceBlueprintCommand for proper undo/redo support
             from satisfactory_planner.ui.commands.room_commands import PlaceBlueprintCommand
 
-            room_cmd = PlaceBlueprintCommand(
+            room_cmd = PlaceBlueprintCommand.create(
                 source_room=room,
                 x=base_x,
                 y=base_y,
                 canvas=self.canvas,
+                document=self.canvas.document,
             )
             self.canvas.command_stack.execute(room_cmd)
             new_item_ids.append(room_cmd.created_placement_id)

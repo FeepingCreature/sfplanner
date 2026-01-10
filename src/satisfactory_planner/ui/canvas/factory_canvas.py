@@ -695,11 +695,13 @@ class FactoryCanvas(QGraphicsView):
                         DeleteRoomPlacementCommand,
                     )
 
-                    room_cmd = DeleteRoomPlacementCommand(
+                    room_cmd = DeleteRoomPlacementCommand.create(
                         placement_id=placement_id,
                         canvas=self,
+                        document=self.document,
                     )
-                    self.command_stack.execute(room_cmd)
+                    if room_cmd:
+                        self.command_stack.execute(room_cmd)
 
         if selected_buildings or selected_belts:
             first_item = next(

@@ -169,7 +169,7 @@ class DrawingTools:
                 crossing_belts.append(belt)
 
         # Create room command
-        cmd = CreateRoomCommand(
+        cmd = CreateRoomCommand.create(
             parent_scene_room_id=parent_scene_room_id,
             rect=(rect.x(), rect.y(), rect.width(), rect.height()),
             building_ids=tuple(contained_building_ids),

@@ -9,6 +9,7 @@ from satisfactory_planner.core.models import (
     Document,
     Room,
     RoomPlacement,
+    generate_id,
 )
 from satisfactory_planner.ui.commands import (
     CommandStack,
@@ -16,6 +17,7 @@ from satisfactory_planner.ui.commands import (
     DelinkRoomCommand,
     PlaceBlueprintCommand,
 )
+from satisfactory_planner.ui.commands.room_commands import _generate_crossing_belt_ids
 
 
 def make_mock_canvas() -> Mock:
@@ -53,6 +55,9 @@ class TestCreateRoomCommand:
             belt_ids=(),
             original_crossing_belts=(),
             canvas=canvas,
+            created_room_id=generate_id(),
+            created_placement_id=generate_id(),
+            crossing_belt_port_ids=(),
         )
 
         stack.execute(cmd)
@@ -102,6 +107,9 @@ class TestCreateRoomCommand:
             belt_ids=("belt1",),
             original_crossing_belts=(),
             canvas=canvas,
+            created_room_id=generate_id(),
+            created_placement_id=generate_id(),
+            crossing_belt_port_ids=(),
         )
 
         stack.execute(cmd)
@@ -137,6 +145,9 @@ class TestCreateRoomCommand:
             belt_ids=("belt1",),
             original_crossing_belts=(),
             canvas=canvas,
+            created_room_id=generate_id(),
+            created_placement_id=generate_id(),
+            crossing_belt_port_ids=(),
         )
 
         stack.execute(cmd)
@@ -169,6 +180,9 @@ class TestCreateRoomCommand:
             belt_ids=(),
             original_crossing_belts=(),
             canvas=canvas,
+            created_room_id=generate_id(),
+            created_placement_id=generate_id(),
+            crossing_belt_port_ids=(),
         )
 
         stack.execute(cmd)
@@ -219,6 +233,9 @@ class TestCreateRoomCommand:
             belt_ids=(),
             original_crossing_belts=(),
             canvas=canvas,
+            created_room_id=generate_id(),
+            created_placement_id=generate_id(),
+            crossing_belt_port_ids=(),
         )
         stack.execute(room_cmd)
 
@@ -286,6 +303,9 @@ class TestCreateRoomCommand:
             belt_ids=(),
             original_crossing_belts=(crossing_belt,),
             canvas=canvas,
+            created_room_id=generate_id(),
+            created_placement_id=generate_id(),
+            crossing_belt_port_ids=_generate_crossing_belt_ids((crossing_belt,)),
         )
 
         stack.execute(cmd)
@@ -327,6 +347,7 @@ class TestDelinkRoomCommand:
             placement_id="p2",
             canvas=canvas,
             old_room_id="room1",
+            new_room_id=generate_id(),
         )
 
         stack.execute(cmd)
@@ -362,6 +383,7 @@ class TestDelinkRoomCommand:
             placement_id="p2",
             canvas=canvas,
             old_room_id="room1",
+            new_room_id=generate_id(),
         )
 
         stack.execute(cmd)
@@ -390,6 +412,7 @@ class TestDelinkRoomCommand:
             placement_id="p1",
             canvas=canvas,
             old_room_id="room1",
+            new_room_id=generate_id(),
         )
 
         stack.execute(cmd)
@@ -417,6 +440,8 @@ class TestPlaceBlueprintCommand:
             x=100,
             y=100,
             canvas=canvas,
+            created_placement_id=generate_id(),
+            room_will_be_added=True,
         )
 
         stack.execute(cmd)
@@ -448,6 +473,8 @@ class TestPlaceBlueprintCommand:
             x=300,
             y=0,
             canvas=canvas,
+            created_placement_id=generate_id(),
+            room_will_be_added=False,  # Room already exists
         )
 
         stack.execute(cmd)
@@ -471,6 +498,8 @@ class TestPlaceBlueprintCommand:
             x=100,
             y=100,
             canvas=canvas,
+            created_placement_id=generate_id(),
+            room_will_be_added=True,
         )
 
         stack.execute(cmd)
@@ -493,6 +522,8 @@ class TestPlaceBlueprintCommand:
             x=100,
             y=100,
             canvas=canvas,
+            created_placement_id=generate_id(),
+            room_will_be_added=False,  # Room already exists
         )
 
         stack.execute(cmd)
@@ -515,6 +546,8 @@ class TestPlaceBlueprintCommand:
             x=100,
             y=100,
             canvas=canvas,
+            created_placement_id=generate_id(),
+            room_will_be_added=True,
         )
 
         stack.execute(cmd)

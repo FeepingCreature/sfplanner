@@ -737,10 +737,13 @@ class MainWindow(QMainWindow):
             return
 
         # Create and execute dissolve command
-        cmd = DissolveRoomCommand(
+        cmd = DissolveRoomCommand.create(
             placement_id=room_item.placement.id,
             canvas=canvas,
+            document=self.current_tab.document,
         )
+        if not cmd:
+            return
         self.current_tab.command_stack.execute(cmd)
 
     def _unlink_room(self) -> None:
@@ -775,11 +778,13 @@ class MainWindow(QMainWindow):
             return
 
         # Create and execute delink command
-        cmd = DelinkRoomCommand(
+        cmd = DelinkRoomCommand.create(
             placement_id=room_item.placement.id,
             canvas=canvas,
-            old_room_id=room_item.room.id,
+            document=self.current_tab.document,
         )
+        if not cmd:
+            return
         self.current_tab.command_stack.execute(cmd)
 
     def _save_blueprint(self) -> None:
