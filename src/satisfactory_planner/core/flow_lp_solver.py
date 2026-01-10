@@ -367,6 +367,7 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
 
         elif node.node_type == NodeType.PORT_IN:
             # PORT_IN: receives from external belt, passes to internal
+            logger.debug(f"PORT_IN {node_id}: incoming={[e.id for e in incoming]}, outgoing={[e.id for e in outgoing]}")
             if incoming and outgoing:
                 # Pass-through: sum(inputs) = sum(outputs)
                 row = [0.0] * n_edges
@@ -378,14 +379,16 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                 equality_rhs.append(0.0)
             elif not incoming and outgoing:
                 # No external connection - outputs must be 0
+                logger.debug(f"  -> Constraining outputs to 0 (no incoming)")
                 for out_edge in outgoing:
                     row = [0.0] * n_edges
                     row[edge_to_idx[out_edge.id]] = 1.0
-                    inequality_rows.append(row)
-                    inequality_rhs.append(0.0)  # No flow allowed
+                    equality_rows.append(row)
+                    equality_rhs.append(0.0)  # No flow allowed
 
         elif node.node_type == NodeType.PORT_OUT:
             # PORT_OUT: receives from internal, passes to external belt
+            logger.debug(f"PORT_OUT {node_id}: incoming={[e.id for e in incoming]}, outgoing={[e.id for e in outgoing]}")
             if incoming and outgoing:
                 # Pass-through: sum(inputs) = sum(outputs)
                 row = [0.0] * n_edges
@@ -397,11 +400,12 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                 equality_rhs.append(0.0)
             elif incoming and not outgoing:
                 # No external connection - inputs must be 0
+                logger.debug(f"  -> Constraining inputs to 0 (no outgoing)")
                 for in_edge in incoming:
                     row = [0.0] * n_edges
                     row[edge_to_idx[in_edge.id]] = 1.0
-                    inequality_rows.append(row)
-                    inequality_rhs.append(0.0)  # No flow allowed
+                    equality_rows.append(row)
+                    equality_rhs.append(0.0)  # No flow allowed
 
     # Objective: maximize total flow (minimize negative flow)
     c = [-1.0] * n_edges
