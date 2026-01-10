@@ -11,8 +11,8 @@
 
 - [x] **Flow visualization toggles** - Efficiency and flow rate toggles now work independently and correctly on file load
 - [ ] **Warning panel click-to-select** - Many warnings don't support clicking to select the relevant element
-- [ ] **Merger/Splitter properties** - Show item type and per-port flow rates in properties panel
-- [ ] **Grid snap redraw** - Canvas doesn't redraw immediately when snap dropdown is changed
+- [x] **Merger/Splitter properties** - Show item type and per-port flow rates in properties panel
+- [x] **Grid snap redraw** - Canvas doesn't redraw immediately when snap dropdown is changed
 - [ ] **Occupied Port** - Dragging belt *to* an occupied port should delete the belt currently going to it.
 
 ## Persistence & State
