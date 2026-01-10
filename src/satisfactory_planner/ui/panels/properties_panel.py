@@ -764,10 +764,6 @@ class PropertiesPanel(QWidget):
 
     def _update_logistics_display(self, building: Building) -> None:
         """Update the logistics panel for splitter/merger."""
-        import logging
-
-        logger = logging.getLogger(__name__)
-
         scene = self._get_scene()
 
         # Find connected belts and get flow rates
@@ -791,10 +787,6 @@ class PropertiesPanel(QWidget):
                 output_flows.append((belt.source_port_index, belt_item_id, flow_rate))
                 if belt_item_id:
                     item_id = belt_item_id
-
-        # Debug logging
-        key = self._make_item_key(building.id)
-        logger.debug(f"Logistics display: building={building.id}, key={key}, item_id={item_id}")
 
         # Sort by port index
         input_flows.sort(key=lambda x: x[0])
