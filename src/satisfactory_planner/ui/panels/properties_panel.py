@@ -506,24 +506,8 @@ class PropertiesPanel(QWidget):
                 # Set tier combo
                 self.tier_combo.setCurrentIndex(belt.tier - 1)
 
-                # Get item type - try belt.item_id first, then infer from source building
-                item_display = belt.item_id
-                if not item_display:
-                    # Try to infer from source building's recipe
-                    scene = self._get_scene()
-                    source = scene.buildings.get(belt.source_building_id)
-                    if source:
-                        if self._is_source_type(source.building_type):
-                            # Source/Sink/Miner store item_id in recipe_id field
-                            item_display = source.recipe_id or source.item_id
-                        elif source.recipe_id:
-                            recipe = self.document.recipes.get(source.recipe_id)
-                            if recipe and recipe.outputs:
-                                item_display = (
-                                    recipe.outputs[belt.source_port_index].item_id
-                                    if belt.source_port_index < len(recipe.outputs)
-                                    else None
-                                )
+                # Get item type from flow solver's edge (authoritative source)
+                item_display = self._get_belt_item_id(belt.id)
                 self.item_label.setText(item_display or "(unknown)")
 
                 # Get current flow from flow solver
@@ -740,6 +724,23 @@ class PropertiesPanel(QWidget):
     def _make_item_key(self, element_id: str) -> ItemKey:
         """Create a ItemKey for an element in the current selection context."""
         return ItemKey(element_id=element_id, placement_id=self._placement_id)
+
+    def _get_belt_item_id(self, belt_id: str) -> str | None:
+        """Get item type for a belt from flow solver's graph."""
+        if not self.canvas:
+            return None
+
+        main_window = self.canvas.window()
+        if not hasattr(main_window, "current_tab") or not main_window.current_tab:
+            return None
+
+        flow_solver = main_window.current_tab.flow_solver
+        if flow_solver and flow_solver._solved_model:
+            key = self._make_item_key(belt_id)
+            edge = flow_solver._solved_model.graph.edges.get(key)
+            if edge:
+                return edge.item_id
+        return None
 
     def _get_belt_flow_rate(self, belt_id: str) -> float | None:
         """Get flow rate for a belt from flow solver."""
