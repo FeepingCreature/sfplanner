@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
     from satisfactory_planner.ui.canvas.factory_canvas import FactoryCanvas
     from satisfactory_planner.ui.items.room_item import RoomItem
+    from satisfactory_planner.ui.main_window import MainWindow
 
     class VisualContainer(Protocol):
         """Protocol for anything that can contain visual items for buildings and belts."""
@@ -223,13 +224,14 @@ class VisualSyncManager:
         its flow_key (which includes placement_id for items inside rooms).
         """
         from satisfactory_planner.ui.items.room_item import RoomItem
+        from satisfactory_planner.ui.main_window import MainWindow
 
         main_window = self.canvas.window()
-        if not hasattr(main_window, "current_tab") or not main_window.current_tab:
+        if not isinstance(main_window, MainWindow) or not main_window.current_tab:
             return
 
         flow_solver = main_window.current_tab.flow_solver
-        solved = flow_solver and flow_solver._solved_model
+        solved = flow_solver._solved_model if flow_solver else None
 
         # Update all belt items - each uses its flow_key to look up results
         for belt_item in self.canvas._belt_items.values():

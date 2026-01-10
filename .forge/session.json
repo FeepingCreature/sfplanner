@@ -405,6 +405,69 @@
       "streaming": true,
       "actual_cost": 0.14731475,
       "generation_id": "gen-1768065491-TI3vQfX2wQMmr6OaHB8q"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768065524779.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768065524779.json",
+      "timestamp": 1768065524.7804801,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.11706525,
+      "generation_id": "gen-1768065524-CahGHje4IpCundNmJIJG"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768065531342.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768065531342.json",
+      "timestamp": 1768065531.3432293,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06543,
+      "generation_id": "gen-1768065531-KJH8GJWAOMDB1C8prlrd"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768065543123.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768065543123.json",
+      "timestamp": 1768065543.1240032,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0605925,
+      "generation_id": "gen-1768065543-v6E1scN6wpMBp6eZejwb"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768065550656.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768065550656.json",
+      "timestamp": 1768065550.657101,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05665,
+      "generation_id": "gen-1768065550-k6hRsjwzwaAPCCkPtvJM"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768065556201.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768065556201.json",
+      "timestamp": 1768065556.2021766,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06201525,
+      "generation_id": "gen-1768065556-LegkAQf26FpNxMTnLQNR"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768065570860.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768065570860.json",
+      "timestamp": 1768065570.8614864,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.27656375,
+      "generation_id": "gen-1768065571-xB24zGOntF4pfvUYwM9C"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768065577915.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768065577915.json",
+      "timestamp": 1768065577.916298,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.29038375,
+      "generation_id": "gen-1768065578-kRTbNeKXY8YjVS9YNiUS"
     }
   ],
   "messages": [
@@ -1747,6 +1810,199 @@
         },
         {
           "commit": "27680e2e27ae",
+          "message": "Committed: 2 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: ca342f1b",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Why didn't this trigger a type error?"
+    },
+    {
+      "role": "assistant",
+      "content": "Great question! Looking at the context from the commit at 27680e2e, the `flow_key` properties were already returning `FlowKey` objects - the imports and return types were already correct. So there was no type mismatch to catch.\n\nLet me check what actually happened by looking at the current state of the files I just edited:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"def flow_key.*-\\\\>.*:\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01LYUGX5SBhPKddax7tUuiVK",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01LYUGX5SBhPKddax7tUuiVK",
+      "content": "{\"message\": \"Found 2 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/belt_item.py:274 \\u2500\\u2500\\n     271 |         painter.drawText(bg_rect, Qt.AlignmentFlag.AlignCenter, text)\\n     272 | \\n     273 |     @property\\n>>>  274 |     def flow_key(self) -> FlowKey:\\n     275 |         \\\"\\\"\\\"Get the flow solver key for this belt.\\\"\\\"\\\"\\n     276 |         return FlowKey(element_id=self.belt.id, placement_id=self._placement_id)\\n     277 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:493 \\u2500\\u2500\\n     490 |         self.update()\\n     491 | \\n     492 |     @property\\n>>>  493 |     def flow_key(self) -> FlowKey:\\n     494 |         \\\"\\\"\\\"Get the flow solver key for this building.\\\"\\\"\\\"\\n     495 |         return FlowKey(element_id=self.building.id, placement_id=self._placement_id)\\n     496 | \", \"success\": true, \"total_matches\": 2}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"def flow_key.*-\\\\>.*:\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 2 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/items/belt_item.py:274 \\u2500\\u2500\\n     271 |         painter.drawText(bg_rect, Qt.AlignmentFlag.AlignCenter, text)\\n     272 | \\n     273 |     @property\\n>>>  274 |     def flow_key(self) -> FlowKey:\\n     275 |         \\\"\\\"\\\"Get the flow solver key for this belt.\\\"\\\"\\\"\\n     276 |         return FlowKey(element_id=self.belt.id, placement_id=self._placement_id)\\n     277 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/building_item.py:493 \\u2500\\u2500\\n     490 |         self.update()\\n     491 | \\n     492 |     @property\\n>>>  493 |     def flow_key(self) -> FlowKey:\\n     494 |         \\\"\\\"\\\"Get the flow solver key for this building.\\\"\\\"\\\"\\n     495 |         return FlowKey(element_id=self.building.id, placement_id=self._placement_id)\\n     496 | \",\n  \"success\": true,\n  \"total_matches\": 2\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "You're right to ask! Looking at the grep results, the `flow_key` properties already have `-> FlowKey` return types. So the files I have in context are already fixed (from commit 27680e2e).\n\nThe reason mypy didn't catch this is that `visual_sync_manager.py` uses the result like this:\n\n```python\nflow_rate = solved and solved.flows.get(belt_item.flow_key)\n```\n\nThe `solved and ...` pattern returns either `False` or the result of `.get()`. Since `dict.get()` returns `V | None`, and the whole expression can also be `False`, mypy infers the type as `float | None | Literal[False]`. \n\nBut more importantly - **the `solved.flows` dict has type `dict[FlowKey, float]`**, so when we call `.get(belt_item.flow_key)` and `belt_item.flow_key` is a `str`, mypy should complain... unless it's being lenient with `dict.get()` on key types, or the `Any` type is leaking somewhere.\n\nLet me check if there's an `Any` hiding in the type chain:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"flow_solver.*=|_solved_model\", \"file\": \"src/satisfactory_planner/ui/canvas/visual_sync_manager.py\"}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01Qb4SLSB7LByTmFR4nUujiJ",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Qb4SLSB7LByTmFR4nUujiJ",
+      "content": "{\"message\": \"Found 2 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:231 \\u2500\\u2500\\n     228 |         if not hasattr(main_window, \\\"current_tab\\\") or not main_window.current_tab:\\n     229 |             return\\n     230 | \\n>>>  231 |         flow_solver = main_window.current_tab.flow_solver\\n     232 |         solved = flow_solver and flow_solver._solved_model\\n     233 | \\n     234 |         # Update all belt items - each uses its flow_key to look up results\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:232 \\u2500\\u2500\\n     229 |             return\\n     230 | \\n     231 |         flow_solver = main_window.current_tab.flow_solver\\n>>>  232 |         solved = flow_solver and flow_solver._solved_model\\n     233 | \\n     234 |         # Update all belt items - each uses its flow_key to look up results\\n     235 |         for belt_item in self.canvas._belt_items.values():\", \"success\": true, \"total_matches\": 2}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"file\": \"src/satisfactory_planner/ui/canvas/visual_sync_manager.py\",\n  \"pattern\": \"flow_solver.*=|_solved_model\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 2 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:231 \\u2500\\u2500\\n     228 |         if not hasattr(main_window, \\\"current_tab\\\") or not main_window.current_tab:\\n     229 |             return\\n     230 | \\n>>>  231 |         flow_solver = main_window.current_tab.flow_solver\\n     232 |         solved = flow_solver and flow_solver._solved_model\\n     233 | \\n     234 |         # Update all belt items - each uses its flow_key to look up results\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:232 \\u2500\\u2500\\n     229 |             return\\n     230 | \\n     231 |         flow_solver = main_window.current_tab.flow_solver\\n>>>  232 |         solved = flow_solver and flow_solver._solved_model\\n     233 | \\n     234 |         # Update all belt items - each uses its flow_key to look up results\\n     235 |         for belt_item in self.canvas._belt_items.values():\",\n  \"success\": true,\n  \"total_matches\": 2\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Ah, I see the issue! `main_window.current_tab` is accessed via `hasattr` checks, which means mypy doesn't know the type. The `flow_solver` attribute is typed as `Any` because mypy can't infer it through the dynamic attribute access.\n\nLet me check how `current_tab` and `flow_solver` are typed:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"flow_solver.*:\", \"file\": \"src/satisfactory_planner/ui/main_window.py\"}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_013qenyWXXsaf36eqae457JW",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_013qenyWXXsaf36eqae457JW",
+      "content": "{\"message\": \"No matches found for pattern: flow_solver.*:\", \"snippets\": [], \"success\": true, \"total_matches\": 0}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"file\": \"src/satisfactory_planner/ui/main_window.py\",\n  \"pattern\": \"flow_solver.*:\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"No matches found for pattern: flow_solver.*:\",\n  \"snippets\": [],\n  \"success\": true,\n  \"total_matches\": 0\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "You're right to push on this. Let me check how `flow_solver` is typed on `DocumentTab`:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"class DocumentTab|flow_solver\", \"file\": \"src/satisfactory_planner/ui/main_window.py\"}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_013B5FrzAMPSaFopbqifjnMX",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_013B5FrzAMPSaFopbqifjnMX",
+      "content": "{\"message\": \"Found 6 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:41 \\u2500\\u2500\\n      38 |     pass\\n      39 | \\n      40 | \\n>>>   41 | class DocumentTab:\\n      42 |     \\\"\\\"\\\"Holds state for a single document.\\\"\\\"\\\"\\n      43 | \\n      44 |     def __init__(self, name: str = \\\"Untitled\\\") -> None:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:48 \\u2500\\u2500\\n      45 |         self.name = name\\n      46 |         self.document = Document()\\n      47 |         self.command_stack = CommandStack(self.document)\\n>>>   48 |         self.flow_solver = FlowSolver(self.document)\\n      49 |         self.canvas: FactoryCanvas | None = None\\n      50 |         self.file_path: str | None = None\\n      51 |         self.dirty: bool = False  # Track unsaved changes\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:404 \\u2500\\u2500\\n     401 |                     self.current_tab.canvas,\\n     402 |                 )\\n     403 |             self.warnings_panel.set_document(\\n>>>  404 |                 self.current_tab.document, self.current_tab.flow_solver\\n     405 |             )\\n     406 |             self._update_warnings()\\n     407 |             self._update_undo_redo_state()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:441 \\u2500\\u2500\\n     438 |             tab = DocumentTab(Path(path).stem)\\n     439 |             tab.document = document\\n     440 |             tab.command_stack = CommandStack(document)\\n>>>  441 |             tab.flow_solver = FlowSolver(document)\\n     442 |             tab.file_path = path\\n     443 | \\n     444 |             canvas = FactoryCanvas(tab.document, tab.command_stack)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:578 \\u2500\\u2500\\n     575 |             return\\n     576 | \\n     577 |         # Re-solve flows\\n>>>  578 |         tab.flow_solver = FlowSolver(tab.document)\\n     579 |         tab.flow_solver.solve()\\n     580 | \\n     581 |         # Update visualization if enabled\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:579 \\u2500\\u2500\\n     576 | \\n     577 |         # Re-solve flows\\n     578 |         tab.flow_solver = FlowSolver(tab.document)\\n>>>  579 |         tab.flow_solver.solve()\\n     580 | \\n     581 |         # Update visualization if enabled\\n     582 |         if self.show_bottlenecks_action.isChecked() or self.show_flow_rates_action.isChecked():\", \"success\": true, \"total_matches\": 6}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"file\": \"src/satisfactory_planner/ui/main_window.py\",\n  \"pattern\": \"class DocumentTab|flow_solver\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 6 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:41 \\u2500\\u2500\\n      38 |     pass\\n      39 | \\n      40 | \\n>>>   41 | class DocumentTab:\\n      42 |     \\\"\\\"\\\"Holds state for a single document.\\\"\\\"\\\"\\n      43 | \\n      44 |     def __init__(self, name: str = \\\"Untitled\\\") -> None:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:48 \\u2500\\u2500\\n      45 |         self.name = name\\n      46 |         self.document = Document()\\n      47 |         self.command_stack = CommandStack(self.document)\\n>>>   48 |         self.flow_solver = FlowSolver(self.document)\\n      49 |         self.canvas: FactoryCanvas | None = None\\n      50 |         self.file_path: str | None = None\\n      51 |         self.dirty: bool = False  # Track unsaved changes\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:404 \\u2500\\u2500\\n     401 |                     self.current_tab.canvas,\\n     402 |                 )\\n     403 |             self.warnings_panel.set_document(\\n>>>  404 |                 self.current_tab.document, self.current_tab.flow_solver\\n     405 |             )\\n     406 |             self._update_warnings()\\n     407 |             self._update_undo_redo_state()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:441 \\u2500\\u2500\\n     438 |             tab = DocumentTab(Path(path).stem)\\n     439 |             tab.document = document\\n     440 |             tab.command_stack = CommandStack(document)\\n>>>  441 |             tab.flow_solver = FlowSolver(document)\\n     442 |             tab.file_path = path\\n     443 | \\n     444 |             canvas = FactoryCanvas(tab.document, tab.command_stack)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:578 \\u2500\\u2500\\n     575 |             return\\n     576 | \\n     577 |         # Re-solve flows\\n>>>  578 |         tab.flow_solver = FlowSolver(tab.document)\\n     579 |         tab.flow_solver.solve()\\n     580 | \\n     581 |         # Update visualization if enabled\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:579 \\u2500\\u2500\\n     576 | \\n     577 |         # Re-solve flows\\n     578 |         tab.flow_solver = FlowSolver(tab.document)\\n>>>  579 |         tab.flow_solver.solve()\\n     580 | \\n     581 |         # Update visualization if enabled\\n     582 |         if self.show_bottlenecks_action.isChecked() or self.show_flow_rates_action.isChecked():\",\n  \"success\": true,\n  \"total_matches\": 6\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue now. `DocumentTab.flow_solver` is assigned directly without a type annotation, so mypy infers it from `FlowSolver(self.document)`. The type should be known.\n\nThe real problem is in `visual_sync_manager.py` - it accesses `main_window.current_tab.flow_solver` through dynamic attribute checks (`hasattr`), which loses type information. The `main_window` is typed as `QWidget` from `.window()`, not as `MainWindow`.\n\nLet me compact the context and then add a proper type annotation or cast to fix this:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"from_id\": \"4\", \"to_id\": \"30\", \"summary\": \"Implemented FlowKey dataclass refactor:\\n1. Created src/satisfactory_planner/core/flow_key.py with frozen FlowKey(element_id, placement_id) dataclass\\n2. Updated flow_models.py - FlowNode, FlowEdge, FlowGraph, BuildingEfficiency use FlowKey\\n3. Updated flow_builder.py - _make_flow_key() creates FlowKeys, element_id extracted for FatalError\\n4. Updated flow_lp_solver.py - SolvedModel dicts use FlowKey keys\\n5. Updated flow_solver.py - get_flow_rate/get_efficiency accept FlowKey\\n6. Updated detectors (dangling, overcapacity, underflow, info) - extract element_id for warnings\\n7. Updated properties_panel.py - _make_flow_key() helper for lookups\\n8. Updated belt_item.py and building_item.py - flow_key property returns FlowKey\\n9. Added py.typed marker, updated __init__.py exports\\n10. Fixed test_flow_solver.py to use FlowKey\\n\\nCurrent issue: visual_sync_manager.py accesses flow_solver through hasattr checks on main_window, losing type info. The main_window is QWidget from .window(), not MainWindow.\"}",
+            "name": "compact"
+          },
+          "id": "toolu_vrtx_01FUEbYiwde9FND59V7cWRzy",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01FUEbYiwde9FND59V7cWRzy",
+      "content": "{\"compact\": true, \"from_id\": \"4\", \"success\": true, \"summary\": \"Implemented FlowKey dataclass refactor:\\n1. Created src/satisfactory_planner/core/flow_key.py with frozen FlowKey(element_id, placement_id) dataclass\\n2. Updated flow_models.py - FlowNode, FlowEdge, FlowGraph, BuildingEfficiency use FlowKey\\n3. Updated flow_builder.py - _make_flow_key() creates FlowKeys, element_id extracted for FatalError\\n4. Updated flow_lp_solver.py - SolvedModel dicts use FlowKey keys\\n5. Updated flow_solver.py - get_flow_rate/get_efficiency accept FlowKey\\n6. Updated detectors (dangling, overcapacity, underflow, info) - extract element_id for warnings\\n7. Updated properties_panel.py - _make_flow_key() helper for lookups\\n8. Updated belt_item.py and building_item.py - flow_key property returns FlowKey\\n9. Added py.typed marker, updated __init__.py exports\\n10. Fixed test_flow_solver.py to use FlowKey\\n\\nCurrent issue: visual_sync_manager.py accesses flow_solver through hasattr checks on main_window, losing type info. The main_window is QWidget from .window(), not MainWindow.\", \"to_id\": \"30\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "The issue is that `visual_sync_manager.py` accesses `main_window` via `.window()` which returns `QWidget`, and then uses `hasattr` checks to access `current_tab.flow_solver`. This bypasses mypy's type checking entirely.\n\nThe `SolvedModel.flows` dict uses `FlowKey` keys, but when accessed through untyped code paths, mypy can't verify that lookups use the correct key type.\n\nLet me look at the visual_sync_manager to fix this properly:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas/visual_sync_manager.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_0186miLehWRV5d2hEkDiHFd7",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_0186miLehWRV5d2hEkDiHFd7",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/visual_sync_manager.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I can see the issue clearly. In `visual_sync_manager.py`, the code does:\n\n```python\nmain_window = self.canvas.window()  # Returns QWidget, not MainWindow\nif not hasattr(main_window, \"current_tab\") or not main_window.current_tab:\n    return\nflow_solver = main_window.current_tab.flow_solver  # mypy sees this as Any\n```\n\nBecause `window()` returns `QWidget`, mypy doesn't know about `current_tab` or `flow_solver`, so all subsequent accesses are `Any` typed - no type checking happens!\n\nThe fix is to add a proper type narrowing. Let me also check if there's a similar issue in `building_item.py` (the `_update_efficiency_from_solver` method). Yes, same pattern there.\n\nLet me fix both by importing `MainWindow` and using `isinstance` checks:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/visual_sync_manager.py\">\n<search>\nfrom satisfactory_planner.ui.items.warning_icon_item import WarningIconItem\n\nif TYPE_CHECKING:\n    from collections.abc import Iterator\n    from typing import Protocol\n\n    from satisfactory_planner.ui.canvas.factory_canvas import FactoryCanvas\n    from satisfactory_planner.ui.items.room_item import RoomItem\n</search>\n<replace>\nfrom satisfactory_planner.ui.items.warning_icon_item import WarningIconItem\n\nif TYPE_CHECKING:\n    from collections.abc import Iterator\n    from typing import Protocol\n\n    from satisfactory_planner.ui.canvas.factory_canvas import FactoryCanvas\n    from satisfactory_planner.ui.items.room_item import RoomItem\n    from satisfactory_planner.ui.main_window import MainWindow\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/visual_sync_manager.py\">\n<search>\n    def update_flow_visualization(self) -> None:\n        \"\"\"Update visual state of items based on flow solver results.\n\n        Iterates visual items and lets each look up its own flow data using\n        its flow_key (which includes placement_id for items inside rooms).\n        \"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        main_window = self.canvas.window()\n        if not hasattr(main_window, \"current_tab\") or not main_window.current_tab:\n            return\n\n        flow_solver = main_window.current_tab.flow_solver\n        solved = flow_solver and flow_solver._solved_model\n</search>\n<replace>\n    def update_flow_visualization(self) -> None:\n        \"\"\"Update visual state of items based on flow solver results.\n\n        Iterates visual items and lets each look up its own flow data using\n        its flow_key (which includes placement_id for items inside rooms).\n        \"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n        from satisfactory_planner.ui.main_window import MainWindow\n\n        main_window = self.canvas.window()\n        if not isinstance(main_window, MainWindow) or not main_window.current_tab:\n            return\n\n        flow_solver = main_window.current_tab.flow_solver\n        solved = flow_solver._solved_model if flow_solver else None\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/items/building_item.py\">\n<search>\n    def _update_efficiency_from_solver(self) -> None:\n        \"\"\"Fetch efficiency from flow solver.\"\"\"\n        main_window = self.canvas.window()\n        if not hasattr(main_window, \"current_tab\") or not main_window.current_tab:\n            return\n\n        flow_solver = main_window.current_tab.flow_solver\n        if flow_solver:\n            eff = flow_solver.get_efficiency(self.flow_key)\n            if eff:\n                self.set_efficiency(eff.duty_cycle)\n            else:\n                self.set_efficiency(None)\n</search>\n<replace>\n    def _update_efficiency_from_solver(self) -> None:\n        \"\"\"Fetch efficiency from flow solver.\"\"\"\n        from satisfactory_planner.ui.main_window import MainWindow\n\n        main_window = self.canvas.window()\n        if not isinstance(main_window, MainWindow) or not main_window.current_tab:\n            return\n\n        flow_solver = main_window.current_tab.flow_solver\n        if flow_solver:\n            eff = flow_solver.get_efficiency(self.flow_key)\n            if eff:\n                self.set_efficiency(eff.duty_cycle)\n            else:\n                self.set_efficiency(None)\n</replace>\n</edit>\n\n<check/>\n\n<commit message=\"Fix type safety for flow_solver access via MainWindow\n\n- Use isinstance(main_window, MainWindow) instead of hasattr checks\n- This enables mypy to properly type-check FlowKey usage\n- Fixes visual_sync_manager.py and building_item.py\"/>\n\nNow mypy will properly check that `FlowKey` is used correctly when accessing `flow_solver.get_flow_rate()` and the `solved.flows` dict. The `isinstance` check narrows the type so mypy knows `main_window.current_tab.flow_solver` is a `FlowSolver`.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/visual_sync_manager.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/visual_sync_manager.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/visual_sync_manager.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/visual_sync_manager.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/building_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/building_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "commit": "8e47d2f844c9",
           "message": "Committed: 2 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
