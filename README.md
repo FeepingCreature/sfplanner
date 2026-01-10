@@ -6,6 +6,12 @@ A PCB-style factory floor planner for [Satisfactory](https://www.satisfactorygam
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![PySide6](https://img.shields.io/badge/GUI-PySide6-orange)
 
+![Screenshot](screenshot.png)
+
+## AI Notice
+
+Written almost entirely by Claude Opus 4.5. Impressive work, Opus!
+
 ## Features
 
 - **Visual Factory Designer** — Drag-and-drop placement of buildings (Smelters, Assemblers, Miners, etc.) with automatic Dubins-curve belt routing
