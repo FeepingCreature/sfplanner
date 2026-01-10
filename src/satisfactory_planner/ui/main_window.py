@@ -347,6 +347,11 @@ class MainWindow(QMainWindow):
         canvas = FactoryCanvas(tab.document, tab.command_stack)
         tab.canvas = canvas
 
+        # Sync canvas visualization state with toolbar toggles (if toolbar exists)
+        if hasattr(self, "show_flow_rates_action"):
+            canvas.set_show_flow_rate(self.show_flow_rates_action.isChecked())
+            canvas.set_show_efficiency(self.show_bottlenecks_action.isChecked())
+
         # Connect signals
         canvas.selection_changed.connect(self.properties_panel.set_selection)
         canvas.selection_changed.connect(self._update_selection_actions)
@@ -444,6 +449,10 @@ class MainWindow(QMainWindow):
 
             canvas = FactoryCanvas(tab.document, tab.command_stack)
             tab.canvas = canvas
+
+            # Sync canvas visualization state with toolbar toggles
+            canvas.set_show_flow_rate(self.show_flow_rates_action.isChecked())
+            canvas.set_show_efficiency(self.show_bottlenecks_action.isChecked())
 
             # Refresh canvas to show loaded buildings/belts
             canvas.refresh()
