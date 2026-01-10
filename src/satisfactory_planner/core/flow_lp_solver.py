@@ -6,6 +6,7 @@ Uses pylinprog (pure Python simplex) instead of scipy for smaller package size.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 
 from satisfactory_planner.core.flow_models import (
@@ -19,6 +20,8 @@ from satisfactory_planner.core.flow_models import (
     NodeType,
 )
 from satisfactory_planner.core.linprog import RESOLUTION_SOLVED, linsolve
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -133,6 +136,29 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
     Returns:
         (success, flows, error_message)
     """
+    logger.info("=" * 60)
+    logger.info(f"LP SOLVE (belt_limits={use_belt_limits})")
+    logger.info("=" * 60)
+
+    # Log graph structure
+    logger.info("NODES:")
+    for node_id, node in graph.nodes.items():
+        inputs_str = ", ".join(f"{p.item_id}@{p.rate}/min" for p in node.inputs)
+        outputs_str = ", ".join(f"{p.item_id}@{p.rate}/min" for p in node.outputs)
+        logger.info(f"  {node_id}: {node.node_type.name}")
+        if inputs_str:
+            logger.info(f"    inputs: [{inputs_str}]")
+        if outputs_str:
+            logger.info(f"    outputs: [{outputs_str}]")
+
+    logger.info("EDGES:")
+    for edge_id, edge in graph.edges.items():
+        logger.info(
+            f"  {edge_id}: {edge.source_node_id}[{edge.source_port_index}] "
+            f"-> {edge.dest_node_id}[{edge.dest_port_index}] "
+            f"(cap={edge.capacity}, item={edge.item_id})"
+        )
+
     # Create edge index mapping
     edge_ids = list(graph.edges.keys())
     edge_to_idx = {eid: i for i, eid in enumerate(edge_ids)}
@@ -144,6 +170,9 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
     equality_rhs: list[float] = []
     inequality_rows: list[list[float]] = []
     inequality_rhs: list[float] = []
+    # Track constraint descriptions for logging
+    constraint_descriptions: list[str] = []
+    eq_constraint_descriptions: list[str] = []
 
     for node_id, node in graph.nodes.items():
         incoming = graph.get_incoming_edges(node_id)
@@ -158,6 +187,9 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                     row[edge_to_idx[out_edge.id]] = 1.0
                     inequality_rows.append(row)
                     inequality_rhs.append(node.outputs[i].rate)
+                    constraint_descriptions.append(
+                        f"MINER {node_id}: edge[{out_edge.id}] <= {node.outputs[i].rate}"
+                    )
 
         elif node.node_type == NodeType.PRODUCER:
             # Producer: outputs are LIMITED by downstream demand (inequality)
@@ -170,12 +202,18 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                         row[edge_to_idx[out_edge.id]] = 1.0
                         inequality_rows.append(row)
                         inequality_rhs.append(demand)
+                        constraint_descriptions.append(
+                            f"PRODUCER {node_id}: edge[{out_edge.id}] <= downstream_demand({demand})"
+                        )
 
                     # Output also can't exceed production capacity
                     row = [0.0] * n_edges
                     row[edge_to_idx[out_edge.id]] = 1.0
                     inequality_rows.append(row)
                     inequality_rhs.append(node.outputs[i].rate)
+                    constraint_descriptions.append(
+                        f"PRODUCER {node_id}: edge[{out_edge.id}] <= production_cap({node.outputs[i].rate})"
+                    )
 
             if not incoming:
                 # No input constraints - treat as source
@@ -188,6 +226,9 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                         row[edge_to_idx[in_edge.id]] = 1.0
                         inequality_rows.append(row)
                         inequality_rhs.append(node.inputs[i].rate)
+                        constraint_descriptions.append(
+                            f"PRODUCER {node_id}: edge[{in_edge.id}] <= input_cap({node.inputs[i].rate})"
+                        )
 
                 # Recipe ratio constraint
                 if outgoing and node.inputs and node.outputs:
@@ -201,6 +242,9 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                         row[edge_to_idx[ref_out_edge.id]] = -ref_in_rate
                         equality_rows.append(row)
                         equality_rhs.append(0.0)
+                        eq_constraint_descriptions.append(
+                            f"PRODUCER {node_id}: {ref_out_rate}*in[{ref_in_edge.id}] = {ref_in_rate}*out[{ref_out_edge.id}] (ratio)"
+                        )
 
         elif node.node_type == NodeType.SPLITTER:
             if incoming and outgoing:
@@ -212,6 +256,11 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                     row[edge_to_idx[in_edge.id]] = -1.0
                 equality_rows.append(row)
                 equality_rhs.append(0.0)
+                in_ids = [e.id for e in incoming]
+                out_ids = [e.id for e in outgoing]
+                eq_constraint_descriptions.append(
+                    f"SPLITTER {node_id}: sum(out[{out_ids}]) = sum(in[{in_ids}])"
+                )
 
                 # Each output is limited by downstream demand (or belt capacity)
                 # We DON'T force equal outputs - that breaks tree layouts
@@ -224,6 +273,9 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                         row[edge_to_idx[out_edge.id]] = 1.0
                         inequality_rows.append(row)
                         inequality_rhs.append(demand)
+                        constraint_descriptions.append(
+                            f"SPLITTER {node_id}: edge[{out_edge.id}] <= downstream_demand({demand})"
+                        )
 
         elif node.node_type == NodeType.MERGER:
             if incoming and outgoing:
@@ -234,6 +286,11 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                     row[edge_to_idx[out_edge.id]] = -1.0
                 equality_rows.append(row)
                 equality_rhs.append(0.0)
+                in_ids = [e.id for e in incoming]
+                out_ids = [e.id for e in outgoing]
+                eq_constraint_descriptions.append(
+                    f"MERGER {node_id}: sum(in[{in_ids}]) = sum(out[{out_ids}])"
+                )
 
         elif node.node_type == NodeType.SINK:
             # Sink inputs are limited by the port rate (which comes from max_rate)
@@ -243,6 +300,9 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                     row[edge_to_idx[in_edge.id]] = 1.0
                     inequality_rows.append(row)
                     inequality_rhs.append(node.inputs[i].rate)
+                    constraint_descriptions.append(
+                        f"SINK {node_id}: edge[{in_edge.id}] <= {node.inputs[i].rate}"
+                    )
 
         elif node.node_type in (NodeType.PORT_IN, NodeType.PORT_OUT) and incoming and outgoing:
             # Ports are pass-through: sum(inputs) = sum(outputs)
@@ -253,6 +313,11 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
                 row[edge_to_idx[out_edge.id]] = -1.0
             equality_rows.append(row)
             equality_rhs.append(0.0)
+            in_ids = [e.id for e in incoming]
+            out_ids = [e.id for e in outgoing]
+            eq_constraint_descriptions.append(
+                f"PORT {node_id}: sum(in[{in_ids}]) = sum(out[{out_ids}])"
+            )
 
     # Objective: maximize total flow (minimize negative flow)
     c = [-1.0] * n_edges
@@ -273,6 +338,16 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
         row[idx] = 1.0
         inequality_rows.append(row)
         inequality_rhs.append(upper_bound)
+        constraint_descriptions.append(f"EDGE {edge_id}: flow <= {upper_bound}")
+
+    # Log constraints
+    logger.info("INEQUALITY CONSTRAINTS (<=):")
+    for desc in constraint_descriptions:
+        logger.info(f"  {desc}")
+    logger.info("EQUALITY CONSTRAINTS (=):")
+    for desc in eq_constraint_descriptions:
+        logger.info(f"  {desc}")
+    logger.info(f"OBJECTIVE: maximize sum of all {n_edges} edge flows")
 
     # Solve using pylinprog (vendored, untyped)
     resolution, solution = linsolve(  # type: ignore[no-untyped-call]
@@ -310,6 +385,14 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[str, 
 
     # Extract flows
     flows = {edge_ids[i]: max(0.0, solution[i]) for i in range(n_edges)}
+
+    # Log results
+    logger.info("SOLUTION:")
+    for edge_id, flow in flows.items():
+        edge = graph.edges[edge_id]
+        logger.info(f"  {edge_id}: {flow:.2f}/min (capacity={edge.capacity})")
+    logger.info("=" * 60)
+
     return (True, flows, "")
 
 
