@@ -266,9 +266,15 @@ class BuildingItem(QGraphicsRectItem):
                 # For Source/Sink/Miner, use item_id field
                 recipe_text = self.building.item_id or "No Item"
             elif self.building.recipe_id:
-                # Look up recipe in document
+                # Look up recipe in document first, then base recipes
+                from satisfactory_planner.core import load_all_recipes
+
                 doc = self.canvas.document
                 recipe = doc.recipes.get(self.building.recipe_id)
+                if not recipe:
+                    # Try base recipes
+                    base_recipes = load_all_recipes()
+                    recipe = base_recipes.get(self.building.recipe_id)
                 recipe_text = recipe.name if recipe else "No Recipe"
             else:
                 recipe_text = "No Recipe"
