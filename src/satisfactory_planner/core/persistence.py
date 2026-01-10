@@ -149,13 +149,11 @@ def load_user_recipes() -> dict[RecipeId, Recipe]:
 
 
 def load_all_recipes() -> dict[RecipeId, Recipe]:
-    """Load all recipes (base game + user recipes).
+    """Load all recipes (base game only).
 
-    User recipes override base recipes with the same ID.
+    Custom/user recipes are stored per-document, not globally.
     """
-    recipes = load_base_recipes()
-    recipes.update(load_user_recipes())
-    return recipes
+    return load_base_recipes()
 
 
 def save_user_recipes(recipes: dict[RecipeId, Recipe]) -> None:

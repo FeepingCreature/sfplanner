@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 
 from satisfactory_planner.core import BuildingType, Document
 from satisfactory_planner.core.models import get_building_io_counts, get_building_power
-from satisfactory_planner.core.persistence import load_items, save_user_recipes
+from satisfactory_planner.core.persistence import load_items
 from satisfactory_planner.ui.widgets import SearchableComboBox
 
 
@@ -454,23 +454,11 @@ class RecipeEditorDialog(QDialog):
         self.recipe_list.takeItem(row)
 
     def accept(self) -> None:
-        """Save recipes to XDG before closing."""
-        from satisfactory_planner.core.models import Recipe, RecipeId
-
-        # Cast dict keys to RecipeId for type safety
-        recipes_typed: dict[RecipeId, Recipe] = {
-            RecipeId(k): v for k, v in self.document.recipes.items()
-        }
-        save_user_recipes(recipes_typed)
+        """Close the dialog - recipes are already saved to document."""
+        # Recipes are stored in document.recipes and saved with the document
         super().accept()
 
     def reject(self) -> None:
-        """Save recipes to XDG before closing (even on cancel/X)."""
-        from satisfactory_planner.core.models import Recipe, RecipeId
-
-        # Cast dict keys to RecipeId for type safety
-        recipes_typed: dict[RecipeId, Recipe] = {
-            RecipeId(k): v for k, v in self.document.recipes.items()
-        }
-        save_user_recipes(recipes_typed)
+        """Close the dialog - recipes are already saved to document."""
+        # Recipes are stored in document.recipes and saved with the document
         super().reject()

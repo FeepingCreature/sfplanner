@@ -620,6 +620,15 @@
       "streaming": true,
       "actual_cost": 0.6069075,
       "generation_id": "gen-1768080222-ekON0e8ES00KfzkUTOs9"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768080449593.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768080449593.json",
+      "timestamp": 1768080449.5947194,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.59652625,
+      "generation_id": "gen-1768080450-uxYoJY4Xf39QnOCqpteR"
     }
   ],
   "messages": [
@@ -2190,6 +2199,70 @@
         {
           "commit": "3230edd498be",
           "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 07fb9753",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "satisfactory_planner.core.persistence: Loaded user recipe: Iron Ingot (Iron Ingot) \nsatisfactory_planner.core.persistence: Loaded user recipe: Copper Ingot (Copper Ingot) \nsatisfactory_planner.core.persistence: Loaded user recipe: Iron Plate (Iron Plate) \nsatisfactory_planner.core.persistence: Loaded user recipe: Iron Rod (Iron Rod) \nsatisfactory_planner.core.persistence: Loaded user recipe: Screw (Screw) \nsatisfactory_planner.core.persistence: Loaded user recipe: Reinforced Iron Plate (Reinforced Iron Plate) \nsatisfactory_planner.core.persistence: Loaded user recipe: Rotor (Rotor) \nsatisfactory_planner.core.persistence: Loaded user recipe: Modular Frame (Modular Frame) \nsatisfactory_planner.core.persistence: Loaded user recipe: iron_ingot (Iron Ingot) \nsatisfactory_planner.core.persistence: Loaded user recipe: copper_ingot (Copper Ingot) \nsatisfactory_planner.core.persistence: Loaded user recipe: iron_plate (Iron Plate) \nsatisfactory_planner.core.persistence: Loaded user recipe: iron_rod (Iron Rod) \nsatisfactory_planner.core.persistence: Loaded user recipe: screw (Screw) \nsatisfactory_planner.core.persistence: Loaded user recipe: reinforced_iron_plate (Reinforced Iron Plate) \nsatisfactory_planner.core.persistence: Loaded user recipe: rotor (Rotor) \nsatisfactory_planner.core.persistence: Loaded user recipe: modular_frame (Modular Frame) \nsatisfactory_planner.core.persistence: Loaded user recipe: 05d404b6 (Iron Ingot) \nsatisfactory_planner.core.persistence: Loaded user recipe: _source_cae81963 (Source: Iron Ore)\n\nwhat..??\n\nthis came just from me opening a save file with weird custom recipes. We should probably always use the custom recipe list from the save file instead of a user list. also I'll just delete those idk where they're from."
+    },
+    {
+      "role": "assistant",
+      "content": "You're right - those are old recipes that got saved to the user recipes file. The issue is that the recipe editor saves to user_recipes.json, but those are duplicates of what's in game_data.json now.\n\nLet me fix this by:\n1. Not loading user recipes at all - just use base recipes + document recipes\n2. The recipe editor should only save to the document, not to user_recipes.json\n\n<edit file=\"src/satisfactory_planner/core/persistence.py\">\n<search>\ndef load_all_recipes() -> dict[RecipeId, Recipe]:\n    \"\"\"Load all recipes (base game + user recipes).\n\n    User recipes override base recipes with the same ID.\n    \"\"\"\n    recipes = load_base_recipes()\n    recipes.update(load_user_recipes())\n    return recipes\n</search>\n<replace>\ndef load_all_recipes() -> dict[RecipeId, Recipe]:\n    \"\"\"Load all recipes (base game only).\n\n    Custom/user recipes are stored per-document, not globally.\n    \"\"\"\n    return load_base_recipes()\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py\">\n<search>\n    def accept(self) -> None:\n        \"\"\"Save recipes to XDG before closing.\"\"\"\n        from satisfactory_planner.core.models import Recipe, RecipeId\n\n        # Cast dict keys to RecipeId for type safety\n        recipes_typed: dict[RecipeId, Recipe] = {\n            RecipeId(k): v for k, v in self.document.recipes.items()\n        }\n        save_user_recipes(recipes_typed)\n        super().accept()\n\n    def reject(self) -> None:\n        \"\"\"Save recipes to XDG before closing (even on cancel/X).\"\"\"\n        from satisfactory_planner.core.models import Recipe, RecipeId\n\n        # Cast dict keys to RecipeId for type safety\n        recipes_typed: dict[RecipeId, Recipe] = {\n            RecipeId(k): v for k, v in self.document.recipes.items()\n        }\n        save_user_recipes(recipes_typed)\n        super().reject()\n</search>\n<replace>\n    def accept(self) -> None:\n        \"\"\"Close the dialog - recipes are already saved to document.\"\"\"\n        # Recipes are stored in document.recipes and saved with the document\n        super().accept()\n\n    def reject(self) -> None:\n        \"\"\"Close the dialog - recipes are already saved to document.\"\"\"\n        # Recipes are stored in document.recipes and saved with the document\n        super().reject()\n</replace>\n</edit>\n\nAlso remove the unused import:\n\n<edit file=\"src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py\">\n<search>\nfrom satisfactory_planner.core.persistence import load_items, save_user_recipes\n</search>\n<replace>\nfrom satisfactory_planner.core.persistence import load_items\n</replace>\n</edit>\n\n<run_tests/>\n\n<commit message=\"Store custom recipes per-document instead of globally\n\n- Remove global user_recipes.json usage - recipes are now document-local\n- Recipe editor saves to document.recipes (persisted with .sfp file)\n- Base game recipes still loaded from game_data.json\n- This prevents duplicate/stale recipes from accumulating globally\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/core/persistence.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/persistence.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/dialogs/recipe_editor_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_irmuib18\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 50 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .........                            [ 36%]\ntests/test_core/test_models.py .........                                 [ 54%]\ntests/test_core/test_room_commands.py ..............                     [ 82%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 50 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_irmuib18\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_irmuib18\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 50 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .........                            [ 36%]\ntests/test_core/test_models.py .........                                 [ 54%]\ntests/test_core/test_room_commands.py ..............                     [ 82%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 50 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_irmuib18\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "b6776431be3d",
+          "message": "Committed: 2 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],
