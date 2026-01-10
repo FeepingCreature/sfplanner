@@ -465,14 +465,32 @@ class PropertiesPanel(QWidget):
 
                 # Set tier combo
                 self.tier_combo.setCurrentIndex(belt.tier - 1)
-                self.item_label.setText(belt.item_id or "(no item)")
+
+                # Get item type - try belt.item_id first, then infer from source building
+                item_display = belt.item_id
+                if not item_display:
+                    # Try to infer from source building's recipe
+                    scene = self._get_scene()
+                    source = scene.buildings.get(belt.source_building_id)
+                    if source and source.recipe_id:
+                        recipe = self.document.recipes.get(source.recipe_id)
+                        if recipe and recipe.outputs:
+                            item_display = (
+                                recipe.outputs[belt.source_port_index].item_id
+                                if belt.source_port_index < len(recipe.outputs)
+                                else None
+                            )
+                    elif source and source.item_id:
+                        # Source/Sink/Miner use item_id directly
+                        item_display = source.item_id
+                self.item_label.setText(item_display or "(unknown)")
 
                 # Get current flow from flow solver
                 flow_rate = self._get_belt_flow_rate(belt.id)
                 if flow_rate is not None:
                     self.current_flow_label.setText(f"{flow_rate:.1f}/min")
                 else:
-                    self.current_flow_label.setText("-")
+                    self.current_flow_label.setText("(run simulation)")
 
                 self.belt_group.show()
                 self.building_group.hide()

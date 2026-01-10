@@ -595,24 +595,30 @@ class MainWindow(QMainWindow):
         canvas = self.current_tab.canvas
         doc = self.current_tab.document
 
-        # Find the element (could be building or belt)
-        if element_id in doc.buildings:
+        # Handle composite IDs from room placements (format: "placement_id:building_id")
+        base_element_id = element_id.split(":")[-1] if ":" in element_id else element_id
+
+        # Find the element (could be building or belt in document or rooms)
+        building = doc.find_building(base_element_id)
+        belt = doc.find_belt(base_element_id)
+
+        if building:
             # Select and center on the building
             canvas.scene().clearSelection()
             for item in canvas.scene().items():
                 from satisfactory_planner.ui.items import BuildingItem
 
-                if isinstance(item, BuildingItem) and item.building.id == element_id:
+                if isinstance(item, BuildingItem) and item.building.id == base_element_id:
                     item.setSelected(True)
                     canvas.centerOn(item)
                     break
-        elif element_id in doc.belts:
+        elif belt:
             # Select and center on the belt
             canvas.scene().clearSelection()
             for item in canvas.scene().items():
                 from satisfactory_planner.ui.items import BeltItem
 
-                if isinstance(item, BeltItem) and item.belt.id == element_id:
+                if isinstance(item, BeltItem) and item.belt.id == base_element_id:
                     item.setSelected(True)
                     canvas.centerOn(item)
                     break
@@ -667,6 +673,7 @@ class MainWindow(QMainWindow):
             for tab in self.tabs:
                 if tab.canvas:
                     tab.canvas._grid_size = size
+                    tab.canvas.viewport().update()
         except ValueError:
             pass
 
