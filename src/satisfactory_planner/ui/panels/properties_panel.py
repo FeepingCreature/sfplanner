@@ -196,6 +196,29 @@ class PropertiesPanel(QWidget):
         layout.addWidget(self.belt_group)
         self.belt_group.hide()
 
+        # Logistics properties group (Splitter/Merger)
+        self.logistics_group = QGroupBox("Logistics Properties")
+        logistics_layout = QFormLayout(self.logistics_group)
+
+        # Item type (inferred from connections)
+        self.logistics_item_label = QLabel("-")
+        logistics_layout.addRow("Item:", self.logistics_item_label)
+
+        # Input flows
+        self.logistics_inputs_label = QLabel("-")
+        logistics_layout.addRow("Inputs:", self.logistics_inputs_label)
+
+        # Output flows
+        self.logistics_outputs_label = QLabel("-")
+        logistics_layout.addRow("Outputs:", self.logistics_outputs_label)
+
+        # Total throughput
+        self.logistics_total_label = QLabel("-")
+        logistics_layout.addRow("Total:", self.logistics_total_label)
+
+        layout.addWidget(self.logistics_group)
+        self.logistics_group.hide()
+
         # Room properties group
         self.room_group = QGroupBox("Room Properties")
         room_layout = QFormLayout(self.room_group)
@@ -353,6 +376,7 @@ class PropertiesPanel(QWidget):
             self.stats_group.hide()
             self.source_group.hide()
             self.room_group.hide()
+            self.logistics_group.hide()
             self._updating = False
             return
 
@@ -373,6 +397,7 @@ class PropertiesPanel(QWidget):
                     self.stats_group.hide()
                     self.source_group.hide()
                     self.room_group.hide()
+                    self.logistics_group.hide()
                     self._updating = False
                     return
 
@@ -426,6 +451,7 @@ class PropertiesPanel(QWidget):
                     self.source_group.show()
                     self.building_group.hide()  # Hide recipe selector
                     self.stats_group.hide()
+                    self.logistics_group.hide()
                 else:
                     # Update recipe combo filtered by building type
                     self._update_recipe_combo(building.building_type)
@@ -447,9 +473,13 @@ class PropertiesPanel(QWidget):
 
                     self.building_group.setVisible(not is_logistics)
                     self.stats_group.setVisible(not is_logistics)
+                    self.logistics_group.setVisible(is_logistics)
                     self.source_group.hide()
 
-                    if not is_logistics:
+                    if is_logistics:
+                        # Update logistics display (splitter/merger)
+                        self._update_logistics_display(building)
+                    else:
                         # Update stats from recipe
                         self._update_production_stats(building)
 
@@ -497,6 +527,7 @@ class PropertiesPanel(QWidget):
                 self.stats_group.hide()
                 self.source_group.hide()
                 self.room_group.hide()
+                self.logistics_group.hide()
             # Check if it's a room placement
             else:
                 room_info = self._get_selected_room_item()
@@ -524,6 +555,7 @@ class PropertiesPanel(QWidget):
                     self.building_group.hide()
                     self.belt_group.hide()
                     self.stats_group.hide()
+                    self.logistics_group.hide()
                 else:
                     # Unknown item type
                     self.selection_label.setText("Unknown item")
@@ -531,12 +563,14 @@ class PropertiesPanel(QWidget):
                     self.belt_group.hide()
                     self.room_group.hide()
                     self.stats_group.hide()
+                    self.logistics_group.hide()
         else:
             self.selection_label.setText(f"{len(self._selected_ids)} items selected")
             self.building_group.hide()
             self.belt_group.hide()
             self.room_group.hide()
             self.stats_group.hide()
+            self.logistics_group.hide()
 
         self._updating = False
 
@@ -722,6 +756,69 @@ class PropertiesPanel(QWidget):
         if belt:
             return self._get_belt_flow_rate(belt.id)
         return None
+
+    def _update_logistics_display(self, building: Building) -> None:
+        """Update the logistics panel for splitter/merger."""
+        scene = self._get_scene()
+
+        # Find connected belts and get flow rates
+        input_flows: list[tuple[int, str | None, float | None]] = []
+        output_flows: list[tuple[int, str | None, float | None]] = []
+        item_id: str | None = None
+
+        # Check all belts in the scene
+        for belt in scene.belts.values():
+            flow_rate = self._get_belt_flow_rate(belt.id)
+
+            if belt.dest_building_id == building.id:
+                # This is an input belt
+                input_flows.append((belt.dest_port_index, belt.item_id, flow_rate))
+                if belt.item_id:
+                    item_id = belt.item_id
+            elif belt.source_building_id == building.id:
+                # This is an output belt
+                output_flows.append((belt.source_port_index, belt.item_id, flow_rate))
+                if belt.item_id:
+                    item_id = belt.item_id
+
+        # Sort by port index
+        input_flows.sort(key=lambda x: x[0])
+        output_flows.sort(key=lambda x: x[0])
+
+        # Display item type
+        self.logistics_item_label.setText(item_id or "(unknown)")
+
+        # Display input flows
+        if input_flows:
+            input_strs = []
+            for port_idx, _item, flow in input_flows:
+                if flow is not None:
+                    input_strs.append(f"Port {port_idx}: {flow:.1f}/min")
+                else:
+                    input_strs.append(f"Port {port_idx}: -")
+            self.logistics_inputs_label.setText("\n".join(input_strs))
+        else:
+            self.logistics_inputs_label.setText("(none connected)")
+
+        # Display output flows
+        if output_flows:
+            output_strs = []
+            for port_idx, _item, flow in output_flows:
+                if flow is not None:
+                    output_strs.append(f"Port {port_idx}: {flow:.1f}/min")
+                else:
+                    output_strs.append(f"Port {port_idx}: -")
+            self.logistics_outputs_label.setText("\n".join(output_strs))
+        else:
+            self.logistics_outputs_label.setText("(none connected)")
+
+        # Display total throughput
+        total_in = sum(f for _, _, f in input_flows if f is not None)
+        total_out = sum(f for _, _, f in output_flows if f is not None)
+        if total_in > 0 or total_out > 0:
+            self.logistics_total_label.setText(f"In: {total_in:.1f}  Out: {total_out:.1f}/min")
+        else:
+            self.logistics_total_label.setText("-")
 
     def _update_production_stats(self, building: object) -> None:
         """Update input/output/power stats from recipe."""
