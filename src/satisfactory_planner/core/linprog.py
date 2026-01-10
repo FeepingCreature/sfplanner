@@ -290,29 +290,46 @@ def simplex_canonical_m(a, b, c, basis, num, verbose=False, do_coerce=True):
                 print("### Empty simplex")
             return RESOLUTION_INCOMPATIBLE, None
 
-    a = [a_row[:n] for a_row in m_solver.a]
+    # Trim artificial variable columns and handle degenerate rows
+    a_trimmed = []
+    b_trimmed = []
+    final_basis = []
     
-    # Replace any artificial variables still in basis with real variables
-    # (they have value 0, so we can pivot them out)
-    final_basis = m_solver.basis[:]
-    for j, bi in enumerate(final_basis):
+    for j, bi in enumerate(m_solver.basis):
+        row = m_solver.a[j][:n]  # Trim to real variables only
+        
         if bi >= n:
-            # Find a real variable to pivot in (any with non-zero coefficient in this row)
+            # Artificial variable in basis - need to replace or remove row
+            # Find a real variable with non-zero coefficient to pivot in
+            pivot_col = None
             for i in range(n):
-                if not num.iszero(a[j][i]) and i not in final_basis:
-                    final_basis[j] = i
+                if not num.iszero(row[i]) and i not in final_basis:
+                    pivot_col = i
                     break
+            
+            if pivot_col is not None:
+                # Can pivot this real variable into basis
+                a_trimmed.append(row)
+                b_trimmed.append(m_solver.b[j])
+                final_basis.append(pivot_col)
             else:
-                # No non-zero coefficient found - this row is all zeros
-                # The constraint is redundant, but we need a valid basis entry
-                # Use any variable not already in basis
-                for i in range(n):
-                    if i not in final_basis:
-                        final_basis[j] = i
-                        break
+                # Row is all zeros (or only has variables already in basis)
+                # This is a redundant constraint - skip it entirely
+                if verbose:
+                    print(f"### Removing redundant constraint row {j}")
+                continue
+        else:
+            # Real variable already in basis - keep the row
+            a_trimmed.append(row)
+            b_trimmed.append(m_solver.b[j])
+            final_basis.append(bi)
+    
+    if not a_trimmed:
+        # All constraints were redundant - trivial solution
+        return RESOLUTION_SOLVED, [num.zero()] * n
     
     return simplex_canonical(
-        a, m_solver.b, c, final_basis, num=num, verbose=verbose, do_coerce=False
+        a_trimmed, b_trimmed, c, final_basis, num=num, verbose=verbose, do_coerce=False
     )
 
 
