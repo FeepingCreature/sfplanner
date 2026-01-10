@@ -532,6 +532,79 @@ class TestFlowSolver:
             f"Expected item mismatch warning at merger, got: {[w.message for w in warnings]}"
         )
 
+    def test_sink_item_type_mismatch(self) -> None:
+        """Detects when a sink receives the wrong item type via splitter/merger.
+
+        Scenario: Miner(Iron Ore) -> Splitter -> Sink(expects Copper Ore)
+        Should produce an ITEM_MISMATCH error after type propagation.
+        """
+        doc = Document()
+
+        # Source of Iron Ore
+        miner = Building(
+            id="miner",
+            building_type=BuildingType.MINER,
+            x=0,
+            y=0,
+            item_id="Iron Ore",
+        )
+        doc.add_building(miner)
+
+        # Splitter (item type propagates through)
+        splitter = Building(
+            id="splitter",
+            building_type=BuildingType.SPLITTER,
+            x=100,
+            y=0,
+        )
+        doc.add_building(splitter)
+
+        # Sink expects Copper Ore but will receive Iron Ore
+        sink = Building(
+            id="sink",
+            building_type=BuildingType.SINK,
+            x=200,
+            y=0,
+            item_id="Copper Ore",
+        )
+        doc.add_building(sink)
+
+        # Connect: miner -> splitter -> sink
+        doc.add_belt(
+            Belt(
+                id="b1",
+                tier=1,
+                source_building_id="miner",
+                source_port_index=0,
+                dest_building_id="splitter",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b2",
+                tier=1,
+                source_building_id="splitter",
+                source_port_index=0,
+                dest_building_id="sink",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc)
+        warnings = solver.solve()
+
+        # Should detect item mismatch at sink
+        mismatch_warnings = [w for w in warnings if w.type == WarningType.ITEM_MISMATCH]
+        assert len(mismatch_warnings) > 0, (
+            f"Expected item mismatch warning at sink, got: {[w.message for w in warnings]}"
+        )
+
+        # Should mention both item types
+        assert any(
+            "Iron Ore" in w.message and "Copper Ore" in w.message for w in mismatch_warnings
+        ), f"Warning should mention both items: {mismatch_warnings[0].message}"
+
     def test_two_pass_detects_belt_bottleneck(self) -> None:
         """Two-pass solver detects belt bottlenecks by comparing theoretical vs actual.
 

@@ -331,7 +331,49 @@ def build_flow_graph(document: Document, recipes: dict[RecipeId, Recipe]) -> Bui
     if errors:
         return BuildResult(errors=errors)
 
+    # Phase: Check sink item type mismatches
+    # After propagation, we can detect if a sink receives the wrong item type
+    sink_errors = _check_sink_item_types(graph)
+    errors.extend(sink_errors)
+
+    if errors:
+        return BuildResult(errors=errors)
+
     return BuildResult(graph=graph)
+
+
+def _check_sink_item_types(graph: FlowGraph) -> list[FatalError]:
+    """Check that sinks receive the correct item type.
+
+    After item type propagation, verify that each sink's expected item
+    matches what's actually flowing into it.
+    """
+    errors: list[FatalError] = []
+
+    for node in graph.nodes.values():
+        if node.node_type != NodeType.SINK:
+            continue
+
+        # Get the sink's expected item type (from its input port)
+        if not node.inputs:
+            continue
+        expected_item = node.inputs[0].item_name
+        if expected_item is None:
+            continue  # Sink has no item configured
+
+        # Check all incoming edges
+        incoming = graph.get_incoming_edges(node.id)
+        for edge in incoming:
+            if edge.item_name is not None and edge.item_name != expected_item:
+                errors.append(
+                    FatalError(
+                        error_type=FatalErrorType.ITEM_MISMATCH,
+                        message=(f"Sink expects {expected_item}, but receives {edge.item_name}"),
+                        item_key=edge.id,
+                    )
+                )
+
+    return errors
 
 
 def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
@@ -346,9 +388,16 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
     """
     errors: list[FatalError] = []
 
-    # Count logistics nodes for convergence check (includes PORT_IN/PORT_OUT)
+    # Count total edges + logistics ports for convergence check
+    # Each iteration should set at least one item_name, so max iterations is
+    # the number of things that can be updated (edges + logistics ports)
     logistics_types = (NodeType.SPLITTER, NodeType.MERGER, NodeType.PORT_IN, NodeType.PORT_OUT)
-    logistics_count = sum(1 for n in graph.nodes.values() if n.node_type in logistics_types)
+    total_logistics_ports = sum(
+        len(n.inputs) + len(n.outputs)
+        for n in graph.nodes.values()
+        if n.node_type in logistics_types
+    )
+    max_iterations = len(graph.edges) + total_logistics_ports + 1
 
     # Iterate until no more changes
     changed = True
@@ -358,8 +407,8 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
         changed = False
         iteration += 1
 
-        # Safety check: should never exceed logistics node count
-        if iteration > logistics_count + 1:
+        # Safety check: should never need more iterations than items to update
+        if iteration > max_iterations:
             # This indicates a bug in the algorithm, not user error
             raise RuntimeError(
                 f"Item type propagation failed to converge after {iteration} iterations. "
@@ -371,22 +420,33 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
             if edge.item_name is not None:
                 continue  # Already has item type
 
+            new_item_name: str | None = None
+
             # Check if source node knows its output item type
             source_node = graph.nodes.get(edge.source_node_id)
             if source_node and edge.source_port_index < len(source_node.outputs):
                 source_item = source_node.outputs[edge.source_port_index].item_name
                 if source_item is not None:
-                    edge.item_name = source_item
-                    changed = True
-                    continue
+                    new_item_name = source_item
 
             # Check if dest node knows its input item type
-            dest_node = graph.nodes.get(edge.dest_node_id)
-            if dest_node and edge.dest_port_index < len(dest_node.inputs):
-                dest_item = dest_node.inputs[edge.dest_port_index].item_name
-                if dest_item is not None:
-                    edge.item_name = dest_item
-                    changed = True
+            # (but NOT for sinks - we want to detect mismatches, not propagate sink's expected type)
+            if new_item_name is None:
+                dest_node = graph.nodes.get(edge.dest_node_id)
+                is_non_sink_with_input = (
+                    dest_node is not None
+                    and dest_node.node_type != NodeType.SINK
+                    and edge.dest_port_index < len(dest_node.inputs)
+                )
+                if is_non_sink_with_input:
+                    assert dest_node is not None  # for type checker
+                    dest_item = dest_node.inputs[edge.dest_port_index].item_name
+                    if dest_item is not None:
+                        new_item_name = dest_item
+
+            if new_item_name is not None:
+                edge.item_name = new_item_name
+                changed = True
 
         # Step 2: Update splitter/merger ports from connected edges
         for node in graph.nodes.values():
@@ -408,16 +468,16 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
                             break
 
                 if item_name is not None:
-                    # Update all ports with this item type
+                    # Update all ports with this item type (only if not already set)
                     for port in node.inputs:
-                        if port.item_name != item_name:
+                        if port.item_name is None:
                             port.item_name = item_name
-                            port.rate = 100000.0  # High capacity
+                            port.rate = 100000.0
                             changed = True
                     for port in node.outputs:
-                        if port.item_name != item_name:
+                        if port.item_name is None:
                             port.item_name = item_name
-                            port.rate = 100000.0  # High capacity
+                            port.rate = 100000.0
                             changed = True
 
             elif node.node_type in (NodeType.MERGER, NodeType.PORT_IN, NodeType.PORT_OUT):
@@ -464,12 +524,12 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
                 if item_name is not None:
                     # Update all ports with this item type
                     for port in node.inputs:
-                        if port.item_name != item_name:
+                        if port.item_name is None:
                             port.item_name = item_name
                             port.rate = 100000.0  # High capacity
                             changed = True
                     for port in node.outputs:
-                        if port.item_name != item_name:
+                        if port.item_name is None:
                             port.item_name = item_name
                             port.rate = 100000.0  # High capacity
                             changed = True
@@ -598,11 +658,17 @@ def _build_scene(
         source_item_id = _get_port_item_id(source_building, False, source_port_idx, recipes)
         dest_item_id = _get_port_item_id(dest_building, True, dest_port_idx, recipes)
 
-        # Check item type mismatch (only if both are known)
+        # Don't use sink's expected item as edge item_name - we want to detect mismatches later
+        # after propagation reveals what's actually flowing into the sink
+        dest_item_for_edge = (
+            None if dest_building.building_type == BuildingType.SINK else dest_item_id
+        )
+
+        # Check item type mismatch (only if both are known, and dest isn't a sink)
         if (
             source_item_id is not None
-            and dest_item_id is not None
-            and source_item_id != dest_item_id
+            and dest_item_for_edge is not None
+            and source_item_id != dest_item_for_edge
         ):
             # Get building names for clearer message
             src_name = source_building.building_type.value
@@ -625,7 +691,8 @@ def _build_scene(
             continue
 
         # Determine the item name for this edge
-        item_name = source_item_id or dest_item_id
+        # Use dest_item_for_edge to avoid using sink's expected item
+        item_name = source_item_id or dest_item_for_edge
 
         # Use ItemKeys for buildings in room placements
         # For endpoints resolved to room PORTs, use the placement_id from resolution
