@@ -26,8 +26,8 @@ def detect_dangling_ports(graph: FlowGraph) -> list[Warning]:
 
         unconnected_inputs: list[str] = []
         for i, input_port in enumerate(node.inputs):
-            if i not in connected_input_indices and input_port.item_id:
-                unconnected_inputs.append(input_port.item_id)
+            if i not in connected_input_indices and input_port.item_name:
+                unconnected_inputs.append(input_port.item_name)
 
         if unconnected_inputs and not incoming:
             items = ", ".join(unconnected_inputs)
@@ -56,8 +56,8 @@ def detect_dangling_ports(graph: FlowGraph) -> list[Warning]:
 
         unconnected_outputs: list[str] = []
         for i, output_port in enumerate(node.outputs):
-            if i not in connected_output_indices and output_port.item_id:
-                unconnected_outputs.append(output_port.item_id)
+            if i not in connected_output_indices and output_port.item_name:
+                unconnected_outputs.append(output_port.item_name)
 
         if unconnected_outputs and not outgoing:
             items = ", ".join(unconnected_outputs)

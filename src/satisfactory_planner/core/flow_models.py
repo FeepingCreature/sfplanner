@@ -38,7 +38,7 @@ class NodeType(Enum):
 class FlowPort:
     """A single input or output port on a flow node."""
 
-    item_id: str | None  # Item type (None if not yet determined)
+    item_name: str | None  # Item name like "Iron Ore" (None if not yet determined)
     rate: float  # Desired rate (items/min)
     actual_rate: float = 0.0  # Actual flow rate after simulation
 
@@ -79,7 +79,7 @@ class FlowEdge:
     dest_node_id: ItemKey
     dest_port_index: int
     capacity: float  # items/min (from belt tier)
-    item_id: str | None = None  # Item type (inferred from source)
+    item_name: str | None = None  # Item name like "Iron Ore" (inferred from source)
 
 
 @dataclass

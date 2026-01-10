@@ -169,12 +169,12 @@ def _write_dot_file(
         in_ports = []
         for i, p in enumerate(node.inputs):
             rate_str = f"{p.rate:.0f}" if p.rate < 10000 else "∞"
-            in_ports.append(f"IN{i}: {p.item_id or '?'}@{rate_str}")
+            in_ports.append(f"IN{i}: {p.item_name or '?'}@{rate_str}")
 
         out_ports = []
         for i, p in enumerate(node.outputs):
             rate_str = f"{p.rate:.0f}" if p.rate < 10000 else "∞"
-            out_ports.append(f"OUT{i}: {p.item_id or '?'}@{rate_str}")
+            out_ports.append(f"OUT{i}: {p.item_name or '?'}@{rate_str}")
 
         # Recipe info for producers
         recipe_str = ""
@@ -233,7 +233,7 @@ def _write_dot_file(
 
         # Label with all the info
         label_parts = [
-            f"{edge.item_id or '?'}",
+            f"{edge.item_name or '?'}",
             f"actual: {actual:.1f}/min",
             f"cap: {cap}/min",
         ]
@@ -462,8 +462,8 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
             diag_lines.append("")
             diag_lines.append("Nodes in graph:")
             for _node_id, node in graph.nodes.items():
-                node_in = [f"{p.item_id}@{p.rate}/min" for p in node.inputs]
-                node_out = [f"{p.item_id}@{p.rate}/min" for p in node.outputs]
+                node_in = [f"{p.item_name}@{p.rate}/min" for p in node.inputs]
+                node_out = [f"{p.item_name}@{p.rate}/min" for p in node.outputs]
                 diag_lines.append(f"  {node.node_type.name}: in={node_in} out={node_out}")
             msg = "\n".join(diag_lines)
         else:
@@ -540,7 +540,7 @@ def _find_limiting_factor(
                     )
                 return (
                     LimitingFactor.INPUT_STARVED,
-                    f"Input {node.inputs[i].item_id}: getting {actual_input:.1f}, need {node.inputs[i].rate:.1f}/min",
+                    f"Input {node.inputs[i].item_name}: getting {actual_input:.1f}, need {node.inputs[i].rate:.1f}/min",
                 )
 
     # Check if downstream-limited

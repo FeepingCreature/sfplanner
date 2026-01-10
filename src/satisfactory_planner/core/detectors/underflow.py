@@ -44,7 +44,7 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                     warnings.append(
                         Warning(
                             type=WarningType.RESOURCE_UNDERFLOW,
-                            message=f"{node_id}: input {i} ({input_port.item_id}) not connected",
+                            message=f"{node_id}: input {i} ({input_port.item_name}) not connected",
                             item_key=node_id,
                             severity=1.0,
                         )
@@ -66,7 +66,7 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 warnings.append(
                     Warning(
                         type=WarningType.RESOURCE_UNDERFLOW,
-                        message=f"{node_id}: input {i} ({input_port.item_id}) not connected",
+                        message=f"{node_id}: input {i} ({input_port.item_name}) not connected",
                         item_key=node_id,
                         severity=1.0,
                     )
@@ -81,7 +81,7 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 warnings.append(
                     Warning(
                         type=WarningType.RESOURCE_UNDERFLOW,
-                        message=f"{node_id}: {input_port.item_id} {actual_flow:.1f} < {demanded:.1f}/min demanded",
+                        message=f"{node_id}: {input_port.item_name} {actual_flow:.1f} < {demanded:.1f}/min demanded",
                         item_key=node_id,
                         severity=(demanded - actual_flow) / demanded,
                         caused_by=caused_by,
@@ -127,7 +127,7 @@ def _build_causal_chain(
 
     if source_node.node_type == NodeType.PRODUCER:
         for output in source_node.outputs:
-            if output.item_id == edge.item_id and output.rate < demanded:
+            if output.item_name == edge.item_name and output.rate < demanded:
                 causes.append(
                     Warning(
                         type=WarningType.PRODUCTION_UNDERFLOW,

@@ -103,7 +103,11 @@ def _has_upstream_overcapacity(
     incoming = model.graph.get_incoming_edges(source_node.id)
 
     for in_edge in incoming:
-        if in_edge.item_id == edge.item_id or in_edge.item_id is None or edge.item_id is None:
+        if (
+            in_edge.item_name == edge.item_name
+            or in_edge.item_name is None
+            or edge.item_name is None
+        ):
             if in_edge.id in overcap_edges:
                 return True
             if _has_upstream_overcapacity(model, in_edge.id, overcap_edges, visited):

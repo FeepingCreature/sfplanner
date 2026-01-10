@@ -734,7 +734,7 @@ class PropertiesPanel(QWidget):
             key = self._make_item_key(belt_id)
             edge = flow_solver._solved_model.graph.edges.get(key)
             if edge:
-                return edge.item_id
+                return edge.item_name
         return None
 
     def _get_belt_flow_rate(self, belt_id: str) -> float | None:

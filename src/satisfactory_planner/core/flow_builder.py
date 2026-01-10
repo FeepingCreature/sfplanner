@@ -126,46 +126,46 @@ def _build_flow_ports(
     # Use max_rate if set, otherwise "infinite" (100000)
     if building.building_type == BuildingType.SOURCE:
         rate = building.max_rate if building.max_rate is not None else 100000.0
-        outputs.append(FlowPort(item_id=building.item_id, rate=rate))
+        outputs.append(FlowPort(item_name=building.item_id, rate=rate))
         return inputs, outputs
 
     # Sink: single input using item_id field
     # Use max_rate if set, otherwise "infinite" (100000)
     if building.building_type == BuildingType.SINK:
         rate = building.max_rate if building.max_rate is not None else 100000.0
-        inputs.append(FlowPort(item_id=building.item_id, rate=rate))
+        inputs.append(FlowPort(item_name=building.item_id, rate=rate))
         return inputs, outputs
 
     # Miner: single output with tier-based rate using item_id field
     if building.building_type == BuildingType.MINER:
         base_rate = MINER_RATES.get(building.tier, 60)
         rate = base_rate * building.clock_speed
-        outputs.append(FlowPort(item_id=building.item_id, rate=rate))
+        outputs.append(FlowPort(item_name=building.item_id, rate=rate))
         return inputs, outputs
 
     # PORT_IN/PORT_OUT: pass-through with 1 input and 1 output
     # Item type is determined by connected belts (like splitters/mergers)
     if building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT):
-        inputs.append(FlowPort(item_id=None, rate=0))
-        outputs.append(FlowPort(item_id=None, rate=0))
+        inputs.append(FlowPort(item_name=None, rate=0))
+        outputs.append(FlowPort(item_name=None, rate=0))
         return inputs, outputs
 
     if building.recipe_id and building.recipe_id in recipes:
         recipe = recipes[building.recipe_id].scaled(building.clock_speed)
         for item_rate in recipe.inputs:
-            inputs.append(FlowPort(item_id=item_rate.item_id, rate=item_rate.rate))
+            inputs.append(FlowPort(item_name=item_rate.item_id, rate=item_rate.rate))
         for item_rate in recipe.outputs:
-            outputs.append(FlowPort(item_id=item_rate.item_id, rate=item_rate.rate))
+            outputs.append(FlowPort(item_name=item_rate.item_id, rate=item_rate.rate))
     elif building.building_type == BuildingType.SPLITTER:
         # Splitter: 1 input, 3 outputs (item type determined by connection)
-        inputs.append(FlowPort(item_id=None, rate=0))
+        inputs.append(FlowPort(item_name=None, rate=0))
         for _ in range(3):
-            outputs.append(FlowPort(item_id=None, rate=0))
+            outputs.append(FlowPort(item_name=None, rate=0))
     elif building.building_type == BuildingType.MERGER:
         # Merger: 3 inputs, 1 output (item type determined by connection)
         for _ in range(3):
-            inputs.append(FlowPort(item_id=None, rate=0))
-        outputs.append(FlowPort(item_id=None, rate=0))
+            inputs.append(FlowPort(item_name=None, rate=0))
+        outputs.append(FlowPort(item_name=None, rate=0))
 
     return inputs, outputs
 
@@ -368,24 +368,24 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
 
         # Step 1: Propagate item types along edges from known nodes
         for edge in graph.edges.values():
-            if edge.item_id is not None:
+            if edge.item_name is not None:
                 continue  # Already has item type
 
             # Check if source node knows its output item type
             source_node = graph.nodes.get(edge.source_node_id)
             if source_node and edge.source_port_index < len(source_node.outputs):
-                source_item = source_node.outputs[edge.source_port_index].item_id
+                source_item = source_node.outputs[edge.source_port_index].item_name
                 if source_item is not None:
-                    edge.item_id = source_item
+                    edge.item_name = source_item
                     changed = True
                     continue
 
             # Check if dest node knows its input item type
             dest_node = graph.nodes.get(edge.dest_node_id)
             if dest_node and edge.dest_port_index < len(dest_node.inputs):
-                dest_item = dest_node.inputs[edge.dest_port_index].item_id
+                dest_item = dest_node.inputs[edge.dest_port_index].item_name
                 if dest_item is not None:
-                    edge.item_id = dest_item
+                    edge.item_name = dest_item
                     changed = True
 
         # Step 2: Update splitter/merger ports from connected edges
@@ -393,40 +393,40 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
             if node.node_type == NodeType.SPLITTER:
                 # Get item type from incoming edge
                 incoming = graph.get_incoming_edges(node.id)
-                item_id = None
+                item_name = None
                 for edge in incoming:
-                    if edge.item_id is not None:
-                        item_id = edge.item_id
+                    if edge.item_name is not None:
+                        item_name = edge.item_name
                         break
 
                 # Also check outgoing edges
-                if item_id is None:
+                if item_name is None:
                     outgoing = graph.get_outgoing_edges(node.id)
                     for edge in outgoing:
-                        if edge.item_id is not None:
-                            item_id = edge.item_id
+                        if edge.item_name is not None:
+                            item_name = edge.item_name
                             break
 
-                if item_id is not None:
+                if item_name is not None:
                     # Update all ports with this item type
                     for port in node.inputs:
-                        if port.item_id != item_id:
-                            port.item_id = item_id
+                        if port.item_name != item_name:
+                            port.item_name = item_name
                             port.rate = 100000.0  # High capacity
                             changed = True
                     for port in node.outputs:
-                        if port.item_id != item_id:
-                            port.item_id = item_id
+                        if port.item_name != item_name:
+                            port.item_name = item_name
                             port.rate = 100000.0  # High capacity
                             changed = True
 
             elif node.node_type in (NodeType.MERGER, NodeType.PORT_IN, NodeType.PORT_OUT):
                 # Get item types from all incoming edges
                 incoming = graph.get_incoming_edges(node.id)
-                incoming_item_ids = {e.item_id for e in incoming if e.item_id is not None}
+                incoming_item_names = {e.item_name for e in incoming if e.item_name is not None}
 
                 # Check for merger type conflict (only report once per merger)
-                if node.node_type == NodeType.MERGER and len(incoming_item_ids) > 1:
+                if node.node_type == NodeType.MERGER and len(incoming_item_names) > 1:
                     # Check if we already reported this merger
                     already_reported = any(
                         e.item_key == node.id
@@ -437,8 +437,10 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
                         # Build detailed message showing which belts bring which items
                         details = []
                         for edge in incoming:
-                            if edge.item_id:
-                                details.append(f"  • Input {edge.dest_port_index}: {edge.item_id}")
+                            if edge.item_name:
+                                details.append(
+                                    f"  • Input {edge.dest_port_index}: {edge.item_name}"
+                                )
                         detail_str = "\n".join(details)
                         errors.append(
                             FatalError(
@@ -449,26 +451,26 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
                         )
                     continue  # Don't propagate conflicting types
 
-                item_id = next(iter(incoming_item_ids), None)
+                item_name = next(iter(incoming_item_names), None)
 
                 # Also check outgoing edge
-                if item_id is None:
+                if item_name is None:
                     outgoing = graph.get_outgoing_edges(node.id)
                     for edge in outgoing:
-                        if edge.item_id is not None:
-                            item_id = edge.item_id
+                        if edge.item_name is not None:
+                            item_name = edge.item_name
                             break
 
-                if item_id is not None:
+                if item_name is not None:
                     # Update all ports with this item type
                     for port in node.inputs:
-                        if port.item_id != item_id:
-                            port.item_id = item_id
+                        if port.item_name != item_name:
+                            port.item_name = item_name
                             port.rate = 100000.0  # High capacity
                             changed = True
                     for port in node.outputs:
-                        if port.item_id != item_id:
-                            port.item_id = item_id
+                        if port.item_name != item_name:
+                            port.item_name = item_name
                             port.rate = 100000.0  # High capacity
                             changed = True
 
@@ -622,8 +624,8 @@ def _build_scene(
             )
             continue
 
-        # Determine the item type for this edge
-        item_id = source_item_id or dest_item_id
+        # Determine the item name for this edge
+        item_name = source_item_id or dest_item_id
 
         # Use ItemKeys for buildings in room placements
         # For endpoints resolved to room PORTs, use the placement_id from resolution
@@ -646,6 +648,6 @@ def _build_scene(
             dest_node_id=dest_node_key,
             dest_port_index=dest_port_idx,
             capacity=BELT_CAPACITIES[belt.tier],
-            item_id=item_id,
+            item_name=item_name,
         )
         graph.add_edge(edge)
