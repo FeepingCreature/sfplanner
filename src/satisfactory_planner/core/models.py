@@ -450,7 +450,6 @@ class Belt:
     source_port_index: int
     dest_building_id: str
     dest_port_index: int
-    item_id: str | None = None  # Inferred from source
 
     @property
     def capacity(self) -> float:

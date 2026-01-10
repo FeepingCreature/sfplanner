@@ -204,12 +204,14 @@ def belt_to_dict(belt: Belt) -> dict[str, Any]:
         "source_port_index": belt.source_port_index,
         "dest_building_id": belt.dest_building_id,
         "dest_port_index": belt.dest_port_index,
-        "item_id": belt.item_id,
     }
 
 
 def dict_to_belt(data: dict[str, Any]) -> Belt:
-    """Deserialize a Belt from a dictionary."""
+    """Deserialize a Belt from a dictionary.
+
+    Note: item_id is intentionally dropped - it's computed by the flow solver.
+    """
     return Belt(
         id=data["id"],
         tier=data.get("tier", 1),
@@ -217,7 +219,6 @@ def dict_to_belt(data: dict[str, Any]) -> Belt:
         source_port_index=data["source_port_index"],
         dest_building_id=data["dest_building_id"],
         dest_port_index=data["dest_port_index"],
-        item_id=data.get("item_id"),
     )
 
 

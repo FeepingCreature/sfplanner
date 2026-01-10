@@ -95,7 +95,6 @@ class ClipboardManager:
                         source_port_index=old_belt.source_port_index,
                         dest_building_id=new_dest,
                         dest_port_index=old_belt.dest_port_index,
-                        item_id=old_belt.item_id,
                     )
                     belt_cmd = ConnectBeltCommand(
                         scene_room_id=scene_room_id, belt=new_belt, canvas=self.canvas

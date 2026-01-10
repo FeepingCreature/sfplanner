@@ -304,7 +304,6 @@ class CreateRoomCommand(Command):
                     source_port_index=belt.source_port_index,
                     dest_building_id=port_id,
                     dest_port_index=0,
-                    item_id=belt.item_id,
                 )
                 room.add_belt(inside_belt)
 
@@ -317,7 +316,6 @@ class CreateRoomCommand(Command):
                     source_port_index=output_port_index,
                     dest_building_id=belt.dest_building_id,
                     dest_port_index=belt.dest_port_index,
-                    item_id=belt.item_id,
                 )
                 parent.add_belt(external_belt)
                 self.canvas.add_belt_item(external_belt)
@@ -358,7 +356,6 @@ class CreateRoomCommand(Command):
                     source_port_index=0,
                     dest_building_id=belt.dest_building_id,
                     dest_port_index=belt.dest_port_index,
-                    item_id=belt.item_id,
                 )
                 room.add_belt(inside_belt)
 
@@ -370,7 +367,6 @@ class CreateRoomCommand(Command):
                     source_port_index=belt.source_port_index,
                     dest_building_id=self.created_placement_id,  # Room as building
                     dest_port_index=input_port_index,
-                    item_id=belt.item_id,
                 )
                 parent.add_belt(external_belt)
                 self.canvas.add_belt_item(external_belt)
@@ -541,8 +537,8 @@ class DissolveRoomCommand(Command):
     removed_external_belts: tuple[Belt, ...]
     # Pre-generated IDs for direct belts that will be created
     # Tuple of (direct_belt_id, tier, source_building_id, source_port_index,
-    #           dest_building_id, dest_port_index, item_id)
-    direct_belt_specs: tuple[tuple[str, int, str, int, str, int, str | None], ...]
+    #           dest_building_id, dest_port_index)
+    direct_belt_specs: tuple[tuple[str, int, str, int, str, int], ...]
 
     @staticmethod
     def create(
@@ -565,7 +561,7 @@ class DissolveRoomCommand(Command):
 
         parent = get_scene(document, placement.parent_room_id)
         removed_external: list[Belt] = []
-        direct_belt_specs: list[tuple[str, int, str, int, str, int, str | None]] = []
+        direct_belt_specs: list[tuple[str, int, str, int, str, int]] = []
 
         # Get all ports in the room
         ports = room.get_ports()
@@ -586,7 +582,6 @@ class DissolveRoomCommand(Command):
                             external_belt.source_port_index,
                             internal_belt.dest_building_id,
                             internal_belt.dest_port_index,
-                            external_belt.item_id or internal_belt.item_id,
                         )
                     )
 
@@ -608,7 +603,6 @@ class DissolveRoomCommand(Command):
                             internal_belt.source_port_index,
                             external_belt.dest_building_id,
                             external_belt.dest_port_index,
-                            internal_belt.item_id or external_belt.item_id,
                         )
                     )
 
@@ -673,7 +667,7 @@ class DissolveRoomCommand(Command):
 
         # Create direct belts from pre-generated specs
         for spec in self.direct_belt_specs:
-            belt_id, tier, src_id, src_port, dst_id, dst_port, item_id = spec
+            belt_id, tier, src_id, src_port, dst_id, dst_port = spec
             direct_belt = BeltModel(
                 id=belt_id,
                 tier=tier,
@@ -681,7 +675,6 @@ class DissolveRoomCommand(Command):
                 source_port_index=src_port,
                 dest_building_id=dst_id,
                 dest_port_index=dst_port,
-                item_id=item_id,
             )
             parent.add_belt(direct_belt)
             self.canvas.add_belt_item(direct_belt)
