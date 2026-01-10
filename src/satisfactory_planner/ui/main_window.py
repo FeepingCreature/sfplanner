@@ -584,13 +584,12 @@ class MainWindow(QMainWindow):
         if not tab.canvas:
             return
 
-        # Re-solve flows
+        # Re-solve flows (always, so warnings are up-to-date)
         tab.flow_solver = FlowSolver(tab.document)
         tab.flow_solver.solve()
 
-        # Update visualization if enabled
-        if self.show_bottlenecks_action.isChecked() or self.show_flow_rates_action.isChecked():
-            tab.canvas.update_flow_visualization()
+        # Always update visualization - individual items check toggle state
+        tab.canvas.update_flow_visualization()
 
     def _update_warnings(self) -> None:
         """Update the warnings panel."""
