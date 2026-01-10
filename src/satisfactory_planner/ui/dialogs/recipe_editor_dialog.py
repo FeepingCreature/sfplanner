@@ -212,7 +212,7 @@ class RecipeEditorDialog(QDialog):
         if not current:
             return
 
-        from satisfactory_planner.core.models import ItemRate, Recipe
+        from satisfactory_planner.core.models import ItemId, ItemRate, Recipe
 
         recipe_id = current.data(Qt.ItemDataRole.UserRole)
         building_type = self.building_combo.currentData()
@@ -227,7 +227,7 @@ class RecipeEditorDialog(QDialog):
             name = self.input_rows[i][0].text()
             rate = self.input_rows[i][1].value()
             if name and rate > 0:
-                inputs.append(ItemRate(name, rate))
+                inputs.append(ItemRate(ItemId(name), rate))
 
         # Gather outputs based on building's output count
         outputs = []
@@ -235,7 +235,7 @@ class RecipeEditorDialog(QDialog):
             name = self.output_rows[i][0].text()
             rate = self.output_rows[i][1].value()
             if name and rate > 0:
-                outputs.append(ItemRate(name, rate))
+                outputs.append(ItemRate(ItemId(name), rate))
 
         # Power is determined by building type
         power = get_building_power(building_type)

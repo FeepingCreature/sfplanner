@@ -160,7 +160,7 @@ def get_building_io_counts(building_type: BuildingType) -> tuple[int, int]:
 class ItemRate:
     """An item with a rate per minute."""
 
-    item_id: str
+    item_id: ItemId
     rate: float  # items per minute
 
 

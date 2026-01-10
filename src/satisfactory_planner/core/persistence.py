@@ -12,6 +12,7 @@ from satisfactory_planner.core.models import (
     Building,
     BuildingType,
     Document,
+    ItemId,
     ItemRate,
     Recipe,
     RecipeId,
@@ -61,25 +62,25 @@ def dict_to_recipe(data: dict[str, Any]) -> Recipe:
             break
 
     return Recipe(
-        id=data["id"],
+        id=RecipeId(data["id"]),
         name=data["name"],
         building_type=building_type,
-        inputs=[ItemRate(ir["item_id"], ir["rate"]) for ir in data.get("inputs", [])],
-        outputs=[ItemRate(ir["item_id"], ir["rate"]) for ir in data.get("outputs", [])],
+        inputs=[ItemRate(ItemId(ir["item_id"]), ir["rate"]) for ir in data.get("inputs", [])],
+        outputs=[ItemRate(ItemId(ir["item_id"]), ir["rate"]) for ir in data.get("outputs", [])],
         power_mw=data.get("power_mw", 0),
         crafting_time=data.get("crafting_time", 1.0),
     )
 
 
 def load_base_recipes() -> dict[RecipeId, Recipe]:
-    """Load base game recipes from recipes.json."""
+    """Load base game recipes from game_data.json."""
     import importlib.resources
 
     try:
         # Load from package data
         files = importlib.resources.files("satisfactory_planner.data")
-        recipes_file = files.joinpath("recipes.json")
-        data = json.loads(recipes_file.read_text())
+        game_data_file = files.joinpath("game_data.json")
+        data = json.loads(game_data_file.read_text())
 
         recipes = {}
         for recipe_data in data.get("recipes", []):

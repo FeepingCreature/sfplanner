@@ -2,6 +2,10 @@
 
 These are separate from the visual models (Building, Belt) - they represent
 the abstract flow of items through the factory for LP solving.
+
+Note: FlowPort and FlowEdge use `item_name: str` rather than `ItemId` intentionally.
+These are display strings used in error messages, keeping formatting simpler.
+The visual models (ItemRate, Building.item_id) use the typed ItemId.
 """
 
 from dataclasses import dataclass, field
