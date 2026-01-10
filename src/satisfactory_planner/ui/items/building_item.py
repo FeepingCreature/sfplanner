@@ -263,12 +263,8 @@ class BuildingItem(QGraphicsRectItem):
                 BuildingType.SINK,
                 BuildingType.MINER,
             ):
-                # For Source/Sink/Miner, recipe_id holds the item_id directly
-                if self.building.recipe_id:
-                    # Show the item name (recipe_id is actually item_id)
-                    recipe_text = self.building.recipe_id.replace("_", " ").title()
-                else:
-                    recipe_text = "No Item"
+                # For Source/Sink/Miner, use item_id field
+                recipe_text = self.building.item_id or "No Item"
             elif self.building.recipe_id:
                 # Look up recipe in document
                 doc = self.canvas.document
