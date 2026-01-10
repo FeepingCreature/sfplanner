@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from satisfactory_planner.core.models import RoomPlacement
+    from satisfactory_planner.ui.items.room_item import RoomItem
 
 logger = logging.getLogger(__name__)
 
@@ -321,12 +322,9 @@ class FactoryCanvas(QGraphicsView):
 
     def sync_add_belt(self, belt_id: str, scene_room_id: str | None) -> None:
         """Add visual for a belt - routes to correct container."""
-        from satisfactory_planner.ui.items.room_item import RoomItem
-
         if scene_room_id:
             for room_item in self._iter_room_items_for_room(scene_room_id):
-                if isinstance(room_item, RoomItem):
-                    room_item.add_belt_item(belt_id)
+                room_item.add_belt_item(belt_id)
         else:
             belt = self.document.belts.get(belt_id)
             if belt:
@@ -334,23 +332,17 @@ class FactoryCanvas(QGraphicsView):
 
     def sync_remove_belt(self, belt_id: str, scene_room_id: str | None) -> None:
         """Remove visual for a belt - routes to correct container."""
-        from satisfactory_planner.ui.items.room_item import RoomItem
-
         if scene_room_id:
             for room_item in self._iter_room_items_for_room(scene_room_id):
-                if isinstance(room_item, RoomItem):
-                    room_item.remove_belt_item(belt_id)
+                room_item.remove_belt_item(belt_id)
         else:
             self.remove_belt_item(belt_id)
 
     def sync_add_building(self, building_id: str, scene_room_id: str | None) -> None:
         """Add visual for a building - routes to correct container."""
-        from satisfactory_planner.ui.items.room_item import RoomItem
-
         if scene_room_id:
             for room_item in self._iter_room_items_for_room(scene_room_id):
-                if isinstance(room_item, RoomItem):
-                    room_item.add_building_item(building_id)
+                room_item.add_building_item(building_id)
         else:
             building = self.document.buildings.get(building_id)
             if building:
@@ -358,12 +350,9 @@ class FactoryCanvas(QGraphicsView):
 
     def sync_remove_building(self, building_id: str, scene_room_id: str | None) -> None:
         """Remove visual for a building - routes to correct container."""
-        from satisfactory_planner.ui.items.room_item import RoomItem
-
         if scene_room_id:
             for room_item in self._iter_room_items_for_room(scene_room_id):
-                if isinstance(room_item, RoomItem):
-                    room_item.remove_building_item(building_id)
+                room_item.remove_building_item(building_id)
         else:
             self.remove_building_item(building_id)
 
@@ -416,7 +405,7 @@ class FactoryCanvas(QGraphicsView):
             if item:
                 yield item
 
-    def _iter_room_items_for_room(self, room_id: str) -> Iterator[object]:
+    def _iter_room_items_for_room(self, room_id: str) -> Iterator[RoomItem]:
         """Iterate all RoomItems displaying a given room."""
         from satisfactory_planner.ui.items.room_item import RoomItem
 
@@ -437,7 +426,6 @@ class FactoryCanvas(QGraphicsView):
             scene_room_id: The room the building is in (None for document-level)
             source_item: The item that initiated the move (will be skipped to avoid feedback)
         """
-        from satisfactory_planner.ui.items.room_item import RoomItem
 
         scene = self._get_scene(scene_room_id)
         building = scene.buildings.get(building_id)
@@ -465,8 +453,7 @@ class FactoryCanvas(QGraphicsView):
             and scene_room_id
         ):
             for room_item in self._iter_room_items_for_room(scene_room_id):
-                if isinstance(room_item, RoomItem):
-                    room_item.update_room_ports()
+                room_item.update_room_ports()
 
         # Update selection outline
         self._update_selection_outline()
@@ -852,10 +839,7 @@ class FactoryCanvas(QGraphicsView):
             scene_room_id = self.get_scene_for_item(first_item) if first_item else None
 
             # Get the correct scene to look up items
-            if scene_room_id and scene_room_id in self.document.rooms:
-                target_scene: Scene = self.document.rooms[scene_room_id]
-            else:
-                target_scene = self.document
+            target_scene = self._get_scene(scene_room_id)
 
             # Add connected belts to deletion list
             for building_id in selected_buildings:
@@ -1242,11 +1226,8 @@ class FactoryCanvas(QGraphicsView):
 
     def _refresh_all_room_items(self, room_id: str) -> None:
         """Refresh all RoomItems displaying the given room."""
-        from satisfactory_planner.ui.items.room_item import RoomItem
-
         for room_item in self._iter_room_items_for_room(room_id):
-            if isinstance(room_item, RoomItem):
-                room_item.refresh()
+            room_item.refresh()
 
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:  # type: ignore[override]
         """Draw the grid background."""

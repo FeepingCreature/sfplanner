@@ -169,6 +169,51 @@
       "streaming": true,
       "actual_cost": 0.17650375,
       "generation_id": "gen-1768059810-pu3e24R3cAfGtHSJP7U0"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768059937685.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768059937685.json",
+      "timestamp": 1768059937.6868777,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.43863375,
+      "generation_id": "gen-1768059937-2fam6uHiHNMC328lnMYD"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768059943605.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768059943605.json",
+      "timestamp": 1768059943.6061177,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.048137,
+      "generation_id": "gen-1768059944-E5CoM4MAG1kcH9byz5wi"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768059949538.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768059949538.json",
+      "timestamp": 1768059949.5391433,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.044741,
+      "generation_id": "gen-1768059949-G9PvmBw90saYqqFuE28I"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768059954162.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768059954162.json",
+      "timestamp": 1768059954.1634278,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05932775,
+      "generation_id": "gen-1768059954-UhTyAoufyySJwNx3LRyu"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768059962511.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768059962511.json",
+      "timestamp": 1768059962.5128357,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.5181475,
+      "generation_id": "gen-1768059962-ilxWqn10yBd78b60Arom"
     }
   ],
   "messages": [
@@ -616,6 +661,206 @@
         },
         {
           "commit": "fd998a6eefac",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: f146ca46",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Alright, very nice! Are there any other methods or commands that can use this pattern?"
+    },
+    {
+      "role": "assistant",
+      "content": "Let me search for other places with similar branching patterns:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"scene_room_id.*in self\\\\.document\\\\.rooms\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01Nm7BouxNGs4hrzijw9vG1g",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Nm7BouxNGs4hrzijw9vG1g",
+      "content": "{\"message\": \"Found 3 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:383 \\u2500\\u2500\\n     380 | \\n     381 |     def _get_scene(self, scene_room_id: str | None) -> Scene:\\n     382 |         \\\"\\\"\\\"Get the Scene for a room_id (or document if None).\\\"\\\"\\\"\\n>>>  383 |         if scene_room_id and scene_room_id in self.document.rooms:\\n     384 |             return self.document.rooms[scene_room_id]\\n     385 |         return self.document\\n     386 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:855 \\u2500\\u2500\\n     852 |             scene_room_id = self.get_scene_for_item(first_item) if first_item else None\\n     853 | \\n     854 |             # Get the correct scene to look up items\\n>>>  855 |             if scene_room_id and scene_room_id in self.document.rooms:\\n     856 |                 target_scene: Scene = self.document.rooms[scene_room_id]\\n     857 |             else:\\n     858 |                 target_scene = self.document\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:310 \\u2500\\u2500\\n     307 | \\n     308 |     def _get_scene(self) -> Document | Room:\\n     309 |         \\\"\\\"\\\"Get the current scene (Document or Room) based on selection context.\\\"\\\"\\\"\\n>>>  310 |         if self._scene_room_id and self._scene_room_id in self.document.rooms:\\n     311 |             return self.document.rooms[self._scene_room_id]\\n     312 |         return self.document\\n     313 | \", \"success\": true, \"total_matches\": 3}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"scene_room_id.*in self\\\\.document\\\\.rooms\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 3 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:383 \\u2500\\u2500\\n     380 | \\n     381 |     def _get_scene(self, scene_room_id: str | None) -> Scene:\\n     382 |         \\\"\\\"\\\"Get the Scene for a room_id (or document if None).\\\"\\\"\\\"\\n>>>  383 |         if scene_room_id and scene_room_id in self.document.rooms:\\n     384 |             return self.document.rooms[scene_room_id]\\n     385 |         return self.document\\n     386 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:855 \\u2500\\u2500\\n     852 |             scene_room_id = self.get_scene_for_item(first_item) if first_item else None\\n     853 | \\n     854 |             # Get the correct scene to look up items\\n>>>  855 |             if scene_room_id and scene_room_id in self.document.rooms:\\n     856 |                 target_scene: Scene = self.document.rooms[scene_room_id]\\n     857 |             else:\\n     858 |                 target_scene = self.document\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/properties_panel.py:310 \\u2500\\u2500\\n     307 | \\n     308 |     def _get_scene(self) -> Document | Room:\\n     309 |         \\\"\\\"\\\"Get the current scene (Document or Room) based on selection context.\\\"\\\"\\\"\\n>>>  310 |         if self._scene_room_id and self._scene_room_id in self.document.rooms:\\n     311 |             return self.document.rooms[self._scene_room_id]\\n     312 |         return self.document\\n     313 | \",\n  \"success\": true,\n  \"total_matches\": 3\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good find! There's one in `delete_selection` that can use `_get_scene()`. Let me also check the commands:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"scene_room_id.*rooms\\\\[\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01DtCNmt2px5XMGpsPps2Fy4",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01DtCNmt2px5XMGpsPps2Fy4",
+      "content": "{\"message\": \"No matches found for pattern: scene_room_id.*rooms\\\\[\", \"snippets\": [], \"success\": true, \"total_matches\": 0}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"scene_room_id.*rooms\\\\[\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"No matches found for pattern: scene_room_id.*rooms\\\\[\",\n  \"snippets\": [],\n  \"success\": true,\n  \"total_matches\": 0\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me search more broadly for the pattern in commands:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"get_scene\\\\(\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_011sRz9pqx71RFa1NA12p3xK",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_011sRz9pqx71RFa1NA12p3xK",
+      "content": "{\"message\": \"Found 10 matches (showing 10 of 11 total matches)\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:381 \\u2500\\u2500\\n     378 | \\n     379 |     # === Scene/item lookup helpers ===\\n     380 | \\n>>>  381 |     def _get_scene(self, scene_room_id: str | None) -> Scene:\\n     382 |         \\\"\\\"\\\"Get the Scene for a room_id (or document if None).\\\"\\\"\\\"\\n     383 |         if scene_room_id and scene_room_id in self.document.rooms:\\n     384 |             return self.document.rooms[scene_room_id]\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:442 \\u2500\\u2500\\n     439 |         \\\"\\\"\\\"\\n     440 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     441 | \\n>>>  442 |         scene = self._get_scene(scene_room_id)\\n     443 |         building = scene.buildings.get(building_id)\\n     444 |         if not building:\\n     445 |             return\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:488 \\u2500\\u2500\\n     485 |         For belts in rooms, this updates ALL visual instances (since linked\\n     486 |         room placements share the same Room data).\\n     487 |         \\\"\\\"\\\"\\n>>>  488 |         scene = self._get_scene(scene_room_id)\\n     489 |         belt = scene.belts.get(belt_id)\\n     490 |         if not belt:\\n     491 |             return\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/base.py:70 \\u2500\\u2500\\n      67 |         return None\\n      68 | \\n      69 | \\n>>>   70 | def get_scene(document: Document, scene_room_id: str | None) -> Scene:\\n      71 |     \\\"\\\"\\\"Get a scene from a document by room ID.\\n      72 | \\n      73 |     Args:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/belt_commands.py:27 \\u2500\\u2500\\n      24 |     canvas: FactoryCanvas\\n      25 | \\n      26 |     def execute(self, document: Document) -> None:\\n>>>   27 |         scene = get_scene(document, self.scene_room_id)\\n      28 |         if self.belt.id in scene.belts:\\n      29 |             logger.warning(f\\\"ConnectBeltCommand.execute: belt {self.belt.id} already exists\\\")\\n      30 |             return\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/belt_commands.py:38 \\u2500\\u2500\\n      35 |         self.canvas.notify_mutation()\\n      36 | \\n      37 |     def undo(self, document: Document) -> None:\\n>>>   38 |         scene = get_scene(document, self.scene_room_id)\\n      39 |         if self.belt.id not in scene.belts:\\n      40 |             logger.warning(f\\\"ConnectBeltCommand.undo: belt {self.belt.id} not found\\\")\\n      41 |             return\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/belt_commands.py:60 \\u2500\\u2500\\n      57 |     canvas: FactoryCanvas\\n      58 | \\n      59 |     def execute(self, document: Document) -> None:\\n>>>   60 |         scene = get_scene(document, self.scene_room_id)\\n      61 |         belt = scene.belts.get(self.belt_id)\\n      62 |         if not belt:\\n      63 |             logger.warning(f\\\"SetBeltTierCommand.execute: belt {self.belt_id} not found\\\")\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/belt_commands.py:73 \\u2500\\u2500\\n      70 |         self.canvas.notify_mutation()\\n      71 | \\n      72 |     def undo(self, document: Document) -> None:\\n>>>   73 |         scene = get_scene(document, self.scene_room_id)\\n      74 |         belt = scene.belts.get(self.belt_id)\\n      75 |         if not belt:\\n      76 |             logger.warning(f\\\"SetBeltTierCommand.undo: belt {self.belt_id} not found\\\")\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/building_commands.py:27 \\u2500\\u2500\\n      24 |     canvas: FactoryCanvas\\n      25 | \\n      26 |     def execute(self, document: Document) -> None:\\n>>>   27 |         scene = get_scene(document, self.scene_room_id)\\n      28 |         if self.building.id in scene.buildings:\\n      29 |             logger.warning(\\n      30 |                 f\\\"PlaceBuildingCommand.execute: building {self.building.id} already exists\\\"\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/building_commands.py:40 \\u2500\\u2500\\n      37 |         self.canvas.notify_mutation()\\n      38 | \\n      39 |     def undo(self, document: Document) -> None:\\n>>>   40 |         scene = get_scene(document, self.scene_room_id)\\n      41 |         if self.building.id not in scene.buildings:\\n      42 |             logger.warning(f\\\"PlaceBuildingCommand.undo: building {self.building.id} not found\\\")\\n      43 |             return\", \"success\": true, \"total_matches\": 11}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"get_scene\\\\(\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 10 matches (showing 10 of 11 total matches)\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:381 \\u2500\\u2500\\n     378 | \\n     379 |     # === Scene/item lookup helpers ===\\n     380 | \\n>>>  381 |     def _get_scene(self, scene_room_id: str | None) -> Scene:\\n     382 |         \\\"\\\"\\\"Get the Scene for a room_id (or document if None).\\\"\\\"\\\"\\n     383 |         if scene_room_id and scene_room_id in self.document.rooms:\\n     384 |             return self.document.rooms[scene_room_id]\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:442 \\u2500\\u2500\\n     439 |         \\\"\\\"\\\"\\n     440 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     441 | \\n>>>  442 |         scene = self._get_scene(scene_room_id)\\n     443 |         building = scene.buildings.get(building_id)\\n     444 |         if not building:\\n     445 |             return\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:488 \\u2500\\u2500\\n     485 |         For belts in rooms, this updates ALL visual instances (since linked\\n     486 |         room placements share the same Room data).\\n     487 |         \\\"\\\"\\\"\\n>>>  488 |         scene = self._get_scene(scene_room_id)\\n     489 |         belt = scene.belts.get(belt_id)\\n     490 |         if not belt:\\n     491 |             return\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/base.py:70 \\u2500\\u2500\\n      67 |         return None\\n      68 | \\n      69 | \\n>>>   70 | def get_scene(document: Document, scene_room_id: str | None) -> Scene:\\n      71 |     \\\"\\\"\\\"Get a scene from a document by room ID.\\n      72 | \\n      73 |     Args:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/belt_commands.py:27 \\u2500\\u2500\\n      24 |     canvas: FactoryCanvas\\n      25 | \\n      26 |     def execute(self, document: Document) -> None:\\n>>>   27 |         scene = get_scene(document, self.scene_room_id)\\n      28 |         if self.belt.id in scene.belts:\\n      29 |             logger.warning(f\\\"ConnectBeltCommand.execute: belt {self.belt.id} already exists\\\")\\n      30 |             return\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/belt_commands.py:38 \\u2500\\u2500\\n      35 |         self.canvas.notify_mutation()\\n      36 | \\n      37 |     def undo(self, document: Document) -> None:\\n>>>   38 |         scene = get_scene(document, self.scene_room_id)\\n      39 |         if self.belt.id not in scene.belts:\\n      40 |             logger.warning(f\\\"ConnectBeltCommand.undo: belt {self.belt.id} not found\\\")\\n      41 |             return\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/belt_commands.py:60 \\u2500\\u2500\\n      57 |     canvas: FactoryCanvas\\n      58 | \\n      59 |     def execute(self, document: Document) -> None:\\n>>>   60 |         scene = get_scene(document, self.scene_room_id)\\n      61 |         belt = scene.belts.get(self.belt_id)\\n      62 |         if not belt:\\n      63 |             logger.warning(f\\\"SetBeltTierCommand.execute: belt {self.belt_id} not found\\\")\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/belt_commands.py:73 \\u2500\\u2500\\n      70 |         self.canvas.notify_mutation()\\n      71 | \\n      72 |     def undo(self, document: Document) -> None:\\n>>>   73 |         scene = get_scene(document, self.scene_room_id)\\n      74 |         belt = scene.belts.get(self.belt_id)\\n      75 |         if not belt:\\n      76 |             logger.warning(f\\\"SetBeltTierCommand.undo: belt {self.belt_id} not found\\\")\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/building_commands.py:27 \\u2500\\u2500\\n      24 |     canvas: FactoryCanvas\\n      25 | \\n      26 |     def execute(self, document: Document) -> None:\\n>>>   27 |         scene = get_scene(document, self.scene_room_id)\\n      28 |         if self.building.id in scene.buildings:\\n      29 |             logger.warning(\\n      30 |                 f\\\"PlaceBuildingCommand.execute: building {self.building.id} already exists\\\"\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/commands/building_commands.py:40 \\u2500\\u2500\\n      37 |         self.canvas.notify_mutation()\\n      38 | \\n      39 |     def undo(self, document: Document) -> None:\\n>>>   40 |         scene = get_scene(document, self.scene_room_id)\\n      41 |         if self.building.id not in scene.buildings:\\n      42 |             logger.warning(f\\\"PlaceBuildingCommand.undo: building {self.building.id} not found\\\")\\n      43 |             return\",\n  \"success\": true,\n  \"total_matches\": 11\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good, the commands already have their own `get_scene()` function in `base.py`. So that's fine.\n\nLet me fix the one remaining spot in `delete_selection` and check if there are other patterns we can clean up:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n            # Get the correct scene to look up items\n            if scene_room_id and scene_room_id in self.document.rooms:\n                target_scene: Scene = self.document.rooms[scene_room_id]\n            else:\n                target_scene = self.document\n</search>\n<replace>\n            # Get the correct scene to look up items\n            target_scene = self._get_scene(scene_room_id)\n</replace>\n</edit>\n\nNow let me check for other patterns like iterating `_room_items` with isinstance checks:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"for.*room_item.*_room_items\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01NJP4cBqCWDa9kPFXMAxKJR",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01NJP4cBqCWDa9kPFXMAxKJR",
+      "content": "{\"message\": \"Found 10 matches (showing 10 of 11 total matches)\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:247 \\u2500\\u2500\\n     244 |             self.add_belt_item(belt)\\n     245 | \\n     246 |         # Clear and reload room items\\n>>>  247 |         for room_item in list(self._room_items.values()):\\n     248 |             from satisfactory_planner.ui.items.room_item import RoomItem\\n     249 | \\n     250 |             if isinstance(room_item, RoomItem):\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:327 \\u2500\\u2500\\n     324 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     325 | \\n     326 |         if scene_room_id:\\n>>>  327 |             for room_item in self._iter_room_items_for_room(scene_room_id):\\n     328 |                 if isinstance(room_item, RoomItem):\\n     329 |                     room_item.add_belt_item(belt_id)\\n     330 |         else:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:340 \\u2500\\u2500\\n     337 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     338 | \\n     339 |         if scene_room_id:\\n>>>  340 |             for room_item in self._iter_room_items_for_room(scene_room_id):\\n     341 |                 if isinstance(room_item, RoomItem):\\n     342 |                     room_item.remove_belt_item(belt_id)\\n     343 |         else:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:351 \\u2500\\u2500\\n     348 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     349 | \\n     350 |         if scene_room_id:\\n>>>  351 |             for room_item in self._iter_room_items_for_room(scene_room_id):\\n     352 |                 if isinstance(room_item, RoomItem):\\n     353 |                     room_item.add_building_item(building_id)\\n     354 |         else:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:364 \\u2500\\u2500\\n     361 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     362 | \\n     363 |         if scene_room_id:\\n>>>  364 |             for room_item in self._iter_room_items_for_room(scene_room_id):\\n     365 |                 if isinstance(room_item, RoomItem):\\n     366 |                     room_item.remove_building_item(building_id)\\n     367 |         else:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:394 \\u2500\\u2500\\n     391 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     392 | \\n     393 |         if scene_room_id:\\n>>>  394 |             for room_item in self._room_items.values():\\n     395 |                 if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:\\n     396 |                     item = room_item._building_items.get(building_id)\\n     397 |                     if item:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:409 \\u2500\\u2500\\n     406 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     407 | \\n     408 |         if scene_room_id:\\n>>>  409 |             for room_item in self._room_items.values():\\n     410 |                 if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:\\n     411 |                     item = room_item._belt_items.get(belt_id)\\n     412 |                     if item:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:423 \\u2500\\u2500\\n     420 |         \\\"\\\"\\\"Iterate all RoomItems displaying a given room.\\\"\\\"\\\"\\n     421 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     422 | \\n>>>  423 |         for room_item in self._room_items.values():\\n     424 |             if isinstance(room_item, RoomItem) and room_item.room.id == room_id:\\n     425 |                 yield room_item\\n     426 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:467 \\u2500\\u2500\\n     464 |             building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT)\\n     465 |             and scene_room_id\\n     466 |         ):\\n>>>  467 |             for room_item in self._iter_room_items_for_room(scene_room_id):\\n     468 |                 if isinstance(room_item, RoomItem):\\n     469 |                     room_item.update_room_ports()\\n     470 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:527 \\u2500\\u2500\\n     524 |         def deferred_refresh() -> None:\\n     525 |             room_item.refresh()\\n     526 |             # Refresh linked rooms too\\n>>>  527 |             for other_placement_id, other_room_item in list(self._room_items.items()):\\n     528 |                 if (\\n     529 |                     isinstance(other_room_item, RoomItem)\\n     530 |                     and other_room_item.room.id == room.id\", \"success\": true, \"total_matches\": 11}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"for.*room_item.*_room_items\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 10 matches (showing 10 of 11 total matches)\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:247 \\u2500\\u2500\\n     244 |             self.add_belt_item(belt)\\n     245 | \\n     246 |         # Clear and reload room items\\n>>>  247 |         for room_item in list(self._room_items.values()):\\n     248 |             from satisfactory_planner.ui.items.room_item import RoomItem\\n     249 | \\n     250 |             if isinstance(room_item, RoomItem):\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:327 \\u2500\\u2500\\n     324 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     325 | \\n     326 |         if scene_room_id:\\n>>>  327 |             for room_item in self._iter_room_items_for_room(scene_room_id):\\n     328 |                 if isinstance(room_item, RoomItem):\\n     329 |                     room_item.add_belt_item(belt_id)\\n     330 |         else:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:340 \\u2500\\u2500\\n     337 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     338 | \\n     339 |         if scene_room_id:\\n>>>  340 |             for room_item in self._iter_room_items_for_room(scene_room_id):\\n     341 |                 if isinstance(room_item, RoomItem):\\n     342 |                     room_item.remove_belt_item(belt_id)\\n     343 |         else:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:351 \\u2500\\u2500\\n     348 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     349 | \\n     350 |         if scene_room_id:\\n>>>  351 |             for room_item in self._iter_room_items_for_room(scene_room_id):\\n     352 |                 if isinstance(room_item, RoomItem):\\n     353 |                     room_item.add_building_item(building_id)\\n     354 |         else:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:364 \\u2500\\u2500\\n     361 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     362 | \\n     363 |         if scene_room_id:\\n>>>  364 |             for room_item in self._iter_room_items_for_room(scene_room_id):\\n     365 |                 if isinstance(room_item, RoomItem):\\n     366 |                     room_item.remove_building_item(building_id)\\n     367 |         else:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:394 \\u2500\\u2500\\n     391 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     392 | \\n     393 |         if scene_room_id:\\n>>>  394 |             for room_item in self._room_items.values():\\n     395 |                 if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:\\n     396 |                     item = room_item._building_items.get(building_id)\\n     397 |                     if item:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:409 \\u2500\\u2500\\n     406 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     407 | \\n     408 |         if scene_room_id:\\n>>>  409 |             for room_item in self._room_items.values():\\n     410 |                 if isinstance(room_item, RoomItem) and room_item.room.id == scene_room_id:\\n     411 |                     item = room_item._belt_items.get(belt_id)\\n     412 |                     if item:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:423 \\u2500\\u2500\\n     420 |         \\\"\\\"\\\"Iterate all RoomItems displaying a given room.\\\"\\\"\\\"\\n     421 |         from satisfactory_planner.ui.items.room_item import RoomItem\\n     422 | \\n>>>  423 |         for room_item in self._room_items.values():\\n     424 |             if isinstance(room_item, RoomItem) and room_item.room.id == room_id:\\n     425 |                 yield room_item\\n     426 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:467 \\u2500\\u2500\\n     464 |             building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT)\\n     465 |             and scene_room_id\\n     466 |         ):\\n>>>  467 |             for room_item in self._iter_room_items_for_room(scene_room_id):\\n     468 |                 if isinstance(room_item, RoomItem):\\n     469 |                     room_item.update_room_ports()\\n     470 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:527 \\u2500\\u2500\\n     524 |         def deferred_refresh() -> None:\\n     525 |             room_item.refresh()\\n     526 |             # Refresh linked rooms too\\n>>>  527 |             for other_placement_id, other_room_item in list(self._room_items.items()):\\n     528 |                 if (\\n     529 |                     isinstance(other_room_item, RoomItem)\\n     530 |                     and other_room_item.room.id == room.id\",\n  \"success\": true,\n  \"total_matches\": 11\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue - `_iter_room_items_for_room` returns `Iterator[object]` and we still have `isinstance` checks everywhere it's used. Let me fix the iterator to return the proper type and clean up those redundant checks:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def _iter_room_items_for_room(self, room_id: str) -> Iterator[object]:\n        \"\"\"Iterate all RoomItems displaying a given room.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        for room_item in self._room_items.values():\n            if isinstance(room_item, RoomItem) and room_item.room.id == room_id:\n                yield room_item\n</search>\n<replace>\n    def _iter_room_items_for_room(self, room_id: str) -> Iterator[RoomItem]:\n        \"\"\"Iterate all RoomItems displaying a given room.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        for room_item in self._room_items.values():\n            if isinstance(room_item, RoomItem) and room_item.room.id == room_id:\n                yield room_item\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def sync_add_belt(self, belt_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Add visual for a belt - routes to correct container.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        if scene_room_id:\n            for room_item in self._iter_room_items_for_room(scene_room_id):\n                if isinstance(room_item, RoomItem):\n                    room_item.add_belt_item(belt_id)\n        else:\n            belt = self.document.belts.get(belt_id)\n            if belt:\n                self.add_belt_item(belt)\n\n    def sync_remove_belt(self, belt_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Remove visual for a belt - routes to correct container.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        if scene_room_id:\n            for room_item in self._iter_room_items_for_room(scene_room_id):\n                if isinstance(room_item, RoomItem):\n                    room_item.remove_belt_item(belt_id)\n        else:\n            self.remove_belt_item(belt_id)\n\n    def sync_add_building(self, building_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Add visual for a building - routes to correct container.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        if scene_room_id:\n            for room_item in self._iter_room_items_for_room(scene_room_id):\n                if isinstance(room_item, RoomItem):\n                    room_item.add_building_item(building_id)\n        else:\n            building = self.document.buildings.get(building_id)\n            if building:\n                self.add_building_item(building)\n\n    def sync_remove_building(self, building_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Remove visual for a building - routes to correct container.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        if scene_room_id:\n            for room_item in self._iter_room_items_for_room(scene_room_id):\n                if isinstance(room_item, RoomItem):\n                    room_item.remove_building_item(building_id)\n        else:\n            self.remove_building_item(building_id)\n</search>\n<replace>\n    def sync_add_belt(self, belt_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Add visual for a belt - routes to correct container.\"\"\"\n        if scene_room_id:\n            for room_item in self._iter_room_items_for_room(scene_room_id):\n                room_item.add_belt_item(belt_id)\n        else:\n            belt = self.document.belts.get(belt_id)\n            if belt:\n                self.add_belt_item(belt)\n\n    def sync_remove_belt(self, belt_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Remove visual for a belt - routes to correct container.\"\"\"\n        if scene_room_id:\n            for room_item in self._iter_room_items_for_room(scene_room_id):\n                room_item.remove_belt_item(belt_id)\n        else:\n            self.remove_belt_item(belt_id)\n\n    def sync_add_building(self, building_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Add visual for a building - routes to correct container.\"\"\"\n        if scene_room_id:\n            for room_item in self._iter_room_items_for_room(scene_room_id):\n                room_item.add_building_item(building_id)\n        else:\n            building = self.document.buildings.get(building_id)\n            if building:\n                self.add_building_item(building)\n\n    def sync_remove_building(self, building_id: str, scene_room_id: str | None) -> None:\n        \"\"\"Remove visual for a building - routes to correct container.\"\"\"\n        if scene_room_id:\n            for room_item in self._iter_room_items_for_room(scene_room_id):\n                room_item.remove_building_item(building_id)\n        else:\n            self.remove_building_item(building_id)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n        # If this is a PORT building, update room ports on all room items\n        if (\n            building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT)\n            and scene_room_id\n        ):\n            for room_item in self._iter_room_items_for_room(scene_room_id):\n                if isinstance(room_item, RoomItem):\n                    room_item.update_room_ports()\n</search>\n<replace>\n        # If this is a PORT building, update room ports on all room items\n        if (\n            building.building_type in (BuildingType.PORT_IN, BuildingType.PORT_OUT)\n            and scene_room_id\n        ):\n            for room_item in self._iter_room_items_for_room(scene_room_id):\n                room_item.update_room_ports()\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def _refresh_all_room_items(self, room_id: str) -> None:\n        \"\"\"Refresh all RoomItems displaying the given room.\"\"\"\n        from satisfactory_planner.ui.items.room_item import RoomItem\n\n        for room_item in self._iter_room_items_for_room(room_id):\n            if isinstance(room_item, RoomItem):\n                room_item.refresh()\n</search>\n<replace>\n    def _refresh_all_room_items(self, room_id: str) -> None:\n        \"\"\"Refresh all RoomItems displaying the given room.\"\"\"\n        for room_item in self._iter_room_items_for_room(room_id):\n            room_item.refresh()\n</replace>\n</edit>\n\nNow we need to add the import for `RoomItem` in the TYPE_CHECKING block since it's used in the return type:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\nif TYPE_CHECKING:\n    from collections.abc import Iterator\n\n    from satisfactory_planner.core.models import RoomPlacement\n</search>\n<replace>\nif TYPE_CHECKING:\n    from collections.abc import Iterator\n\n    from satisfactory_planner.core.models import RoomPlacement\n    from satisfactory_planner.ui.items.room_item import RoomItem\n</replace>\n</edit>\n\n<run_tests/>\n\n<commit message=\"Clean up iterator return types and remove redundant isinstance checks\n\n- _iter_room_items_for_room now returns Iterator[RoomItem] instead of Iterator[object]\n- Removed redundant isinstance checks in sync_* methods and _refresh_all_room_items\n- Use _get_scene() in delete_selection instead of duplicating the logic\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nFound 1 error (1 fixed, 0 remaining).\nruff format src/ tests/ spikes/\n78 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 47 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_88rpvs_u\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.15s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_88rpvs_u\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "output": "ruff check --fix src/ tests/ spikes/\nFound 1 error (1 fixed, 0 remaining).\nruff format src/ tests/ spikes/\n78 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 47 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_88rpvs_u\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 48 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .......                              [ 33%]\ntests/test_core/test_models.py .........                                 [ 52%]\ntests/test_core/test_room_commands.py ..............                     [ 81%]\ntests/test_smoke.py ..                                                   [ 85%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 48 passed in 0.15s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_88rpvs_u\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "files_modified",
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "4cd1dc22c4f5",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
