@@ -34,7 +34,7 @@ from satisfactory_planner.core import (
     Document,
     Room,
 )
-from satisfactory_planner.core.models import Scene, VisualContainer, generate_id
+from satisfactory_planner.core.models import Scene, generate_id
 from satisfactory_planner.ui.commands import (
     BuildingMove,
     CommandStack,
@@ -49,9 +49,22 @@ from satisfactory_planner.ui.items.warning_icon_item import WarningIconItem
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from typing import Protocol
 
     from satisfactory_planner.core.models import RoomPlacement
     from satisfactory_planner.ui.items.room_item import RoomItem
+
+    class VisualContainer(Protocol):
+        """Protocol for anything that can contain visual items for buildings and belts.
+
+        Both FactoryCanvas and RoomItem implement this protocol.
+        """
+
+        def add_building_item(self, building_id: str) -> object | None: ...
+        def remove_building_item(self, building_id: str) -> None: ...
+        def add_belt_item(self, belt_id: str) -> object | None: ...
+        def remove_belt_item(self, belt_id: str) -> None: ...
+
 
 logger = logging.getLogger(__name__)
 

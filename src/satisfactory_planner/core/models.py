@@ -38,18 +38,6 @@ class Scene(Protocol):
     ) -> Belt | None: ...
 
 
-class VisualContainer(Protocol):
-    """Protocol for anything that can contain visual items for buildings and belts.
-
-    Both FactoryCanvas and RoomItem implement this protocol.
-    """
-
-    def add_building_item(self, building_id: str) -> object | None: ...
-    def remove_building_item(self, building_id: str) -> None: ...
-    def add_belt_item(self, belt_id: str) -> object | None: ...
-    def remove_belt_item(self, belt_id: str) -> None: ...
-
-
 class BuildingSpec(NamedTuple):
     """Specification for a building type."""
 
