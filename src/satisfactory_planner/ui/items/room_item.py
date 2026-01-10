@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from satisfactory_planner.core import Room, RoomPlacement
-from satisfactory_planner.core.models import Building, BuildingType, Scene
+from satisfactory_planner.core.models import Belt, Building, BuildingType, Scene
 from satisfactory_planner.ui.items.belt_item import BeltItem
 from satisfactory_planner.ui.items.building_item import BuildingItem
 from satisfactory_planner.ui.items.port_item import PortItem
@@ -337,9 +337,20 @@ class RoomItem(QGraphicsRectItem):
 
         return super().itemChange(change, value)
 
-    def add_building_item(self, building_id: str) -> BuildingItem | None:
-        """Add a building item for a building that was added to the room."""
-        building = self.room.buildings.get(building_id)
+    def add_building_item(self, building_or_id: str | Building) -> BuildingItem | None:
+        """Add a building item for a building that was added to the room.
+
+        Args:
+            building_or_id: Either a building ID (str) or Building object.
+                           When called via VisualContainer protocol, this is a str.
+        """
+        if isinstance(building_or_id, str):
+            building = self.room.buildings.get(building_or_id)
+            building_id = building_or_id
+        else:
+            building = building_or_id
+            building_id = building.id
+
         if not building:
             return None
 
@@ -358,9 +369,20 @@ class RoomItem(QGraphicsRectItem):
         if item and item.scene():
             item.scene().removeItem(item)
 
-    def add_belt_item(self, belt_id: str) -> BeltItem | None:
-        """Add a belt item for a belt that was added to the room."""
-        belt = self.room.belts.get(belt_id)
+    def add_belt_item(self, belt_or_id: str | Belt) -> BeltItem | None:
+        """Add a belt item for a belt that was added to the room.
+
+        Args:
+            belt_or_id: Either a belt ID (str) or Belt object.
+                       When called via VisualContainer protocol, this is a str.
+        """
+        if isinstance(belt_or_id, str):
+            belt = self.room.belts.get(belt_or_id)
+            belt_id = belt_or_id
+        else:
+            belt = belt_or_id
+            belt_id = belt.id
+
         if not belt:
             return None
 

@@ -34,7 +34,7 @@ from satisfactory_planner.core import (
     Document,
     Room,
 )
-from satisfactory_planner.core.models import Scene, generate_id
+from satisfactory_planner.core.models import Scene, VisualContainer, generate_id
 from satisfactory_planner.ui.commands import (
     BuildingMove,
     CommandStack,
@@ -259,8 +259,20 @@ class FactoryCanvas(QGraphicsView):
 
     # === CommandHandler protocol ===
 
-    def add_building_item(self, building: Building) -> BuildingItem:
-        """Add a building item to the scene."""
+    def add_building_item(self, building_or_id: Building | str) -> BuildingItem | None:
+        """Add a building item to the scene.
+
+        Args:
+            building_or_id: Either a Building object or building ID (str).
+                           When called via VisualContainer protocol, this is a str.
+        """
+        if isinstance(building_or_id, str):
+            building = self.document.buildings.get(building_or_id)
+            if not building:
+                return None
+        else:
+            building = building_or_id
+
         item = BuildingItem(building, self)
         self._scene.addItem(item)
         self._building_items[building.id] = item
@@ -272,13 +284,24 @@ class FactoryCanvas(QGraphicsView):
         if item:
             self._scene.removeItem(item)
 
-    def add_belt_item(self, belt: Belt) -> BeltItem | None:
+    def add_belt_item(self, belt_or_id: Belt | str) -> BeltItem | None:
         """Add a belt item to the scene.
 
         Supports belts connecting to:
         - Buildings (in document or rooms)
         - RoomPlacements (treated as buildings with ports)
+
+        Args:
+            belt_or_id: Either a Belt object or belt ID (str).
+                       When called via VisualContainer protocol, this is a str.
         """
+        if isinstance(belt_or_id, str):
+            belt = self.document.belts.get(belt_or_id)
+            if not belt:
+                return None
+        else:
+            belt = belt_or_id
+
         # Look up source - could be a Building or RoomPlacement
         source = self.document.buildings.get(belt.source_building_id)
         source_placement = None
@@ -321,40 +344,24 @@ class FactoryCanvas(QGraphicsView):
     # Commands should use these instead of directly manipulating items.
 
     def sync_add_belt(self, belt_id: str, scene_room_id: str | None) -> None:
-        """Add visual for a belt - routes to correct container."""
-        if scene_room_id:
-            for room_item in self._iter_room_items_for_room(scene_room_id):
-                room_item.add_belt_item(belt_id)
-        else:
-            belt = self.document.belts.get(belt_id)
-            if belt:
-                self.add_belt_item(belt)
+        """Add visual for a belt - routes to correct container(s)."""
+        for container in self._iter_visual_containers(scene_room_id):
+            container.add_belt_item(belt_id)
 
     def sync_remove_belt(self, belt_id: str, scene_room_id: str | None) -> None:
-        """Remove visual for a belt - routes to correct container."""
-        if scene_room_id:
-            for room_item in self._iter_room_items_for_room(scene_room_id):
-                room_item.remove_belt_item(belt_id)
-        else:
-            self.remove_belt_item(belt_id)
+        """Remove visual for a belt - routes to correct container(s)."""
+        for container in self._iter_visual_containers(scene_room_id):
+            container.remove_belt_item(belt_id)
 
     def sync_add_building(self, building_id: str, scene_room_id: str | None) -> None:
-        """Add visual for a building - routes to correct container."""
-        if scene_room_id:
-            for room_item in self._iter_room_items_for_room(scene_room_id):
-                room_item.add_building_item(building_id)
-        else:
-            building = self.document.buildings.get(building_id)
-            if building:
-                self.add_building_item(building)
+        """Add visual for a building - routes to correct container(s)."""
+        for container in self._iter_visual_containers(scene_room_id):
+            container.add_building_item(building_id)
 
     def sync_remove_building(self, building_id: str, scene_room_id: str | None) -> None:
-        """Remove visual for a building - routes to correct container."""
-        if scene_room_id:
-            for room_item in self._iter_room_items_for_room(scene_room_id):
-                room_item.remove_building_item(building_id)
-        else:
-            self.remove_building_item(building_id)
+        """Remove visual for a building - routes to correct container(s)."""
+        for container in self._iter_visual_containers(scene_room_id):
+            container.remove_building_item(building_id)
 
     def refresh_building(self, building_id: str) -> None:
         """Refresh a building's visual state."""
@@ -412,6 +419,17 @@ class FactoryCanvas(QGraphicsView):
         for room_item in self._room_items.values():
             if isinstance(room_item, RoomItem) and room_item.room.id == room_id:
                 yield room_item
+
+    def _iter_visual_containers(self, scene_room_id: str | None) -> Iterator[VisualContainer]:
+        """Iterate all visual containers for a scene.
+
+        For document-level (scene_room_id=None): yields self (canvas).
+        For room-level: yields all RoomItems displaying that room.
+        """
+        if scene_room_id:
+            yield from self._iter_room_items_for_room(scene_room_id)
+        else:
+            yield self
 
     def sync_building_moved(
         self, building_id: str, scene_room_id: str | None, source_item: object = None

@@ -37,6 +37,8 @@ from satisfactory_planner.core.models import (
     RoomPlacement,
     Scene,
 )
+
+# VisualContainer is imported where needed, not re-exported from core
 from satisfactory_planner.core.persistence import (
     delete_blueprint,
     load_all_recipes,
