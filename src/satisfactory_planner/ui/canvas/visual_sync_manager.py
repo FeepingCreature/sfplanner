@@ -18,6 +18,7 @@ from satisfactory_planner.core import BuildingType
 from satisfactory_planner.core.models import Scene
 from satisfactory_planner.ui.items.belt_item import BeltItem
 from satisfactory_planner.ui.items.building_item import BuildingItem
+from satisfactory_planner.core.flow_solver import Warning
 from satisfactory_planner.ui.items.warning_icon_item import WarningIconItem
 
 if TYPE_CHECKING:
@@ -233,32 +234,34 @@ class VisualSyncManager:
 
         # Update all belt items - each uses its flow_key to look up results
         for belt_item in self.canvas._belt_items.values():
-            flow_rate = solved and solved.flows.get(belt_item.flow_key)
-            optimal_flow_rate = solved and solved.theoretical_flows.get(belt_item.flow_key)
+            flow_rate = solved.flows.get(belt_item.flow_key) if solved else None
+            optimal_flow_rate = solved.theoretical_flows.get(belt_item.flow_key) if solved else None
             belt_item.set_flow_rate(flow_rate, optimal_flow_rate)
 
         # Update all building items - each uses its flow_key to look up results
         for building_item in self.canvas._building_items.values():
-            eff = solved and solved.efficiencies.get(building_item.flow_key)
-            building_item.set_efficiency(eff and eff.duty_cycle)
+            eff = solved.efficiencies.get(building_item.flow_key) if solved else None
+            building_item.set_efficiency(eff.duty_cycle if eff else None)
 
         # Also update items inside room placements
         for room_item in self.canvas._room_items.values():
             if not isinstance(room_item, RoomItem):
                 continue
             for belt_item in room_item._belt_items.values():
-                flow_rate = solved and solved.flows.get(belt_item.flow_key)
-                optimal_flow_rate = solved and solved.theoretical_flows.get(belt_item.flow_key)
+                flow_rate = solved.flows.get(belt_item.flow_key) if solved else None
+                optimal_flow_rate = (
+                    solved.theoretical_flows.get(belt_item.flow_key) if solved else None
+                )
                 belt_item.set_flow_rate(flow_rate, optimal_flow_rate)
 
             for building_item in room_item._building_items.values():
-                eff = solved and solved.efficiencies.get(building_item.flow_key)
-                building_item.set_efficiency(eff and eff.duty_cycle)
+                eff = solved.efficiencies.get(building_item.flow_key) if solved else None
+                building_item.set_efficiency(eff.duty_cycle if eff else None)
 
         # Update warning icons
-        self.update_warning_icons(flow_solver._warnings)
+        self._update_warning_icons(flow_solver._warnings)
 
-    def update_warning_icons(self, warnings: list[object]) -> None:
+    def _update_warning_icons(self, warnings: list[Warning]) -> None:
         """Update warning icons based on current warnings."""
         from satisfactory_planner.core.flow_solver import Warning
 
