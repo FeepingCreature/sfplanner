@@ -209,14 +209,63 @@ class SimplexSolver:
             self._show_row(self.b[j], self.a[j])
 
 
-def simplex_canonical(a, b, c, basis, num, verbose=False, do_coerce=True):
-    """Simplex method in canonical form, when initial basis is fully known."""
+def _pivot_in_variable(a, b, basis, pivot_row, pivot_col, num):
+    """Pivot a variable into the basis at the given row/column.
+    
+    Performs row operations to maintain diagonal form:
+    - Normalizes the pivot row so a[pivot_row][pivot_col] = 1
+    - Eliminates pivot_col from all other rows
+    
+    Modifies a, b, basis in place.
+    """
+    n = len(a[0])
+    pivot_val = a[pivot_row][pivot_col]
+    
+    # Normalize pivot row
+    b[pivot_row] /= pivot_val
+    for i in range(n):
+        a[pivot_row][i] /= pivot_val
+    
+    # Eliminate from other rows
+    for j in range(len(a)):
+        if j != pivot_row:
+            factor = a[j][pivot_col]
+            if not num.iszero(factor):
+                b[j] -= factor * b[pivot_row]
+                for i in range(n):
+                    a[j][i] -= factor * a[pivot_row][i]
+    
+    basis[pivot_row] = pivot_col
+
+
+def _reduce_c_row(c, a, b, basis, num):
+    """Reduce the objective function coefficients for basis variables.
+    
+    For each basis variable, subtract its row from c to make c[basis_var] = 0.
+    Returns a new reduced c vector.
+    """
+    c_reduced = c[:]
+    for j, bi in enumerate(basis):
+        if bi < len(c_reduced) and not num.iszero(c_reduced[bi]):
+            row = a[j]
+            k = c_reduced[bi]
+            for i in range(len(c_reduced)):
+                c_reduced[i] -= k * row[i]
+    return c_reduced
+
+
+def simplex_canonical(a, b, c, basis, num, verbose=False, do_coerce=True, c_is_reduced=False):
+    """Simplex method in canonical form, when initial basis is fully known.
+    
+    Args:
+        c_is_reduced: If True, skip diagonalizing c row (already done by caller)
+    """
     if do_coerce:
         a = num.coerce_mtx(a)
         b = num.coerce_vec(b)
         c = num.coerce_vec(c)
 
-    solver = SimplexSolver(a, b, c, basis, numclass=num, clean_c_row=True)
+    solver = SimplexSolver(a, b, c, basis, numclass=num, clean_c_row=not c_is_reduced)
     if verbose:
         print("############ Regular simplex:#############")
         solver.show()
@@ -284,99 +333,53 @@ def simplex_canonical_m(a, b, c, basis, num, verbose=False, do_coerce=True):
         if all(num.iszero(v) for v in artificial_values):
             if verbose:
                 print("### Real vertex reached (artificial variables are zero)")
-            # Construct solution directly - we have the vertex from m_solver
-            # Just extract the real variable values
-            solution = [num.zero()] * n
-            for j, bi in enumerate(m_solver.basis):
-                if bi < n:
-                    solution[bi] = m_solver.b[j]
-            # Now continue with regular simplex to optimize (if needed)
-            # But first check if we're already optimal
-            c_reduced = c[:]
-            for j, bi in enumerate(m_solver.basis):
-                if bi < n and not num.iszero(c_reduced[bi]):
-                    # Subtract row to zero out c at basis position
-                    row = m_solver.a[j][:n]
-                    k = c_reduced[bi]
-                    for i in range(n):
-                        c_reduced[i] -= k * row[i]
-            
-            # Check if optimal (all c >= 0 for minimization means we're done)
-            # After reduction, if all reduced costs are non-negative, we're optimal
-            if all(num.nonnegative(ci) for ci in c_reduced):
-                if verbose:
-                    print("### Already optimal, returning solution directly")
-                return RESOLUTION_SOLVED, solution
-            
-            # Not optimal yet - need to pivot out artificial variables and continue
-            # Since artificial vars have value 0, we can replace them with any real var
-            # that has a non-zero coefficient in that row
-            if verbose:
-                print("### Not optimal, pivoting out artificial variables")
-            
-            # Build new basis and matrix with artificial vars removed
-            new_basis = m_solver.basis[:]
-            new_a = [row[:n] for row in m_solver.a]  # Trim to real vars only
-            new_b = m_solver.b[:]
-            
-            rows_to_remove = []
-            for j, bi in enumerate(new_basis):
-                if bi >= n:
-                    # Find a real variable to pivot in
-                    pivot_col = None
-                    for i in range(n):
-                        if not num.iszero(new_a[j][i]) and i not in new_basis:
-                            pivot_col = i
-                            break
-                    
-                    if pivot_col is not None:
-                        # Pivot this variable in
-                        if verbose:
-                            print(f"###   Row {j}: replacing artificial {bi} with real {pivot_col}")
-                        new_basis[j] = pivot_col
-                        # Need to actually do the pivot to maintain diagonal form
-                        pivot_val = new_a[j][pivot_col]
-                        # Normalize pivot row
-                        new_b[j] /= pivot_val
-                        for i in range(n):
-                            new_a[j][i] /= pivot_val
-                        # Eliminate from other rows
-                        for j2 in range(len(new_a)):
-                            if j2 != j:
-                                factor = new_a[j2][pivot_col]
-                                if not num.iszero(factor):
-                                    new_b[j2] -= factor * new_b[j]
-                                    for i in range(n):
-                                        new_a[j2][i] -= factor * new_a[j][i]
-                    else:
-                        # Row is all zeros in real variables - it's redundant
-                        if verbose:
-                            print(f"###   Row {j}: removing redundant constraint")
-                        rows_to_remove.append(j)
-            
-            # Remove redundant rows (in reverse order to keep indices valid)
-            for j in reversed(rows_to_remove):
-                del new_a[j]
-                del new_b[j]
-                del new_basis[j]
-            
-            if not new_a:
-                # All constraints redundant - return current solution
-                return RESOLUTION_SOLVED, solution
-            
-            # Now continue with regular simplex
-            return simplex_canonical(
-                new_a, new_b, c, new_basis, num=num, verbose=verbose, do_coerce=False
-            )
+            real_vertex_reached = True
         else:
             if verbose:
                 print("### Empty simplex")
             return RESOLUTION_INCOMPATIBLE, None
 
-    # All basis variables are real - just trim and continue
-    a = [a_row[:n] for a_row in m_solver.a]
+    # Trim to real variables only
+    new_a = [row[:n] for row in m_solver.a]
+    new_b = m_solver.b[:]
+    new_basis = m_solver.basis[:]
+    
+    # Pivot out any artificial variables still in basis (they have value 0)
+    rows_to_remove = []
+    for j, bi in enumerate(new_basis):
+        if bi >= n:
+            # Find a real variable to pivot in
+            pivot_col = None
+            for i in range(n):
+                if not num.iszero(new_a[j][i]) and i not in new_basis:
+                    pivot_col = i
+                    break
+            
+            if pivot_col is not None:
+                if verbose:
+                    print(f"###   Row {j}: replacing artificial {bi} with real {pivot_col}")
+                _pivot_in_variable(new_a, new_b, new_basis, j, pivot_col, num)
+            else:
+                # Row is all zeros in real variables - it's redundant
+                if verbose:
+                    print(f"###   Row {j}: removing redundant constraint")
+                rows_to_remove.append(j)
+    
+    # Remove redundant rows (in reverse order to keep indices valid)
+    for j in reversed(rows_to_remove):
+        del new_a[j]
+        del new_b[j]
+        del new_basis[j]
+    
+    if not new_a:
+        # All constraints redundant - return trivial zero solution
+        return RESOLUTION_SOLVED, [num.zero()] * n
+    
+    # Reduce c for the current basis and continue optimizing
+    c_reduced = _reduce_c_row(c, new_a, new_b, new_basis, num)
+    
     return simplex_canonical(
-        a, m_solver.b, c, m_solver.basis, num=num, verbose=verbose, do_coerce=False
+        new_a, new_b, c_reduced, new_basis, num=num, verbose=verbose, do_coerce=False, c_is_reduced=True
     )
 
 
