@@ -1,5 +1,5 @@
 [app]
-title = Satisfactory Planner
+title = sfplanner
 project_dir = .
 input_file = src/satisfactory_planner/main.py
 project_file = 

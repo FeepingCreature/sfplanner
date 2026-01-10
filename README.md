@@ -35,16 +35,16 @@ cd sfplanner
 pip install -e ".[dev]"
 
 # Run the application
-satisfactory-planner
+sfplanner
 ```
 
 ### Pre-built Binaries
 
 Download the latest release for your platform from the [Releases](https://github.com/FeepingCreature/sfplanner/releases) page:
 
-- **Windows**: `satisfactory-planner-windows.exe`
-- **Linux**: `satisfactory-planner-linux.bin`
-- **macOS**: `satisfactory-planner-macos.app`
+- **Windows**: `sfplanner-windows.exe`
+- **Linux**: `sfplanner-linux.bin`
+- **macOS**: `sfplanner-macos.app`
 
 ## Quick Start
 
