@@ -140,10 +140,15 @@ def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
 
     # Step 1: Search DuckDuckGo
     search_results = _search_ddg(search_term)
-    if not search_results or "error" in search_results[0]:
+    if not search_results:
         return {
             "success": False,
-            "error": f"Search failed: {search_results[0].get('error', 'no results')}",
+            "error": "Search failed: no results",
+        }
+    if "error" in search_results[0]:
+        return {
+            "success": False,
+            "error": f"Search failed: {search_results[0].get('error', 'unknown error')}",
         }
 
     # Step 2: Ask model to pick the right URL
