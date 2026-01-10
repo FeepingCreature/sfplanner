@@ -853,15 +853,15 @@ class MainWindow(QMainWindow):
         """Toggle efficiency overlay on buildings."""
         if self.current_tab and self.current_tab.canvas:
             self.current_tab.canvas.set_show_efficiency(enabled)
-            if enabled:
-                self.current_tab.canvas.update_flow_visualization()
+            # Always update visualization to show/hide overlays
+            self.current_tab.canvas.update_flow_visualization()
 
     def _toggle_flow_rates(self, enabled: bool) -> None:
         """Toggle flow rate display on belts."""
         if self.current_tab and self.current_tab.canvas:
             self.current_tab.canvas.set_show_flow_rate(enabled)
-            if enabled:
-                self.current_tab.canvas.update_flow_visualization()
+            # Always update visualization to show/hide overlays
+            self.current_tab.canvas.update_flow_visualization()
 
     def _mark_dirty(self, tab: DocumentTab) -> None:
         """Mark a tab as having unsaved changes."""
