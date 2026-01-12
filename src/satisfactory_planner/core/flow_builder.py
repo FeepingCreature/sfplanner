@@ -23,11 +23,12 @@ from satisfactory_planner.core.models import (
     MINER_RATES,
     Building,
     BuildingType,
+    RecipeId,
     Scene,
 )
 
 if TYPE_CHECKING:
-    from satisfactory_planner.core.models import Belt, Document, Recipe, RecipeId
+    from satisfactory_planner.core.models import Belt, Document, Recipe
 
 
 class FatalErrorType(Enum):
@@ -83,7 +84,12 @@ def _get_node_type(building_type: BuildingType) -> NodeType:
 def _get_port_item_id(
     building: Building, is_input: bool, port_index: int, recipes: dict[RecipeId, Recipe]
 ) -> str | None:
-    """Get the item ID for a port based on recipe or item_id field."""
+    """Get the item ID for a port based on recipe or item_id field.
+
+    For outputs: returns the specific item at that port index.
+    For inputs: returns None - Satisfactory allows any input ordering,
+                so we can't know which item goes to which port.
+    """
     # Source/Sink/Miner use item_id field directly
     if building.building_type == BuildingType.SOURCE:
         if not is_input and port_index == 0:
@@ -106,8 +112,10 @@ def _get_port_item_id(
         return None
 
     if is_input:
-        if port_index < len(recipe.inputs):
-            return recipe.inputs[port_index].item_id
+        # Satisfactory allows any belt ordering on inputs - we can't determine
+        # which specific item goes to which port. Return None and let the
+        # item type be inferred from the source during propagation.
+        return None
     else:
         if port_index < len(recipe.outputs):
             return recipe.outputs[port_index].item_id
@@ -339,7 +347,57 @@ def build_flow_graph(document: Document, recipes: dict[RecipeId, Recipe]) -> Bui
     if errors:
         return BuildResult(errors=errors)
 
+    # Phase: Check producer input item types
+    # Verify that items flowing into production buildings match recipe inputs
+    producer_errors = _check_producer_input_types(graph, recipes)
+    errors.extend(producer_errors)
+
+    if errors:
+        return BuildResult(errors=errors)
+
     return BuildResult(graph=graph)
+
+
+def _check_producer_input_types(
+    graph: FlowGraph, recipes: dict[RecipeId, Recipe]
+) -> list[FatalError]:
+    """Check that items flowing into production buildings match recipe inputs.
+
+    Satisfactory allows any belt ordering on inputs, so we check that each
+    incoming item is *one of* the recipe's required inputs, not that it
+    matches a specific port.
+    """
+    errors: list[FatalError] = []
+
+    for node in graph.nodes.values():
+        if node.node_type != NodeType.PRODUCER:
+            continue
+        if node.recipe_id is None:
+            continue
+
+        recipe = recipes.get(RecipeId(node.recipe_id))
+        if recipe is None:
+            continue
+
+        # Get the set of valid input item IDs for this recipe
+        valid_inputs = {inp.item_id for inp in recipe.inputs}
+
+        # Check all incoming edges
+        incoming = graph.get_incoming_edges(node.id)
+        for edge in incoming:
+            if edge.item_name is not None and edge.item_name not in valid_inputs:
+                errors.append(
+                    FatalError(
+                        error_type=FatalErrorType.ITEM_MISMATCH,
+                        message=(
+                            f"Recipe '{recipe.name}' does not use {edge.item_name}. "
+                            f"Valid inputs: {', '.join(sorted(valid_inputs))}"
+                        ),
+                        item_key=edge.id,
+                    )
+                )
+
+    return errors
 
 
 def _check_sink_item_types(graph: FlowGraph) -> list[FatalError]:

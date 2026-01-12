@@ -1,10 +1,8 @@
 {
   "active_files": [
     "src/satisfactory_planner/ui/commands/building_commands.py",
-    "src/satisfactory_planner/ui/canvas/factory_canvas.py",
-    "src/satisfactory_planner/ui/items/port_item.py",
     "release.sh",
-    "src/satisfactory_planner/ui/canvas/belt_connector.py",
+    "src/satisfactory_planner/core/flow_builder.py",
     "src/satisfactory_planner/core/persistence.py",
     "README.md",
     "src/satisfactory_planner/core/flow_models.py",
@@ -213,6 +211,42 @@
       "streaming": true,
       "actual_cost": 0.57265375,
       "generation_id": "gen-1768242854-9xYin8KxBUD3sCCg7vgu"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768242967727.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768242967727.json",
+      "timestamp": 1768242967.7281346,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.5730575,
+      "generation_id": "gen-1768242968-hVZLMsYmFrCwN3qRCjny"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768242983661.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768242983661.json",
+      "timestamp": 1768242983.662182,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.44242375,
+      "generation_id": "gen-1768242984-5Ck5ZphWx8GnEWUd4BJF"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768243020156.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768243020156.json",
+      "timestamp": 1768243020.1573803,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.10382375,
+      "generation_id": "gen-1768243022-9MxoRYRSDBtpFG3Ajjsy"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768243029442.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768243029442.json",
+      "timestamp": 1768243029.4429407,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05748125,
+      "generation_id": "gen-1768243030-fnpenXoXhYDMp426fvPF"
     }
   ],
   "messages": [
@@ -1120,6 +1154,123 @@
         },
         {
           "commit": "cb186ea9908a",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 0a002969",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Perfect, thank you! Okay back to the bugs :) In the flow solver I think we have the same issue. Right now, we generate a type mismatch if we have a belt going into a production building at the \"wrong\" port. Can you unload the belt files (we're done with that), compact convo and then look into that?"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"from_id\": \"1\", \"to_id\": \"8\", \"summary\": \"Implemented bidirectional belt dragging with right-click building picker:\\n\\n**BeltConnector changes:**\\n- Added `BuildingOption` dataclass, `_connect_start_item: ItemKey` (was `_connect_start_building: str`)\\n- `start_drag()` now takes `ItemKey` instead of building_id + scene_room_id\\n- `show_building_picker()`, `_get_forward_options()`, `_get_backward_options()`\\n- `_get_all_recipe_inputs(item_key, building)` - gets unsatisfied recipe inputs, filtering out already-supplied items via flow solver\\n- `_get_supplied_items(item_key)` - looks up flow graph node directly by ItemKey\\n- `_get_item_from_flow_solver()` - gets item on output port via flow solver\\n- `_spawn_and_connect()` - creates building positioned so port aligns with cursor\\n\\n**PortItem changes:**\\n- `mousePressEvent()` constructs ItemKey and passes to `start_belt_drag()`\\n\\n**FactoryCanvas changes:**\\n- `start_belt_drag()` signature changed to take `ItemKey` instead of building_id + scene_room_id\\n\\n**CLAUDE.md additions:**\\n- Type design guidance: use domain types from the start, not primitives\\n- Add FIXME comments when uncertain about type gymnastics\"}",
+            "name": "compact"
+          },
+          "id": "toolu_bdrk_01GKi72w2sRJ5DGdah3NZSz5",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"remove\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\",\"src/satisfactory_planner/ui/canvas/factory_canvas.py\",\"src/satisfactory_planner/ui/items/port_item.py\"], \"add\": [\"src/satisfactory_planner/core/flow_builder.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_bdrk_011meG3ysaEXCPoEoCjBr9LM",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01GKi72w2sRJ5DGdah3NZSz5",
+      "content": "{\"compact\": true, \"from_id\": \"1\", \"success\": true, \"summary\": \"Implemented bidirectional belt dragging with right-click building picker:\\n\\n**BeltConnector changes:**\\n- Added `BuildingOption` dataclass, `_connect_start_item: ItemKey` (was `_connect_start_building: str`)\\n- `start_drag()` now takes `ItemKey` instead of building_id + scene_room_id\\n- `show_building_picker()`, `_get_forward_options()`, `_get_backward_options()`\\n- `_get_all_recipe_inputs(item_key, building)` - gets unsatisfied recipe inputs, filtering out already-supplied items via flow solver\\n- `_get_supplied_items(item_key)` - looks up flow graph node directly by ItemKey\\n- `_get_item_from_flow_solver()` - gets item on output port via flow solver\\n- `_spawn_and_connect()` - creates building positioned so port aligns with cursor\\n\\n**PortItem changes:**\\n- `mousePressEvent()` constructs ItemKey and passes to `start_belt_drag()`\\n\\n**FactoryCanvas changes:**\\n- `start_belt_drag()` signature changed to take `ItemKey` instead of building_id + scene_room_id\\n\\n**CLAUDE.md additions:**\\n- Type design guidance: use domain types from the start, not primitives\\n- Add FIXME comments when uncertain about type gymnastics\", \"to_id\": \"8\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_011meG3ysaEXCPoEoCjBr9LM",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/core/flow_builder.py\"], \"message\": \"Added 1 files, removed 3 files from context\", \"remove\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\", \"src/satisfactory_planner/ui/canvas/factory_canvas.py\", \"src/satisfactory_planner/ui/items/port_item.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue. In `_get_port_item_id`, we assume port index N corresponds to recipe input/output N. But Satisfactory allows any belt ordering on inputs - you can connect iron plates to port 0 or port 1, it doesn't matter.\n\nThe fix should be: for production building *inputs*, we should check if the item being delivered matches *any* of the recipe's inputs, not specifically `recipe.inputs[port_index]`.\n\nLet me fix this:\n\n<edit file=\"src/satisfactory_planner/core/flow_builder.py\">\n<search>\ndef _get_port_item_id(\n    building: Building, is_input: bool, port_index: int, recipes: dict[RecipeId, Recipe]\n) -> str | None:\n    \"\"\"Get the item ID for a port based on recipe or item_id field.\"\"\"\n    # Source/Sink/Miner use item_id field directly\n    if building.building_type == BuildingType.SOURCE:\n        if not is_input and port_index == 0:\n            return building.item_id\n        return None\n    if building.building_type == BuildingType.SINK:\n        if is_input and port_index == 0:\n            return building.item_id\n        return None\n    if building.building_type == BuildingType.MINER:\n        if not is_input and port_index == 0:\n            return building.item_id\n        return None\n\n    if building.recipe_id is None:\n        return None\n\n    recipe = recipes.get(building.recipe_id)\n    if recipe is None:\n        return None\n\n    if is_input:\n        if port_index < len(recipe.inputs):\n            return recipe.inputs[port_index].item_id\n    else:\n        if port_index < len(recipe.outputs):\n            return recipe.outputs[port_index].item_id\n\n    return None\n</search>\n<replace>\ndef _get_port_item_id(\n    building: Building, is_input: bool, port_index: int, recipes: dict[RecipeId, Recipe]\n) -> str | None:\n    \"\"\"Get the item ID for a port based on recipe or item_id field.\n\n    For outputs: returns the specific item at that port index.\n    For inputs: returns None - Satisfactory allows any input ordering,\n                so we can't know which item goes to which port.\n    \"\"\"\n    # Source/Sink/Miner use item_id field directly\n    if building.building_type == BuildingType.SOURCE:\n        if not is_input and port_index == 0:\n            return building.item_id\n        return None\n    if building.building_type == BuildingType.SINK:\n        if is_input and port_index == 0:\n            return building.item_id\n        return None\n    if building.building_type == BuildingType.MINER:\n        if not is_input and port_index == 0:\n            return building.item_id\n        return None\n\n    if building.recipe_id is None:\n        return None\n\n    recipe = recipes.get(building.recipe_id)\n    if recipe is None:\n        return None\n\n    if is_input:\n        # Satisfactory allows any belt ordering on inputs - we can't determine\n        # which specific item goes to which port. Return None and let the\n        # item type be inferred from the source during propagation.\n        return None\n    else:\n        if port_index < len(recipe.outputs):\n            return recipe.outputs[port_index].item_id\n\n    return None\n</replace>\n</edit>\n\nNow we need to add validation that the incoming item matches *one of* the recipe inputs. This should happen during propagation or as a separate check. Let me add a check after propagation:\n\n<edit file=\"src/satisfactory_planner/core/flow_builder.py\">\n<search>\n    # Phase: Check sink item type mismatches\n    # After propagation, we can detect if a sink receives the wrong item type\n    sink_errors = _check_sink_item_types(graph)\n    errors.extend(sink_errors)\n\n    if errors:\n        return BuildResult(errors=errors)\n\n    return BuildResult(graph=graph)\n</search>\n<replace>\n    # Phase: Check sink item type mismatches\n    # After propagation, we can detect if a sink receives the wrong item type\n    sink_errors = _check_sink_item_types(graph)\n    errors.extend(sink_errors)\n\n    if errors:\n        return BuildResult(errors=errors)\n\n    # Phase: Check producer input item types\n    # Verify that items flowing into production buildings match recipe inputs\n    producer_errors = _check_producer_input_types(graph, recipes)\n    errors.extend(producer_errors)\n\n    if errors:\n        return BuildResult(errors=errors)\n\n    return BuildResult(graph=graph)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_builder.py\">\n<search>\ndef _check_sink_item_types(graph: FlowGraph) -> list[FatalError]:\n</search>\n<replace>\ndef _check_producer_input_types(\n    graph: FlowGraph, recipes: dict[RecipeId, Recipe]\n) -> list[FatalError]:\n    \"\"\"Check that items flowing into production buildings match recipe inputs.\n\n    Satisfactory allows any belt ordering on inputs, so we check that each\n    incoming item is *one of* the recipe's required inputs, not that it\n    matches a specific port.\n    \"\"\"\n    errors: list[FatalError] = []\n\n    for node in graph.nodes.values():\n        if node.node_type != NodeType.PRODUCER:\n            continue\n        if node.recipe_id is None:\n            continue\n\n        recipe = recipes.get(node.recipe_id)\n        if recipe is None:\n            continue\n\n        # Get the set of valid input item IDs for this recipe\n        valid_inputs = {inp.item_id for inp in recipe.inputs}\n\n        # Check all incoming edges\n        incoming = graph.get_incoming_edges(node.id)\n        for edge in incoming:\n            if edge.item_name is not None and edge.item_name not in valid_inputs:\n                errors.append(\n                    FatalError(\n                        error_type=FatalErrorType.ITEM_MISMATCH,\n                        message=(\n                            f\"Recipe '{recipe.name}' does not use {edge.item_name}. \"\n                            f\"Valid inputs: {', '.join(sorted(valid_inputs))}\"\n                        ),\n                        item_key=edge.id,\n                    )\n                )\n\n    return errors\n\n\ndef _check_sink_item_types(graph: FlowGraph) -> list[FatalError]:\n</replace>\n</edit>\n\n<run_tests/>"
+    },
+    {
+      "role": "system",
+      "content": "Commands executed:\n\u2713 edit\n\u2713 edit\n\u2713 edit\n\n\u274c `run_tests` failed:\n\nruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nsrc/satisfactory_planner/core/flow_builder.py:377: error: No overload variant of \"get\" of \"dict\" matches argument type \"str\"  [call-overload]\nsrc/satisfactory_planner/core/flow_builder.py:377: note: Possible overload variants:\nsrc/satisfactory_planner/core/flow_builder.py:377: note:     def get(self, RecipeId, None = ..., /) -> Recipe | None\nsrc/satisfactory_planner/core/flow_builder.py:377: note:     def get(self, RecipeId, Recipe, /) -> Recipe\nsrc/satisfactory_planner/core/flow_builder.py:377: note:     def [_T] get(self, RecipeId, _T, /) -> Recipe | _T\nFound 1 error in 1 file (checked 52 source files)\n\n--- stderr ---\nmake: *** [Makefile:24: typecheck] Error 1\n",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "The issue is that `node.recipe_id` is a `str | None` but the dict is keyed by `RecipeId`. Let me check line 377:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/core/flow_builder.py\", \"line\": 377, \"context\": 5}",
+            "name": "get_lines"
+          },
+          "id": "toolu_vrtx_01G7L6NGqp6w4c11oy8meijH",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01G7L6NGqp6w4c11oy8meijH",
+      "content": "{\"content\": \"     372 |         if node.node_type != NodeType.PRODUCER:\\n     373 |             continue\\n     374 |         if node.recipe_id is None:\\n     375 |             continue\\n     376 | \\n>>>  377 |         recipe = recipes.get(node.recipe_id)\\n     378 |         if recipe is None:\\n     379 |             continue\\n     380 | \\n     381 |         # Get the set of valid input item IDs for this recipe\\n     382 |         valid_inputs = {inp.item_id for inp in recipe.inputs}\", \"filepath\": \"src/satisfactory_planner/core/flow_builder.py\", \"range\": \"372-382\", \"success\": true, \"target_line\": 377, \"total_lines\": 772}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "The issue is `node.recipe_id` is `str | None` but needs to be cast to `RecipeId`. Let me fix that:\n\n<edit file=\"src/satisfactory_planner/core/flow_builder.py\">\n<search>\nfrom satisfactory_planner.core.models import (\n    BELT_CAPACITIES,\n    MINER_RATES,\n    Building,\n    BuildingType,\n    Scene,\n)\n\nif TYPE_CHECKING:\n    from satisfactory_planner.core.models import Belt, Document, Recipe, RecipeId\n</search>\n<replace>\nfrom satisfactory_planner.core.models import (\n    BELT_CAPACITIES,\n    MINER_RATES,\n    Building,\n    BuildingType,\n    RecipeId,\n    Scene,\n)\n\nif TYPE_CHECKING:\n    from satisfactory_planner.core.models import Belt, Document, Recipe\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/flow_builder.py\">\n<search>\n        recipe = recipes.get(node.recipe_id)\n        if recipe is None:\n            continue\n\n        # Get the set of valid input item IDs for this recipe\n        valid_inputs = {inp.item_id for inp in recipe.inputs}\n</search>\n<replace>\n        recipe = recipes.get(RecipeId(node.recipe_id))\n        if recipe is None:\n            continue\n\n        # Get the set of valid input item IDs for this recipe\n        valid_inputs = {inp.item_id for inp in recipe.inputs}\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Fix flow builder to allow any input port ordering\n\nSatisfactory allows belts to connect to any input port regardless of\nrecipe input order. Previously we assumed port N = recipe.inputs[N],\nwhich caused false type mismatch errors.\n\nNow:\n- _get_port_item_id returns None for inputs (can't determine from port)\n- _check_producer_input_types validates incoming items match ANY recipe input\n- Error messages show valid inputs when mismatch is detected\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_builder.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_builder.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_builder.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_builder.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_g45xcxpb\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 50 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .........                            [ 36%]\ntests/test_core/test_models.py .........                                 [ 54%]\ntests/test_core/test_room_commands.py ..............                     [ 82%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 50 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_g45xcxpb\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_g45xcxpb\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 50 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .........                            [ 36%]\ntests/test_core/test_models.py .........                                 [ 54%]\ntests/test_core/test_room_commands.py ..............                     [ 82%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 50 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_g45xcxpb\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "78b8a4f8b876",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
