@@ -548,19 +548,21 @@ def _compute_efficiencies(
                 limiting_intended = intended
                 limiting_actual = actual
 
-        # Only check inputs if building has input requirements
-        # (Buildings with no inputs like miners shouldn't be penalized)
-        if node.inputs:
+        # Only check inputs if building has incoming edges
+        # Buildings with missing inputs get a separate warning, efficiency is about
+        # how well the building runs given what it HAS connected
+        if incoming:
             # Build map of item_name -> total incoming flow
             incoming_by_item: dict[str | None, float] = {}
             for edge in incoming:
                 item = edge.item_name
                 incoming_by_item[item] = incoming_by_item.get(item, 0.0) + flows.get(edge.id, 0.0)
 
-            # Check each required input
+            # Check each required input that has a belt connected
             for input_port in node.inputs:
-                actual_input = incoming_by_item.get(input_port.item_name, 0.0)
-                update_min(actual_input, input_port.rate)
+                if input_port.item_name in incoming_by_item:
+                    actual_input = incoming_by_item[input_port.item_name]
+                    update_min(actual_input, input_port.rate)
 
         # Check outputs (always applicable)
         for i, output_port in enumerate(node.outputs):
