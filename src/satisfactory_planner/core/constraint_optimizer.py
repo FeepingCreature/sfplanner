@@ -173,22 +173,6 @@ class ConstraintSystem:
         canonical, _ = self._find_canonical_and_scale(var)
         return canonical
 
-    def _count_var_usage(self) -> dict[int, tuple[int, int]]:
-        """Count how many equalities and inequalities each canonical var appears in.
-
-        Returns dict mapping canonical var -> (eq_count, ineq_count).
-        """
-        usage: dict[int, tuple[int, int]] = {}
-        for constraint in self.constraints:
-            for var in constraint.coeffs:
-                canonical = self._find_canonical(var)
-                eq_count, ineq_count = usage.get(canonical, (0, 0))
-                if constraint.constraint_type == ConstraintType.EQUALITY:
-                    usage[canonical] = (eq_count + 1, ineq_count)
-                else:
-                    usage[canonical] = (eq_count, ineq_count + 1)
-        return usage
-
     def _merge_vars(self, var1: int, var2: int, scale: float = 1.0) -> None:
         """Merge two variables with optional scale factor.
 
@@ -335,77 +319,10 @@ class ConstraintSystem:
                 new_constraints.append(constraint)
             self.constraints = new_constraints
 
-            # Pass 7: Eliminate "source" variables that only appear in one equality
-            # and upper bounds. E.g., if `a` only appears in `a <= X` and `a - c = 0`,
-            # we can substitute a = c and get c <= X (tightening c's bound).
-            # This is especially useful for chains like: source → belt → splitter
-            # where the source belt is only bounded by the source's output rate.
-            var_usage = self._count_var_usage()
-            for constraint in list(self.constraints):
-                if constraint.constraint_type != ConstraintType.EQUALITY:
-                    continue
-                if len(constraint.coeffs) != 2:
-                    logger.debug(f"Pass 7: skipping {constraint.coeffs} - not 2 vars")
-                    continue
-                if abs(constraint.rhs) > 1e-9:
-                    continue
-
-                # Find if one var is "source-like" (only in this eq + bounds)
-                items = list(constraint.coeffs.items())
-                var1, coeff1 = items[0]
-                var2, coeff2 = items[1]
-                canon1, canon2 = self._find_canonical(var1), self._find_canonical(var2)
-
-                usage1 = var_usage.get(canon1, (0, 0))
-                usage2 = var_usage.get(canon2, (0, 0))
-                has_bound1 = canon1 in self._upper_bounds
-                has_bound2 = canon2 in self._upper_bounds
-
-                logger.debug(
-                    f"Pass 7: eq {canon1}*{coeff1} + {canon2}*{coeff2} = 0, "
-                    f"usage1={usage1} bound1={has_bound1}, usage2={usage2} bound2={has_bound2}"
-                )
-
-                source_var: int | None = None
-                target_var: int | None = None
-                source_coeff = 0.0
-                target_coeff = 0.0
-
-                # Check if var1 is source-like (appears in <=1 equality total)
-                if usage1[0] <= 1 and has_bound1:
-                    source_var, source_coeff = canon1, coeff1
-                    target_var, target_coeff = canon2, coeff2
-                    logger.debug(f"  -> var {canon1} is source-like")
-                elif usage2[0] <= 1 and has_bound2:
-                    source_var, source_coeff = canon2, coeff2
-                    target_var, target_coeff = canon1, coeff1
-                    logger.debug(f"  -> var {canon2} is source-like")
-                else:
-                    logger.debug("  -> no source-like var found")
-
-                if source_var is not None and target_var is not None:
-                    # source_coeff * source + target_coeff * target = 0
-                    # source = (-target_coeff / source_coeff) * target
-                    # source <= bound means (-target_coeff / source_coeff) * target <= bound
-                    scale = -target_coeff / source_coeff
-                    if scale > 0:  # Only if positive (preserves inequality direction)
-                        source_bound = self._upper_bounds[source_var]
-                        implied_target_bound = source_bound / scale
-                        current_target_bound = self._upper_bounds.get(target_var)
-                        logger.debug(
-                            f"  -> scale={scale}, source_bound={source_bound}, "
-                            f"implied={implied_target_bound}, current={current_target_bound}"
-                        )
-                        if (
-                            current_target_bound is None
-                            or implied_target_bound < current_target_bound
-                        ):
-                            logger.debug(f"  -> TIGHTENING {target_var} to {implied_target_bound}")
-                            self._upper_bounds[target_var] = implied_target_bound
-                            bounds_tightened += 1
-                            changed = True
-                    else:
-                        logger.debug(f"  -> scale={scale} not positive, skipping")
+            # Note: Pass 7 (source variable elimination) was removed because
+            # Pass 1 already handles all 2-var equalities via is_two_var_equality().
+            # The remaining equalities are 3+ var conservation constraints
+            # (splitters/mergers) which require full Gaussian elimination.
 
         # Log summary if any simplifications occurred
         final_constraints = len(self.constraints)

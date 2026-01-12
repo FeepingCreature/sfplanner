@@ -422,17 +422,8 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
             upper_bound = INFINITE_RATE
         cs.add_inequality({idx: 1.0}, upper_bound)
 
-    # Build edge names for DOT visualization
-    edge_names = [f"{graph.edges[eid].item_name or '?'}:{str(eid)[-8:]}" for eid in edge_ids]
-
-    # Dump constraint graph before optimization
-    cs.write_dot(str(Path.home() / "constraints_before.dot"), edge_names)
-
     # Optimize the constraint system before solving
     cs.optimize()
-
-    # Dump constraint graph after optimization
-    cs.write_dot(str(Path.home() / "constraints_after.dot"), edge_names)
 
     # Get the reduced system
     active_vars, eq_matrix, eq_rhs, ineq_matrix, ineq_rhs, objective = cs.get_reduced_system()
