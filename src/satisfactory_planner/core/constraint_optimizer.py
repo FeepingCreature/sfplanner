@@ -61,6 +61,29 @@ class LinearConstraint:
 
         return None
 
+    def is_two_var_equality(self) -> tuple[int, float, int, float] | None:
+        """Check if this is U*x_i + V*x_j = 0 (generalized ratio constraint).
+
+        Returns (i, U, j, V) if so, None otherwise.
+        This includes simple equalities as a special case.
+        """
+        if self.constraint_type != ConstraintType.EQUALITY:
+            return None
+        if abs(self.rhs) > 1e-9:
+            return None
+        if len(self.coeffs) != 2:
+            return None
+
+        items = list(self.coeffs.items())
+        v1, c1 = items[0]
+        v2, c2 = items[1]
+
+        # Need opposite signs for a valid ratio (U*a = -V*b means a = (-V/U)*b)
+        if c1 * c2 >= 0:
+            return None  # Same sign means no valid substitution for non-negative vars
+
+        return (v1, c1, v2, c2)
+
     def is_upper_bound(self) -> tuple[int, float] | None:
         """Check if this is x_i <= K.
 
@@ -111,6 +134,7 @@ class ConstraintSystem:
 
     # Optimization state
     _var_mapping: dict[int, int] = field(default_factory=dict)  # old -> canonical
+    _var_scale: dict[int, float] = field(default_factory=dict)  # var -> scale relative to canonical
     _upper_bounds: dict[int, float] = field(default_factory=dict)  # var -> tightest bound
     _eliminated_vars: set[int] = field(default_factory=set)
 
@@ -122,32 +146,53 @@ class ConstraintSystem:
         """Add inequality constraint: sum(coeffs[i] * x_i) <= rhs."""
         self.constraints.append(LinearConstraint(ConstraintType.LESS_EQUAL, coeffs.copy(), rhs))
 
-    def _find_canonical(self, var: int) -> int:
-        """Find canonical representative for a variable (union-find with path compression)."""
-        if var not in self._var_mapping:
-            return var
-        # Path compression
-        root = var
-        while root in self._var_mapping and self._var_mapping[root] != root:
-            root = self._var_mapping[root]
-        # Compress path
-        current = var
-        while current in self._var_mapping and self._var_mapping[current] != root:
-            next_var = self._var_mapping[current]
-            self._var_mapping[current] = root
-            current = next_var
-        return root
+    def _find_canonical_and_scale(self, var: int) -> tuple[int, float]:
+        """Find canonical representative and cumulative scale factor.
 
-    def _merge_vars(self, var1: int, var2: int) -> None:
-        """Merge two variables (they are equal)."""
-        c1 = self._find_canonical(var1)
-        c2 = self._find_canonical(var2)
+        Returns (canonical_var, scale) where var = scale * canonical_var.
+        """
+        if var not in self._var_mapping:
+            return var, 1.0
+
+        # Follow the chain, accumulating scale factors
+        scale = 1.0
+        current = var
+        while current in self._var_mapping:
+            scale *= self._var_scale.get(current, 1.0)
+            current = self._var_mapping[current]
+
+        # Path compression: point directly to root with accumulated scale
+        if var != current:
+            self._var_mapping[var] = current
+            self._var_scale[var] = scale
+
+        return current, scale
+
+    def _find_canonical(self, var: int) -> int:
+        """Find canonical representative for a variable."""
+        canonical, _ = self._find_canonical_and_scale(var)
+        return canonical
+
+    def _merge_vars(self, var1: int, var2: int, scale: float = 1.0) -> None:
+        """Merge two variables with optional scale factor.
+
+        After merge: var1 = scale * var2 (if var2 becomes canonical)
+        or equivalently: var2 = (1/scale) * var1 (if var1 becomes canonical)
+        """
+        c1, s1 = self._find_canonical_and_scale(var1)
+        c2, s2 = self._find_canonical_and_scale(var2)
         if c1 != c2:
+            # effective relationship: s1 * c1 = scale * s2 * c2
+            # so c1 = (scale * s2 / s1) * c2
             # Use lower index as canonical (arbitrary but consistent)
             if c1 < c2:
+                # c2 maps to c1: c2 = (s1 / (scale * s2)) * c1
                 self._var_mapping[c2] = c1
+                self._var_scale[c2] = s1 / (scale * s2)
             else:
+                # c1 maps to c2: c1 = (scale * s2 / s1) * c2
                 self._var_mapping[c1] = c2
+                self._var_scale[c1] = (scale * s2) / s1
 
     def optimize(self) -> None:
         """Apply all simplification passes."""
@@ -167,27 +212,32 @@ class ConstraintSystem:
             changed = False
             iterations += 1
 
-            # Pass 1: Find and merge simple equalities (x_i = x_j)
+            # Pass 1: Find and merge two-variable equalities (U*x_i + V*x_j = 0)
             for constraint in self.constraints:
-                eq = constraint.is_simple_equality()
-                if eq:
-                    v1, v2 = eq
-                    c1 = self._find_canonical(v1)
-                    c2 = self._find_canonical(v2)
-                    if c1 != c2:
-                        self._merge_vars(c1, c2)
+                ratio = constraint.is_two_var_equality()
+                if ratio:
+                    v1, c1_coeff, v2, c2_coeff = ratio
+                    canon1 = self._find_canonical(v1)
+                    canon2 = self._find_canonical(v2)
+                    if canon1 != canon2:
+                        # U*v1 + V*v2 = 0 means v1 = (-V/U) * v2
+                        # scale = -c2_coeff / c1_coeff
+                        scale = -c2_coeff / c1_coeff
+                        self._merge_vars(v1, v2, scale)
                         merges += 1
                         changed = True
 
-            # Pass 2: Substitute canonical variables into all constraints
+            # Pass 2: Substitute canonical variables into all constraints (with scaling)
             for constraint in self.constraints:
                 new_coeffs: dict[int, float] = {}
                 for var, coeff in list(constraint.coeffs.items()):
-                    canonical = self._find_canonical(var)
+                    canonical, scale = self._find_canonical_and_scale(var)
+                    # var = scale * canonical, so coeff * var = coeff * scale * canonical
+                    scaled_coeff = coeff * scale
                     if canonical in new_coeffs:
-                        new_coeffs[canonical] += coeff
+                        new_coeffs[canonical] += scaled_coeff
                     else:
-                        new_coeffs[canonical] = coeff
+                        new_coeffs[canonical] = scaled_coeff
                 # Clean up zeros
                 constraint.coeffs = {v: c for v, c in new_coeffs.items() if abs(c) > 1e-9}
 
@@ -329,12 +379,13 @@ class ConstraintSystem:
         for i, var in enumerate(active_vars):
             canonical_to_value[var] = reduced_solution[i]
 
-        # Expand to all original variables
+        # Expand to all original variables (applying scale factors)
         solution = [0.0] * self.n_vars
         for i in range(self.n_vars):
-            canonical = self._find_canonical(i)
+            canonical, scale = self._find_canonical_and_scale(i)
             if canonical in canonical_to_value:
-                solution[i] = canonical_to_value[canonical]
+                # i = scale * canonical, so value[i] = scale * value[canonical]
+                solution[i] = scale * canonical_to_value[canonical]
 
         return solution
 
