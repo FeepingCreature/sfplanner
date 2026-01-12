@@ -11,8 +11,11 @@ All simplifications are valid LP transformations.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum, auto
+
+logger = logging.getLogger(__name__)
 
 
 class ConstraintType(Enum):
@@ -148,9 +151,17 @@ class ConstraintSystem:
 
     def optimize(self) -> None:
         """Apply all simplification passes."""
+        initial_constraints = len(self.constraints)
+
         changed = True
         iterations = 0
         max_iterations = self.n_vars + 10  # Safety bound
+
+        merges = 0
+        bounds_tightened = 0
+        trivial_removed = 0
+        duplicates_removed = 0
+        redundant_eq_removed = 0
 
         while changed and iterations < max_iterations:
             changed = False
@@ -165,6 +176,7 @@ class ConstraintSystem:
                     c2 = self._find_canonical(v2)
                     if c1 != c2:
                         self._merge_vars(c1, c2)
+                        merges += 1
                         changed = True
 
             # Pass 2: Substitute canonical variables into all constraints
@@ -188,10 +200,15 @@ class ConstraintSystem:
                     if canonical not in self._upper_bounds:
                         self._upper_bounds[canonical] = bound
                     else:
-                        self._upper_bounds[canonical] = min(self._upper_bounds[canonical], bound)
+                        old_bound = self._upper_bounds[canonical]
+                        self._upper_bounds[canonical] = min(old_bound, bound)
+                        if bound < old_bound:
+                            bounds_tightened += 1
 
             # Pass 4: Remove trivial constraints
+            before_trivial = len(self.constraints)
             self.constraints = [c for c in self.constraints if not c.is_trivial()]
+            trivial_removed += before_trivial - len(self.constraints)
 
             # Pass 5: Remove duplicate upper bounds (keep only tightest)
             seen_upper_bounds: set[int] = set()
@@ -202,11 +219,10 @@ class ConstraintSystem:
                     var, bound = ub
                     canonical = self._find_canonical(var)
                     if canonical in seen_upper_bounds:
-                        # Skip duplicate, we'll add the tight one later
+                        duplicates_removed += 1
                         changed = True
                         continue
                     if canonical in self._upper_bounds:
-                        # Replace with tightest bound
                         if abs(bound - self._upper_bounds[canonical]) > 1e-9:
                             constraint.rhs = self._upper_bounds[canonical]
                             changed = True
@@ -223,11 +239,31 @@ class ConstraintSystem:
                     c1 = self._find_canonical(v1)
                     c2 = self._find_canonical(v2)
                     if c1 == c2:
-                        # Redundant: both sides are the same canonical var
+                        redundant_eq_removed += 1
                         changed = True
                         continue
                 new_constraints.append(constraint)
             self.constraints = new_constraints
+
+        # Log summary if any simplifications occurred
+        final_constraints = len(self.constraints)
+        active_canonical: set[int] = set()
+        for constraint in self.constraints:
+            for var in constraint.coeffs:
+                active_canonical.add(self._find_canonical(var))
+        final_vars = len(active_canonical)
+
+        if merges > 0 or trivial_removed > 0 or duplicates_removed > 0:
+            logger.info(
+                f"Constraint optimizer: {self.n_vars} vars → {final_vars} vars, "
+                f"{initial_constraints} constraints → {final_constraints} constraints "
+                f"({iterations} iters)"
+            )
+            logger.debug(
+                f"  Details: {merges} var merges, {bounds_tightened} bounds tightened, "
+                f"{trivial_removed} trivial removed, {duplicates_removed} dup bounds removed, "
+                f"{redundant_eq_removed} redundant eq removed"
+            )
 
     def get_reduced_system(
         self,
