@@ -10,7 +10,7 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QCursor, QPen
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsPathItem, QMenu
 
-from satisfactory_planner.core import Belt, BuildingType, Recipe
+from satisfactory_planner.core import Belt, BuildingType, ItemId, Recipe
 from satisfactory_planner.core.models import Building, generate_id
 from satisfactory_planner.core.routing import Point, compute_belt_path
 from satisfactory_planner.ui.commands import ConnectBeltCommand, PlaceBuildingCommand
@@ -505,7 +505,7 @@ class BeltConnector:
 
         return options
 
-    def _get_all_needed_items(self, building: Building) -> list[str]:
+    def _get_all_needed_items(self, building: Building) -> list[ItemId]:
         """Get item IDs needed for all unsatisfied input ports of a building."""
         if not building.recipe_id:
             return []
@@ -514,7 +514,7 @@ class BeltConnector:
         if not recipe:
             return []
 
-        needed: list[str] = []
+        needed: list[ItemId] = []
         scene = self.canvas._get_scene(self._connect_scene_room_id)
 
         for i, inp in enumerate(recipe.inputs):
@@ -556,7 +556,7 @@ class BeltConnector:
                 return item_id
         return None
 
-    def _get_needed_items_for_input(self, building: Building, input_port: int) -> list[str]:
+    def _get_needed_items_for_input(self, building: Building, input_port: int) -> list[ItemId]:
         """Get item IDs needed for a specific input port of a building."""
         if building.recipe_id:
             recipe = self.canvas.get_recipe(building.recipe_id)
