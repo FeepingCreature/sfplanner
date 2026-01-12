@@ -31,6 +31,7 @@ class BuildingOption:
     recipe: Recipe | None  # None for splitter/merger
     port_index: int  # Which port to connect to
     display_name: str  # "Constructor: Iron Plate" or "Splitter"
+    item_id: ItemId | None = None  # For Source/Sink: the item to produce/consume
 
 
 class BeltConnector:
@@ -462,15 +463,18 @@ class BeltConnector:
                         )
                         break  # Only add each recipe once
 
-            # Offer Source for any item
-            options.append(
-                BuildingOption(
-                    building_type=BuildingType.SOURCE,
-                    recipe=None,
-                    port_index=0,
-                    display_name="Source",
+            # Offer Source for each needed item (we can't know which port the belt is for)
+            for needed_id in needed_item_ids:
+                item_name = self._item_id_to_name(needed_id)
+                options.append(
+                    BuildingOption(
+                        building_type=BuildingType.SOURCE,
+                        recipe=None,
+                        port_index=0,
+                        display_name=f"Source: {item_name or needed_id}",
+                        item_id=needed_id,
+                    )
                 )
-            )
         else:
             # No recipe set - offer all production buildings without recipes
             for bt in BuildingType:
@@ -588,6 +592,15 @@ class BeltConnector:
                 return item_id
         return None
 
+    def _item_id_to_name(self, item_id: ItemId) -> str | None:
+        """Convert item ID to display name."""
+        from satisfactory_planner.core import load_items
+
+        for iid, name, _is_fluid in load_items():
+            if iid == item_id:
+                return name
+        return None
+
     def _spawn_and_connect(self, option: BuildingOption, scene_pos: QPointF) -> None:
         """Spawn a building and connect it with a belt.
 
@@ -599,17 +612,6 @@ class BeltConnector:
 
         scene_room_id = self._connect_start_item.placement_id
 
-        # For Source, determine the item_id from what we're looking for
-        item_id = None
-        if option.building_type == BuildingType.SOURCE and not self._drag_forward:
-            # When dragging backward, we know what item is needed
-            building = self.canvas.document.find_building(self._connect_start_item.element_id)
-            if building:
-                needed = self._get_all_recipe_inputs(self._connect_start_item, building)
-                if needed:
-                    # Use first needed item (could be smarter but this is reasonable)
-                    item_id = needed[0]
-
         # Create the building
         building = Building(
             id=generate_id(),
@@ -617,7 +619,7 @@ class BeltConnector:
             x=0,
             y=0,
             recipe_id=option.recipe.id if option.recipe else None,
-            item_id=item_id,
+            item_id=option.item_id,  # Set for Source/Sink from the option
         )
 
         # Calculate building position so target port aligns with scene_pos

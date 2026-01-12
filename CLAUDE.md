@@ -100,6 +100,8 @@ This applies to any typed wrapper: `ItemKey`, `RecipeId`, `ItemId`, etc. If the 
 
 **When uncertain:** If you notice yourself doing type gymnastics (extracting, reconstructing, searching by partial key) and aren't sure if it's necessary, add a `# FIXME: should this use ItemKey directly?` comment. Better to flag the confusion than silently propagate a design smell.
 
+**Flag domain model confusion too:** If you find yourself making an assumption about the domain that feels shaky (e.g., "this port index corresponds to this recipe input"), flag it with a FIXME or ask. The code should reflect actual game semantics, not convenient shortcuts.
+
 ## Web Tools (web_search / web_fetch)
 
 **Compact aggressively after use** - these add lots of tokens to context.
