@@ -506,10 +506,11 @@ class BeltConnector:
         return options
 
     def _get_all_recipe_inputs(self, building: Building) -> list[ItemId]:
-        """Get all unique item IDs needed by a building's recipe.
+        """Get all unique item IDs needed by a building's recipe that aren't already supplied.
 
         Satisfactory allows any belt ordering on inputs, so we return
-        all items the recipe needs, not per-port items.
+        all items the recipe needs, not per-port items. We filter out
+        items that already have incoming flow according to the flow solver.
         """
         if not building.recipe_id:
             return []
@@ -518,14 +519,41 @@ class BeltConnector:
         if not recipe:
             return []
 
-        # Return unique item IDs from all inputs
+        # Get items already being supplied via flow solver
+        already_supplied = self._get_supplied_items(building.id)
+
+        # Return unique item IDs from all inputs, excluding already-supplied ones
         seen: set[ItemId] = set()
         result: list[ItemId] = []
         for inp in recipe.inputs:
-            if inp.item_id not in seen:
+            if inp.item_id not in seen and inp.item_id not in already_supplied:
                 seen.add(inp.item_id)
                 result.append(inp.item_id)
         return result
+
+    def _get_supplied_items(self, building_id: str) -> set[ItemId]:
+        """Get item IDs already being supplied to a building's inputs via flow solver."""
+        supplied: set[ItemId] = set()
+
+        flow_solver = self.canvas.flow_solver
+        if not flow_solver or not flow_solver._solved_model:
+            return supplied
+
+        graph = flow_solver._solved_model.graph
+
+        # Find the node for this building
+        for node in graph.nodes.values():
+            if node.building_id and node.building_id.element_id == building_id:
+                # Check incoming edges for items with actual flow
+                for edge in graph.get_incoming_edges(node.id):
+                    if edge.item_name:
+                        # Convert item name to ID
+                        item_id = self._item_name_to_id(edge.item_name)
+                        if item_id:
+                            supplied.add(ItemId(item_id))
+                break
+
+        return supplied
 
     def _get_item_from_flow_solver(self) -> str | None:
         """Get the item ID flowing from the current output port via flow solver."""
