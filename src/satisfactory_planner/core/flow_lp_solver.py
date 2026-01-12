@@ -15,6 +15,7 @@ from satisfactory_planner.core.flow_models import (
     FLOW_TOLERANCE,
     INFINITE_RATE,
     BuildingEfficiency,
+    FlowEdge,
     FlowGraph,
     FlowNode,
     LimitingFactor,
@@ -300,64 +301,65 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
                     inequality_rhs.append(node.outputs[i].rate)
 
         elif node.node_type == NodeType.PRODUCER:
-            # Check if all required inputs are connected (by item type, not port)
-            # Satisfactory requires ALL inputs to have flow, not just some
-            required_items = {inp.item_name for inp in node.inputs if inp.item_name}
-            connected_items = {e.item_name for e in incoming if e.item_name}
-            all_inputs_connected = required_items <= connected_items
-
-            if not all_inputs_connected and incoming:
-                # Partially connected - force all flows to zero
-                # This building can't function without all inputs
-                for out_edge in outgoing:
-                    row = [0.0] * n_edges
-                    row[edge_to_idx[out_edge.id]] = 1.0
-                    inequality_rows.append(row)
-                    inequality_rhs.append(0.0)
-                for in_edge in incoming:
-                    row = [0.0] * n_edges
-                    row[edge_to_idx[in_edge.id]] = 1.0
-                    inequality_rows.append(row)
-                    inequality_rhs.append(0.0)
-            else:
-                # Producer: outputs are LIMITED by downstream demand (inequality)
-                for i, out_edge in enumerate(outgoing):
-                    if i < len(node.outputs):
-                        dest_node = graph.nodes[out_edge.dest_node_id]
-                        demand = _get_downstream_demand(dest_node, out_edge.item_name)
-                        if demand is not None:
-                            row = [0.0] * n_edges
-                            row[edge_to_idx[out_edge.id]] = 1.0
-                            inequality_rows.append(row)
-                            inequality_rhs.append(demand)
-
-                        # Output also can't exceed production capacity
+            # Producer: outputs are LIMITED by downstream demand (inequality)
+            for i, out_edge in enumerate(outgoing):
+                if i < len(node.outputs):
+                    dest_node = graph.nodes[out_edge.dest_node_id]
+                    demand = _get_downstream_demand(dest_node, out_edge.item_name)
+                    if demand is not None:
                         row = [0.0] * n_edges
                         row[edge_to_idx[out_edge.id]] = 1.0
                         inequality_rows.append(row)
-                        inequality_rhs.append(node.outputs[i].rate)
+                        inequality_rhs.append(demand)
 
-                if not incoming:
-                    # No input constraints - treat as source
-                    pass
-                else:
-                    # Inputs are limited by what upstream can provide
-                    for i, in_edge in enumerate(incoming):
-                        if i < len(node.inputs):
+                    # Output also can't exceed production capacity
+                    row = [0.0] * n_edges
+                    row[edge_to_idx[out_edge.id]] = 1.0
+                    inequality_rows.append(row)
+                    inequality_rhs.append(node.outputs[i].rate)
+
+            if not incoming:
+                # No input constraints - treat as source
+                pass
+            else:
+                # Build map of item_name -> total incoming flow for that item
+                # (Satisfactory allows any belt ordering on inputs)
+                incoming_by_item: dict[str | None, list[FlowEdge]] = {}
+                for edge in incoming:
+                    incoming_by_item.setdefault(edge.item_name, []).append(edge)
+
+                # For each required input item, constrain the sum of belts carrying it
+                for input_port in node.inputs:
+                    item_edges = incoming_by_item.get(input_port.item_name, [])
+                    if item_edges:
+                        # Sum of all belts for this item <= required rate
+                        row = [0.0] * n_edges
+                        for edge in item_edges:
+                            row[edge_to_idx[edge.id]] = 1.0
+                        inequality_rows.append(row)
+                        inequality_rhs.append(input_port.rate)
+                    elif input_port.item_name:
+                        # Missing input - force outputs to zero
+                        # (This item has no belt, so building can't run)
+                        for out_edge in outgoing:
                             row = [0.0] * n_edges
-                            row[edge_to_idx[in_edge.id]] = 1.0
+                            row[edge_to_idx[out_edge.id]] = 1.0
                             inequality_rows.append(row)
-                            inequality_rhs.append(node.inputs[i].rate)
+                            inequality_rhs.append(0.0)
 
-                    # Recipe ratio constraint
-                    if outgoing and node.inputs and node.outputs:
+                # Recipe ratio constraint: tie first input to first output
+                if outgoing and node.inputs and node.outputs:
+                    # Find an edge for the first input item
+                    first_input_edges = incoming_by_item.get(node.inputs[0].item_name, [])
+                    if first_input_edges:
                         ref_in_rate = node.inputs[0].rate
                         ref_out_rate = node.outputs[0].rate
                         if ref_in_rate > 0 and ref_out_rate > 0:
-                            ref_in_edge = incoming[0]
+                            # Use sum of all edges for this input item
                             ref_out_edge = outgoing[0]
                             row = [0.0] * n_edges
-                            row[edge_to_idx[ref_in_edge.id]] = ref_out_rate
+                            for edge in first_input_edges:
+                                row[edge_to_idx[edge.id]] = ref_out_rate
                             row[edge_to_idx[ref_out_edge.id]] = -ref_in_rate
                             equality_rows.append(row)
                             equality_rhs.append(0.0)
