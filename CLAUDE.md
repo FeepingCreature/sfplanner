@@ -21,6 +21,10 @@ The Forge tool framework is malleable - please suggest improvements and wishes f
 
 **NO FAIRNESS CONSTRAINTS** - Splitter output equality constraints are NEVER correct for steady-state flow simulation. They break tree layouts and over-constrain the LP. The LP should optimize based on actual downstream demand, not artificial "fair" distribution. Bottleneck detection is done via two-pass comparison (with/without belt limits), not by forcing equal splits.
 
+**PARTIAL FACTORY DESIGN** - The planner supports designing incomplete factories. Missing inputs generate warnings but don't affect efficiency. The flow solver assumes missing inputs will be filled in later (infinite supply). Use Source/Sink buildings to explicitly mark external inputs/outputs if you want to clear warnings.
+
+**EFFICIENCY = DOWNSTREAM LIMITING** - Building efficiency measures how well downstream can consume what's being produced, NOT whether inputs are connected. It's `min(actual/intended)` across all *connected* inputs and outputs. Missing inputs show 100% efficiency (would run full speed if connected) with a separate INPUT_MISSING warning. This lets you see downstream bottlenecks even in partial designs.
+
 ## Commands
 ```bash
 # Run panel system spike
