@@ -32,6 +32,7 @@ from satisfactory_planner.core import (
     BuildingType,
     Document,
     FlowSolver,
+    ItemKey,
     Recipe,
     RecipeId,
     Room,
@@ -813,24 +814,20 @@ class FactoryCanvas(QGraphicsView):
 
     def start_belt_drag(
         self,
-        building_id: str,
+        item_key: ItemKey,
         port_index: int,
         start_pos: QPointF,
-        scene_room_id: str | None = None,
         is_output: bool = True,
     ) -> None:
         """Start dragging a belt connection from a port.
 
         Args:
-            building_id: Building to connect from
+            item_key: ItemKey for the building/placement to connect from
             port_index: Which port
             start_pos: Scene position
-            scene_room_id: Room context
             is_output: True for forward drag (from output), False for backward (from input)
         """
-        self._belt_connector.start_drag(
-            building_id, port_index, start_pos, scene_room_id, is_output
-        )
+        self._belt_connector.start_drag(item_key, port_index, start_pos, is_output)
 
     def is_dragging_belt(self) -> bool:
         """Return True if currently dragging a belt connection."""
@@ -838,7 +835,8 @@ class FactoryCanvas(QGraphicsView):
 
     def start_belt_connection(self, building_id: str, port_index: int) -> None:
         """Start a belt connection (legacy compatibility)."""
-        self._belt_connector.start_drag(building_id, port_index, QPointF(0, 0))
+        item_key = ItemKey(element_id=building_id, placement_id=None)
+        self._belt_connector.start_drag(item_key, port_index, QPointF(0, 0))
 
     def complete_belt_connection(self, building_id: str, port_index: int) -> None:
         """Complete a belt connection to an input port."""

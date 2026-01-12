@@ -85,6 +85,19 @@ grep_context("pattern3", file="foo.py")  # peek again
 update_context(add=["foo.py"])  # load once, see everything
 ```
 
+## Type Design: Use Domain Types From The Start
+
+When an operation inherently targets a typed entity (e.g., an `ItemKey` for a building in the flow graph), use that type from the beginning of the call chain, not a primitive like `str`.
+
+**Warning signs you're doing it wrong:**
+- Reaching into `.element_id` to extract a string, then later reconstructing the full key
+- Iterating a dict to find something by a partial match when you could index directly
+- Passing `building_id: str` when the caller has an `ItemKey` available
+
+**Right approach:** Accept the domain type (`ItemKey`) at the API boundary, extract primitives only when needed for lower-level operations (like model lookups that use string IDs).
+
+This applies to any typed wrapper: `ItemKey`, `RecipeId`, `ItemId`, etc. If the caller has the full type, don't strip it down to a string just to rebuild it later.
+
 ## Web Tools (web_search / web_fetch)
 
 **Compact aggressively after use** - these add lots of tokens to context.

@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from satisfactory_planner.core.item_key import ItemKey
+
 if TYPE_CHECKING:
     from satisfactory_planner.ui.canvas import FactoryCanvas
 
@@ -128,12 +130,11 @@ class PortItem(QGraphicsItem):
         Output ports start forward drag, input ports start backward drag.
         """
         if event.button() == Qt.MouseButton.LeftButton:
-            # scene_room_id was captured at construction time
+            item_key = ItemKey(element_id=self.building_id, placement_id=self.scene_room_id)
             self.canvas.start_belt_drag(
-                self.building_id,
+                item_key,
                 self.port_index,
                 self.scenePos(),
-                self.scene_room_id,
                 is_output=self.is_output,
             )
             event.accept()
