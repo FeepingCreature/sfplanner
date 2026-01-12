@@ -5,6 +5,7 @@
     "src/satisfactory_planner/ui/panels/warnings_panel.py",
     "CLAUDE.md",
     "release.sh",
+    "src/satisfactory_planner/core/flow_lp_solver.py",
     "RELEASE_TODO.md"
   ],
   "request_log_entries": [
@@ -529,6 +530,24 @@
       "streaming": true,
       "actual_cost": 0.4845275,
       "generation_id": "gen-1768245460-S3KbJp4ipMFaPiDQxOek"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768245679531.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768245679531.json",
+      "timestamp": 1768245679.5329342,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.07553175,
+      "generation_id": "gen-1768245679-spR7Gq39QrqWhati7Nje"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768245688733.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768245688733.json",
+      "timestamp": 1768245688.7343369,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.1521435,
+      "generation_id": "gen-1768245688-H6E9E5g1UMgrFktqVQDX"
     }
   ],
   "messages": [
@@ -2652,6 +2671,90 @@
         {
           "commit": "837d21740d99",
           "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: c970ba44",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Thanks! Can you linebreak the messages a bit?\n\nAlso, we have a Manufacturer making computers with only 7.5 circuit board when it wants 25.0. And yet it's shown to run at 100% efficiency."
+    },
+    {
+      "role": "assistant",
+      "content": "Two issues to fix:\n\n1. Line break the messages for readability\n2. Fix the efficiency calculation - if input is constrained, efficiency should reflect that\n\nLet me look at the efficiency calculation:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/core/flow_lp_solver.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01XoJ3AYjVCnM4iy6XByPQ1k",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01XoJ3AYjVCnM4iy6XByPQ1k",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/core/flow_lp_solver.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the efficiency issue. In `_compute_efficiencies`, we only look at the first outgoing edge's flow vs intended rate. But if inputs are constrained, we should be comparing actual input flow to intended input rate.\n\nLet me fix both issues:\n\n<edit file=\"src/satisfactory_planner/ui/panels/warnings_panel.py\">\n<search>    def _format_warning_message(self, warning: Warning) -> str:\n        \"\"\"Format a warning message with human-readable element names.\"\"\"\n        # Get human-readable name for the element\n        element_name = self._get_element_name(warning.item_key)\n\n        # Prepend element name if we have one and it's not already in the message\n        if element_name:\n            return f\"{element_name}: {warning.message}\"\n        return warning.message</search>\n<replace>    def _format_warning_message(self, warning: Warning) -> str:\n        \"\"\"Format a warning message with human-readable element names.\"\"\"\n        # Get human-readable name for the element\n        element_name = self._get_element_name(warning.item_key)\n\n        # Prepend element name if we have one\n        if element_name:\n            # Put element name on its own line for readability\n            return f\"{element_name}:\\n  {warning.message}\"\n        return warning.message</replace>\n</edit>\n\nNow fix the efficiency calculation - we need to look at actual input flow vs demanded input rate:\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>def _compute_efficiencies(\n    graph: FlowGraph, flows: dict[ItemKey, float]\n) -> dict[ItemKey, BuildingEfficiency]:\n    \"\"\"Compute duty cycle and limiting factor for each producer.\"\"\"\n    efficiencies: dict[ItemKey, BuildingEfficiency] = {}\n\n    for node_id, node in graph.nodes.items():\n        if node.node_type != NodeType.PRODUCER:\n            continue\n\n        outgoing = graph.get_outgoing_edges(node_id)\n        incoming = graph.get_incoming_edges(node_id)\n\n        if outgoing and node.outputs:\n            intended_rate = node.outputs[0].rate\n            actual_rate = flows.get(outgoing[0].id, 0.0)\n        elif incoming and node.inputs:\n            intended_rate = node.inputs[0].rate\n            actual_rate = flows.get(incoming[0].id, 0.0)\n        else:\n            continue\n\n        duty_cycle = actual_rate / intended_rate if intended_rate > 0 else 1.0\n        limiting_factor, limiting_details = _find_limiting_factor(graph, flows, node, duty_cycle)\n\n        efficiencies[node_id] = BuildingEfficiency(\n            building_id=node.building_id or node_id,\n            node_id=node_id,\n            intended_rate=intended_rate,\n            actual_rate=actual_rate,\n            duty_cycle=min(1.0, duty_cycle),\n            limiting_factor=limiting_factor,\n            limiting_details=limiting_details,\n        )\n\n    return efficiencies</search>\n<replace>def _compute_efficiencies(\n    graph: FlowGraph, flows: dict[ItemKey, float]\n) -> dict[ItemKey, BuildingEfficiency]:\n    \"\"\"Compute duty cycle and limiting factor for each producer.\n\n    Efficiency is the minimum ratio across all inputs and outputs.\n    If any input is constrained, that limits the building's efficiency.\n    \"\"\"\n    efficiencies: dict[ItemKey, BuildingEfficiency] = {}\n\n    for node_id, node in graph.nodes.items():\n        if node.node_type != NodeType.PRODUCER:\n            continue\n\n        outgoing = graph.get_outgoing_edges(node_id)\n        incoming = graph.get_incoming_edges(node_id)\n\n        # Calculate efficiency as min ratio across all inputs and outputs\n        # Satisfactory allows any belt ordering, so we match by item type\n        min_ratio = 1.0\n        intended_rate = 0.0\n        actual_rate = 0.0\n\n        # Build map of item_name -> total incoming flow\n        incoming_by_item: dict[str | None, float] = {}\n        for edge in incoming:\n            item = edge.item_name\n            incoming_by_item[item] = incoming_by_item.get(item, 0.0) + flows.get(edge.id, 0.0)\n\n        # Check each required input\n        for input_port in node.inputs:\n            if input_port.rate > 0:\n                actual_input = incoming_by_item.get(input_port.item_name, 0.0)\n                ratio = actual_input / input_port.rate\n                if ratio < min_ratio:\n                    min_ratio = ratio\n                    intended_rate = input_port.rate\n                    actual_rate = actual_input\n\n        # Also check outputs (in case downstream is the limit)\n        for i, output_port in enumerate(node.outputs):\n            if output_port.rate > 0 and i < len(outgoing):\n                actual_output = flows.get(outgoing[i].id, 0.0)\n                ratio = actual_output / output_port.rate\n                if ratio < min_ratio:\n                    min_ratio = ratio\n                    intended_rate = output_port.rate\n                    actual_rate = actual_output\n\n        # If we found no rates, skip this node\n        if intended_rate == 0.0 and actual_rate == 0.0:\n            continue\n\n        duty_cycle = min_ratio\n        limiting_factor, limiting_details = _find_limiting_factor(graph, flows, node, duty_cycle)\n\n        efficiencies[node_id] = BuildingEfficiency(\n            building_id=node.building_id or node_id,\n            node_id=node_id,\n            intended_rate=intended_rate,\n            actual_rate=actual_rate,\n            duty_cycle=min(1.0, duty_cycle),\n            limiting_factor=limiting_factor,\n            limiting_details=limiting_details,\n        )\n\n    return efficiencies</replace>\n</edit>\n\nAlso fix `_find_limiting_factor` to match by item type instead of port index:\n\n<edit file=\"src/satisfactory_planner/core/flow_lp_solver.py\">\n<search>def _find_limiting_factor(\n    graph: FlowGraph,\n    flows: dict[ItemKey, float],\n    node: FlowNode,\n    duty_cycle: float,\n) -> tuple[LimitingFactor, str]:\n    \"\"\"Determine why a producer isn't at 100% duty cycle.\"\"\"\n    if duty_cycle >= 0.999:\n        return LimitingFactor.NONE, \"Running at full capacity\"\n\n    incoming = graph.get_incoming_edges(node.id)\n    outgoing = graph.get_outgoing_edges(node.id)\n\n    # Check if input-starved\n    for i, in_edge in enumerate(incoming):\n        if i < len(node.inputs):\n            actual_input = flows.get(in_edge.id, 0.0)\n            if actual_input < node.inputs[i].rate - FLOW_TOLERANCE:\n                edge = graph.edges[in_edge.id]\n                if actual_input >= edge.capacity - FLOW_TOLERANCE:\n                    return (\n                        LimitingFactor.BELT_CAPACITY,\n                        f\"Input belt {in_edge.id} at capacity ({edge.capacity}/min)\",\n                    )\n                return (\n                    LimitingFactor.INPUT_STARVED,\n                    f\"Input {node.inputs[i].item_name}: getting {actual_input:.1f}, need {node.inputs[i].rate:.1f}/min\",\n                )\n\n    # Check if downstream-limited\n    for i, out_edge in enumerate(outgoing):\n        if i < len(node.outputs):\n            actual_output = flows.get(out_edge.id, 0.0)\n            if actual_output < node.outputs[i].rate - FLOW_TOLERANCE:\n                edge = graph.edges[out_edge.id]\n                if actual_output >= edge.capacity - FLOW_TOLERANCE:\n                    return (\n                        LimitingFactor.BELT_CAPACITY,\n                        f\"Output belt {out_edge.id} at capacity ({edge.capacity}/min)\",\n                    )\n                return (\n                    LimitingFactor.DOWNSTREAM,\n                    f\"Downstream only consumes {actual_output:.1f}/min\",\n                )\n\n    return LimitingFactor.NONE, \"Unknown\"</search>\n<replace>def _find_limiting_factor(\n    graph: FlowGraph,\n    flows: dict[ItemKey, float],\n    node: FlowNode,\n    duty_cycle: float,\n) -> tuple[LimitingFactor, str]:\n    \"\"\"Determine why a producer isn't at 100% duty cycle.\"\"\"\n    if duty_cycle >= 0.999:\n        return LimitingFactor.NONE, \"Running at full capacity\"\n\n    incoming = graph.get_incoming_edges(node.id)\n    outgoing = graph.get_outgoing_edges(node.id)\n\n    # Build map of item_name -> total incoming flow and edges\n    incoming_by_item: dict[str | None, tuple[float, list[FlowEdge]]] = {}\n    for edge in incoming:\n        item = edge.item_name\n        current = incoming_by_item.get(item, (0.0, []))\n        incoming_by_item[item] = (current[0] + flows.get(edge.id, 0.0), current[1] + [edge])\n\n    # Check if input-starved (match by item type, not port index)\n    for input_port in node.inputs:\n        item_data = incoming_by_item.get(input_port.item_name)\n        if item_data:\n            actual_input, edges = item_data\n            if actual_input < input_port.rate - FLOW_TOLERANCE:\n                # Check if any feeding belt is at capacity\n                for edge in edges:\n                    edge_flow = flows.get(edge.id, 0.0)\n                    if edge_flow >= edge.capacity - FLOW_TOLERANCE:\n                        return (\n                            LimitingFactor.BELT_CAPACITY,\n                            f\"{input_port.item_name} belt at capacity ({edge.capacity}/min)\",\n                        )\n                return (\n                    LimitingFactor.INPUT_STARVED,\n                    f\"{input_port.item_name}: getting {actual_input:.1f}, need {input_port.rate:.1f}/min\",\n                )\n        elif input_port.rate > 0:\n            # No belt for this input at all\n            return (\n                LimitingFactor.INPUT_STARVED,\n                f\"{input_port.item_name}: no input connected\",\n            )\n\n    # Check if downstream-limited\n    for i, out_edge in enumerate(outgoing):\n        if i < len(node.outputs):\n            actual_output = flows.get(out_edge.id, 0.0)\n            if actual_output < node.outputs[i].rate - FLOW_TOLERANCE:\n                edge = graph.edges[out_edge.id]\n                if actual_output >= edge.capacity - FLOW_TOLERANCE:\n                    return (\n                        LimitingFactor.BELT_CAPACITY,\n                        f\"Output belt at capacity ({edge.capacity}/min)\",\n                    )\n                return (\n                    LimitingFactor.DOWNSTREAM,\n                    f\"Downstream only consumes {actual_output:.1f}/min\",\n                )\n\n    return LimitingFactor.NONE, \"Unknown\"</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Fix efficiency calculation for multi-input buildings\n\nEfficiency is now calculated as the minimum ratio across ALL inputs\nmatched by item type (not port index). If a Manufacturer gets only\n7.5/25 Circuit Boards, it now correctly shows 30% efficiency.\n\nAlso improved warning message formatting with line breaks for readability.\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/panels/warnings_panel.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/panels/warnings_panel.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_lp_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_lp_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_xxsgmmbb\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 53 items\n\ntests/test_core/test_commands.py .........                               [ 16%]\ntests/test_core/test_flow_solver.py ............                         [ 39%]\ntests/test_core/test_models.py .........                                 [ 56%]\ntests/test_core/test_room_commands.py ..............                     [ 83%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 53 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_xxsgmmbb\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_xxsgmmbb\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 53 items\n\ntests/test_core/test_commands.py .........                               [ 16%]\ntests/test_core/test_flow_solver.py ............                         [ 39%]\ntests/test_core/test_models.py .........                                 [ 56%]\ntests/test_core/test_room_commands.py ..............                     [ 83%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 53 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_xxsgmmbb\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "29adc0f67759",
+          "message": "Committed: 2 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

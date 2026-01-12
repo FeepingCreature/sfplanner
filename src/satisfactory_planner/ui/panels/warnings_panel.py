@@ -161,9 +161,10 @@ class WarningsPanel(QWidget):
         # Get human-readable name for the element
         element_name = self._get_element_name(warning.item_key)
 
-        # Prepend element name if we have one and it's not already in the message
+        # Prepend element name if we have one
         if element_name:
-            return f"{element_name}: {warning.message}"
+            # Put element name on its own line for readability
+            return f"{element_name}:\n  {warning.message}"
         return warning.message
 
     def _get_element_name(self, item_key: ItemKey) -> str | None:
