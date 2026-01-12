@@ -259,19 +259,38 @@ class VisualSyncManager:
             self._update_warning_icons(flow_solver._warnings)
 
     def _update_warning_icons(self, warnings: list[Warning]) -> None:
-        """Update warning icons based on current warnings."""
+        """Update warning icons based on current warnings.
+
+        Groups warnings by element and shows only the highest-priority warning
+        for each element (e.g., INPUT_MISSING takes precedence over RESOURCE_UNDERFLOW).
+        """
         from satisfactory_planner.core.flow_solver import Warning
+        from satisfactory_planner.ui.items.warning_icon_item import WARNING_PRIORITY
 
         # Remove existing warning icons
         for icon in self._warning_icons:
             self.canvas._scene.removeItem(icon)
         self._warning_icons.clear()
 
-        # Add new warning icons at element positions
+        # Group warnings by element, keeping only highest priority per element
+        warnings_by_element: dict[ItemKey, Warning] = {}
         for warning in warnings:
             if not isinstance(warning, Warning):
                 continue
 
+            key = warning.item_key
+            existing = warnings_by_element.get(key)
+            if existing is None:
+                warnings_by_element[key] = warning
+            else:
+                # Keep the higher priority warning
+                new_priority = WARNING_PRIORITY.get(warning.type.value, 0)
+                existing_priority = WARNING_PRIORITY.get(existing.type.value, 0)
+                if new_priority > existing_priority:
+                    warnings_by_element[key] = warning
+
+        # Add warning icons for the highest-priority warning per element
+        for warning in warnings_by_element.values():
             position = self._get_element_position(warning.item_key)
             if position:
                 # Offset slightly so icon doesn't cover the element

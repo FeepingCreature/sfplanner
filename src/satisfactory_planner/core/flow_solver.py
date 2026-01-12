@@ -25,6 +25,7 @@ class WarningType(Enum):
     """Types of validation warnings."""
 
     DISCONNECTED_BELT = "disconnected_belt"
+    INPUT_MISSING = "input_missing"  # Required input has no belt connected
     RESOURCE_UNDERFLOW = "resource_underflow"
     PRODUCTION_UNDERFLOW = "production_underflow"
     LEFTOVER_ITEMS = "leftover_items"

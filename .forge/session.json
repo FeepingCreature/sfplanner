@@ -1,10 +1,14 @@
 {
   "active_files": [
     "tests/test_core/test_flow_solver.py",
-    "src/satisfactory_planner/core/flow_builder.py",
-    "src/satisfactory_planner/core/flow_lp_solver.py",
-    "src/satisfactory_planner/core/flow_models.py",
-    "CLAUDE.md"
+    "src/satisfactory_planner/core/detectors/underflow.py",
+    "README.md",
+    "src/satisfactory_planner/ui/canvas/visual_sync_manager.py",
+    "src/satisfactory_planner/ui/items/warning_icon_item.py",
+    "CLAUDE.md",
+    "release.sh",
+    "src/satisfactory_planner/core/flow_solver.py",
+    "RELEASE_TODO.md"
   ],
   "request_log_entries": [
     {
@@ -438,6 +442,78 @@
       "streaming": true,
       "actual_cost": 0.08799325,
       "generation_id": "gen-1768244646-fHa4ctqdDrMA8ZreZbK0"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768245295316.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768245295316.json",
+      "timestamp": 1768245295.3179014,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.50765125,
+      "generation_id": "gen-1768245295-cHBkMCAV1TTHQlPy5jG6"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768245305026.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768245305026.json",
+      "timestamp": 1768245305.0274246,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.45769,
+      "generation_id": "gen-1768245306-onv9QAElkHVsxKEHuuhP"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768245313292.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768245313292.json",
+      "timestamp": 1768245313.293298,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.07848175,
+      "generation_id": "gen-1768245315-WVEX7ZPE9iVzlMxme9yN"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768245336398.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768245336398.json",
+      "timestamp": 1768245336.3988895,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06118625,
+      "generation_id": "gen-1768245337-QeAIRjuv4eiJ5VVnMdg7"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768245342262.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768245342262.json",
+      "timestamp": 1768245342.2630444,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0766895,
+      "generation_id": "gen-1768245342-eFUZmOl55sfsuh643bmY"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768245359581.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768245359581.json",
+      "timestamp": 1768245359.5825994,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.094005,
+      "generation_id": "gen-1768245359-RPkjqJdi3Ak8R1rXAHuY"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768245365927.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768245365927.json",
+      "timestamp": 1768245365.928453,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06135375,
+      "generation_id": "gen-1768245366-ZfB0Fef5CfbWekL1HtgE"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768245373897.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768245373897.json",
+      "timestamp": 1768245373.8983119,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.4746075,
+      "generation_id": "gen-1768245377-lu2atfSWCxq9T2zj2Wyl"
     }
   ],
   "messages": [
@@ -2223,6 +2299,250 @@
         {
           "commit": "1fced37c4823",
           "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Generated summaries for 90 files",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Thanks! Next bug! (They never end!) We have a manufacturer. We connect a Plastic Source to port 0. We connect a Screw Constructor to port 1. The Manufacturer now says \"Screw: 40 < 130 demanded\". It should prioritize missing-items warnings for the icon over underflow warnings. You may have to split those."
+    },
+    {
+      "role": "assistant",
+      "content": "Let me look at how warnings are generated and prioritized:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"from_id\": \"16\", \"to_id\": \"20\", \"summary\": \"Investigated Circuit Board propagation issue through mergers. Found that item type propagation was incorrectly using port index for producer inputs. Fixed by only propagating backwards from logistics nodes (splitters/mergers), not from producers or sinks, since Satisfactory allows any belt ordering on producer inputs.\"}",
+            "name": "compact"
+          },
+          "id": "toolu_vrtx_01859ehcckYrsNGf5XgBJVe1",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"missing.*input|input.*missing\", \"file\": \"src/satisfactory_planner/core/flow_lp_solver.py\", \"context_before\": 5, \"context_after\": 10}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01EioVZikGs35SFLRoZddkDy",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01859ehcckYrsNGf5XgBJVe1",
+      "content": "{\"compact\": true, \"from_id\": \"16\", \"success\": true, \"summary\": \"Investigated Circuit Board propagation issue through mergers. Found that item type propagation was incorrectly using port index for producer inputs. Fixed by only propagating backwards from logistics nodes (splitters/mergers), not from producers or sinks, since Satisfactory allows any belt ordering on producer inputs.\", \"to_id\": \"20\"}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01EioVZikGs35SFLRoZddkDy",
+      "content": "{\"message\": \"No matches found for pattern: missing.*input|input.*missing\", \"snippets\": [], \"success\": true, \"total_matches\": 0}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"context_after\": 10,\n  \"context_before\": 5,\n  \"file\": \"src/satisfactory_planner/core/flow_lp_solver.py\",\n  \"pattern\": \"missing.*input|input.*missing\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"No matches found for pattern: missing.*input|input.*missing\",\n  \"snippets\": [],\n  \"success\": true,\n  \"total_matches\": 0\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me look at the underflow detector to understand how warnings are generated:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/core/detectors/underflow.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01SgER7z1q4CP9yjghpbYbfh",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01SgER7z1q4CP9yjghpbYbfh",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/core/detectors/underflow.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue. The underflow detector generates both \"missing\" warnings (when `actual_flow < 0.01`) and \"underflow\" warnings (when there's some flow but not enough). The problem is that both are `RESOURCE_UNDERFLOW` type, so when displaying the icon, the building shows the underflow warning instead of prioritizing the missing input.\n\nLet me add a new warning type for missing inputs and update the detector:\n\n<edit file=\"src/satisfactory_planner/core/flow_solver.py\">\n<search>\nclass WarningType(Enum):\n    \"\"\"Types of validation warnings.\"\"\"\n\n    DISCONNECTED_BELT = auto()  # Belt missing source or dest\n    RESOURCE_UNDERFLOW = auto()  # Miner/input can't meet demand\n    PRODUCTION_UNDERFLOW = auto()  # Production building can't meet demand\n    LEFTOVER_ITEMS = auto()  # Items produced but nowhere to go\n    BELT_OVERCAPACITY = auto()  # Belt carrying more than capacity\n    ITEM_MISMATCH = auto()  # Wrong item type on belt\n    RECIPE_NOT_SET = auto()  # Production building has no recipe\n</search>\n<replace>\nclass WarningType(Enum):\n    \"\"\"Types of validation warnings.\"\"\"\n\n    DISCONNECTED_BELT = auto()  # Belt missing source or dest\n    INPUT_MISSING = auto()  # Required input has no belt connected\n    RESOURCE_UNDERFLOW = auto()  # Miner/input can't meet demand\n    PRODUCTION_UNDERFLOW = auto()  # Production building can't meet demand\n    LEFTOVER_ITEMS = auto()  # Items produced but nowhere to go\n    BELT_OVERCAPACITY = auto()  # Belt carrying more than capacity\n    ITEM_MISMATCH = auto()  # Wrong item type on belt\n    RECIPE_NOT_SET = auto()  # Production building has no recipe\n</replace>\n</edit>"
+    },
+    {
+      "role": "system",
+      "content": "\n\u274c `edit` failed:\n\nSearch text not found in src/satisfactory_planner/core/flow_solver.py.\n\n**NO CLOSE MATCH - the text may have been modified or doesn't exist.\nYou may need to reload the file to see current content.**\n\nFound 48.7% similar text at line 22 (edit distance: 265):\n\n```\n\n\nclass WarningType(Enum):\n    ...\n    LEFTOVER_ITEMS = \"leftover_items\"\n    BELT_OVERCAPACITY = \"belt_overcapacity\"\n```\n\nDiff (--- your search vs +++ actual file):\n```diff\n--- expected\n+++ actual\n@@ -1,10 +1,10 @@\n+\n+\n class WarningType(Enum):\n     \"\"\"Types of validation warnings.\"\"\"\n \n-    DISCONNECTED_BELT = auto()  # Belt missing source or dest\n-    RESOURCE_UNDERFLOW = auto()  # Miner/input can't meet demand\n-    PRODUCTION_UNDERFLOW = auto()  # Production building can't meet demand\n-    LEFTOVER_ITEMS = auto()  # Items produced but nowhere to go\n-    BELT_OVERCAPACITY = auto()  # Belt carrying more than capacity\n-    ITEM_MISMATCH = auto()  # Wrong item type on belt\n-    RECIPE_NOT_SET = auto()  # Production building has no recipe+    DISCONNECTED_BELT = \"disconnected_belt\"\n+    RESOURCE_UNDERFLOW = \"resource_underflow\"\n+    PRODUCTION_UNDERFLOW = \"production_underflow\"\n+    LEFTOVER_ITEMS = \"leftover_items\"\n+    BELT_OVERCAPACITY = \"belt_overcapacity\"\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "The file has changed - the enum uses string values now, not `auto()`. Let me reload it:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/core/flow_solver.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_016arhNUVVge4kzCURg8LFNw",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_016arhNUVVge4kzCURg8LFNw",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/core/flow_solver.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I can see the current state. Let me add the new warning type and update the detector:\n\n<edit file=\"src/satisfactory_planner/core/flow_solver.py\">\n<search>\nclass WarningType(Enum):\n    \"\"\"Types of validation warnings.\"\"\"\n\n    DISCONNECTED_BELT = \"disconnected_belt\"\n    RESOURCE_UNDERFLOW = \"resource_underflow\"\n    PRODUCTION_UNDERFLOW = \"production_underflow\"\n    LEFTOVER_ITEMS = \"leftover_items\"\n    BELT_OVERCAPACITY = \"belt_overcapacity\"\n    ITEM_MISMATCH = \"item_mismatch\"\n    RECIPE_NOT_SET = \"recipe_not_set\"\n</search>\n<replace>\nclass WarningType(Enum):\n    \"\"\"Types of validation warnings.\"\"\"\n\n    DISCONNECTED_BELT = \"disconnected_belt\"\n    INPUT_MISSING = \"input_missing\"  # Required input has no belt connected\n    RESOURCE_UNDERFLOW = \"resource_underflow\"\n    PRODUCTION_UNDERFLOW = \"production_underflow\"\n    LEFTOVER_ITEMS = \"leftover_items\"\n    BELT_OVERCAPACITY = \"belt_overcapacity\"\n    ITEM_MISMATCH = \"item_mismatch\"\n    RECIPE_NOT_SET = \"recipe_not_set\"\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/detectors/underflow.py\">\n<search>\n            if actual_flow < 0.01:\n                # No flow at all for this item - it's missing\n                warnings.append(\n                    Warning(\n                        type=WarningType.RESOURCE_UNDERFLOW,\n                        message=f\"{input_port.item_name} input missing.\",\n                        item_key=node_id,\n                        severity=1.0,\n                    )\n                )\n</search>\n<replace>\n            if actual_flow < 0.01:\n                # No flow at all for this item - it's missing\n                warnings.append(\n                    Warning(\n                        type=WarningType.INPUT_MISSING,\n                        message=f\"{input_port.item_name} input missing.\",\n                        item_key=node_id,\n                        severity=1.0,\n                    )\n                )\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/core/detectors/underflow.py\">\n<search>\n        if not incoming and not outgoing:\n            # Orphaned building\n            for input_port in node.inputs:\n                if input_port.rate > 0:\n                    warnings.append(\n                        Warning(\n                            type=WarningType.RESOURCE_UNDERFLOW,\n                            message=f\"{input_port.item_name} input missing.\",\n                            item_key=node_id,\n                            severity=1.0,\n                        )\n                    )\n            continue\n</search>\n<replace>\n        if not incoming and not outgoing:\n            # Orphaned building\n            for input_port in node.inputs:\n                if input_port.rate > 0:\n                    warnings.append(\n                        Warning(\n                            type=WarningType.INPUT_MISSING,\n                            message=f\"{input_port.item_name} input missing.\",\n                            item_key=node_id,\n                            severity=1.0,\n                        )\n                    )\n            continue\n</replace>\n</edit>\n\nNow I need to update the UI to prioritize INPUT_MISSING over RESOURCE_UNDERFLOW. Let me find where warning icons are displayed:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"WarningType\\\\.|warning.*icon|get_warning_for_building\", \"include_extensions\": [\".py\"], \"max_matches\": 15}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01B6oGt7Pwh5bckbTPq2XoUk",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/core/flow_solver.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/flow_solver.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/detectors/underflow.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/detectors/underflow.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/core/detectors/underflow.py",
+          "modified_files": [
+            "src/satisfactory_planner/core/detectors/underflow.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01B6oGt7Pwh5bckbTPq2XoUk",
+      "content": "{\"message\": \"Found 15 matches (showing 15 of 16 total matches)\", \"output\": \"\\u2500\\u2500 spikes/flowsim/detectors/dangling.py:41 \\u2500\\u2500\\n      38 |             items = \\\", \\\".join(unconnected_inputs)\\n      39 |             warnings.append(\\n      40 |                 Warning(\\n>>>   41 |                     warning_type=WarningType.LEFTOVER_ITEMS,  # Reusing for info\\n      42 |                     message=f\\\"{node_id}: No inputs connected. Assuming infinite supply of {items}.\\\",\\n      43 |                     element_id=node_id,\\n      44 |                     severity=0.1,  # Very low - just info\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/dangling.py:52 \\u2500\\u2500\\n      49 |             items = \\\", \\\".join(unconnected_inputs)\\n      50 |             warnings.append(\\n      51 |                 Warning(\\n>>>   52 |                     warning_type=WarningType.RESOURCE_UNDERFLOW,\\n      53 |                     message=f\\\"{node_id}: Missing input(s): {items}. Building will not function correctly.\\\",\\n      54 |                     element_id=node_id,\\n      55 |                     severity=0.8,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/dangling.py:73 \\u2500\\u2500\\n      70 |             items = \\\", \\\".join(unconnected_outputs)\\n      71 |             warnings.append(\\n      72 |                 Warning(\\n>>>   73 |                     warning_type=WarningType.LEFTOVER_ITEMS,\\n      74 |                     message=f\\\"{node_id}: No outputs connected. Production of {items} will be sunk.\\\",\\n      75 |                     element_id=node_id,\\n      76 |                     severity=0.1,  # Just info\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/dangling.py:84 \\u2500\\u2500\\n      81 |             items = \\\", \\\".join(unconnected_outputs)\\n      82 |             warnings.append(\\n      83 |                 Warning(\\n>>>   84 |                     warning_type=WarningType.LEFTOVER_ITEMS,\\n      85 |                     message=f\\\"{node_id}: Unconnected output(s): {items}. Items will be sunk.\\\",\\n      86 |                     element_id=node_id,\\n      87 |                     severity=0.3,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/info.py:46 \\u2500\\u2500\\n      43 |             # There's spare capacity on open outputs\\n      44 |             warnings.append(\\n      45 |                 Warning(\\n>>>   46 |                     warning_type=WarningType.LEFTOVER_ITEMS,\\n      47 |                     message=f\\\"Splitter {node_id}: {spare:.1f}/min spare capacity on {n_open} open output(s)\\\",\\n      48 |                     element_id=node_id,\\n      49 |                     severity=0.3,  # Low severity - just info\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/overcapacity.py:45 \\u2500\\u2500\\n      42 |         flow = model.flows[edge_id]\\n      43 |         warnings.append(\\n      44 |             Warning(\\n>>>   45 |                 warning_type=WarningType.BELT_OVERCAPACITY,\\n      46 |                 message=f\\\"Belt {edge_id}: flow {flow:.1f}/min exceeds capacity {edge.capacity}/min\\\",\\n      47 |                 element_id=edge_id,\\n      48 |                 severity=(flow - edge.capacity) / edge.capacity,  # Relative severity\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:42 \\u2500\\u2500\\n      39 |                 if input_port.rate > 0:\\n      40 |                     warnings.append(\\n      41 |                         Warning(\\n>>>   42 |                             warning_type=WarningType.RESOURCE_UNDERFLOW,\\n      43 |                             message=f\\\"{node_id}: input {i} ({input_port.item_id}) not connected\\\",\\n      44 |                             element_id=node_id,\\n      45 |                             severity=1.0,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:65 \\u2500\\u2500\\n      62 |                 # No belt connected to this specific input, but others are connected\\n      63 |                 warnings.append(\\n      64 |                     Warning(\\n>>>   65 |                         warning_type=WarningType.RESOURCE_UNDERFLOW,\\n      66 |                         message=f\\\"{node_id}: input {i} ({input_port.item_id}) not connected\\\",\\n      67 |                         element_id=node_id,\\n      68 |                         severity=1.0,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:81 \\u2500\\u2500\\n      78 |                 caused_by = _build_causal_chain(model, feeding_edge.id, demanded)\\n      79 |                 warnings.append(\\n      80 |                     Warning(\\n>>>   81 |                         warning_type=WarningType.RESOURCE_UNDERFLOW,\\n      82 |                         message=f\\\"{node_id}: {input_port.item_id} {actual_flow:.1f} < {demanded:.1f}/min demanded\\\",\\n      83 |                         element_id=node_id,\\n      84 |                         severity=(demanded - actual_flow) / demanded,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:114 \\u2500\\u2500\\n     111 |     if actual_flow >= edge.capacity - 0.01:\\n     112 |         causes.append(\\n     113 |             Warning(\\n>>>  114 |                 warning_type=WarningType.BELT_OVERCAPACITY,\\n     115 |                 message=f\\\"Belt {edge_id} at capacity ({edge.capacity}/min)\\\",\\n     116 |                 element_id=edge_id,\\n     117 |                 severity=1.0,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:131 \\u2500\\u2500\\n     128 |             if output.item_id == edge.item_id and output.rate < demanded:\\n     129 |                 causes.append(\\n     130 |                     Warning(\\n>>>  131 |                         warning_type=WarningType.PRODUCTION_UNDERFLOW,\\n     132 |                         message=f\\\"{source_node.id} produces {output.rate:.1f}/min, need {demanded:.1f}/min\\\",\\n     133 |                         element_id=source_node.id,\\n     134 |                         severity=(demanded - output.rate) / demanded,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:144 \\u2500\\u2500\\n     141 |             if output.rate < demanded:\\n     142 |                 causes.append(\\n     143 |                     Warning(\\n>>>  144 |                         warning_type=WarningType.RESOURCE_UNDERFLOW,\\n     145 |                         message=f\\\"Miner {source_node.id} outputs {output.rate:.1f}/min, need {demanded:.1f}/min\\\",\\n     146 |                         element_id=source_node.id,\\n     147 |                         severity=(demanded - output.rate) / demanded,\\n\\n\\u2500\\u2500 spikes/flowsim/tests/test_overcapacity.py:83 \\u2500\\u2500\\n      80 | \\n      81 |         warnings = detect_overcapacity(solved)\\n      82 |         assert len(warnings) == 1\\n>>>   83 |         assert warnings[0].warning_type == WarningType.BELT_OVERCAPACITY\\n      84 |         assert warnings[0].element_id == \\\"belt1\\\"\\n      85 | \\n      86 |     def test_chain_filters_downstream(self):\\n\\n\\u2500\\u2500 spikes/flowsim/tests/test_underflow.py:66 \\u2500\\u2500\\n      63 | \\n      64 |         warnings = detect_underflow(solved)\\n      65 |         assert len(warnings) == 1\\n>>>   66 |         assert warnings[0].warning_type == WarningType.RESOURCE_UNDERFLOW\\n      67 |         assert \\\"not connected\\\" in warnings[0].message\\n      68 | \\n      69 |     def test_undersupply_warning(self):\\n\\n\\u2500\\u2500 spikes/flowsim/tests/test_underflow.py:100 \\u2500\\u2500\\n      97 | \\n      98 |         warnings = detect_underflow(solved)\\n      99 |         assert len(warnings) == 1\\n>>>  100 |         assert warnings[0].warning_type == WarningType.RESOURCE_UNDERFLOW\\n     101 |         assert warnings[0].element_id == \\\"constructor1\\\"\\n     102 | \\n     103 |     def test_causal_chain_production(self):\", \"success\": true, \"total_matches\": 16}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"max_matches\": 15,\n  \"pattern\": \"WarningType\\\\.|warning.*icon|get_warning_for_building\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 15 matches (showing 15 of 16 total matches)\",\n  \"output\": \"\\u2500\\u2500 spikes/flowsim/detectors/dangling.py:41 \\u2500\\u2500\\n      38 |             items = \\\", \\\".join(unconnected_inputs)\\n      39 |             warnings.append(\\n      40 |                 Warning(\\n>>>   41 |                     warning_type=WarningType.LEFTOVER_ITEMS,  # Reusing for info\\n      42 |                     message=f\\\"{node_id}: No inputs connected. Assuming infinite supply of {items}.\\\",\\n      43 |                     element_id=node_id,\\n      44 |                     severity=0.1,  # Very low - just info\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/dangling.py:52 \\u2500\\u2500\\n      49 |             items = \\\", \\\".join(unconnected_inputs)\\n      50 |             warnings.append(\\n      51 |                 Warning(\\n>>>   52 |                     warning_type=WarningType.RESOURCE_UNDERFLOW,\\n      53 |                     message=f\\\"{node_id}: Missing input(s): {items}. Building will not function correctly.\\\",\\n      54 |                     element_id=node_id,\\n      55 |                     severity=0.8,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/dangling.py:73 \\u2500\\u2500\\n      70 |             items = \\\", \\\".join(unconnected_outputs)\\n      71 |             warnings.append(\\n      72 |                 Warning(\\n>>>   73 |                     warning_type=WarningType.LEFTOVER_ITEMS,\\n      74 |                     message=f\\\"{node_id}: No outputs connected. Production of {items} will be sunk.\\\",\\n      75 |                     element_id=node_id,\\n      76 |                     severity=0.1,  # Just info\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/dangling.py:84 \\u2500\\u2500\\n      81 |             items = \\\", \\\".join(unconnected_outputs)\\n      82 |             warnings.append(\\n      83 |                 Warning(\\n>>>   84 |                     warning_type=WarningType.LEFTOVER_ITEMS,\\n      85 |                     message=f\\\"{node_id}: Unconnected output(s): {items}. Items will be sunk.\\\",\\n      86 |                     element_id=node_id,\\n      87 |                     severity=0.3,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/info.py:46 \\u2500\\u2500\\n      43 |             # There's spare capacity on open outputs\\n      44 |             warnings.append(\\n      45 |                 Warning(\\n>>>   46 |                     warning_type=WarningType.LEFTOVER_ITEMS,\\n      47 |                     message=f\\\"Splitter {node_id}: {spare:.1f}/min spare capacity on {n_open} open output(s)\\\",\\n      48 |                     element_id=node_id,\\n      49 |                     severity=0.3,  # Low severity - just info\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/overcapacity.py:45 \\u2500\\u2500\\n      42 |         flow = model.flows[edge_id]\\n      43 |         warnings.append(\\n      44 |             Warning(\\n>>>   45 |                 warning_type=WarningType.BELT_OVERCAPACITY,\\n      46 |                 message=f\\\"Belt {edge_id}: flow {flow:.1f}/min exceeds capacity {edge.capacity}/min\\\",\\n      47 |                 element_id=edge_id,\\n      48 |                 severity=(flow - edge.capacity) / edge.capacity,  # Relative severity\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:42 \\u2500\\u2500\\n      39 |                 if input_port.rate > 0:\\n      40 |                     warnings.append(\\n      41 |                         Warning(\\n>>>   42 |                             warning_type=WarningType.RESOURCE_UNDERFLOW,\\n      43 |                             message=f\\\"{node_id}: input {i} ({input_port.item_id}) not connected\\\",\\n      44 |                             element_id=node_id,\\n      45 |                             severity=1.0,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:65 \\u2500\\u2500\\n      62 |                 # No belt connected to this specific input, but others are connected\\n      63 |                 warnings.append(\\n      64 |                     Warning(\\n>>>   65 |                         warning_type=WarningType.RESOURCE_UNDERFLOW,\\n      66 |                         message=f\\\"{node_id}: input {i} ({input_port.item_id}) not connected\\\",\\n      67 |                         element_id=node_id,\\n      68 |                         severity=1.0,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:81 \\u2500\\u2500\\n      78 |                 caused_by = _build_causal_chain(model, feeding_edge.id, demanded)\\n      79 |                 warnings.append(\\n      80 |                     Warning(\\n>>>   81 |                         warning_type=WarningType.RESOURCE_UNDERFLOW,\\n      82 |                         message=f\\\"{node_id}: {input_port.item_id} {actual_flow:.1f} < {demanded:.1f}/min demanded\\\",\\n      83 |                         element_id=node_id,\\n      84 |                         severity=(demanded - actual_flow) / demanded,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:114 \\u2500\\u2500\\n     111 |     if actual_flow >= edge.capacity - 0.01:\\n     112 |         causes.append(\\n     113 |             Warning(\\n>>>  114 |                 warning_type=WarningType.BELT_OVERCAPACITY,\\n     115 |                 message=f\\\"Belt {edge_id} at capacity ({edge.capacity}/min)\\\",\\n     116 |                 element_id=edge_id,\\n     117 |                 severity=1.0,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:131 \\u2500\\u2500\\n     128 |             if output.item_id == edge.item_id and output.rate < demanded:\\n     129 |                 causes.append(\\n     130 |                     Warning(\\n>>>  131 |                         warning_type=WarningType.PRODUCTION_UNDERFLOW,\\n     132 |                         message=f\\\"{source_node.id} produces {output.rate:.1f}/min, need {demanded:.1f}/min\\\",\\n     133 |                         element_id=source_node.id,\\n     134 |                         severity=(demanded - output.rate) / demanded,\\n\\n\\u2500\\u2500 spikes/flowsim/detectors/underflow.py:144 \\u2500\\u2500\\n     141 |             if output.rate < demanded:\\n     142 |                 causes.append(\\n     143 |                     Warning(\\n>>>  144 |                         warning_type=WarningType.RESOURCE_UNDERFLOW,\\n     145 |                         message=f\\\"Miner {source_node.id} outputs {output.rate:.1f}/min, need {demanded:.1f}/min\\\",\\n     146 |                         element_id=source_node.id,\\n     147 |                         severity=(demanded - output.rate) / demanded,\\n\\n\\u2500\\u2500 spikes/flowsim/tests/test_overcapacity.py:83 \\u2500\\u2500\\n      80 | \\n      81 |         warnings = detect_overcapacity(solved)\\n      82 |         assert len(warnings) == 1\\n>>>   83 |         assert warnings[0].warning_type == WarningType.BELT_OVERCAPACITY\\n      84 |         assert warnings[0].element_id == \\\"belt1\\\"\\n      85 | \\n      86 |     def test_chain_filters_downstream(self):\\n\\n\\u2500\\u2500 spikes/flowsim/tests/test_underflow.py:66 \\u2500\\u2500\\n      63 | \\n      64 |         warnings = detect_underflow(solved)\\n      65 |         assert len(warnings) == 1\\n>>>   66 |         assert warnings[0].warning_type == WarningType.RESOURCE_UNDERFLOW\\n      67 |         assert \\\"not connected\\\" in warnings[0].message\\n      68 | \\n      69 |     def test_undersupply_warning(self):\\n\\n\\u2500\\u2500 spikes/flowsim/tests/test_underflow.py:100 \\u2500\\u2500\\n      97 | \\n      98 |         warnings = detect_underflow(solved)\\n      99 |         assert len(warnings) == 1\\n>>>  100 |         assert warnings[0].warning_type == WarningType.RESOURCE_UNDERFLOW\\n     101 |         assert warnings[0].element_id == \\\"constructor1\\\"\\n     102 | \\n     103 |     def test_causal_chain_production(self):\",\n  \"success\": true,\n  \"total_matches\": 16\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me find where the warning icon is chosen for buildings:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"warning.*priority|get.*warning.*building|_worst_warning|icon.*warning\", \"include_extensions\": [\".py\"], \"max_matches\": 10}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01DHY2pHEYnkWdQyGwkALxTd",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01DHY2pHEYnkWdQyGwkALxTd",
+      "content": "{\"message\": \"Found 9 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:259 \\u2500\\u2500\\n     256 | \\n     257 |         # Update warning icons\\n     258 |         if flow_solver:\\n>>>  259 |             self._update_warning_icons(flow_solver._warnings)\\n     260 | \\n     261 |     def _update_warning_icons(self, warnings: list[Warning]) -> None:\\n     262 |         \\\"\\\"\\\"Update warning icons based on current warnings.\\\"\\\"\\\"\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:261 \\u2500\\u2500\\n     258 |         if flow_solver:\\n     259 |             self._update_warning_icons(flow_solver._warnings)\\n     260 | \\n>>>  261 |     def _update_warning_icons(self, warnings: list[Warning]) -> None:\\n     262 |         \\\"\\\"\\\"Update warning icons based on current warnings.\\\"\\\"\\\"\\n     263 |         from satisfactory_planner.core.flow_solver import Warning\\n     264 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:262 \\u2500\\u2500\\n     259 |             self._update_warning_icons(flow_solver._warnings)\\n     260 | \\n     261 |     def _update_warning_icons(self, warnings: list[Warning]) -> None:\\n>>>  262 |         \\\"\\\"\\\"Update warning icons based on current warnings.\\\"\\\"\\\"\\n     263 |         from satisfactory_planner.core.flow_solver import Warning\\n     264 | \\n     265 |         # Remove existing warning icons\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:266 \\u2500\\u2500\\n     263 |         from satisfactory_planner.core.flow_solver import Warning\\n     264 | \\n     265 |         # Remove existing warning icons\\n>>>  266 |         for icon in self._warning_icons:\\n     267 |             self.canvas._scene.removeItem(icon)\\n     268 |         self._warning_icons.clear()\\n     269 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:279 \\u2500\\u2500\\n     276 |             if position:\\n     277 |                 # Offset slightly so icon doesn't cover the element\\n     278 |                 offset_pos = QPointF(position.x() + 30, position.y() - 10)\\n>>>  279 |                 icon = WarningIconItem(warning, offset_pos)\\n     280 |                 self.canvas._scene.addItem(icon)\\n     281 |                 self._warning_icons.append(icon)\\n     282 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/warning_icon_item.py:1 \\u2500\\u2500\\n>>>    1 | \\\"\\\"\\\"Warning icon graphics item for displaying warnings at element locations.\\\"\\\"\\\"\\n       2 | \\n       3 | from __future__ import annotations\\n       4 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/warning_icon_item.py:57 \\u2500\\u2500\\n      54 |         super().__init__(parent)\\n      55 | \\n      56 |         self.warning = warning\\n>>>   57 |         self._icon = WARNING_ICONS.get(warning.type.value, \\\"\\u26a0\\ufe0f\\\")\\n      58 |         self._severity_color = self._get_severity_color(warning.severity)\\n      59 | \\n      60 |         self.setPos(position)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/warnings_panel.py:116 \\u2500\\u2500\\n     113 | \\n     114 |         # Create tree items\\n     115 |         for warning_type, type_warnings in sorted_types:\\n>>>  116 |             icon = WARNING_ICONS.get(warning_type, \\\"\\u26a0\\ufe0f\\\")\\n     117 |             type_item = QTreeWidgetItem([f\\\"{icon} {warning_type.value} ({len(type_warnings)})\\\"])\\n     118 | \\n     119 |             for w in type_warnings:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/warnings_panel.py:117 \\u2500\\u2500\\n     114 |         # Create tree items\\n     115 |         for warning_type, type_warnings in sorted_types:\\n     116 |             icon = WARNING_ICONS.get(warning_type, \\\"\\u26a0\\ufe0f\\\")\\n>>>  117 |             type_item = QTreeWidgetItem([f\\\"{icon} {warning_type.value} ({len(type_warnings)})\\\"])\\n     118 | \\n     119 |             for w in type_warnings:\\n     120 |                 self._add_warning_item(type_item, w)  # type: ignore[arg-type]\", \"success\": true, \"total_matches\": 9}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"max_matches\": 10,\n  \"pattern\": \"warning.*priority|get.*warning.*building|_worst_warning|icon.*warning\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 9 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:259 \\u2500\\u2500\\n     256 | \\n     257 |         # Update warning icons\\n     258 |         if flow_solver:\\n>>>  259 |             self._update_warning_icons(flow_solver._warnings)\\n     260 | \\n     261 |     def _update_warning_icons(self, warnings: list[Warning]) -> None:\\n     262 |         \\\"\\\"\\\"Update warning icons based on current warnings.\\\"\\\"\\\"\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:261 \\u2500\\u2500\\n     258 |         if flow_solver:\\n     259 |             self._update_warning_icons(flow_solver._warnings)\\n     260 | \\n>>>  261 |     def _update_warning_icons(self, warnings: list[Warning]) -> None:\\n     262 |         \\\"\\\"\\\"Update warning icons based on current warnings.\\\"\\\"\\\"\\n     263 |         from satisfactory_planner.core.flow_solver import Warning\\n     264 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:262 \\u2500\\u2500\\n     259 |             self._update_warning_icons(flow_solver._warnings)\\n     260 | \\n     261 |     def _update_warning_icons(self, warnings: list[Warning]) -> None:\\n>>>  262 |         \\\"\\\"\\\"Update warning icons based on current warnings.\\\"\\\"\\\"\\n     263 |         from satisfactory_planner.core.flow_solver import Warning\\n     264 | \\n     265 |         # Remove existing warning icons\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:266 \\u2500\\u2500\\n     263 |         from satisfactory_planner.core.flow_solver import Warning\\n     264 | \\n     265 |         # Remove existing warning icons\\n>>>  266 |         for icon in self._warning_icons:\\n     267 |             self.canvas._scene.removeItem(icon)\\n     268 |         self._warning_icons.clear()\\n     269 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/visual_sync_manager.py:279 \\u2500\\u2500\\n     276 |             if position:\\n     277 |                 # Offset slightly so icon doesn't cover the element\\n     278 |                 offset_pos = QPointF(position.x() + 30, position.y() - 10)\\n>>>  279 |                 icon = WarningIconItem(warning, offset_pos)\\n     280 |                 self.canvas._scene.addItem(icon)\\n     281 |                 self._warning_icons.append(icon)\\n     282 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/warning_icon_item.py:1 \\u2500\\u2500\\n>>>    1 | \\\"\\\"\\\"Warning icon graphics item for displaying warnings at element locations.\\\"\\\"\\\"\\n       2 | \\n       3 | from __future__ import annotations\\n       4 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/items/warning_icon_item.py:57 \\u2500\\u2500\\n      54 |         super().__init__(parent)\\n      55 | \\n      56 |         self.warning = warning\\n>>>   57 |         self._icon = WARNING_ICONS.get(warning.type.value, \\\"\\u26a0\\ufe0f\\\")\\n      58 |         self._severity_color = self._get_severity_color(warning.severity)\\n      59 | \\n      60 |         self.setPos(position)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/warnings_panel.py:116 \\u2500\\u2500\\n     113 | \\n     114 |         # Create tree items\\n     115 |         for warning_type, type_warnings in sorted_types:\\n>>>  116 |             icon = WARNING_ICONS.get(warning_type, \\\"\\u26a0\\ufe0f\\\")\\n     117 |             type_item = QTreeWidgetItem([f\\\"{icon} {warning_type.value} ({len(type_warnings)})\\\"])\\n     118 | \\n     119 |             for w in type_warnings:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/panels/warnings_panel.py:117 \\u2500\\u2500\\n     114 |         # Create tree items\\n     115 |         for warning_type, type_warnings in sorted_types:\\n     116 |             icon = WARNING_ICONS.get(warning_type, \\\"\\u26a0\\ufe0f\\\")\\n>>>  117 |             type_item = QTreeWidgetItem([f\\\"{icon} {warning_type.value} ({len(type_warnings)})\\\"])\\n     118 | \\n     119 |             for w in type_warnings:\\n     120 |                 self._add_warning_item(type_item, w)  # type: ignore[arg-type]\",\n  \"success\": true,\n  \"total_matches\": 9\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I see how it works. The visual sync manager shows one warning icon per element, and it uses the first warning it finds. Let me look at how warnings are grouped and prioritized:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas/visual_sync_manager.py\", \"src/satisfactory_planner/ui/items/warning_icon_item.py\"], \"remove\": [\"src/satisfactory_planner/core/flow_builder.py\", \"src/satisfactory_planner/core/flow_lp_solver.py\", \"src/satisfactory_planner/core/flow_models.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_013yKacceT8deKVEGCTPfKd6",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_013yKacceT8deKVEGCTPfKd6",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/visual_sync_manager.py\", \"src/satisfactory_planner/ui/items/warning_icon_item.py\"], \"message\": \"Added 2 files, removed 3 files from context\", \"remove\": [\"src/satisfactory_planner/core/flow_builder.py\", \"src/satisfactory_planner/core/flow_lp_solver.py\", \"src/satisfactory_planner/core/flow_models.py\"], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "I see the issue. The `_update_warning_icons` method shows one icon per warning, but we want to show only the highest-priority warning per element. Let me fix this by grouping warnings by element and picking the most important one:\n\n<edit file=\"src/satisfactory_planner/ui/items/warning_icon_item.py\">\n<search>\n# Icon characters for different warning types\nWARNING_ICONS: dict[str, str] = {\n    \"disconnected_belt\": \"\ud83d\udd0c\",\n    \"resource_underflow\": \"\ud83d\udcc9\",\n    \"production_underflow\": \"\u26a0\ufe0f\",\n    \"leftover_items\": \"\ud83d\udce6\",\n    \"belt_overcapacity\": \"\ud83d\udeab\",\n    \"item_mismatch\": \"\u274c\",\n}\n</search>\n<replace>\n# Icon characters for different warning types\nWARNING_ICONS: dict[str, str] = {\n    \"disconnected_belt\": \"\ud83d\udd0c\",\n    \"input_missing\": \"\u2753\",\n    \"resource_underflow\": \"\ud83d\udcc9\",\n    \"production_underflow\": \"\u26a0\ufe0f\",\n    \"leftover_items\": \"\ud83d\udce6\",\n    \"belt_overcapacity\": \"\ud83d\udeab\",\n    \"item_mismatch\": \"\u274c\",\n    \"recipe_not_set\": \"\ud83d\udccb\",\n}\n\n# Priority order for warning types (higher = more important, shown first)\nWARNING_PRIORITY: dict[str, int] = {\n    \"item_mismatch\": 100,\n    \"recipe_not_set\": 90,\n    \"input_missing\": 80,\n    \"disconnected_belt\": 70,\n    \"resource_underflow\": 60,\n    \"production_underflow\": 50,\n    \"belt_overcapacity\": 40,\n    \"leftover_items\": 10,\n}\n</replace>\n</edit>\n\nNow update the visual sync manager to group warnings and pick the highest priority per element:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/visual_sync_manager.py\">\n<search>\n    def _update_warning_icons(self, warnings: list[Warning]) -> None:\n        \"\"\"Update warning icons based on current warnings.\"\"\"\n        from satisfactory_planner.core.flow_solver import Warning\n\n        # Remove existing warning icons\n        for icon in self._warning_icons:\n            self.canvas._scene.removeItem(icon)\n        self._warning_icons.clear()\n\n        # Add new warning icons at element positions\n        for warning in warnings:\n            if not isinstance(warning, Warning):\n                continue\n\n            position = self._get_element_position(warning.item_key)\n            if position:\n                # Offset slightly so icon doesn't cover the element\n                offset_pos = QPointF(position.x() + 30, position.y() - 10)\n                icon = WarningIconItem(warning, offset_pos)\n                self.canvas._scene.addItem(icon)\n                self._warning_icons.append(icon)\n</search>\n<replace>\n    def _update_warning_icons(self, warnings: list[Warning]) -> None:\n        \"\"\"Update warning icons based on current warnings.\n\n        Groups warnings by element and shows only the highest-priority warning\n        for each element (e.g., INPUT_MISSING takes precedence over RESOURCE_UNDERFLOW).\n        \"\"\"\n        from satisfactory_planner.core.flow_solver import Warning\n        from satisfactory_planner.ui.items.warning_icon_item import WARNING_PRIORITY\n\n        # Remove existing warning icons\n        for icon in self._warning_icons:\n            self.canvas._scene.removeItem(icon)\n        self._warning_icons.clear()\n\n        # Group warnings by element, keeping only highest priority per element\n        warnings_by_element: dict[ItemKey, Warning] = {}\n        for warning in warnings:\n            if not isinstance(warning, Warning):\n                continue\n\n            key = warning.item_key\n            existing = warnings_by_element.get(key)\n            if existing is None:\n                warnings_by_element[key] = warning\n            else:\n                # Keep the higher priority warning\n                new_priority = WARNING_PRIORITY.get(warning.type.value, 0)\n                existing_priority = WARNING_PRIORITY.get(existing.type.value, 0)\n                if new_priority > existing_priority:\n                    warnings_by_element[key] = warning\n\n        # Add warning icons for the highest-priority warning per element\n        for warning in warnings_by_element.values():\n            position = self._get_element_position(warning.item_key)\n            if position:\n                # Offset slightly so icon doesn't cover the element\n                offset_pos = QPointF(position.x() + 30, position.y() - 10)\n                icon = WarningIconItem(warning, offset_pos)\n                self.canvas._scene.addItem(icon)\n                self._warning_icons.append(icon)\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Add INPUT_MISSING warning type and prioritize over RESOURCE_UNDERFLOW\n\nWhen a building has multiple warnings (e.g., one input missing AND another\ninput underflowing), we now show only the highest-priority warning icon.\nINPUT_MISSING takes precedence over RESOURCE_UNDERFLOW since the missing\ninput is the more fundamental problem.\n\nAdded WARNING_PRIORITY dict to control icon precedence.\"/>\n\nDone! Now when a Manufacturer has both missing inputs and underflow, it will show the \"\u2753\" (input missing) icon instead of the \"\ud83d\udcc9\" (underflow) icon. The warnings panel still shows all warnings, but the visual icon prioritizes the more fundamental issue.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/warning_icon_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/warning_icon_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/visual_sync_manager.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/visual_sync_manager.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ukzv5e1a\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 53 items\n\ntests/test_core/test_commands.py .........                               [ 16%]\ntests/test_core/test_flow_solver.py ............                         [ 39%]\ntests/test_core/test_models.py .........                                 [ 56%]\ntests/test_core/test_room_commands.py ..............                     [ 83%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 53 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ukzv5e1a\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ukzv5e1a\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 53 items\n\ntests/test_core/test_commands.py .........                               [ 16%]\ntests/test_core/test_flow_solver.py ............                         [ 39%]\ntests/test_core/test_models.py .........                                 [ 56%]\ntests/test_core/test_room_commands.py ..............                     [ 83%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 53 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_ukzv5e1a\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "29638c2ca0cc",
+          "message": "Committed: 4 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
           ],

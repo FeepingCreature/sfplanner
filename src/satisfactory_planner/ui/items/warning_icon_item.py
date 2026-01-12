@@ -20,11 +20,25 @@ if TYPE_CHECKING:
 # Icon characters for different warning types
 WARNING_ICONS: dict[str, str] = {
     "disconnected_belt": "🔌",
+    "input_missing": "❓",
     "resource_underflow": "📉",
     "production_underflow": "⚠️",
     "leftover_items": "📦",
     "belt_overcapacity": "🚫",
     "item_mismatch": "❌",
+    "recipe_not_set": "📋",
+}
+
+# Priority order for warning types (higher = more important, shown first)
+WARNING_PRIORITY: dict[str, int] = {
+    "item_mismatch": 100,
+    "recipe_not_set": 90,
+    "input_missing": 80,
+    "disconnected_belt": 70,
+    "resource_underflow": 60,
+    "production_underflow": 50,
+    "belt_overcapacity": 40,
+    "leftover_items": 10,
 }
 
 # Colors for different severity levels

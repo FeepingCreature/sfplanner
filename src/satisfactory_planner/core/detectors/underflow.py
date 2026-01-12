@@ -43,7 +43,7 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 if input_port.rate > 0:
                     warnings.append(
                         Warning(
-                            type=WarningType.RESOURCE_UNDERFLOW,
+                            type=WarningType.INPUT_MISSING,
                             message=f"{input_port.item_name} input missing.",
                             item_key=node_id,
                             severity=1.0,
@@ -70,7 +70,7 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 # No flow at all for this item - it's missing
                 warnings.append(
                     Warning(
-                        type=WarningType.RESOURCE_UNDERFLOW,
+                        type=WarningType.INPUT_MISSING,
                         message=f"{input_port.item_name} input missing.",
                         item_key=node_id,
                         severity=1.0,
