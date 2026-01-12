@@ -87,7 +87,7 @@ update_context(add=["foo.py"])  # load once, see everything
 
 ## Type Design: Use Domain Types From The Start
 
-When an operation inherently targets a typed entity (e.g., an `ItemKey` for a building in the flow graph), use that type from the beginning of the call chain, not a primitive like `str`.
+Types express *meaning*, not just data shapes. When an operation conceptually targets an `ItemKey` (a flow graph entity), passing around `building_id: str` is a category error - like referring to a person by their SSN throughout a conversation instead of just referring to them.
 
 **Warning signs you're doing it wrong:**
 - Reaching into `.element_id` to extract a string, then later reconstructing the full key
@@ -97,6 +97,8 @@ When an operation inherently targets a typed entity (e.g., an `ItemKey` for a bu
 **Right approach:** Accept the domain type (`ItemKey`) at the API boundary, extract primitives only when needed for lower-level operations (like model lookups that use string IDs).
 
 This applies to any typed wrapper: `ItemKey`, `RecipeId`, `ItemId`, etc. If the caller has the full type, don't strip it down to a string just to rebuild it later.
+
+**When uncertain:** If you notice yourself doing type gymnastics (extracting, reconstructing, searching by partial key) and aren't sure if it's necessary, add a `# FIXME: should this use ItemKey directly?` comment. Better to flag the confusion than silently propagate a design smell.
 
 ## Web Tools (web_search / web_fetch)
 
