@@ -11,6 +11,7 @@ from PySide6.QtGui import QColor, QCursor, QPen
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsPathItem, QMenu
 
 from satisfactory_planner.core import Belt, BuildingType, ItemId, Recipe
+from satisfactory_planner.core.item_key import ItemKey
 from satisfactory_planner.core.models import Building, generate_id
 from satisfactory_planner.core.routing import Point, compute_belt_path
 from satisfactory_planner.ui.commands import ConnectBeltCommand, PlaceBuildingCommand
@@ -534,7 +535,7 @@ class BeltConnector:
     def _get_supplied_items(self, building_id: str) -> set[ItemId]:
         """Get item IDs already being supplied to a building's inputs.
 
-        Checks incoming belts and looks up their item type from the flow solver.
+        Uses the flow solver graph to find incoming edges to this building's node.
         """
         supplied: set[ItemId] = set()
 
@@ -542,22 +543,25 @@ class BeltConnector:
         if not flow_solver or not flow_solver._solved_model:
             return supplied
 
-        # Get the scene this building is in
-        scene = self.canvas._get_scene(self._connect_scene_room_id)
+        graph = flow_solver._solved_model.graph
 
-        # Check all belts connected to this building
-        for belt in scene.get_belts_for_building(building_id):
-            # Only care about belts where this building is the destination (input)
-            if belt.dest_building_id != building_id:
-                continue
+        # Get the placement_id for the building item (for proper ItemKey construction)
+        building_item = self.canvas._building_items.get(building_id)
+        placement_id = building_item._placement_id if building_item else None
 
-            # Look up the item on this belt from flow solver edges
-            for edge in flow_solver._solved_model.graph.edges.values():
-                if edge.belt_id.element_id == belt.id and edge.item_name:
-                    item_id = self._item_name_to_id(edge.item_name)
-                    if item_id:
-                        supplied.add(ItemId(item_id))
-                    break
+        # Construct the ItemKey the same way the flow builder does
+        item_key = ItemKey(element_id=building_id, placement_id=placement_id)
+
+        # Find the node directly by its building_id ItemKey
+        for node in graph.nodes.values():
+            if node.building_id == item_key:
+                # Found the node - check incoming edges for items
+                for edge in graph.get_incoming_edges(node.id):
+                    if edge.item_name:
+                        item_id = self._item_name_to_id(edge.item_name)
+                        if item_id:
+                            supplied.add(ItemId(item_id))
+                break
 
         return supplied
 
