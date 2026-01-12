@@ -532,26 +532,32 @@ class BeltConnector:
         return result
 
     def _get_supplied_items(self, building_id: str) -> set[ItemId]:
-        """Get item IDs already being supplied to a building's inputs via flow solver."""
+        """Get item IDs already being supplied to a building's inputs.
+
+        Checks incoming belts and looks up their item type from the flow solver.
+        """
         supplied: set[ItemId] = set()
 
         flow_solver = self.canvas.flow_solver
         if not flow_solver or not flow_solver._solved_model:
             return supplied
 
-        graph = flow_solver._solved_model.graph
+        # Get the scene this building is in
+        scene = self.canvas._get_scene(self._connect_scene_room_id)
 
-        # Find the node for this building
-        for node in graph.nodes.values():
-            if node.building_id and node.building_id.element_id == building_id:
-                # Check incoming edges for items with actual flow
-                for edge in graph.get_incoming_edges(node.id):
-                    if edge.item_name:
-                        # Convert item name to ID
-                        item_id = self._item_name_to_id(edge.item_name)
-                        if item_id:
-                            supplied.add(ItemId(item_id))
-                break
+        # Check all belts connected to this building
+        for belt in scene.get_belts_for_building(building_id):
+            # Only care about belts where this building is the destination (input)
+            if belt.dest_building_id != building_id:
+                continue
+
+            # Look up the item on this belt from flow solver edges
+            for edge in flow_solver._solved_model.graph.edges.values():
+                if edge.belt_id.element_id == belt.id and edge.item_name:
+                    item_id = self._item_name_to_id(edge.item_name)
+                    if item_id:
+                        supplied.add(ItemId(item_id))
+                    break
 
         return supplied
 
