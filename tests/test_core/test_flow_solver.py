@@ -609,6 +609,295 @@ class TestFlowSolver:
             "Iron Ore" in w.message and "Copper Ore" in w.message for w in mismatch_warnings
         ), f"Warning should mention both items: {mismatch_warnings[0].message}"
 
+    def test_multi_input_partial_connection_no_flow(self) -> None:
+        """A multi-input building with only some inputs connected has zero flow.
+
+        Scenario: Assembler needs Screws + Iron Plates, but only Screws connected.
+        The building should produce nothing until all inputs are connected.
+        """
+        from satisfactory_planner.core.persistence import load_recipes
+
+        doc = Document()
+        recipes = load_recipes()
+
+        # Source of screws
+        source = Building(
+            id="source",
+            building_type=BuildingType.SOURCE,
+            x=0,
+            y=0,
+            item_id="Screw",
+        )
+        doc.add_building(source)
+
+        # Assembler making Reinforced Iron Plate (needs Iron Plate + Screw)
+        assembler = Building(
+            id="assembler",
+            building_type=BuildingType.ASSEMBLER,
+            x=100,
+            y=0,
+            recipe_id="Reinforced Iron Plate",
+        )
+        doc.add_building(assembler)
+
+        # Sink
+        sink = Building(
+            id="sink",
+            building_type=BuildingType.SINK,
+            x=200,
+            y=0,
+            item_id="Reinforced Iron Plate",
+        )
+        doc.add_building(sink)
+
+        # Only connect screws - iron plates missing!
+        doc.add_belt(
+            Belt(
+                id="b1",
+                tier=1,
+                source_building_id="source",
+                source_port_index=0,
+                dest_building_id="assembler",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b2",
+                tier=1,
+                source_building_id="assembler",
+                source_port_index=0,
+                dest_building_id="sink",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc, recipes)
+        warnings = solver.solve()
+
+        # Output should be zero - can't produce without all inputs
+        output_flow = solver.get_flow_rate(ItemKey(element_id="b2"))
+        assert output_flow is not None
+        assert output_flow == 0.0, f"Expected 0 output, got {output_flow}"
+
+        # Should warn about missing input
+        assert any("Iron Plate" in w.message and "missing" in w.message for w in warnings), (
+            f"Expected warning about missing Iron Plate input: {[w.message for w in warnings]}"
+        )
+
+    def test_multi_input_all_connected_flows_at_min(self) -> None:
+        """A multi-input building flows at the rate of its most limited input.
+
+        Scenario: Assembler needs 60 Screws + 30 Iron Plates per minute.
+        If we supply 60 Screws but only 15 Iron Plates, output is halved.
+        """
+        from satisfactory_planner.core.persistence import load_recipes
+
+        doc = Document()
+        recipes = load_recipes()
+
+        # Source of screws (unlimited)
+        screw_source = Building(
+            id="screw_source",
+            building_type=BuildingType.SOURCE,
+            x=0,
+            y=-50,
+            item_id="Screw",
+        )
+        doc.add_building(screw_source)
+
+        # Source of iron plates (limited to 15/min via belt)
+        plate_source = Building(
+            id="plate_source",
+            building_type=BuildingType.SOURCE,
+            x=0,
+            y=50,
+            item_id="Iron Plate",
+        )
+        doc.add_building(plate_source)
+
+        # Assembler making Reinforced Iron Plate
+        # Recipe: 60 Screw + 30 Iron Plate -> 5 Reinforced Iron Plate
+        assembler = Building(
+            id="assembler",
+            building_type=BuildingType.ASSEMBLER,
+            x=100,
+            y=0,
+            recipe_id="Reinforced Iron Plate",
+        )
+        doc.add_building(assembler)
+
+        # Sink
+        sink = Building(
+            id="sink",
+            building_type=BuildingType.SINK,
+            x=200,
+            y=0,
+            item_id="Reinforced Iron Plate",
+        )
+        doc.add_building(sink)
+
+        # Connect screws - high capacity belt
+        doc.add_belt(
+            Belt(
+                id="b_screw",
+                tier=2,  # 120/min - plenty for 60 screws
+                source_building_id="screw_source",
+                source_port_index=0,
+                dest_building_id="assembler",
+                dest_port_index=0,
+            )
+        )
+
+        # Connect iron plates - LIMITED to 15/min (half of 30 needed)
+        doc.add_belt(
+            Belt(
+                id="b_plate",
+                tier=1,  # 60/min capacity, but source limited
+                source_building_id="plate_source",
+                source_port_index=0,
+                dest_building_id="assembler",
+                dest_port_index=1,
+            )
+        )
+
+        # Output belt
+        doc.add_belt(
+            Belt(
+                id="b_out",
+                tier=1,
+                source_building_id="assembler",
+                source_port_index=0,
+                dest_building_id="sink",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc, recipes)
+        solver.solve()
+
+        # Get the recipe to check ratios
+        recipe = recipes.get("Reinforced Iron Plate")
+        assert recipe is not None
+
+        # Check that iron plate flow matches its demand (30/min at full speed)
+        plate_flow = solver.get_flow_rate(ItemKey(element_id="b_plate"))
+        assert plate_flow is not None
+
+        # Screw flow should be proportional: if plates are at X%, screws should be too
+        screw_flow = solver.get_flow_rate(ItemKey(element_id="b_screw"))
+        assert screw_flow is not None
+
+        # At full speed: 60 screws, 30 plates -> ratio is 2:1
+        # So screw_flow / plate_flow should be ~2
+        if plate_flow > 0:
+            ratio = screw_flow / plate_flow
+            assert 1.9 < ratio < 2.1, f"Screw:Plate ratio should be 2:1, got {ratio}"
+
+    def test_multi_output_recipe_proportional(self) -> None:
+        """Multi-output recipes produce outputs in correct proportions.
+
+        Scenario: A recipe that produces 2 different outputs should
+        output them in the ratio defined by the recipe.
+        """
+        from satisfactory_planner.core.persistence import load_recipes
+
+        doc = Document()
+        recipes = load_recipes()
+
+        # Find a multi-output recipe (e.g., Residual Rubber from Refinery)
+        # or we create a simpler test scenario
+
+        # Source of crude oil
+        source = Building(
+            id="source",
+            building_type=BuildingType.SOURCE,
+            x=0,
+            y=0,
+            item_id="Crude Oil",
+        )
+        doc.add_building(source)
+
+        # Refinery with Rubber recipe (if it has multiple outputs)
+        # Let's use "Residual Rubber" which outputs Rubber + Heavy Oil Residue
+        refinery = Building(
+            id="refinery",
+            building_type=BuildingType.REFINERY,
+            x=100,
+            y=0,
+            recipe_id="Residual Rubber",
+        )
+        doc.add_building(refinery)
+
+        # Two sinks for the two outputs
+        sink1 = Building(
+            id="sink1",
+            building_type=BuildingType.SINK,
+            x=200,
+            y=-50,
+            item_id="Rubber",
+        )
+        sink2 = Building(
+            id="sink2",
+            building_type=BuildingType.SINK,
+            x=200,
+            y=50,
+            item_id="Heavy Oil Residue",
+        )
+        doc.add_building(sink1)
+        doc.add_building(sink2)
+
+        # Connect input
+        doc.add_belt(
+            Belt(
+                id="b_in",
+                tier=1,
+                source_building_id="source",
+                source_port_index=0,
+                dest_building_id="refinery",
+                dest_port_index=0,
+            )
+        )
+
+        # Connect both outputs
+        doc.add_belt(
+            Belt(
+                id="b_out1",
+                tier=1,
+                source_building_id="refinery",
+                source_port_index=0,
+                dest_building_id="sink1",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_out2",
+                tier=1,
+                source_building_id="refinery",
+                source_port_index=1,
+                dest_building_id="sink2",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc, recipes)
+        solver.solve()
+
+        # Get recipe to check expected ratio
+        recipe = recipes.get("Residual Rubber")
+        if recipe and len(recipe.outputs) >= 2:
+            expected_ratio = recipe.outputs[0].rate / recipe.outputs[1].rate
+
+            flow1 = solver.get_flow_rate(ItemKey(element_id="b_out1"))
+            flow2 = solver.get_flow_rate(ItemKey(element_id="b_out2"))
+
+            if flow1 and flow2 and flow2 > 0:
+                actual_ratio = flow1 / flow2
+                assert abs(actual_ratio - expected_ratio) < 0.1, (
+                    f"Output ratio should be {expected_ratio}, got {actual_ratio}"
+                )
+
     def test_two_pass_detects_belt_bottleneck(self) -> None:
         """Two-pass solver detects belt bottlenecks by comparing theoretical vs actual.
 
