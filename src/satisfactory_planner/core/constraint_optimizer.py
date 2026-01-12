@@ -345,6 +345,7 @@ class ConstraintSystem:
                 if constraint.constraint_type != ConstraintType.EQUALITY:
                     continue
                 if len(constraint.coeffs) != 2:
+                    logger.debug(f"Pass 7: skipping {constraint.coeffs} - not 2 vars")
                     continue
                 if abs(constraint.rhs) > 1e-9:
                     continue
@@ -355,18 +356,32 @@ class ConstraintSystem:
                 var2, coeff2 = items[1]
                 canon1, canon2 = self._find_canonical(var1), self._find_canonical(var2)
 
+                usage1 = var_usage.get(canon1, (0, 0))
+                usage2 = var_usage.get(canon2, (0, 0))
+                has_bound1 = canon1 in self._upper_bounds
+                has_bound2 = canon2 in self._upper_bounds
+
+                logger.debug(
+                    f"Pass 7: eq {canon1}*{coeff1} + {canon2}*{coeff2} = 0, "
+                    f"usage1={usage1} bound1={has_bound1}, usage2={usage2} bound2={has_bound2}"
+                )
+
                 source_var: int | None = None
                 target_var: int | None = None
                 source_coeff = 0.0
                 target_coeff = 0.0
 
                 # Check if var1 is source-like (appears in <=1 equality total)
-                if var_usage.get(canon1, (0, 0))[0] <= 1 and canon1 in self._upper_bounds:
+                if usage1[0] <= 1 and has_bound1:
                     source_var, source_coeff = canon1, coeff1
                     target_var, target_coeff = canon2, coeff2
-                elif var_usage.get(canon2, (0, 0))[0] <= 1 and canon2 in self._upper_bounds:
+                    logger.debug(f"  -> var {canon1} is source-like")
+                elif usage2[0] <= 1 and has_bound2:
                     source_var, source_coeff = canon2, coeff2
                     target_var, target_coeff = canon1, coeff1
+                    logger.debug(f"  -> var {canon2} is source-like")
+                else:
+                    logger.debug("  -> no source-like var found")
 
                 if source_var is not None and target_var is not None:
                     # source_coeff * source + target_coeff * target = 0
@@ -376,13 +391,21 @@ class ConstraintSystem:
                     if scale > 0:  # Only if positive (preserves inequality direction)
                         source_bound = self._upper_bounds[source_var]
                         implied_target_bound = source_bound / scale
+                        current_target_bound = self._upper_bounds.get(target_var)
+                        logger.debug(
+                            f"  -> scale={scale}, source_bound={source_bound}, "
+                            f"implied={implied_target_bound}, current={current_target_bound}"
+                        )
                         if (
-                            target_var not in self._upper_bounds
-                            or implied_target_bound < self._upper_bounds[target_var]
+                            current_target_bound is None
+                            or implied_target_bound < current_target_bound
                         ):
+                            logger.debug(f"  -> TIGHTENING {target_var} to {implied_target_bound}")
                             self._upper_bounds[target_var] = implied_target_bound
                             bounds_tightened += 1
                             changed = True
+                    else:
+                        logger.debug(f"  -> scale={scale} not positive, skipping")
 
         # Log summary if any simplifications occurred
         final_constraints = len(self.constraints)
