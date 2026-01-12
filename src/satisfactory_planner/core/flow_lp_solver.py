@@ -520,8 +520,8 @@ def _compute_efficiencies(
 ) -> dict[ItemKey, BuildingEfficiency]:
     """Compute duty cycle and limiting factor for each producer.
 
-    Efficiency is the minimum ratio across all inputs and outputs.
-    If any input is constrained, that limits the building's efficiency.
+    Efficiency is the minimum ratio across all applicable inputs and outputs.
+    Buildings with no inputs (miners/sources) only consider outputs.
     """
     efficiencies: dict[ItemKey, BuildingEfficiency] = {}
 
@@ -532,40 +532,44 @@ def _compute_efficiencies(
         outgoing = graph.get_outgoing_edges(node_id)
         incoming = graph.get_incoming_edges(node_id)
 
-        # Calculate efficiency as min ratio across all inputs and outputs
-        # Satisfactory allows any belt ordering, so we match by item type
-        min_ratio = 1.0
-        intended_rate = 0.0
-        actual_rate = 0.0
+        # Calculate efficiency as min ratio across applicable factors
+        min_ratio: float | None = None
+        limiting_intended = 0.0
+        limiting_actual = 0.0
 
-        # Build map of item_name -> total incoming flow
-        incoming_by_item: dict[str | None, float] = {}
-        for edge in incoming:
-            item = edge.item_name
-            incoming_by_item[item] = incoming_by_item.get(item, 0.0) + flows.get(edge.id, 0.0)
+        def update_min(actual: float, intended: float) -> None:
+            """Update min_ratio if this factor is more limiting."""
+            nonlocal min_ratio, limiting_intended, limiting_actual
+            if intended <= 0:
+                return
+            ratio = actual / intended
+            if min_ratio is None or ratio < min_ratio:
+                min_ratio = ratio
+                limiting_intended = intended
+                limiting_actual = actual
 
-        # Check each required input
-        for input_port in node.inputs:
-            if input_port.rate > 0:
+        # Only check inputs if building has input requirements
+        # (Buildings with no inputs like miners shouldn't be penalized)
+        if node.inputs:
+            # Build map of item_name -> total incoming flow
+            incoming_by_item: dict[str | None, float] = {}
+            for edge in incoming:
+                item = edge.item_name
+                incoming_by_item[item] = incoming_by_item.get(item, 0.0) + flows.get(edge.id, 0.0)
+
+            # Check each required input
+            for input_port in node.inputs:
                 actual_input = incoming_by_item.get(input_port.item_name, 0.0)
-                ratio = actual_input / input_port.rate
-                if ratio < min_ratio:
-                    min_ratio = ratio
-                    intended_rate = input_port.rate
-                    actual_rate = actual_input
+                update_min(actual_input, input_port.rate)
 
-        # Also check outputs (in case downstream is the limit)
+        # Check outputs (always applicable)
         for i, output_port in enumerate(node.outputs):
-            if output_port.rate > 0 and i < len(outgoing):
+            if i < len(outgoing):
                 actual_output = flows.get(outgoing[i].id, 0.0)
-                ratio = actual_output / output_port.rate
-                if ratio < min_ratio:
-                    min_ratio = ratio
-                    intended_rate = output_port.rate
-                    actual_rate = actual_output
+                update_min(actual_output, output_port.rate)
 
-        # If we found no rates, skip this node
-        if intended_rate == 0.0 and actual_rate == 0.0:
+        # If we found no applicable rates, skip this node
+        if min_ratio is None:
             continue
 
         duty_cycle = min_ratio
@@ -574,8 +578,8 @@ def _compute_efficiencies(
         efficiencies[node_id] = BuildingEfficiency(
             building_id=node.building_id or node_id,
             node_id=node_id,
-            intended_rate=intended_rate,
-            actual_rate=actual_rate,
+            intended_rate=limiting_intended,
+            actual_rate=limiting_actual,
             duty_cycle=min(1.0, duty_cycle),
             limiting_factor=limiting_factor,
             limiting_details=limiting_details,
