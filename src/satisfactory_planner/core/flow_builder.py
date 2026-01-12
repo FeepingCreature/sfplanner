@@ -482,15 +482,17 @@ def _propagate_item_types(graph: FlowGraph) -> list[FatalError]:
                     new_item_name = source_item
 
             # Check if dest node knows its input item type
-            # (but NOT for sinks - we want to detect mismatches, not propagate sink's expected type)
+            # Skip for sinks (we want to detect mismatches) and producers
+            # (Satisfactory allows any belt ordering on producer inputs)
             if new_item_name is None:
                 dest_node = graph.nodes.get(edge.dest_node_id)
-                is_non_sink_with_input = (
+                # Only propagate from dest for logistics nodes, not sinks or producers
+                is_logistics_with_input = (
                     dest_node is not None
-                    and dest_node.node_type != NodeType.SINK
+                    and dest_node.node_type in (NodeType.SPLITTER, NodeType.MERGER)
                     and edge.dest_port_index < len(dest_node.inputs)
                 )
-                if is_non_sink_with_input:
+                if is_logistics_with_input:
                     assert dest_node is not None  # for type checker
                     dest_item = dest_node.inputs[edge.dest_port_index].item_name
                     if dest_item is not None:
