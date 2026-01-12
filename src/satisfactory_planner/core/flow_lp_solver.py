@@ -522,6 +522,7 @@ def _compute_efficiencies(
 
     Efficiency is the minimum ratio across all applicable inputs and outputs.
     Buildings with no inputs (miners/sources) only consider outputs.
+    We track the MOST limiting factor (lowest ratio), not just the first.
     """
     efficiencies: dict[ItemKey, BuildingEfficiency] = {}
 
@@ -533,6 +534,7 @@ def _compute_efficiencies(
         incoming = graph.get_incoming_edges(node_id)
 
         # Calculate efficiency as min ratio across applicable factors
+        # Track the most limiting one (lowest ratio)
         min_ratio: float | None = None
         limiting_intended = 0.0
         limiting_actual = 0.0
@@ -596,12 +598,28 @@ def _find_limiting_factor(
     node: FlowNode,
     duty_cycle: float,
 ) -> tuple[LimitingFactor, str]:
-    """Determine why a producer isn't at 100% duty cycle."""
+    """Determine why a producer isn't at 100% duty cycle.
+
+    Returns the MOST limiting factor (lowest ratio), not just the first one found.
+    """
     if duty_cycle >= 0.999:
         return LimitingFactor.NONE, "Running at full capacity"
 
     incoming = graph.get_incoming_edges(node.id)
     outgoing = graph.get_outgoing_edges(node.id)
+
+    # Track the most limiting factor
+    worst_ratio: float | None = None
+    worst_factor = LimitingFactor.NONE
+    worst_details = "Unknown"
+
+    def check_limit(ratio: float, factor: LimitingFactor, details: str) -> None:
+        """Update worst if this is more limiting."""
+        nonlocal worst_ratio, worst_factor, worst_details
+        if worst_ratio is None or ratio < worst_ratio:
+            worst_ratio = ratio
+            worst_factor = factor
+            worst_details = details
 
     # Build map of item_name -> total incoming flow and edges
     incoming_by_item: dict[str | None, tuple[float, list[FlowEdge]]] = {}
@@ -610,45 +628,53 @@ def _find_limiting_factor(
         current = incoming_by_item.get(item, (0.0, []))
         incoming_by_item[item] = (current[0] + flows.get(edge.id, 0.0), current[1] + [edge])
 
-    # Check if input-starved (match by item type, not port index)
+    # Check all inputs (match by item type, not port index)
     for input_port in node.inputs:
+        if input_port.rate <= 0:
+            continue
         item_data = incoming_by_item.get(input_port.item_name)
         if item_data:
             actual_input, edges = item_data
-            if actual_input < input_port.rate - FLOW_TOLERANCE:
+            ratio = actual_input / input_port.rate
+            if ratio < 1.0 - FLOW_TOLERANCE / input_port.rate:
                 # Check if any feeding belt is at capacity
+                belt_limited = False
                 for edge in edges:
                     edge_flow = flows.get(edge.id, 0.0)
                     if edge_flow >= edge.capacity - FLOW_TOLERANCE:
-                        return (
+                        check_limit(
+                            ratio,
                             LimitingFactor.BELT_CAPACITY,
                             f"{input_port.item_name} belt at capacity ({edge.capacity}/min)",
                         )
-                return (
-                    LimitingFactor.INPUT_STARVED,
-                    f"{input_port.item_name}: getting {actual_input:.1f}, need {input_port.rate:.1f}/min",
-                )
-        elif input_port.rate > 0:
-            # No belt for this input at all
-            return (
-                LimitingFactor.INPUT_STARVED,
-                f"{input_port.item_name}: no input connected",
-            )
+                        belt_limited = True
+                        break
+                if not belt_limited:
+                    check_limit(
+                        ratio,
+                        LimitingFactor.INPUT_STARVED,
+                        f"{input_port.item_name}: {actual_input:.1f} < {input_port.rate:.1f}/min needed",
+                    )
+        # Note: missing inputs are handled by INPUT_MISSING warning, not efficiency
 
-    # Check if downstream-limited
+    # Check all outputs
     for i, out_edge in enumerate(outgoing):
-        if i < len(node.outputs):
+        if i < len(node.outputs) and node.outputs[i].rate > 0:
             actual_output = flows.get(out_edge.id, 0.0)
-            if actual_output < node.outputs[i].rate - FLOW_TOLERANCE:
+            ratio = actual_output / node.outputs[i].rate
+            if ratio < 1.0 - FLOW_TOLERANCE / node.outputs[i].rate:
                 edge = graph.edges[out_edge.id]
                 if actual_output >= edge.capacity - FLOW_TOLERANCE:
-                    return (
+                    check_limit(
+                        ratio,
                         LimitingFactor.BELT_CAPACITY,
                         f"Output belt at capacity ({edge.capacity}/min)",
                     )
-                return (
-                    LimitingFactor.DOWNSTREAM,
-                    f"Downstream only consumes {actual_output:.1f}/min",
-                )
+                else:
+                    check_limit(
+                        ratio,
+                        LimitingFactor.DOWNSTREAM,
+                        f"Downstream only consumes {actual_output:.1f}/min",
+                    )
 
-    return LimitingFactor.NONE, "Unknown"
+    return worst_factor, worst_details

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from satisfactory_planner.core.flow_models import NodeType
+from satisfactory_planner.core.flow_models import FlowEdge, NodeType
 from satisfactory_planner.core.flow_solver import Warning, WarningType
 from satisfactory_planner.core.item_key import ItemKey
 
@@ -51,51 +51,76 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                     )
             continue
 
-        # Build a map of item_name -> total incoming flow for that item
+        # Build a map of item_name -> (total incoming flow, edges) for that item
         # (Satisfactory allows any belt ordering, so we match by item type not port index)
-        incoming_by_item: dict[str, float] = {}
+        incoming_by_item: dict[str, tuple[float, list[FlowEdge]]] = {}
         for edge in incoming:
             if edge.item_name:
                 flow = model.flows.get(edge.id, 0.0)
-                incoming_by_item[edge.item_name] = incoming_by_item.get(edge.item_name, 0.0) + flow
+                current = incoming_by_item.get(edge.item_name, (0.0, []))
+                incoming_by_item[edge.item_name] = (current[0] + flow, current[1] + [edge])
+
+        # Track missing inputs and underflows separately
+        # We want to report the MOST limiting factor (lowest ratio)
+        missing_inputs: list[str] = []
+        worst_underflow: tuple[float, str, float, float, list[FlowEdge]] | None = (
+            None  # (ratio, item, actual, demanded, edges)
+        )
 
         for input_port in node.inputs:
             if input_port.rate <= 0 or not input_port.item_name:
                 continue
 
-            actual_flow = incoming_by_item.get(input_port.item_name, 0.0)
-            demanded = input_port.rate
+            item_data = incoming_by_item.get(input_port.item_name)
+            if item_data is None:
+                # No belt at all for this item
+                missing_inputs.append(input_port.item_name)
+            else:
+                actual_flow, edges = item_data
+                demanded = input_port.rate
 
-            if actual_flow < 0.01:
-                # No flow at all for this item - it's missing
-                warnings.append(
-                    Warning(
-                        type=WarningType.INPUT_MISSING,
-                        message=f"{input_port.item_name} input missing.",
-                        item_key=node_id,
-                        severity=1.0,
-                    )
-                )
-            elif actual_flow < demanded - 0.01:
-                # Some flow but not enough - find the feeding edge for causal chain
-                feeding_edge = None
-                for edge in incoming:
-                    if edge.item_name == input_port.item_name:
-                        feeding_edge = edge
-                        break
+                if actual_flow < 0.01:
+                    # Belt exists but no flow - treat as missing
+                    missing_inputs.append(input_port.item_name)
+                elif actual_flow < demanded - 0.01:
+                    # Some flow but not enough - track if it's the worst
+                    ratio = actual_flow / demanded
+                    if worst_underflow is None or ratio < worst_underflow[0]:
+                        worst_underflow = (
+                            ratio,
+                            input_port.item_name,
+                            actual_flow,
+                            demanded,
+                            edges,
+                        )
 
-                caused_by = (
-                    _build_causal_chain(model, feeding_edge.id, demanded) if feeding_edge else []
+        # Report missing inputs first (highest priority)
+        for item_name in missing_inputs:
+            warnings.append(
+                Warning(
+                    type=WarningType.INPUT_MISSING,
+                    message=f"{item_name} input missing.",
+                    item_key=node_id,
+                    severity=1.0,
                 )
-                warnings.append(
-                    Warning(
-                        type=WarningType.RESOURCE_UNDERFLOW,
-                        message=f"{input_port.item_name}: {actual_flow:.1f} < {demanded:.1f}/min demanded",
-                        item_key=node_id,
-                        severity=(demanded - actual_flow) / demanded,
-                        caused_by=caused_by,
-                    )
+            )
+
+        # Report the worst underflow (most limiting)
+        if worst_underflow is not None:
+            _, item_name, actual_flow, demanded, edges = worst_underflow
+            feeding_edge = edges[0] if edges else None
+            caused_by = (
+                _build_causal_chain(model, feeding_edge.id, demanded) if feeding_edge else []
+            )
+            warnings.append(
+                Warning(
+                    type=WarningType.RESOURCE_UNDERFLOW,
+                    message=f"{item_name}: {actual_flow:.1f} < {demanded:.1f}/min demanded",
+                    item_key=node_id,
+                    severity=(demanded - actual_flow) / demanded,
+                    caused_by=caused_by,
                 )
+            )
 
     return warnings
 
