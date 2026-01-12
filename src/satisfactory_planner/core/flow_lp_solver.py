@@ -10,6 +10,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from satisfactory_planner.core.constraint_optimizer import ConstraintSystem
 from satisfactory_planner.core.flow_models import (
     BOTTLENECK_TOLERANCE,
     FLOW_TOLERANCE,
@@ -279,26 +280,19 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
     edge_to_idx = {eid: i for i, eid in enumerate(edge_ids)}
     n_edges = len(edge_ids)
 
-    # We'll build equality constraints: A_eq @ x = b_eq
-    # And inequality constraints: A_ub @ x <= b_ub
-    equality_rows: list[list[float]] = []
-    equality_rhs: list[float] = []
-    inequality_rows: list[list[float]] = []
-    inequality_rhs: list[float] = []
+    # Use constraint optimizer for symbolic simplification
+    cs = ConstraintSystem(n_vars=n_edges)
+    cs.objective = [-1.0] * n_edges  # maximize total flow
 
     for node_id, node in graph.nodes.items():
         incoming = graph.get_incoming_edges(node_id)
         outgoing = graph.get_outgoing_edges(node_id)
 
         if node.node_type == NodeType.MINER:
-            # Miner/Source: no inputs, output <= production rate (can produce less if not needed)
-            # The port rate comes from max_rate for Source, or tier-based rate for Miner
+            # Miner/Source: no inputs, output <= production rate
             for i, out_edge in enumerate(outgoing):
                 if i < len(node.outputs):
-                    row = [0.0] * n_edges
-                    row[edge_to_idx[out_edge.id]] = 1.0
-                    inequality_rows.append(row)
-                    inequality_rhs.append(node.outputs[i].rate)
+                    cs.add_inequality({edge_to_idx[out_edge.id]: 1.0}, node.outputs[i].rate)
 
         elif node.node_type == NodeType.PRODUCER:
             # Producer: outputs are LIMITED by downstream demand (inequality)
@@ -307,23 +301,13 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
                     dest_node = graph.nodes[out_edge.dest_node_id]
                     demand = _get_downstream_demand(dest_node, out_edge.item_name)
                     if demand is not None:
-                        row = [0.0] * n_edges
-                        row[edge_to_idx[out_edge.id]] = 1.0
-                        inequality_rows.append(row)
-                        inequality_rhs.append(demand)
+                        cs.add_inequality({edge_to_idx[out_edge.id]: 1.0}, demand)
 
                     # Output also can't exceed production capacity
-                    row = [0.0] * n_edges
-                    row[edge_to_idx[out_edge.id]] = 1.0
-                    inequality_rows.append(row)
-                    inequality_rhs.append(node.outputs[i].rate)
+                    cs.add_inequality({edge_to_idx[out_edge.id]: 1.0}, node.outputs[i].rate)
 
-            if not incoming:
-                # No input constraints - treat as source
-                pass
-            else:
+            if incoming:
                 # Build map of item_name -> total incoming flow for that item
-                # (Satisfactory allows any belt ordering on inputs)
                 incoming_by_item: dict[str | None, list[FlowEdge]] = {}
                 for edge in incoming:
                     incoming_by_item.setdefault(edge.item_name, []).append(edge)
@@ -333,22 +317,14 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
                     item_edges = incoming_by_item.get(input_port.item_name, [])
                     if item_edges:
                         # Sum of all belts for this item <= required rate
-                        row = [0.0] * n_edges
-                        for edge in item_edges:
-                            row[edge_to_idx[edge.id]] = 1.0
-                        inequality_rows.append(row)
-                        inequality_rhs.append(input_port.rate)
+                        coeffs = {edge_to_idx[e.id]: 1.0 for e in item_edges}
+                        cs.add_inequality(coeffs, input_port.rate)
                     elif input_port.item_name:
                         # Missing input - force outputs to zero
-                        # (This item has no belt, so building can't run)
                         for out_edge in outgoing:
-                            row = [0.0] * n_edges
-                            row[edge_to_idx[out_edge.id]] = 1.0
-                            inequality_rows.append(row)
-                            inequality_rhs.append(0.0)
+                            cs.add_inequality({edge_to_idx[out_edge.id]: 1.0}, 0.0)
 
                 # Recipe ratio constraints: tie EACH input to the first output
-                # This ensures all inputs are consumed proportionally
                 if outgoing and node.outputs:
                     ref_out_rate = node.outputs[0].rate
                     ref_out_edge = outgoing[0]
@@ -356,138 +332,117 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
                     for input_port in node.inputs:
                         input_edges = incoming_by_item.get(input_port.item_name, [])
                         if input_edges and ref_out_rate > 0 and input_port.rate > 0:
-                            # Constraint: sum(input_flows) * out_rate = output_flow * in_rate
-                            row = [0.0] * n_edges
+                            # sum(input_flows) * out_rate = output_flow * in_rate
+                            ratio_coeffs: dict[int, float] = {}
                             for edge in input_edges:
-                                row[edge_to_idx[edge.id]] = ref_out_rate
-                            row[edge_to_idx[ref_out_edge.id]] = -input_port.rate
-                            equality_rows.append(row)
-                            equality_rhs.append(0.0)
+                                ratio_coeffs[edge_to_idx[edge.id]] = ref_out_rate
+                            ratio_coeffs[edge_to_idx[ref_out_edge.id]] = -input_port.rate
+                            cs.add_equality(ratio_coeffs, 0.0)
 
-                    # Also tie additional outputs to first output (for multi-output recipes)
-                    # Constraint: output_i_flow * ref_rate = ref_output_flow * output_i_rate
+                    # Tie additional outputs to first output (multi-output recipes)
                     for i, out_edge in enumerate(outgoing[1:], 1):
                         if i < len(node.outputs) and node.outputs[i].rate > 0:
-                            row = [0.0] * n_edges
-                            row[edge_to_idx[out_edge.id]] = ref_out_rate
-                            row[edge_to_idx[ref_out_edge.id]] = -node.outputs[i].rate
-                            equality_rows.append(row)
-                            equality_rhs.append(0.0)
+                            cs.add_equality(
+                                {
+                                    edge_to_idx[out_edge.id]: ref_out_rate,
+                                    edge_to_idx[ref_out_edge.id]: -node.outputs[i].rate,
+                                },
+                                0.0,
+                            )
 
         elif node.node_type == NodeType.SPLITTER:
             if incoming and outgoing:
-                # Conservation: sum(outputs) = sum(inputs) (equality for full flow-through)
-                row = [0.0] * n_edges
+                # Conservation: sum(outputs) = sum(inputs)
+                coeffs = {}
                 for out_edge in outgoing:
-                    row[edge_to_idx[out_edge.id]] = 1.0
+                    coeffs[edge_to_idx[out_edge.id]] = 1.0
                 for in_edge in incoming:
-                    row[edge_to_idx[in_edge.id]] = -1.0
-                equality_rows.append(row)
-                equality_rhs.append(0.0)
+                    coeffs[edge_to_idx[in_edge.id]] = -1.0
+                cs.add_equality(coeffs, 0.0)
 
-                # Each output is limited by downstream demand (or belt capacity)
-                # We DON'T force equal outputs - that breaks tree layouts
-                # Instead, we let the LP optimize flow based on actual demand
+                # Each output is limited by downstream demand
                 for out_edge in outgoing:
                     dest_node = graph.nodes[out_edge.dest_node_id]
                     demand = _get_downstream_demand(dest_node, out_edge.item_name)
                     if demand is not None:
-                        row = [0.0] * n_edges
-                        row[edge_to_idx[out_edge.id]] = 1.0
-                        inequality_rows.append(row)
-                        inequality_rhs.append(demand)
+                        cs.add_inequality({edge_to_idx[out_edge.id]: 1.0}, demand)
 
         elif node.node_type == NodeType.MERGER:
             if incoming and outgoing:
-                row = [0.0] * n_edges
+                # Conservation: sum(inputs) = sum(outputs)
+                coeffs = {}
                 for in_edge in incoming:
-                    row[edge_to_idx[in_edge.id]] = 1.0
+                    coeffs[edge_to_idx[in_edge.id]] = 1.0
                 for out_edge in outgoing:
-                    row[edge_to_idx[out_edge.id]] = -1.0
-                equality_rows.append(row)
-                equality_rhs.append(0.0)
+                    coeffs[edge_to_idx[out_edge.id]] = -1.0
+                cs.add_equality(coeffs, 0.0)
 
         elif node.node_type == NodeType.SINK:
-            # Sink inputs are limited by the port rate (which comes from max_rate)
+            # Sink inputs are limited by the port rate
             for i, in_edge in enumerate(incoming):
                 if i < len(node.inputs) and node.inputs[i].rate < INFINITE_RATE - 1:
-                    row = [0.0] * n_edges
-                    row[edge_to_idx[in_edge.id]] = 1.0
-                    inequality_rows.append(row)
-                    inequality_rhs.append(node.inputs[i].rate)
+                    cs.add_inequality({edge_to_idx[in_edge.id]: 1.0}, node.inputs[i].rate)
 
         elif node.node_type == NodeType.PORT_IN:
             # PORT_IN: receives from external belt, passes to internal
             if incoming and outgoing:
                 # Pass-through: sum(inputs) = sum(outputs)
-                row = [0.0] * n_edges
+                coeffs = {}
                 for in_edge in incoming:
-                    row[edge_to_idx[in_edge.id]] = 1.0
+                    coeffs[edge_to_idx[in_edge.id]] = 1.0
                 for out_edge in outgoing:
-                    row[edge_to_idx[out_edge.id]] = -1.0
-                equality_rows.append(row)
-                equality_rhs.append(0.0)
+                    coeffs[edge_to_idx[out_edge.id]] = -1.0
+                cs.add_equality(coeffs, 0.0)
             elif not incoming and outgoing:
                 # No external connection - outputs must be 0
-                # Use inequality <= 0 combined with non-negativity to force = 0
                 for out_edge in outgoing:
-                    row = [0.0] * n_edges
-                    row[edge_to_idx[out_edge.id]] = 1.0
-                    inequality_rows.append(row)
-                    inequality_rhs.append(0.0)
+                    cs.add_inequality({edge_to_idx[out_edge.id]: 1.0}, 0.0)
 
         elif node.node_type == NodeType.PORT_OUT:
             # PORT_OUT: receives from internal, passes to external belt
             if incoming and outgoing:
                 # Pass-through: sum(inputs) = sum(outputs)
-                row = [0.0] * n_edges
+                coeffs = {}
                 for in_edge in incoming:
-                    row[edge_to_idx[in_edge.id]] = 1.0
+                    coeffs[edge_to_idx[in_edge.id]] = 1.0
                 for out_edge in outgoing:
-                    row[edge_to_idx[out_edge.id]] = -1.0
-                equality_rows.append(row)
-                equality_rhs.append(0.0)
+                    coeffs[edge_to_idx[out_edge.id]] = -1.0
+                cs.add_equality(coeffs, 0.0)
             elif incoming and not outgoing:
                 # No external connection - inputs must be 0
-                # Use inequality <= 0 combined with non-negativity to force = 0
                 for in_edge in incoming:
-                    row = [0.0] * n_edges
-                    row[edge_to_idx[in_edge.id]] = 1.0
-                    inequality_rows.append(row)
-                    inequality_rhs.append(0.0)
+                    cs.add_inequality({edge_to_idx[in_edge.id]: 1.0}, 0.0)
 
-    # Objective: maximize total flow (minimize negative flow)
-    c = [-1.0] * n_edges
-
-    # All variables are non-negative (flow rates >= 0)
-    nonneg_vars = list(range(n_edges))
-
-    # Add upper bounds for edges
+    # Add upper bounds for edges (belt capacity or infinite)
     for edge_id, edge in graph.edges.items():
         idx = edge_to_idx[edge_id]
         if use_belt_limits:
-            # Use actual belt capacity
             upper_bound = edge.capacity if edge.capacity > 0 else 10000.0
         else:
-            # No belt limits - use very high capacity for "theoretical" solve
             upper_bound = INFINITE_RATE
-        row = [0.0] * n_edges
-        row[idx] = 1.0
-        inequality_rows.append(row)
-        inequality_rhs.append(upper_bound)
+        cs.add_inequality({idx: 1.0}, upper_bound)
+
+    # Optimize the constraint system before solving
+    cs.optimize()
+
+    # Get the reduced system
+    active_vars, eq_matrix, eq_rhs, ineq_matrix, ineq_rhs, objective = cs.get_reduced_system()
+
+    # If no active variables, return zero flows
+    if not active_vars:
+        return (True, dict.fromkeys(edge_ids, 0.0), "")
 
     # Solve using pylinprog (vendored, untyped)
-    resolution, solution = linsolve(  # type: ignore[no-untyped-call]
-        c,
-        ineq_left=inequality_rows,
-        ineq_right=inequality_rhs,
-        eq_left=equality_rows,
-        eq_right=equality_rhs,
-        nonneg_variables=nonneg_vars,
+    resolution, reduced_solution = linsolve(  # type: ignore[no-untyped-call]
+        objective,
+        ineq_left=ineq_matrix,
+        ineq_right=ineq_rhs,
+        eq_left=eq_matrix,
+        eq_right=eq_rhs,
+        nonneg_variables=list(range(len(active_vars))),
     )
 
     if resolution != RESOLUTION_SOLVED:
-        # Provide more helpful error messages
         from satisfactory_planner.core.linprog import (
             RESOLUTION_INCOMPATIBLE,
             RESOLUTION_UNBOUNDED,
@@ -496,7 +451,6 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
         if resolution == RESOLUTION_UNBOUNDED:
             msg = "Flow analysis failed: No constraints limit the flow (check for disconnected outputs)"
         elif resolution == RESOLUTION_INCOMPATIBLE:
-            # Build diagnostic info about the constraints
             diag_lines = ["Flow analysis failed: Conflicting constraints"]
             diag_lines.append("")
             diag_lines.append("Nodes in graph:")
@@ -510,8 +464,11 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
 
         return (False, {}, msg)
 
+    # Expand reduced solution back to full variable space
+    full_solution = cs.expand_solution(reduced_solution, active_vars)
+
     # Extract flows
-    flows = {edge_ids[i]: max(0.0, solution[i]) for i in range(n_edges)}
+    flows = {edge_ids[i]: max(0.0, full_solution[i]) for i in range(n_edges)}
     return (True, flows, "")
 
 
