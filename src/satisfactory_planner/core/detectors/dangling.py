@@ -34,21 +34,22 @@ def detect_dangling_ports(graph: FlowGraph) -> list[Warning]:
             warnings.append(
                 Warning(
                     type=WarningType.LEFTOVER_ITEMS,
-                    message=f"{node_id}: No inputs connected. Assuming infinite supply of {items}.",
+                    message=f"No inputs connected. Assuming infinite supply of {items}.",
                     item_key=node_id,
                     severity=0.1,
                 )
             )
         elif unconnected_inputs:
-            items = ", ".join(unconnected_inputs)
-            warnings.append(
-                Warning(
-                    type=WarningType.RESOURCE_UNDERFLOW,
-                    message=f"{node_id}: Missing input(s): {items}. Building will not function correctly.",
-                    item_key=node_id,
-                    severity=0.8,
+            # List each missing input separately for clarity
+            for item_name in unconnected_inputs:
+                warnings.append(
+                    Warning(
+                        type=WarningType.RESOURCE_UNDERFLOW,
+                        message=f"{item_name} input missing.",
+                        item_key=node_id,
+                        severity=0.8,
+                    )
                 )
-            )
 
         # Check for unconnected outputs
         outgoing = graph.get_outgoing_edges(node_id)
@@ -64,7 +65,7 @@ def detect_dangling_ports(graph: FlowGraph) -> list[Warning]:
             warnings.append(
                 Warning(
                     type=WarningType.LEFTOVER_ITEMS,
-                    message=f"{node_id}: No outputs connected. Production of {items} will be sunk.",
+                    message=f"No outputs connected. Production of {items} will be sunk.",
                     item_key=node_id,
                     severity=0.1,
                 )
@@ -74,7 +75,7 @@ def detect_dangling_ports(graph: FlowGraph) -> list[Warning]:
             warnings.append(
                 Warning(
                     type=WarningType.LEFTOVER_ITEMS,
-                    message=f"{node_id}: Unconnected output(s): {items}. Items will be sunk.",
+                    message=f"Unconnected output(s): {items}. Items will be sunk.",
                     item_key=node_id,
                     severity=0.3,
                 )

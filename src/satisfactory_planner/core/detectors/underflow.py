@@ -39,49 +39,58 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
             continue
         if not incoming and not outgoing:
             # Orphaned building
-            for i, input_port in enumerate(node.inputs):
+            for input_port in node.inputs:
                 if input_port.rate > 0:
                     warnings.append(
                         Warning(
                             type=WarningType.RESOURCE_UNDERFLOW,
-                            message=f"{node_id}: input {i} ({input_port.item_name}) not connected",
+                            message=f"{input_port.item_name} input missing.",
                             item_key=node_id,
                             severity=1.0,
                         )
                     )
             continue
 
-        for i, input_port in enumerate(node.inputs):
-            if input_port.rate <= 0:
+        # Build a map of item_name -> total incoming flow for that item
+        # (Satisfactory allows any belt ordering, so we match by item type not port index)
+        incoming_by_item: dict[str, float] = {}
+        for edge in incoming:
+            if edge.item_name:
+                flow = model.flows.get(edge.id, 0.0)
+                incoming_by_item[edge.item_name] = incoming_by_item.get(edge.item_name, 0.0) + flow
+
+        for input_port in node.inputs:
+            if input_port.rate <= 0 or not input_port.item_name:
                 continue
 
-            # Find the edge feeding this input
-            feeding_edge = None
-            for edge in incoming:
-                if edge.dest_port_index == i:
-                    feeding_edge = edge
-                    break
+            actual_flow = incoming_by_item.get(input_port.item_name, 0.0)
+            demanded = input_port.rate
 
-            if feeding_edge is None:
+            if actual_flow < 0.01:
+                # No flow at all for this item - it's missing
                 warnings.append(
                     Warning(
                         type=WarningType.RESOURCE_UNDERFLOW,
-                        message=f"{node_id}: input {i} ({input_port.item_name}) not connected",
+                        message=f"{input_port.item_name} input missing.",
                         item_key=node_id,
                         severity=1.0,
                     )
                 )
-                continue
+            elif actual_flow < demanded - 0.01:
+                # Some flow but not enough - find the feeding edge for causal chain
+                feeding_edge = None
+                for edge in incoming:
+                    if edge.item_name == input_port.item_name:
+                        feeding_edge = edge
+                        break
 
-            actual_flow = model.flows.get(feeding_edge.id, 0.0)
-            demanded = input_port.rate
-
-            if actual_flow < demanded - 0.01:
-                caused_by = _build_causal_chain(model, feeding_edge.id, demanded)
+                caused_by = (
+                    _build_causal_chain(model, feeding_edge.id, demanded) if feeding_edge else []
+                )
                 warnings.append(
                     Warning(
                         type=WarningType.RESOURCE_UNDERFLOW,
-                        message=f"{node_id}: {input_port.item_name} {actual_flow:.1f} < {demanded:.1f}/min demanded",
+                        message=f"{input_port.item_name}: {actual_flow:.1f} < {demanded:.1f}/min demanded",
                         item_key=node_id,
                         severity=(demanded - actual_flow) / demanded,
                         caused_by=caused_by,

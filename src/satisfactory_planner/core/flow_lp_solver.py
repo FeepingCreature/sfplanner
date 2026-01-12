@@ -300,47 +300,67 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
                     inequality_rhs.append(node.outputs[i].rate)
 
         elif node.node_type == NodeType.PRODUCER:
-            # Producer: outputs are LIMITED by downstream demand (inequality)
-            for i, out_edge in enumerate(outgoing):
-                if i < len(node.outputs):
-                    dest_node = graph.nodes[out_edge.dest_node_id]
-                    demand = _get_downstream_demand(dest_node, out_edge.item_name)
-                    if demand is not None:
-                        row = [0.0] * n_edges
-                        row[edge_to_idx[out_edge.id]] = 1.0
-                        inequality_rows.append(row)
-                        inequality_rhs.append(demand)
+            # Check if all required inputs are connected (by item type, not port)
+            # Satisfactory requires ALL inputs to have flow, not just some
+            required_items = {inp.item_name for inp in node.inputs if inp.item_name}
+            connected_items = {e.item_name for e in incoming if e.item_name}
+            all_inputs_connected = required_items <= connected_items
 
-                    # Output also can't exceed production capacity
+            if not all_inputs_connected and incoming:
+                # Partially connected - force all flows to zero
+                # This building can't function without all inputs
+                for out_edge in outgoing:
                     row = [0.0] * n_edges
                     row[edge_to_idx[out_edge.id]] = 1.0
                     inequality_rows.append(row)
-                    inequality_rhs.append(node.outputs[i].rate)
-
-            if not incoming:
-                # No input constraints - treat as source
-                pass
+                    inequality_rhs.append(0.0)
+                for in_edge in incoming:
+                    row = [0.0] * n_edges
+                    row[edge_to_idx[in_edge.id]] = 1.0
+                    inequality_rows.append(row)
+                    inequality_rhs.append(0.0)
             else:
-                # Inputs are limited by what upstream can provide
-                for i, in_edge in enumerate(incoming):
-                    if i < len(node.inputs):
-                        row = [0.0] * n_edges
-                        row[edge_to_idx[in_edge.id]] = 1.0
-                        inequality_rows.append(row)
-                        inequality_rhs.append(node.inputs[i].rate)
+                # Producer: outputs are LIMITED by downstream demand (inequality)
+                for i, out_edge in enumerate(outgoing):
+                    if i < len(node.outputs):
+                        dest_node = graph.nodes[out_edge.dest_node_id]
+                        demand = _get_downstream_demand(dest_node, out_edge.item_name)
+                        if demand is not None:
+                            row = [0.0] * n_edges
+                            row[edge_to_idx[out_edge.id]] = 1.0
+                            inequality_rows.append(row)
+                            inequality_rhs.append(demand)
 
-                # Recipe ratio constraint
-                if outgoing and node.inputs and node.outputs:
-                    ref_in_rate = node.inputs[0].rate
-                    ref_out_rate = node.outputs[0].rate
-                    if ref_in_rate > 0 and ref_out_rate > 0:
-                        ref_in_edge = incoming[0]
-                        ref_out_edge = outgoing[0]
+                        # Output also can't exceed production capacity
                         row = [0.0] * n_edges
-                        row[edge_to_idx[ref_in_edge.id]] = ref_out_rate
-                        row[edge_to_idx[ref_out_edge.id]] = -ref_in_rate
-                        equality_rows.append(row)
-                        equality_rhs.append(0.0)
+                        row[edge_to_idx[out_edge.id]] = 1.0
+                        inequality_rows.append(row)
+                        inequality_rhs.append(node.outputs[i].rate)
+
+                if not incoming:
+                    # No input constraints - treat as source
+                    pass
+                else:
+                    # Inputs are limited by what upstream can provide
+                    for i, in_edge in enumerate(incoming):
+                        if i < len(node.inputs):
+                            row = [0.0] * n_edges
+                            row[edge_to_idx[in_edge.id]] = 1.0
+                            inequality_rows.append(row)
+                            inequality_rhs.append(node.inputs[i].rate)
+
+                    # Recipe ratio constraint
+                    if outgoing and node.inputs and node.outputs:
+                        ref_in_rate = node.inputs[0].rate
+                        ref_out_rate = node.outputs[0].rate
+                        if ref_in_rate > 0 and ref_out_rate > 0:
+                            ref_in_edge = incoming[0]
+                            ref_out_edge = outgoing[0]
+                            row = [0.0] * n_edges
+                            row[edge_to_idx[ref_in_edge.id]] = ref_out_rate
+                            row[edge_to_idx[ref_out_edge.id]] = -ref_in_rate
+                            equality_rows.append(row)
+                            equality_rhs.append(0.0)
 
         elif node.node_type == NodeType.SPLITTER:
             if incoming and outgoing:

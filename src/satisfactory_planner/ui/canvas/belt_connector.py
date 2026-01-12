@@ -307,18 +307,47 @@ class BeltConnector:
         # Build menu
         menu = QMenu()
 
-        # Add splitter/merger at top
-        logistics_options = [o for o in options if o.recipe is None]
+        # Separate options into categories
+        logistics_options = [
+            o for o in options if o.building_type in (BuildingType.SPLITTER, BuildingType.MERGER)
+        ]
+        source_sink_options = [
+            o for o in options if o.building_type in (BuildingType.SOURCE, BuildingType.SINK)
+        ]
         recipe_options = [o for o in options if o.recipe is not None]
+        no_recipe_options = [
+            o
+            for o in options
+            if o.recipe is None
+            and o.building_type
+            not in (
+                BuildingType.SPLITTER,
+                BuildingType.MERGER,
+                BuildingType.SOURCE,
+                BuildingType.SINK,
+            )
+        ]
 
+        # Order: Splitter/Merger, separator, recipes, separator, no-recipe buildings, Source/Sink
         for option in logistics_options:
             action = menu.addAction(option.display_name)
             action.setData(option)
 
-        if logistics_options and recipe_options:
+        if logistics_options and (recipe_options or no_recipe_options or source_sink_options):
             menu.addSeparator()
 
         for option in recipe_options:
+            action = menu.addAction(option.display_name)
+            action.setData(option)
+
+        if recipe_options and (no_recipe_options or source_sink_options):
+            menu.addSeparator()
+
+        for option in no_recipe_options:
+            action = menu.addAction(option.display_name)
+            action.setData(option)
+
+        for option in source_sink_options:
             action = menu.addAction(option.display_name)
             action.setData(option)
 
