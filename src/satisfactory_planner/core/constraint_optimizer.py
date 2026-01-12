@@ -241,8 +241,9 @@ class ConstraintSystem:
                 # Clean up zeros
                 constraint.coeffs = {v: c for v, c in new_coeffs.items() if abs(c) > 1e-9}
 
-            # Pass 3: Collect and tighten upper bounds
+            # Pass 3: Collect and tighten upper bounds (including scaled bounds)
             for constraint in self.constraints:
+                # Check for simple upper bound first
                 ub = constraint.is_upper_bound()
                 if ub:
                     var, bound = ub
@@ -254,6 +255,22 @@ class ConstraintSystem:
                         self._upper_bounds[canonical] = min(old_bound, bound)
                         if bound < old_bound:
                             bounds_tightened += 1
+                # Also check for scaled upper bounds: coeff * x <= K means x <= K/coeff
+                elif (
+                    constraint.constraint_type == ConstraintType.LESS_EQUAL
+                    and len(constraint.coeffs) == 1
+                ):
+                    var, coeff = next(iter(constraint.coeffs.items()))
+                    if coeff > 1e-9:  # Positive coefficient
+                        effective_bound = constraint.rhs / coeff
+                        canonical = self._find_canonical(var)
+                        if canonical not in self._upper_bounds:
+                            self._upper_bounds[canonical] = effective_bound
+                        else:
+                            old_bound = self._upper_bounds[canonical]
+                            if effective_bound < old_bound:
+                                self._upper_bounds[canonical] = effective_bound
+                                bounds_tightened += 1
 
             # Pass 4: Remove trivial constraints
             before_trivial = len(self.constraints)
@@ -261,22 +278,29 @@ class ConstraintSystem:
             trivial_removed += before_trivial - len(self.constraints)
 
             # Pass 5: Remove duplicate upper bounds (keep only tightest)
+            # Also handles scaled bounds like 2*x <= 100 (equivalent to x <= 50)
             seen_upper_bounds: set[int] = set()
             new_constraints: list[LinearConstraint] = []
             for constraint in self.constraints:
-                ub = constraint.is_upper_bound()
-                if ub:
-                    var, bound = ub
-                    canonical = self._find_canonical(var)
-                    if canonical in seen_upper_bounds:
-                        duplicates_removed += 1
-                        changed = True
-                        continue
-                    if canonical in self._upper_bounds:
-                        if abs(bound - self._upper_bounds[canonical]) > 1e-9:
+                # Check if this is any kind of single-variable upper bound
+                is_single_var_ub = (
+                    constraint.constraint_type == ConstraintType.LESS_EQUAL
+                    and len(constraint.coeffs) == 1
+                )
+                if is_single_var_ub:
+                    var, coeff = next(iter(constraint.coeffs.items()))
+                    if coeff > 1e-9:  # Positive coefficient
+                        canonical = self._find_canonical(var)
+                        if canonical in seen_upper_bounds:
+                            duplicates_removed += 1
+                            changed = True
+                            continue
+                        if canonical in self._upper_bounds:
+                            # Normalize to coefficient 1 with tightest bound
+                            constraint.coeffs[var] = 1.0
                             constraint.rhs = self._upper_bounds[canonical]
                             changed = True
-                        seen_upper_bounds.add(canonical)
+                            seen_upper_bounds.add(canonical)
                 new_constraints.append(constraint)
             self.constraints = new_constraints
 

@@ -146,3 +146,43 @@ class TestConstraintSystem:
         # Should just have the upper bound
         upper_bounds = [c for c in non_trivial if c.is_upper_bound()]
         assert len(upper_bounds) == 1
+
+    def test_scaled_merge_removes_redundant(self) -> None:
+        """Test that scaled equality becomes trivial after merge."""
+        cs = ConstraintSystem(n_vars=2)
+        # 30*a - 15*b = 0 means a = 0.5*b
+        cs.add_equality({0: 30.0, 1: -15.0}, 0.0)
+        cs.add_inequality({0: 1.0}, 50.0)  # a <= 50
+        cs.add_inequality({1: 1.0}, 100.0)  # b <= 100
+        cs.objective = [-1.0, -1.0]
+
+        cs.optimize()
+        active_vars, eq, eq_rhs, ineq, ineq_rhs, obj = cs.get_reduced_system()
+
+        # Should reduce to 1 variable (b is canonical since index 1 > 0? no, 0 < 1 so 0 is canonical)
+        # a = 0.5*b, so if a is canonical: b = 2*a
+        # Bound a <= 50 stays, bound b <= 100 becomes 2*a <= 100 → a <= 50
+        # So tightest is a <= 50
+        assert len(active_vars) == 1
+        assert len(eq) == 0  # Equality eliminated
+        assert len(ineq) == 1  # One tightest bound
+
+    def test_scaled_solution_expansion(self) -> None:
+        """Test that solution correctly applies scale factors."""
+        cs = ConstraintSystem(n_vars=2)
+        # 2*a - 1*b = 0 means a = 0.5*b, or b = 2*a
+        cs.add_equality({0: 2.0, 1: -1.0}, 0.0)
+        cs.add_inequality({0: 1.0}, 30.0)  # a <= 30
+        cs.objective = [-1.0, -1.0]
+
+        cs.optimize()
+        active_vars, _, _, _, _, _ = cs.get_reduced_system()
+
+        # If canonical is 0 (a), then b = 2*a
+        # Solve: a = 30 (at bound)
+        reduced_solution = [30.0]
+        full_solution = cs.expand_solution(reduced_solution, active_vars)
+
+        # a = 30, b = 2*30 = 60
+        assert full_solution[0] == 30.0
+        assert full_solution[1] == 60.0
