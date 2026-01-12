@@ -347,20 +347,20 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
                             inequality_rows.append(row)
                             inequality_rhs.append(0.0)
 
-                # Recipe ratio constraint: tie first input to first output
-                if outgoing and node.inputs and node.outputs:
-                    # Find an edge for the first input item
-                    first_input_edges = incoming_by_item.get(node.inputs[0].item_name, [])
-                    if first_input_edges:
-                        ref_in_rate = node.inputs[0].rate
-                        ref_out_rate = node.outputs[0].rate
-                        if ref_in_rate > 0 and ref_out_rate > 0:
-                            # Use sum of all edges for this input item
-                            ref_out_edge = outgoing[0]
+                # Recipe ratio constraints: tie EACH input to the first output
+                # This ensures all inputs are consumed proportionally
+                if outgoing and node.outputs:
+                    ref_out_rate = node.outputs[0].rate
+                    ref_out_edge = outgoing[0]
+
+                    for input_port in node.inputs:
+                        input_edges = incoming_by_item.get(input_port.item_name, [])
+                        if input_edges and ref_out_rate > 0 and input_port.rate > 0:
+                            # Constraint: sum(input_flows) * out_rate = output_flow * in_rate
                             row = [0.0] * n_edges
-                            for edge in first_input_edges:
+                            for edge in input_edges:
                                 row[edge_to_idx[edge.id]] = ref_out_rate
-                            row[edge_to_idx[ref_out_edge.id]] = -ref_in_rate
+                            row[edge_to_idx[ref_out_edge.id]] = -input_port.rate
                             equality_rows.append(row)
                             equality_rhs.append(0.0)
 
