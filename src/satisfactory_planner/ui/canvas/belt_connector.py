@@ -131,16 +131,31 @@ class BeltConnector:
         if not self._drag_preview or not self._drag_start_pos:
             return
 
-        start = Point(self._drag_start_pos.x(), self._drag_start_pos.y())
-        end = Point(end_pos.x(), end_pos.y())
-
         # Default end direction: toward end point
         dx = end_pos.x() - self._drag_start_pos.x()
         dy = end_pos.y() - self._drag_start_pos.y()
         end_dir = math.atan2(dy, dx)
 
-        belt_path = compute_belt_path(start, self._drag_start_dir, end, end_dir)
-        path = belt_path_to_painter_path(start, end, belt_path)
+        if self._drag_forward:
+            # Forward: dragging from output to input
+            # Belt goes from start (output) to end (cursor/input)
+            start = Point(self._drag_start_pos.x(), self._drag_start_pos.y())
+            end = Point(end_pos.x(), end_pos.y())
+            start_dir = self._drag_start_dir
+            belt_path = compute_belt_path(start, start_dir, end, end_dir)
+            path = belt_path_to_painter_path(start, end, belt_path)
+        else:
+            # Backward: dragging from input to output
+            # Belt goes from end (cursor/output) to start (input)
+            # So we swap start/end for the path calculation
+            start = Point(end_pos.x(), end_pos.y())
+            end = Point(self._drag_start_pos.x(), self._drag_start_pos.y())
+            # Reverse the end direction (cursor pointing back)
+            start_dir = end_dir + math.pi
+            end_dir = self._drag_start_dir
+            belt_path = compute_belt_path(start, start_dir, end, end_dir)
+            path = belt_path_to_painter_path(start, end, belt_path)
+
         self._drag_preview.setPath(path)
 
     def update_hover_target(self, scene_pos: QPointF) -> None:
@@ -398,6 +413,7 @@ class BeltConnector:
         """Get building options for backward drag (from input).
 
         Checks the recipe of the source building to find needed inputs.
+        For multi-input buildings, shows recipes for ALL unsatisfied inputs.
         """
         options: list[BuildingOption] = []
 
@@ -426,8 +442,8 @@ class BeltConnector:
         if not building:
             return options
 
-        # Get needed items for this input port
-        needed_item_ids = self._get_needed_items_for_input(building, self._connect_start_port)
+        # Get needed items for ALL unsatisfied input ports (not just the one being dragged)
+        needed_item_ids = self._get_all_needed_items(building)
 
         if needed_item_ids:
             # Find recipes that produce these items
@@ -444,9 +460,6 @@ class BeltConnector:
                             )
                         )
                         break  # Only add each recipe once
-
-            # Also offer Miner if any needed item could be mined
-            # (We don't have a full item database to check, so skip for now)
 
             # Offer Source for any item
             options.append(
@@ -491,6 +504,25 @@ class BeltConnector:
             )
 
         return options
+
+    def _get_all_needed_items(self, building: Building) -> list[str]:
+        """Get item IDs needed for all unsatisfied input ports of a building."""
+        if not building.recipe_id:
+            return []
+
+        recipe = self.canvas.get_recipe(building.recipe_id)
+        if not recipe:
+            return []
+
+        needed: list[str] = []
+        scene = self.canvas._get_scene(self._connect_scene_room_id)
+
+        for i, inp in enumerate(recipe.inputs):
+            # Check if this input port is already connected
+            if not scene.is_port_connected(building.id, i, is_output=False):
+                needed.append(inp.item_id)
+
+        return needed
 
     def _get_item_from_flow_solver(self) -> str | None:
         """Get the item ID flowing from the current output port via flow solver."""
