@@ -364,6 +364,16 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
                             equality_rows.append(row)
                             equality_rhs.append(0.0)
 
+                    # Also tie additional outputs to first output (for multi-output recipes)
+                    # Constraint: output_i_flow * ref_rate = ref_output_flow * output_i_rate
+                    for i, out_edge in enumerate(outgoing[1:], 1):
+                        if i < len(node.outputs) and node.outputs[i].rate > 0:
+                            row = [0.0] * n_edges
+                            row[edge_to_idx[out_edge.id]] = ref_out_rate
+                            row[edge_to_idx[ref_out_edge.id]] = -node.outputs[i].rate
+                            equality_rows.append(row)
+                            equality_rhs.append(0.0)
+
         elif node.node_type == NodeType.SPLITTER:
             if incoming and outgoing:
                 # Conservation: sum(outputs) = sum(inputs) (equality for full flow-through)
