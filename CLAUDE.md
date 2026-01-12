@@ -102,6 +102,8 @@ This applies to any typed wrapper: `ItemKey`, `RecipeId`, `ItemId`, etc. If the 
 
 **Flag domain model confusion too:** If you find yourself making an assumption about the domain that feels shaky (e.g., "this port index corresponds to this recipe input"), flag it with a FIXME or ask. The code should reflect actual game semantics, not convenient shortcuts.
 
+**Push back on user requests that smell wrong:** If the user asks for something that contradicts what was just discussed, or seems to violate domain semantics, push back and ask for clarification rather than silently implementing something incorrect. The user can make mistakes too!
+
 ## Web Tools (web_search / web_fetch)
 
 **Compact aggressively after use** - these add lots of tokens to context.
