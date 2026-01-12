@@ -442,8 +442,8 @@ class BeltConnector:
         if not building:
             return options
 
-        # Get needed items for ALL unsatisfied input ports (not just the one being dragged)
-        needed_item_ids = self._get_all_needed_items(building)
+        # Get all items needed by the recipe (Satisfactory allows any port ordering)
+        needed_item_ids = self._get_all_recipe_inputs(building)
 
         if needed_item_ids:
             # Find recipes that produce these items
@@ -505,8 +505,12 @@ class BeltConnector:
 
         return options
 
-    def _get_all_needed_items(self, building: Building) -> list[ItemId]:
-        """Get item IDs needed for all unsatisfied input ports of a building."""
+    def _get_all_recipe_inputs(self, building: Building) -> list[ItemId]:
+        """Get all unique item IDs needed by a building's recipe.
+
+        Satisfactory allows any belt ordering on inputs, so we return
+        all items the recipe needs, not per-port items.
+        """
         if not building.recipe_id:
             return []
 
@@ -514,15 +518,14 @@ class BeltConnector:
         if not recipe:
             return []
 
-        needed: list[ItemId] = []
-        scene = self.canvas._get_scene(self._connect_scene_room_id)
-
-        for i, inp in enumerate(recipe.inputs):
-            # Check if this input port is already connected
-            if not scene.is_port_connected(building.id, i, is_output=False):
-                needed.append(inp.item_id)
-
-        return needed
+        # Return unique item IDs from all inputs
+        seen: set[ItemId] = set()
+        result: list[ItemId] = []
+        for inp in recipe.inputs:
+            if inp.item_id not in seen:
+                seen.add(inp.item_id)
+                result.append(inp.item_id)
+        return result
 
     def _get_item_from_flow_solver(self) -> str | None:
         """Get the item ID flowing from the current output port via flow solver."""
@@ -555,16 +558,6 @@ class BeltConnector:
             if name == item_name:
                 return item_id
         return None
-
-    def _get_needed_items_for_input(self, building: Building, input_port: int) -> list[ItemId]:
-        """Get item IDs needed for a specific input port of a building."""
-        if building.recipe_id:
-            recipe = self.canvas.get_recipe(building.recipe_id)
-            if recipe and input_port < len(recipe.inputs):
-                return [recipe.inputs[input_port].item_id]
-
-        # For buildings without recipes, we can't determine needed items
-        return []
 
     def _spawn_and_connect(self, option: BuildingOption, scene_pos: QPointF) -> None:
         """Spawn a building and connect it with a belt.
