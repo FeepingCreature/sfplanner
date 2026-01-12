@@ -549,19 +549,18 @@ class BeltConnector:
         building_item = self.canvas._building_items.get(building_id)
         placement_id = building_item._placement_id if building_item else None
 
-        # Construct the ItemKey the same way the flow builder does
+        # Construct the ItemKey and look up node directly
         item_key = ItemKey(element_id=building_id, placement_id=placement_id)
+        node = graph.nodes.get(item_key)
+        if not node:
+            return supplied
 
-        # Find the node directly by its building_id ItemKey
-        for node in graph.nodes.values():
-            if node.building_id == item_key:
-                # Found the node - check incoming edges for items
-                for edge in graph.get_incoming_edges(node.id):
-                    if edge.item_name:
-                        item_id = self._item_name_to_id(edge.item_name)
-                        if item_id:
-                            supplied.add(ItemId(item_id))
-                break
+        # Check incoming edges for items
+        for edge in graph.get_incoming_edges(node.id):
+            if edge.item_name:
+                item_id = self._item_name_to_id(edge.item_name)
+                if item_id:
+                    supplied.add(ItemId(item_id))
 
         return supplied
 
