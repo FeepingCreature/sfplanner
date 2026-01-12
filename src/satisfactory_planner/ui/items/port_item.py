@@ -123,23 +123,31 @@ class PortItem(QGraphicsItem):
         self.update()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
-        """Handle press to start belt drag from output port."""
-        if event.button() == Qt.MouseButton.LeftButton and self.is_output:
+        """Handle press to start belt drag from port.
+
+        Output ports start forward drag, input ports start backward drag.
+        """
+        if event.button() == Qt.MouseButton.LeftButton:
             # scene_room_id was captured at construction time
             self.canvas.start_belt_drag(
-                self.building_id, self.port_index, self.scenePos(), self.scene_room_id
+                self.building_id,
+                self.port_index,
+                self.scenePos(),
+                self.scene_room_id,
+                is_output=self.is_output,
             )
             event.accept()
         else:
             super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
-        """Handle release to complete belt connection on input port."""
-        if (
-            event.button() == Qt.MouseButton.LeftButton
-            and not self.is_output
-            and self.canvas.is_dragging_belt()
-        ):
+        """Handle release to complete belt connection on target port.
+
+        For forward drag, input ports are targets.
+        For backward drag, output ports are targets.
+        """
+        if event.button() == Qt.MouseButton.LeftButton and self.canvas.is_dragging_belt():
+            # The BeltConnector handles determining if this port is a valid target
             self.canvas.complete_belt_connection(self.building_id, self.port_index)
             event.accept()
             return

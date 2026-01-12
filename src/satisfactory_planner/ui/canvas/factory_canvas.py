@@ -479,6 +479,11 @@ class FactoryCanvas(QGraphicsView):
             return
 
         if event.button() == Qt.MouseButton.RightButton:
+            if self._belt_connector.is_connecting:
+                # Right-click during belt drag shows building picker
+                scene_pos = self.mapToScene(event.pos())
+                self._belt_connector.show_building_picker(scene_pos)
+                return
             if self._placement.is_placing:
                 self._placement.set_building_mode(None)
                 return
@@ -812,9 +817,20 @@ class FactoryCanvas(QGraphicsView):
         port_index: int,
         start_pos: QPointF,
         scene_room_id: str | None = None,
+        is_output: bool = True,
     ) -> None:
-        """Start dragging a belt connection from an output port."""
-        self._belt_connector.start_drag(building_id, port_index, start_pos, scene_room_id)
+        """Start dragging a belt connection from a port.
+
+        Args:
+            building_id: Building to connect from
+            port_index: Which port
+            start_pos: Scene position
+            scene_room_id: Room context
+            is_output: True for forward drag (from output), False for backward (from input)
+        """
+        self._belt_connector.start_drag(
+            building_id, port_index, start_pos, scene_room_id, is_output
+        )
 
     def is_dragging_belt(self) -> bool:
         """Return True if currently dragging a belt connection."""

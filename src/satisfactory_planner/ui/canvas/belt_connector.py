@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QPen
-from PySide6.QtWidgets import QGraphicsItem, QGraphicsPathItem
+from PySide6.QtGui import QColor, QCursor, QPen
+from PySide6.QtWidgets import QGraphicsItem, QGraphicsPathItem, QMenu
 
-from satisfactory_planner.core import Belt
-from satisfactory_planner.core.models import generate_id
+from satisfactory_planner.core import Belt, BuildingType, Recipe
+from satisfactory_planner.core.models import Building, generate_id
 from satisfactory_planner.core.routing import Point, compute_belt_path
-from satisfactory_planner.ui.commands import ConnectBeltCommand
+from satisfactory_planner.ui.commands import ConnectBeltCommand, PlaceBuildingCommand
 from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 
 if TYPE_CHECKING:
@@ -21,15 +22,27 @@ if TYPE_CHECKING:
     from satisfactory_planner.ui.items.room_port_item import RoomPortItem
 
 
+@dataclass
+class BuildingOption:
+    """An option in the building picker menu."""
+
+    building_type: BuildingType
+    recipe: Recipe | None  # None for splitter/merger
+    port_index: int  # Which port to connect to
+    display_name: str  # "Constructor: Iron Plate" or "Splitter"
+
+
 class BeltConnector:
     """Manages belt connection dragging and creation.
 
     Handles the drag preview, port hover highlighting, and connection completion.
+    Supports both forward (from output) and backward (from input) dragging.
     """
 
     def __init__(self, canvas: FactoryCanvas) -> None:
         self.canvas = canvas
         self._is_connecting = False
+        self._drag_forward = True  # True = from output, False = from input
         self._connect_start_building: str | None = None
         self._connect_start_port: int = 0
         self._connect_scene_room_id: str | None = None  # Scene context for the connection
@@ -49,19 +62,21 @@ class BeltConnector:
         port_index: int,
         start_pos: QPointF,
         scene_room_id: str | None = None,
+        is_output: bool = True,
     ) -> None:
-        """Start dragging a belt connection from an output port.
+        """Start dragging a belt connection from a port.
 
         Args:
             building_id: Building ID or RoomPlacement ID
-            port_index: Which output port
+            port_index: Which port
             start_pos: Scene position to start drag from
             scene_room_id: None for document root, or room ID for buildings inside a room
+            is_output: True if dragging from output (forward), False if from input (backward)
 
         If the port already has a belt, delete it first (implicit replacement).
         """
-        # Check if output port is already connected - if so, delete existing belt
-        existing_belt = self.canvas.document.get_belt_at_port(building_id, port_index, True)
+        # Check if port is already connected - if so, delete existing belt
+        existing_belt = self.canvas.document.get_belt_at_port(building_id, port_index, is_output)
         if existing_belt:
             from satisfactory_planner.ui.commands import DeleteItemsCommand
 
@@ -74,6 +89,7 @@ class BeltConnector:
             self.canvas.command_stack.execute(cmd)
 
         self._is_connecting = True
+        self._drag_forward = is_output
         self._connect_start_building = building_id
         self._connect_start_port = port_index
         self._connect_scene_room_id = scene_room_id
@@ -83,14 +99,22 @@ class BeltConnector:
         # Get start direction from the source (building or room placement)
         building = self.canvas.document.buildings.get(building_id)
         if building:
-            self._drag_start_dir = building.output_port_direction(port_index)
+            if is_output:
+                self._drag_start_dir = building.output_port_direction(port_index)
+            else:
+                self._drag_start_dir = building.input_port_direction(port_index)
         else:
             # Check if it's a room placement
             placement = self.canvas.document.room_placements.get(building_id)
             if placement:
-                self._drag_start_dir = placement.output_port_direction(
-                    port_index, self.canvas.document
-                )
+                if is_output:
+                    self._drag_start_dir = placement.output_port_direction(
+                        port_index, self.canvas.document
+                    )
+                else:
+                    self._drag_start_dir = placement.input_port_direction(
+                        port_index, self.canvas.document
+                    )
             else:
                 self._drag_start_dir = 0
 
@@ -120,18 +144,25 @@ class BeltConnector:
         self._drag_preview.setPath(path)
 
     def update_hover_target(self, scene_pos: QPointF) -> None:
-        """Check if hovering over a valid input port and update highlight."""
+        """Check if hovering over a valid target port and update highlight.
+
+        When dragging forward (from output), look for input ports.
+        When dragging backward (from input), look for output ports.
+        """
         from satisfactory_planner.ui.items.port_item import PortItem
         from satisfactory_planner.ui.items.room_port_item import RoomPortItem
+
+        # When dragging forward, we look for inputs; when backward, we look for outputs
+        target_is_output = not self._drag_forward
 
         new_target: PortItem | RoomPortItem | None = None
         for item in self.canvas._scene.items(scene_pos):
             # Check for building port
-            if isinstance(item, PortItem) and not item.is_output:
+            if isinstance(item, PortItem) and item.is_output == target_is_output:
                 new_target = item
                 break
             # Check for room port
-            if isinstance(item, RoomPortItem) and not item.is_output:
+            if isinstance(item, RoomPortItem) and item.is_output == target_is_output:
                 new_target = item
                 break
 
@@ -153,21 +184,26 @@ class BeltConnector:
         from satisfactory_planner.ui.items.port_item import PortItem
         from satisfactory_planner.ui.items.room_port_item import RoomPortItem
 
-        # Find input port at position
+        # When dragging forward, we look for inputs; when backward, we look for outputs
+        target_is_output = not self._drag_forward
+
+        # Find target port at position
         for item in self.canvas._scene.items(scene_pos):
             # Check for building port
-            if isinstance(item, PortItem) and not item.is_output:
+            if isinstance(item, PortItem) and item.is_output == target_is_output:
                 # Check if port already connected
-                if self.canvas.document.is_port_connected(item.building_id, item.port_index, False):
+                if self.canvas.document.is_port_connected(
+                    item.building_id, item.port_index, target_is_output
+                ):
                     self.cancel()
                     return True
                 self.complete(item.building_id, item.port_index)
                 return True
             # Check for room port
-            if isinstance(item, RoomPortItem) and not item.is_output:
+            if isinstance(item, RoomPortItem) and item.is_output == target_is_output:
                 # Check if port already connected (using placement_id as building_id)
                 if self.canvas.document.is_port_connected(
-                    item.placement_id, item.port_index, False
+                    item.placement_id, item.port_index, target_is_output
                 ):
                     self.cancel()
                     return True
@@ -178,14 +214,31 @@ class BeltConnector:
         self.cancel()
         return True
 
-    def complete(self, dest_building_id: str, dest_port_index: int) -> None:
-        """Complete a belt connection to an input port."""
+    def complete(self, target_building_id: str, target_port_index: int) -> None:
+        """Complete a belt connection to a target port.
+
+        For forward drag: target is an input port (dest)
+        For backward drag: target is an output port (source)
+        """
         if self._is_connecting and self._connect_start_building:
+            if self._drag_forward:
+                # Forward: we started at output, connecting to input
+                source_building_id = self._connect_start_building
+                source_port_index = self._connect_start_port
+                dest_building_id = target_building_id
+                dest_port_index = target_port_index
+            else:
+                # Backward: we started at input, connecting to output
+                source_building_id = target_building_id
+                source_port_index = target_port_index
+                dest_building_id = self._connect_start_building
+                dest_port_index = self._connect_start_port
+
             belt = Belt(
                 id=generate_id(),
                 tier=self.canvas.default_belt_tier,
-                source_building_id=self._connect_start_building,
-                source_port_index=self._connect_start_port,
+                source_building_id=source_building_id,
+                source_port_index=source_port_index,
                 dest_building_id=dest_building_id,
                 dest_port_index=dest_port_index,
             )
@@ -204,6 +257,7 @@ class BeltConnector:
     def _cleanup(self) -> None:
         """Clean up drag state."""
         self._is_connecting = False
+        self._drag_forward = True
         self._connect_start_building = None
         self._drag_start_pos = None
         if self._drag_preview:
@@ -213,3 +267,315 @@ class BeltConnector:
             self._hover_target_port.set_drag_target(False)
             self._hover_target_port = None
         self.canvas.setCursor(Qt.CursorShape.ArrowCursor)
+
+    # === Building Picker (right-click during drag) ===
+
+    def show_building_picker(self, scene_pos: QPointF) -> None:
+        """Show a dropdown menu of buildings that can connect to current drag.
+
+        For forward drag: show buildings that consume the item being produced
+        For backward drag: show buildings that produce items needed as input
+        """
+        if not self._is_connecting or not self._connect_start_building:
+            self.cancel()
+            return
+
+        if self._drag_forward:
+            options = self._get_forward_options()
+        else:
+            options = self._get_backward_options()
+
+        if not options:
+            self.cancel()
+            return
+
+        # Build menu
+        menu = QMenu()
+
+        # Add splitter/merger at top
+        logistics_options = [o for o in options if o.recipe is None]
+        recipe_options = [o for o in options if o.recipe is not None]
+
+        for option in logistics_options:
+            action = menu.addAction(option.display_name)
+            action.setData(option)
+
+        if logistics_options and recipe_options:
+            menu.addSeparator()
+
+        for option in recipe_options:
+            action = menu.addAction(option.display_name)
+            action.setData(option)
+
+        # Show menu at cursor
+        selected = menu.exec(QCursor.pos())
+        if selected:
+            option = selected.data()
+            self._spawn_and_connect(option, scene_pos)
+        else:
+            self.cancel()
+
+    def _get_forward_options(self) -> list[BuildingOption]:
+        """Get building options for forward drag (from output).
+
+        Uses flow solver to determine what item is on the output port.
+        """
+        options: list[BuildingOption] = []
+
+        # Always offer splitter (1 input)
+        options.append(
+            BuildingOption(
+                building_type=BuildingType.SPLITTER,
+                recipe=None,
+                port_index=0,
+                display_name="Splitter",
+            )
+        )
+
+        # Always offer merger (3 inputs - offer first available)
+        options.append(
+            BuildingOption(
+                building_type=BuildingType.MERGER,
+                recipe=None,
+                port_index=0,
+                display_name="Merger",
+            )
+        )
+
+        # Try to get item from flow solver
+        item_id = self._get_item_from_flow_solver()
+
+        if item_id:
+            # Find recipes that consume this item
+            recipes = self.canvas.get_all_recipes()
+            for recipe in recipes.values():
+                for i, inp in enumerate(recipe.inputs):
+                    if inp.item_id == item_id:
+                        options.append(
+                            BuildingOption(
+                                building_type=recipe.building_type,
+                                recipe=recipe,
+                                port_index=i,
+                                display_name=f"{recipe.building_type.value}: {recipe.name}",
+                            )
+                        )
+                        break  # Only add each recipe once
+        else:
+            # No item known - offer all production buildings without recipes
+            for bt in BuildingType:
+                if bt in (
+                    BuildingType.SMELTER,
+                    BuildingType.FOUNDRY,
+                    BuildingType.CONSTRUCTOR,
+                    BuildingType.ASSEMBLER,
+                    BuildingType.MANUFACTURER,
+                    BuildingType.REFINERY,
+                    BuildingType.PACKAGER,
+                    BuildingType.BLENDER,
+                ):
+                    options.append(
+                        BuildingOption(
+                            building_type=bt,
+                            recipe=None,
+                            port_index=0,
+                            display_name=f"{bt.value} (no recipe)",
+                        )
+                    )
+
+            # Also offer Sink
+            options.append(
+                BuildingOption(
+                    building_type=BuildingType.SINK,
+                    recipe=None,
+                    port_index=0,
+                    display_name="Sink",
+                )
+            )
+
+        return options
+
+    def _get_backward_options(self) -> list[BuildingOption]:
+        """Get building options for backward drag (from input).
+
+        Checks the recipe of the source building to find needed inputs.
+        """
+        options: list[BuildingOption] = []
+
+        # Always offer merger (1 output)
+        options.append(
+            BuildingOption(
+                building_type=BuildingType.MERGER,
+                recipe=None,
+                port_index=0,
+                display_name="Merger",
+            )
+        )
+
+        # Always offer splitter (3 outputs - offer first available)
+        options.append(
+            BuildingOption(
+                building_type=BuildingType.SPLITTER,
+                recipe=None,
+                port_index=0,
+                display_name="Splitter",
+            )
+        )
+
+        # Get the building we're dragging from
+        building = self.canvas.document.find_building(self._connect_start_building or "")
+        if not building:
+            return options
+
+        # Get needed items for this input port
+        needed_item_ids = self._get_needed_items_for_input(building, self._connect_start_port)
+
+        if needed_item_ids:
+            # Find recipes that produce these items
+            recipes = self.canvas.get_all_recipes()
+            for recipe in recipes.values():
+                for i, out in enumerate(recipe.outputs):
+                    if out.item_id in needed_item_ids:
+                        options.append(
+                            BuildingOption(
+                                building_type=recipe.building_type,
+                                recipe=recipe,
+                                port_index=i,
+                                display_name=f"{recipe.building_type.value}: {recipe.name}",
+                            )
+                        )
+                        break  # Only add each recipe once
+
+            # Also offer Miner if any needed item could be mined
+            # (We don't have a full item database to check, so skip for now)
+
+            # Offer Source for any item
+            options.append(
+                BuildingOption(
+                    building_type=BuildingType.SOURCE,
+                    recipe=None,
+                    port_index=0,
+                    display_name="Source",
+                )
+            )
+        else:
+            # No recipe set - offer all production buildings without recipes
+            for bt in BuildingType:
+                if bt in (
+                    BuildingType.SMELTER,
+                    BuildingType.FOUNDRY,
+                    BuildingType.CONSTRUCTOR,
+                    BuildingType.ASSEMBLER,
+                    BuildingType.MANUFACTURER,
+                    BuildingType.REFINERY,
+                    BuildingType.PACKAGER,
+                    BuildingType.BLENDER,
+                    BuildingType.MINER,
+                ):
+                    options.append(
+                        BuildingOption(
+                            building_type=bt,
+                            recipe=None,
+                            port_index=0,
+                            display_name=f"{bt.value} (no recipe)",
+                        )
+                    )
+
+            # Also offer Source
+            options.append(
+                BuildingOption(
+                    building_type=BuildingType.SOURCE,
+                    recipe=None,
+                    port_index=0,
+                    display_name="Source",
+                )
+            )
+
+        return options
+
+    def _get_item_from_flow_solver(self) -> str | None:
+        """Get the item ID flowing from the current output port via flow solver."""
+        flow_solver = self.canvas.flow_solver
+        if not flow_solver or not flow_solver._solved_model:
+            return None
+
+        graph = flow_solver._solved_model.graph
+        building_id = self._connect_start_building
+        port_index = self._connect_start_port
+
+        # Find the node for this building
+        for node in graph.nodes.values():
+            if node.building_id and node.building_id.element_id == building_id:
+                if port_index < len(node.outputs):
+                    item_name = node.outputs[port_index].item_name
+                    if item_name:
+                        # item_name is display name, we need item_id
+                        # Look it up in items
+                        return self._item_name_to_id(item_name)
+                break
+
+        return None
+
+    def _item_name_to_id(self, item_name: str) -> str | None:
+        """Convert item display name to item ID."""
+        from satisfactory_planner.core import load_items
+
+        for item_id, name, _is_fluid in load_items():
+            if name == item_name:
+                return item_id
+        return None
+
+    def _get_needed_items_for_input(self, building: Building, input_port: int) -> list[str]:
+        """Get item IDs needed for a specific input port of a building."""
+        if building.recipe_id:
+            recipe = self.canvas.get_recipe(building.recipe_id)
+            if recipe and input_port < len(recipe.inputs):
+                return [recipe.inputs[input_port].item_id]
+
+        # For buildings without recipes, we can't determine needed items
+        return []
+
+    def _spawn_and_connect(self, option: BuildingOption, scene_pos: QPointF) -> None:
+        """Spawn a building and connect it with a belt.
+
+        Positions the building so the target port aligns with scene_pos.
+        """
+
+        # Create the building
+        building = Building(
+            id=generate_id(),
+            building_type=option.building_type,
+            x=0,
+            y=0,
+            recipe_id=option.recipe.id if option.recipe else None,
+        )
+
+        # Calculate building position so target port aligns with scene_pos
+        # For forward drag, we're connecting to the new building's INPUT
+        # For backward drag, we're connecting to the new building's OUTPUT
+        if self._drag_forward:
+            # New building's input port should be at scene_pos
+            port_pos = building.input_port_pos(option.port_index)
+        else:
+            # New building's output port should be at scene_pos
+            port_pos = building.output_port_pos(option.port_index)
+
+        # port_pos is relative to building at (0,0), so offset is negative
+        building.x = scene_pos.x() - port_pos[0]
+        building.y = scene_pos.y() - port_pos[1]
+
+        # Snap to grid if enabled
+        if self.canvas.grid_snap:
+            grid = self.canvas.grid_size
+            building.x = round(building.x / grid) * grid
+            building.y = round(building.y / grid) * grid
+
+        # Place building command
+        place_cmd = PlaceBuildingCommand(
+            scene_room_id=self._connect_scene_room_id,
+            building=building,
+            canvas=self.canvas,
+        )
+        self.canvas.command_stack.execute(place_cmd)
+
+        # Now complete the belt connection
+        self.complete(building.id, option.port_index)

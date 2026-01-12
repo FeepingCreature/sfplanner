@@ -1,0 +1,395 @@
+{
+  "active_files": [
+    "src/satisfactory_planner/ui/canvas/belt_connector.py",
+    "src/satisfactory_planner/ui/items/port_item.py",
+    "src/satisfactory_planner/core/flow_models.py",
+    "src/satisfactory_planner/ui/commands/__init__.py",
+    "src/satisfactory_planner/ui/canvas/factory_canvas.py",
+    "src/satisfactory_planner/core/persistence.py",
+    "src/satisfactory_planner/ui/commands/building_commands.py",
+    "src/satisfactory_planner/core/models.py",
+    "src/satisfactory_planner/core/flow_solver.py",
+    "CLAUDE.md",
+    "src/satisfactory_planner/ui/commands/belt_commands.py"
+  ],
+  "request_log_entries": [
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768238217985.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768238217985.json",
+      "timestamp": 1768238217.9863086,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.10064625,
+      "generation_id": "gen-1768238218-OGhSzVPYiglS7qvXbdET"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768238224197.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768238224197.json",
+      "timestamp": 1768238224.1977847,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.18353125,
+      "generation_id": "gen-1768238224-y1f6XHU6yZ7Iq79q7nyI"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768238458939.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768238458939.json",
+      "timestamp": 1768238458.9401524,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.10236625,
+      "generation_id": "gen-1768238459-89dTgQjg5yvw0r4zl9tm"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768238465796.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768238465796.json",
+      "timestamp": 1768238465.7975056,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.10501175,
+      "generation_id": "gen-1768238465-DUUFTgjWNaqnYto0saCw"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768238473473.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768238473473.json",
+      "timestamp": 1768238473.4743524,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.12191825,
+      "generation_id": "gen-1768238473-56As5yjdMSPqfAP4yk8f"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768238478610.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768238478610.json",
+      "timestamp": 1768238478.6106565,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.0806175,
+      "generation_id": "gen-1768238478-wb37e9mUp1O0ci9V4bAG"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768238587070.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768238587070.json",
+      "timestamp": 1768238587.0711799,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05612175,
+      "generation_id": "gen-1768238587-aEiAh2VC2ZWzh3vbqCXB"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768238591795.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768238591795.json",
+      "timestamp": 1768238591.7967627,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.2888395,
+      "generation_id": "gen-1768238591-gjeyRSlmVhcEQiowuDqh"
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "\u2705 Generated summaries for 89 files",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Hi! Let's do some belt work. My thinking is this:\n\n- first, you should be able to drag a belt forward from an output or backward from an input. that's a gimme.\n- second, big idea: when you right-mouse click in mid-dragging, we:\n  - forward belt, check the flow solver for item and grab a list of buildings who take that item as an input\n  - backward belt, check the inputs of the recipe selected in the building we're dragging it from, excluding the ones that are already satisfied by a belt and grab a list of buildings who produce those items as an output\n- offer the list as a dropdown\n- on acceptance, create both that building and the belt to its input/output.\n\nbasically instead of dragging together a production chain you can drag a whole factory forwards/backwards without having to look up anything, the mouse stays fully inside the canvas.\n\nwhat do you think?"
+    },
+    {
+      "role": "assistant",
+      "content": "This is a great idea! I love the \"grow the factory in either direction\" workflow. Let me think through the design:\n\n## Current State Analysis\n\nLet me first understand the existing belt connection system:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\",\"src/satisfactory_planner/ui/canvas/factory_canvas.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_bdrk_01A78UJvnAURkX6gPSYPUS1D",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_bdrk_01A78UJvnAURkX6gPSYPUS1D",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\", \"src/satisfactory_planner/ui/canvas/factory_canvas.py\"], \"message\": \"Added 2 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at the code, I can see:\n\n1. **BeltConnector** currently only supports dragging from output ports (`start_drag` is called from output ports)\n2. It tracks `_connect_start_building`, `_connect_start_port`, and looks for input ports as destinations\n3. The connection is unidirectional: output \u2192 input\n\n## Design Thoughts\n\n### Part 1: Bidirectional Belt Dragging\n\nThis is straightforward - we need to track whether we're dragging \"forward\" (from output, seeking input) or \"backward\" (from input, seeking output). The `BeltConnector` needs:\n- A `_drag_direction` field (forward/backward)\n- Modified `update_hover_target` to look for the opposite port type\n- Modified `complete` to create the belt with correct source/dest order\n\n### Part 2: Right-Click to Spawn Building (the clever bit!)\n\nThis is where it gets interesting. When right-clicking mid-drag:\n\n**Forward (from output):**\n1. Get the item flowing through this output port (from recipe outputs or miner resource)\n2. Query recipes to find all buildings that accept this item as input\n3. Show dropdown, user picks one\n4. Create building at cursor + belt connecting them\n\n**Backward (from input):**\n1. Get the recipe of the source building\n2. Find which input ports are unsatisfied (no belt connected)\n3. For each unsatisfied input, find buildings that produce that item\n4. Show dropdown (possibly grouped by which input it satisfies)\n5. Create building + belt\n\n### Implementation Plan\n\n1. **Add backward dragging support** to `BeltConnector`:\n   - New enum `DragDirection` (FORWARD, BACKWARD)\n   - Track direction in `start_drag()`\n   - Flip port type detection in hover/complete\n\n2. **Add right-click handler** during belt drag:\n   - Intercept right-click in `mouseReleaseEvent` when `_belt_connector.is_connecting`\n   - Call new method `_belt_connector.show_building_picker(scene_pos)`\n\n3. **Building picker logic**:\n   - New class `BuildingPicker` or method on `BeltConnector`\n   - Uses `self.canvas.get_all_recipes()` to find matching buildings\n   - Shows `QMenu` at cursor with building options\n   - On selection: creates building via `PlaceBuildingCommand`, then belt via `ConnectBeltCommand`\n\n### Questions for you:\n\n1. **Dropdown style**: Should it be a flat list or grouped? For backward dragging with multiple unsatisfied inputs, we could do:\n   - Flat: \"Constructor (Iron Plate \u2192 input 0)\"\n   - Grouped: submenu per input slot\n\n2. **Building placement**: Should the spawned building appear:\n   - At the cursor position (where you right-clicked)?\n   - Snapped to grid at that position?\n   - Some offset to avoid overlap with the belt preview?\n\n3. **Recipe selection**: If a building type can have multiple recipes that produce the item (e.g., alternate recipes), should we:\n   - Pick the default/first one automatically?\n   - Show a nested submenu for recipe variants?\n   - Just place the building with no recipe selected (user sets it after)?\n\n4. **What about logistics?** When dragging forward, should splitters/mergers appear in the list too? (They don't have recipes but can connect to anything)\n\nI'm excited about this - it's a really nice \"stay in flow\" UX pattern. What are your preferences on the above?"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 19c7369b",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Notes: when forward dragging, we do have to check the flow solver because we want to be following splitters. we can't assume there's a production building on our input. for the backward dragging this is impossible because the flow solver can't propagate item types backward.\nDefinitely flat list.\nThe spawned building should appear so that the dragged belt where rightmouse was placed lines up with the port the belt is connecting to. Yes, snapped to grid if grid snap is on. Don't worry about the belt preview: this action terminates the drag anyways.\n- building with multiple recipes: just show all of them. flat list.\n- dragging forward or backward, splitters/mergers are valid targets.\n\nNeed to load some more files to build up an implementation plan?"
+    },
+    {
+      "role": "assistant",
+      "content": "Yes, let me load some more files to understand the full picture - particularly how the flow solver tracks items, how recipes work, and how ports are accessed.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/core/flow_solver.py\", \"src/satisfactory_planner/core/models.py\", \"src/satisfactory_planner/ui/items/port_item.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01PTm6Y1ma3zStYyRLxLnzfU",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"def (input|output)_port_\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_013u44uutuFo3vzZxWZvYmA5",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01PTm6Y1ma3zStYyRLxLnzfU",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/core/flow_solver.py\", \"src/satisfactory_planner/core/models.py\", \"src/satisfactory_planner/ui/items/port_item.py\"], \"message\": \"Added 3 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_013u44uutuFo3vzZxWZvYmA5",
+      "content": "{\"message\": \"Found 10 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/core/models.py:357 \\u2500\\u2500\\n     354 |         \\\"\\\"\\\"Rotate a direction (radians) by current rotation.\\\"\\\"\\\"\\n     355 |         return direction + math.radians(self.rotation)\\n     356 | \\n>>>  357 |     def input_port_pos(self, index: int) -> tuple[float, float]:\\n     358 |         \\\"\\\"\\\"Get position of input port by index (in scene coordinates).\\\"\\\"\\\"\\n     359 |         w, h = self._get_display_size()\\n     360 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:379 \\u2500\\u2500\\n     376 | \\n     377 |         return self._rotate_point(*base_pos)\\n     378 | \\n>>>  379 |     def input_port_direction(self, index: int) -> float:\\n     380 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it enters this input port.\\\"\\\"\\\"\\n     381 |         if self.building_type == BuildingType.SPLITTER:\\n     382 |             base_dir = 0.0  # traveling right, into left side\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:396 \\u2500\\u2500\\n     393 | \\n     394 |         return self._rotate_direction(base_dir)\\n     395 | \\n>>>  396 |     def output_port_pos(self, index: int) -> tuple[float, float]:\\n     397 |         \\\"\\\"\\\"Get position of output port by index (in scene coordinates).\\\"\\\"\\\"\\n     398 |         w, h = self._get_display_size()\\n     399 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:418 \\u2500\\u2500\\n     415 | \\n     416 |         return self._rotate_point(*base_pos)\\n     417 | \\n>>>  418 |     def output_port_direction(self, index: int) -> float:\\n     419 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it leaves this output port.\\\"\\\"\\\"\\n     420 |         if self.building_type == BuildingType.SPLITTER:\\n     421 |             # top (traveling up), right (traveling right), bottom (traveling down)\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:564 \\u2500\\u2500\\n     561 |         \\\"\\\"\\\"Number of output ports on this room.\\\"\\\"\\\"\\n     562 |         return len(self.get_output_ports())\\n     563 | \\n>>>  564 |     def input_port_pos(self, index: int) -> tuple[float, float]:\\n     565 |         \\\"\\\"\\\"Get position of input port by index (in room-local coordinates).\\\"\\\"\\\"\\n     566 |         port = self.get_port_by_index(index, is_output=False)\\n     567 |         if port:\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:586 \\u2500\\u2500\\n     583 |         spacing = self.height / (self.num_inputs + 1) if self.num_inputs > 0 else self.height / 2\\n     584 |         return (0, spacing * (index + 1))\\n     585 | \\n>>>  586 |     def output_port_pos(self, index: int) -> tuple[float, float]:\\n     587 |         \\\"\\\"\\\"Get position of output port by index (in room-local coordinates).\\\"\\\"\\\"\\n     588 |         port = self.get_port_by_index(index, is_output=True)\\n     589 |         if port:\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:648 \\u2500\\u2500\\n     645 |         room = self.get_room(document)\\n     646 |         return room.num_outputs if room else 0\\n     647 | \\n>>>  648 |     def input_port_pos(self, index: int, document: Document) -> tuple[float, float]:\\n     649 |         \\\"\\\"\\\"Get position of input port by index (in parent scene coordinates).\\\"\\\"\\\"\\n     650 |         room = self.get_room(document)\\n     651 |         if room:\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:656 \\u2500\\u2500\\n     653 |             return (self.x + local_pos[0], self.y + local_pos[1])\\n     654 |         return (self.x, self.y)\\n     655 | \\n>>>  656 |     def output_port_pos(self, index: int, document: Document) -> tuple[float, float]:\\n     657 |         \\\"\\\"\\\"Get position of output port by index (in parent scene coordinates).\\\"\\\"\\\"\\n     658 |         room = self.get_room(document)\\n     659 |         if room:\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:664 \\u2500\\u2500\\n     661 |             return (self.x + local_pos[0], self.y + local_pos[1])\\n     662 |         return (self.x, self.y)\\n     663 | \\n>>>  664 |     def input_port_direction(self, index: int, document: Document) -> float:\\n     665 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it enters this input port.\\\"\\\"\\\"\\n     666 |         import math\\n     667 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:686 \\u2500\\u2500\\n     683 |                 return rotation_to_dir.get(port.rotation, 0.0)\\n     684 |         return 0.0  # Fallback: traveling right\\n     685 | \\n>>>  686 |     def output_port_direction(self, index: int, document: Document) -> float:\\n     687 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it leaves this output port.\\\"\\\"\\\"\\n     688 |         import math\\n     689 | \", \"success\": true, \"total_matches\": 10}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"def (input|output)_port_\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 10 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/core/models.py:357 \\u2500\\u2500\\n     354 |         \\\"\\\"\\\"Rotate a direction (radians) by current rotation.\\\"\\\"\\\"\\n     355 |         return direction + math.radians(self.rotation)\\n     356 | \\n>>>  357 |     def input_port_pos(self, index: int) -> tuple[float, float]:\\n     358 |         \\\"\\\"\\\"Get position of input port by index (in scene coordinates).\\\"\\\"\\\"\\n     359 |         w, h = self._get_display_size()\\n     360 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:379 \\u2500\\u2500\\n     376 | \\n     377 |         return self._rotate_point(*base_pos)\\n     378 | \\n>>>  379 |     def input_port_direction(self, index: int) -> float:\\n     380 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it enters this input port.\\\"\\\"\\\"\\n     381 |         if self.building_type == BuildingType.SPLITTER:\\n     382 |             base_dir = 0.0  # traveling right, into left side\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:396 \\u2500\\u2500\\n     393 | \\n     394 |         return self._rotate_direction(base_dir)\\n     395 | \\n>>>  396 |     def output_port_pos(self, index: int) -> tuple[float, float]:\\n     397 |         \\\"\\\"\\\"Get position of output port by index (in scene coordinates).\\\"\\\"\\\"\\n     398 |         w, h = self._get_display_size()\\n     399 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:418 \\u2500\\u2500\\n     415 | \\n     416 |         return self._rotate_point(*base_pos)\\n     417 | \\n>>>  418 |     def output_port_direction(self, index: int) -> float:\\n     419 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it leaves this output port.\\\"\\\"\\\"\\n     420 |         if self.building_type == BuildingType.SPLITTER:\\n     421 |             # top (traveling up), right (traveling right), bottom (traveling down)\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:564 \\u2500\\u2500\\n     561 |         \\\"\\\"\\\"Number of output ports on this room.\\\"\\\"\\\"\\n     562 |         return len(self.get_output_ports())\\n     563 | \\n>>>  564 |     def input_port_pos(self, index: int) -> tuple[float, float]:\\n     565 |         \\\"\\\"\\\"Get position of input port by index (in room-local coordinates).\\\"\\\"\\\"\\n     566 |         port = self.get_port_by_index(index, is_output=False)\\n     567 |         if port:\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:586 \\u2500\\u2500\\n     583 |         spacing = self.height / (self.num_inputs + 1) if self.num_inputs > 0 else self.height / 2\\n     584 |         return (0, spacing * (index + 1))\\n     585 | \\n>>>  586 |     def output_port_pos(self, index: int) -> tuple[float, float]:\\n     587 |         \\\"\\\"\\\"Get position of output port by index (in room-local coordinates).\\\"\\\"\\\"\\n     588 |         port = self.get_port_by_index(index, is_output=True)\\n     589 |         if port:\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:648 \\u2500\\u2500\\n     645 |         room = self.get_room(document)\\n     646 |         return room.num_outputs if room else 0\\n     647 | \\n>>>  648 |     def input_port_pos(self, index: int, document: Document) -> tuple[float, float]:\\n     649 |         \\\"\\\"\\\"Get position of input port by index (in parent scene coordinates).\\\"\\\"\\\"\\n     650 |         room = self.get_room(document)\\n     651 |         if room:\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:656 \\u2500\\u2500\\n     653 |             return (self.x + local_pos[0], self.y + local_pos[1])\\n     654 |         return (self.x, self.y)\\n     655 | \\n>>>  656 |     def output_port_pos(self, index: int, document: Document) -> tuple[float, float]:\\n     657 |         \\\"\\\"\\\"Get position of output port by index (in parent scene coordinates).\\\"\\\"\\\"\\n     658 |         room = self.get_room(document)\\n     659 |         if room:\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:664 \\u2500\\u2500\\n     661 |             return (self.x + local_pos[0], self.y + local_pos[1])\\n     662 |         return (self.x, self.y)\\n     663 | \\n>>>  664 |     def input_port_direction(self, index: int, document: Document) -> float:\\n     665 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it enters this input port.\\\"\\\"\\\"\\n     666 |         import math\\n     667 | \\n\\n\\u2500\\u2500 src/satisfactory_planner/core/models.py:686 \\u2500\\u2500\\n     683 |                 return rotation_to_dir.get(port.rotation, 0.0)\\n     684 |         return 0.0  # Fallback: traveling right\\n     685 | \\n>>>  686 |     def output_port_direction(self, index: int, document: Document) -> float:\\n     687 |         \\\"\\\"\\\"Get direction (radians) a belt is TRAVELING when it leaves this output port.\\\"\\\"\\\"\\n     688 |         import math\\n     689 | \",\n  \"success\": true,\n  \"total_matches\": 10\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good, now I have a clearer picture. Let me also check how the flow solver tracks item types on edges/ports, and look at the commands for placing buildings:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/core/flow_models.py\", \"src/satisfactory_planner/ui/commands/__init__.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01BHuM1CUz8nWN5MSVL6hRdH",
+          "type": "function"
+        },
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"class PlaceBuildingCommand\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_vrtx_01RuU6x28czWUc6fCySEMmY2",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BHuM1CUz8nWN5MSVL6hRdH",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/core/flow_models.py\", \"src/satisfactory_planner/ui/commands/__init__.py\"], \"message\": \"Added 2 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01RuU6x28czWUc6fCySEMmY2",
+      "content": "{\"message\": \"Found 1 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/commands/building_commands.py:19 \\u2500\\u2500\\n      16 | \\n      17 | \\n      18 | @dataclass(frozen=True)\\n>>>   19 | class PlaceBuildingCommand(Command):\\n      20 |     \\\"\\\"\\\"Command to place a building in a scene.\\\"\\\"\\\"\\n      21 | \\n      22 |     scene_room_id: str | None  # None = root document, else room ID\", \"success\": true, \"total_matches\": 1}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"class PlaceBuildingCommand\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 1 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/commands/building_commands.py:19 \\u2500\\u2500\\n      16 | \\n      17 | \\n      18 | @dataclass(frozen=True)\\n>>>   19 | class PlaceBuildingCommand(Command):\\n      20 |     \\\"\\\"\\\"Command to place a building in a scene.\\\"\\\"\\\"\\n      21 | \\n      22 |     scene_room_id: str | None  # None = root document, else room ID\",\n  \"success\": true,\n  \"total_matches\": 1\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I have a good picture. Let me also load the building commands file to see the exact interface:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/commands/building_commands.py\", \"src/satisfactory_planner/ui/commands/belt_commands.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01KmntVrmcvkCdNHBCMJr3Hk",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01KmntVrmcvkCdNHBCMJr3Hk",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/commands/building_commands.py\", \"src/satisfactory_planner/ui/commands/belt_commands.py\"], \"message\": \"Added 2 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Now I have a complete picture. Let me summarize and propose an implementation plan:\n\n## Implementation Plan\n\n### 1. Add Backward Belt Dragging\n\n**Changes to `BeltConnector`:**\n- Add `_drag_forward: bool` field to track direction\n- New `start_drag_backward()` method (or extend `start_drag()` with `is_output` param)\n- Modify `update_hover_target()` to look for opposite port type\n- Modify `complete()` to flip source/dest based on direction\n\n**Changes to `PortItem`:**\n- Add `mousePressEvent` handler for input ports to start backward drag\n\n### 2. Right-Click Building Picker\n\n**New class `BuildingPicker`** (or methods on `BeltConnector`):\n\n```python\ndef show_building_picker(self, scene_pos: QPointF) -> None:\n    \"\"\"Show dropdown of buildings that can connect to current drag.\"\"\"\n    \n    if self._drag_forward:\n        # Get item from flow solver\n        item_id = self._get_item_from_flow_solver()\n        if item_id is None:\n            self.cancel()\n            return\n        # Find recipes that consume this item + splitter/merger\n        options = self._find_consumers(item_id)\n    else:\n        # Get unsatisfied inputs from source building's recipe\n        item_ids = self._get_unsatisfied_inputs()\n        # Find recipes that produce these items + splitter/merger\n        options = self._find_producers(item_ids)\n    \n    if not options:\n        self.cancel()\n        return\n    \n    # Show QMenu at cursor\n    menu = QMenu()\n    for option in options:\n        action = menu.addAction(option.display_name)\n        action.setData(option)\n    \n    selected = menu.exec(QCursor.pos())\n    if selected:\n        self._spawn_and_connect(selected.data(), scene_pos)\n    else:\n        self.cancel()\n```\n\n**Option dataclass:**\n```python\n@dataclass\nclass BuildingOption:\n    building_type: BuildingType\n    recipe_id: RecipeId | None  # None for splitter/merger\n    port_index: int  # Which port to connect to\n    display_name: str  # \"Constructor: Iron Plate\" or \"Splitter\"\n```\n\n**Positioning logic:**\n- Calculate where building should go so the target port aligns with `scene_pos`\n- Snap to grid if enabled\n- Use `input_port_pos()` / `output_port_pos()` to compute offset\n\n### 3. Flow Solver Item Lookup\n\nFor forward dragging, we need to find what item is on the output port. The flow solver has this in `FlowEdge.item_name` and `FlowNode.outputs[].item_name`. We need to:\n1. Find the FlowNode for the source building\n2. Get the item from the output port\n\n### 4. Event Handling\n\n**In `factory_canvas.py` `mouseReleaseEvent`:**\n```python\nif event.button() == Qt.MouseButton.RightButton:\n    if self._belt_connector.is_connecting:\n        scene_pos = self.mapToScene(event.pos())\n        self._belt_connector.show_building_picker(scene_pos)\n        return\n```\n\n### Files to Modify\n\n1. **`belt_connector.py`** - Main changes: bidirectional drag, building picker\n2. **`port_item.py`** - Add backward drag from input ports\n3. **`factory_canvas.py`** - Handle right-click during belt drag\n\n### Questions Before I Start\n\n1. Should splitter/merger appear at the top of the list, or mixed with recipes alphabetically?\n\n2. For the item lookup when dragging forward from a building with no recipe set (or a miner with no item), should we:\n   - Cancel with no menu (can't determine item)?\n   - Show all possible buildings (too many)?\n   \n3. When spawning a building with a recipe, should we also set the clock speed to match the source building, or leave it at 1.0?\n\nReady to start coding once you confirm these details!"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 2a3f9a5e",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Splitter/merger at the top makes sense to me. Could even put a separator.\nDragging from a building with no recipe can get all possible buildings but without recipes set.\nClock speed is honestly something I don't care too much about. Leave it at 1.\n\nGo for it!"
+    },
+    {
+      "role": "assistant",
+      "content": "Let me start implementing this feature. I'll work through the changes systematically.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"add\": [\"src/satisfactory_planner/core/persistence.py\"]}",
+            "name": "update_context"
+          },
+          "id": "toolu_vrtx_01SXNL4X52fXPXx2B5szRg1k",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01SXNL4X52fXPXx2B5szRg1k",
+      "content": "{\"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/core/persistence.py\"], \"message\": \"Added 1 files, removed 0 files from context\", \"remove\": [], \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me start implementing. I'll begin with the core changes to `BeltConnector`, then update `PortItem` and `FactoryCanvas`.\n\n<edit file=\"src/satisfactory_planner/ui/canvas/belt_connector.py\">\n<search>\n\"\"\"Belt connection manager for the factory canvas.\"\"\"\n\nfrom __future__ import annotations\n\nimport math\nfrom typing import TYPE_CHECKING\n\nfrom PySide6.QtCore import QPointF, Qt\nfrom PySide6.QtGui import QColor, QPen\nfrom PySide6.QtWidgets import QGraphicsItem, QGraphicsPathItem\n\nfrom satisfactory_planner.core import Belt\nfrom satisfactory_planner.core.models import generate_id\nfrom satisfactory_planner.core.routing import Point, compute_belt_path\nfrom satisfactory_planner.ui.commands import ConnectBeltCommand\nfrom satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path\n\nif TYPE_CHECKING:\n    from satisfactory_planner.ui.canvas.factory_canvas import FactoryCanvas\n    from satisfactory_planner.ui.items.port_item import PortItem\n    from satisfactory_planner.ui.items.room_port_item import RoomPortItem\n</search>\n<replace>\n\"\"\"Belt connection manager for the factory canvas.\"\"\"\n\nfrom __future__ import annotations\n\nimport math\nfrom dataclasses import dataclass\nfrom typing import TYPE_CHECKING\n\nfrom PySide6.QtCore import QPointF, Qt\nfrom PySide6.QtGui import QColor, QCursor, QPen\nfrom PySide6.QtWidgets import QGraphicsItem, QGraphicsPathItem, QMenu\n\nfrom satisfactory_planner.core import Belt, BuildingType, Recipe, RecipeId\nfrom satisfactory_planner.core.models import Building, generate_id\nfrom satisfactory_planner.core.routing import Point, compute_belt_path\nfrom satisfactory_planner.ui.commands import ConnectBeltCommand, PlaceBuildingCommand\nfrom satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path\n\nif TYPE_CHECKING:\n    from satisfactory_planner.ui.canvas.factory_canvas import FactoryCanvas\n    from satisfactory_planner.ui.items.port_item import PortItem\n    from satisfactory_planner.ui.items.room_port_item import RoomPortItem\n\n\n@dataclass\nclass BuildingOption:\n    \"\"\"An option in the building picker menu.\"\"\"\n\n    building_type: BuildingType\n    recipe: Recipe | None  # None for splitter/merger\n    port_index: int  # Which port to connect to\n    display_name: str  # \"Constructor: Iron Plate\" or \"Splitter\"\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/belt_connector.py\">\n<search>\nclass BeltConnector:\n    \"\"\"Manages belt connection dragging and creation.\n\n    Handles the drag preview, port hover highlighting, and connection completion.\n    \"\"\"\n\n    def __init__(self, canvas: FactoryCanvas) -> None:\n        self.canvas = canvas\n        self._is_connecting = False\n        self._connect_start_building: str | None = None\n        self._connect_start_port: int = 0\n        self._connect_scene_room_id: str | None = None  # Scene context for the connection\n        self._drag_preview: QGraphicsPathItem | None = None\n        self._drag_start_pos: QPointF | None = None\n        self._drag_start_dir: float = 0\n        self._hover_target_port: PortItem | RoomPortItem | None = None\n</search>\n<replace>\nclass BeltConnector:\n    \"\"\"Manages belt connection dragging and creation.\n\n    Handles the drag preview, port hover highlighting, and connection completion.\n    Supports both forward (from output) and backward (from input) dragging.\n    \"\"\"\n\n    def __init__(self, canvas: FactoryCanvas) -> None:\n        self.canvas = canvas\n        self._is_connecting = False\n        self._drag_forward = True  # True = from output, False = from input\n        self._connect_start_building: str | None = None\n        self._connect_start_port: int = 0\n        self._connect_scene_room_id: str | None = None  # Scene context for the connection\n        self._drag_preview: QGraphicsPathItem | None = None\n        self._drag_start_pos: QPointF | None = None\n        self._drag_start_dir: float = 0\n        self._hover_target_port: PortItem | RoomPortItem | None = None\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/belt_connector.py\">\n<search>\n    def start_drag(\n        self,\n        building_id: str,\n        port_index: int,\n        start_pos: QPointF,\n        scene_room_id: str | None = None,\n    ) -> None:\n        \"\"\"Start dragging a belt connection from an output port.\n\n        Args:\n            building_id: Building ID or RoomPlacement ID\n            port_index: Which output port\n            start_pos: Scene position to start drag from\n            scene_room_id: None for document root, or room ID for buildings inside a room\n\n        If the port already has a belt, delete it first (implicit replacement).\n        \"\"\"\n        # Check if output port is already connected - if so, delete existing belt\n        existing_belt = self.canvas.document.get_belt_at_port(building_id, port_index, True)\n        if existing_belt:\n            from satisfactory_planner.ui.commands import DeleteItemsCommand\n\n            cmd = DeleteItemsCommand(\n                scene_room_id=None,\n                buildings=(),\n                belts=(existing_belt,),\n                canvas=self.canvas,\n            )\n            self.canvas.command_stack.execute(cmd)\n\n        self._is_connecting = True\n        self._connect_start_building = building_id\n        self._connect_start_port = port_index\n        self._connect_scene_room_id = scene_room_id\n        self._drag_start_pos = start_pos\n        self.canvas.setCursor(Qt.CursorShape.CrossCursor)\n\n        # Get start direction from the source (building or room placement)\n        building = self.canvas.document.buildings.get(building_id)\n        if building:\n            self._drag_start_dir = building.output_port_direction(port_index)\n        else:\n            # Check if it's a room placement\n            placement = self.canvas.document.room_placements.get(building_id)\n            if placement:\n                self._drag_start_dir = placement.output_port_direction(\n                    port_index, self.canvas.document\n                )\n            else:\n                self._drag_start_dir = 0\n\n        # Create preview path\n        self._drag_preview = QGraphicsPathItem()\n        self._drag_preview.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.PenStyle.DashLine))\n        self._drag_preview.setZValue(1000)\n        self._drag_preview.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)\n        self._drag_preview.setAcceptedMouseButtons(Qt.MouseButton.NoButton)\n        self.canvas._scene.addItem(self._drag_preview)\n</search>\n<replace>\n    def start_drag(\n        self,\n        building_id: str,\n        port_index: int,\n        start_pos: QPointF,\n        scene_room_id: str | None = None,\n        is_output: bool = True,\n    ) -> None:\n        \"\"\"Start dragging a belt connection from a port.\n\n        Args:\n            building_id: Building ID or RoomPlacement ID\n            port_index: Which port\n            start_pos: Scene position to start drag from\n            scene_room_id: None for document root, or room ID for buildings inside a room\n            is_output: True if dragging from output (forward), False if from input (backward)\n\n        If the port already has a belt, delete it first (implicit replacement).\n        \"\"\"\n        # Check if port is already connected - if so, delete existing belt\n        existing_belt = self.canvas.document.get_belt_at_port(building_id, port_index, is_output)\n        if existing_belt:\n            from satisfactory_planner.ui.commands import DeleteItemsCommand\n\n            cmd = DeleteItemsCommand(\n                scene_room_id=None,\n                buildings=(),\n                belts=(existing_belt,),\n                canvas=self.canvas,\n            )\n            self.canvas.command_stack.execute(cmd)\n\n        self._is_connecting = True\n        self._drag_forward = is_output\n        self._connect_start_building = building_id\n        self._connect_start_port = port_index\n        self._connect_scene_room_id = scene_room_id\n        self._drag_start_pos = start_pos\n        self.canvas.setCursor(Qt.CursorShape.CrossCursor)\n\n        # Get start direction from the source (building or room placement)\n        building = self.canvas.document.buildings.get(building_id)\n        if building:\n            if is_output:\n                self._drag_start_dir = building.output_port_direction(port_index)\n            else:\n                self._drag_start_dir = building.input_port_direction(port_index)\n        else:\n            # Check if it's a room placement\n            placement = self.canvas.document.room_placements.get(building_id)\n            if placement:\n                if is_output:\n                    self._drag_start_dir = placement.output_port_direction(\n                        port_index, self.canvas.document\n                    )\n                else:\n                    self._drag_start_dir = placement.input_port_direction(\n                        port_index, self.canvas.document\n                    )\n            else:\n                self._drag_start_dir = 0\n\n        # Create preview path\n        self._drag_preview = QGraphicsPathItem()\n        self._drag_preview.setPen(QPen(QColor(100, 200, 100, 180), 3, Qt.PenStyle.DashLine))\n        self._drag_preview.setZValue(1000)\n        self._drag_preview.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)\n        self._drag_preview.setAcceptedMouseButtons(Qt.MouseButton.NoButton)\n        self.canvas._scene.addItem(self._drag_preview)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/belt_connector.py\">\n<search>\n    def update_hover_target(self, scene_pos: QPointF) -> None:\n        \"\"\"Check if hovering over a valid input port and update highlight.\"\"\"\n        from satisfactory_planner.ui.items.port_item import PortItem\n        from satisfactory_planner.ui.items.room_port_item import RoomPortItem\n\n        new_target: PortItem | RoomPortItem | None = None\n        for item in self.canvas._scene.items(scene_pos):\n            # Check for building port\n            if isinstance(item, PortItem) and not item.is_output:\n                new_target = item\n                break\n            # Check for room port\n            if isinstance(item, RoomPortItem) and not item.is_output:\n                new_target = item\n                break\n\n        if new_target != self._hover_target_port:\n            if self._hover_target_port:\n                self._hover_target_port.set_drag_target(False)\n            if new_target:\n                new_target.set_drag_target(True)\n            self._hover_target_port = new_target\n</search>\n<replace>\n    def update_hover_target(self, scene_pos: QPointF) -> None:\n        \"\"\"Check if hovering over a valid target port and update highlight.\n\n        When dragging forward (from output), look for input ports.\n        When dragging backward (from input), look for output ports.\n        \"\"\"\n        from satisfactory_planner.ui.items.port_item import PortItem\n        from satisfactory_planner.ui.items.room_port_item import RoomPortItem\n\n        # When dragging forward, we look for inputs; when backward, we look for outputs\n        target_is_output = not self._drag_forward\n\n        new_target: PortItem | RoomPortItem | None = None\n        for item in self.canvas._scene.items(scene_pos):\n            # Check for building port\n            if isinstance(item, PortItem) and item.is_output == target_is_output:\n                new_target = item\n                break\n            # Check for room port\n            if isinstance(item, RoomPortItem) and item.is_output == target_is_output:\n                new_target = item\n                break\n\n        if new_target != self._hover_target_port:\n            if self._hover_target_port:\n                self._hover_target_port.set_drag_target(False)\n            if new_target:\n                new_target.set_drag_target(True)\n            self._hover_target_port = new_target\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/belt_connector.py\">\n<search>\n    def try_complete(self, scene_pos: QPointF) -> bool:\n        \"\"\"Try to complete the connection at the given position.\n\n        Returns True if connection was completed or cancelled, False if still dragging.\n        \"\"\"\n        if not self._is_connecting:\n            return False\n\n        from satisfactory_planner.ui.items.port_item import PortItem\n        from satisfactory_planner.ui.items.room_port_item import RoomPortItem\n\n        # Find input port at position\n        for item in self.canvas._scene.items(scene_pos):\n            # Check for building port\n            if isinstance(item, PortItem) and not item.is_output:\n                # Check if port already connected\n                if self.canvas.document.is_port_connected(item.building_id, item.port_index, False):\n                    self.cancel()\n                    return True\n                self.complete(item.building_id, item.port_index)\n                return True\n            # Check for room port\n            if isinstance(item, RoomPortItem) and not item.is_output:\n                # Check if port already connected (using placement_id as building_id)\n                if self.canvas.document.is_port_connected(\n                    item.placement_id, item.port_index, False\n                ):\n                    self.cancel()\n                    return True\n                self.complete(item.placement_id, item.port_index)\n                return True\n\n        # No valid port - cancel\n        self.cancel()\n        return True\n</search>\n<replace>\n    def try_complete(self, scene_pos: QPointF) -> bool:\n        \"\"\"Try to complete the connection at the given position.\n\n        Returns True if connection was completed or cancelled, False if still dragging.\n        \"\"\"\n        if not self._is_connecting:\n            return False\n\n        from satisfactory_planner.ui.items.port_item import PortItem\n        from satisfactory_planner.ui.items.room_port_item import RoomPortItem\n\n        # When dragging forward, we look for inputs; when backward, we look for outputs\n        target_is_output = not self._drag_forward\n\n        # Find target port at position\n        for item in self.canvas._scene.items(scene_pos):\n            # Check for building port\n            if isinstance(item, PortItem) and item.is_output == target_is_output:\n                # Check if port already connected\n                if self.canvas.document.is_port_connected(\n                    item.building_id, item.port_index, target_is_output\n                ):\n                    self.cancel()\n                    return True\n                self.complete(item.building_id, item.port_index)\n                return True\n            # Check for room port\n            if isinstance(item, RoomPortItem) and item.is_output == target_is_output:\n                # Check if port already connected (using placement_id as building_id)\n                if self.canvas.document.is_port_connected(\n                    item.placement_id, item.port_index, target_is_output\n                ):\n                    self.cancel()\n                    return True\n                self.complete(item.placement_id, item.port_index)\n                return True\n\n        # No valid port - cancel\n        self.cancel()\n        return True\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/canvas/belt_connector.py\">\n<search>\n    def complete(self, dest_building_id: str, dest_port_index: int) -> None:\n        \"\"\"Complete a belt connection to an input port.\"\"\"\n        if self._is_connecting and self._connect_start_building:\n            belt = Belt(\n                id=generate_id(),\n                tier=self.canvas.default_belt_tier,\n                source_building_id=self._connect_start_building,\n                source_port_index=self._connect_start_port,\n                dest_building_id=dest_building_id,\n                dest_port_index=dest_port_index,\n            )\n            # Use scene_room_id captured at drag start - no item searching required\n            cmd = ConnectBeltCommand(\n                scene_room_id=self._connect_scene_room_id, belt=belt, canvas=self.canvas\n            )\n            self.canvas.command_stack.execute(cmd)\n\n        self._cleanup()\n</search>\n<replace>\n    def complete(self, target_building_id: str, target_port_index: int) -> None:\n        \"\"\"Complete a belt connection to a target port.\n\n        For forward drag: target is an input port (dest)\n        For backward drag: target is an output port (source)\n        \"\"\"\n        if self._is_connecting and self._connect_start_building:\n            if self._drag_forward:\n                # Forward: we started at output, connecting to input\n                source_building_id = self._connect_start_building\n                source_port_index = self._connect_start_port\n                dest_building_id = target_building_id\n                dest_port_index = target_port_index\n            else:\n                # Backward: we started at input, connecting to output\n                source_building_id = target_building_id\n                source_port_index = target_port_index\n                dest_building_id = self._connect_start_building\n                dest_port_index = self._connect_start_port\n\n            belt = Belt(\n                id=generate_id(),\n                tier=self.canvas.default_belt_tier,\n                source_building_id=source_building_id,\n                source_port_index=source_port_index,\n                dest_building_id=dest_building_id,\n                dest_port_index=dest_port_index,\n            )\n            # Use scene_room_id captured at drag start - no item searching required\n            cmd = ConnectBeltCommand(\n                scene_room_id=self._connect_scene_room_id, belt=belt, canvas=self.canvas\n            )\n            self.canvas.command_stack.execute(cmd)\n\n        self._cleanup()\n</replace>\n</edit>\n\nNow let's add the building picker methods to BeltConnector:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/belt_connector.py\">\n<search>\n    def _cleanup(self) -> None:\n        \"\"\"Clean up drag state.\"\"\"\n        self._is_connecting = False\n        self._connect_start_building = None\n        self._drag_start_pos = None\n        if self._drag_preview:\n            self.canvas._scene.removeItem(self._drag_preview)\n            self._drag_preview = None\n        if self._hover_target_port:\n            self._hover_target_port.set_drag_target(False)\n            self._hover_target_port = None\n        self.canvas.setCursor(Qt.CursorShape.ArrowCursor)\n</search>\n<replace>\n    def _cleanup(self) -> None:\n        \"\"\"Clean up drag state.\"\"\"\n        self._is_connecting = False\n        self._drag_forward = True\n        self._connect_start_building = None\n        self._drag_start_pos = None\n        if self._drag_preview:\n            self.canvas._scene.removeItem(self._drag_preview)\n            self._drag_preview = None\n        if self._hover_target_port:\n            self._hover_target_port.set_drag_target(False)\n            self._hover_target_port = None\n        self.canvas.setCursor(Qt.CursorShape.ArrowCursor)\n\n    # === Building Picker (right-click during drag) ===\n\n    def show_building_picker(self, scene_pos: QPointF) -> None:\n        \"\"\"Show a dropdown menu of buildings that can connect to current drag.\n\n        For forward drag: show buildings that consume the item being produced\n        For backward drag: show buildings that produce items needed as input\n        \"\"\"\n        if not self._is_connecting or not self._connect_start_building:\n            self.cancel()\n            return\n\n        if self._drag_forward:\n            options = self._get_forward_options()\n        else:\n            options = self._get_backward_options()\n\n        if not options:\n            self.cancel()\n            return\n\n        # Build menu\n        menu = QMenu()\n\n        # Add splitter/merger at top\n        logistics_options = [o for o in options if o.recipe is None]\n        recipe_options = [o for o in options if o.recipe is not None]\n\n        for option in logistics_options:\n            action = menu.addAction(option.display_name)\n            action.setData(option)\n\n        if logistics_options and recipe_options:\n            menu.addSeparator()\n\n        for option in recipe_options:\n            action = menu.addAction(option.display_name)\n            action.setData(option)\n\n        # Show menu at cursor\n        selected = menu.exec(QCursor.pos())\n        if selected:\n            option = selected.data()\n            self._spawn_and_connect(option, scene_pos)\n        else:\n            self.cancel()\n\n    def _get_forward_options(self) -> list[BuildingOption]:\n        \"\"\"Get building options for forward drag (from output).\n\n        Uses flow solver to determine what item is on the output port.\n        \"\"\"\n        options: list[BuildingOption] = []\n\n        # Always offer splitter (1 input)\n        options.append(\n            BuildingOption(\n                building_type=BuildingType.SPLITTER,\n                recipe=None,\n                port_index=0,\n                display_name=\"Splitter\",\n            )\n        )\n\n        # Always offer merger (3 inputs - offer first available)\n        options.append(\n            BuildingOption(\n                building_type=BuildingType.MERGER,\n                recipe=None,\n                port_index=0,\n                display_name=\"Merger\",\n            )\n        )\n\n        # Try to get item from flow solver\n        item_id = self._get_item_from_flow_solver()\n\n        if item_id:\n            # Find recipes that consume this item\n            recipes = self.canvas.get_all_recipes()\n            for recipe in recipes.values():\n                for i, inp in enumerate(recipe.inputs):\n                    if inp.item_id == item_id:\n                        options.append(\n                            BuildingOption(\n                                building_type=recipe.building_type,\n                                recipe=recipe,\n                                port_index=i,\n                                display_name=f\"{recipe.building_type.value}: {recipe.name}\",\n                            )\n                        )\n                        break  # Only add each recipe once\n        else:\n            # No item known - offer all production buildings without recipes\n            for bt in BuildingType:\n                if bt in (\n                    BuildingType.SMELTER,\n                    BuildingType.FOUNDRY,\n                    BuildingType.CONSTRUCTOR,\n                    BuildingType.ASSEMBLER,\n                    BuildingType.MANUFACTURER,\n                    BuildingType.REFINERY,\n                    BuildingType.PACKAGER,\n                    BuildingType.BLENDER,\n                ):\n                    options.append(\n                        BuildingOption(\n                            building_type=bt,\n                            recipe=None,\n                            port_index=0,\n                            display_name=f\"{bt.value} (no recipe)\",\n                        )\n                    )\n\n            # Also offer Sink\n            options.append(\n                BuildingOption(\n                    building_type=BuildingType.SINK,\n                    recipe=None,\n                    port_index=0,\n                    display_name=\"Sink\",\n                )\n            )\n\n        return options\n\n    def _get_backward_options(self) -> list[BuildingOption]:\n        \"\"\"Get building options for backward drag (from input).\n\n        Checks the recipe of the source building to find needed inputs.\n        \"\"\"\n        options: list[BuildingOption] = []\n\n        # Always offer merger (1 output)\n        options.append(\n            BuildingOption(\n                building_type=BuildingType.MERGER,\n                recipe=None,\n                port_index=0,\n                display_name=\"Merger\",\n            )\n        )\n\n        # Always offer splitter (3 outputs - offer first available)\n        options.append(\n            BuildingOption(\n                building_type=BuildingType.SPLITTER,\n                recipe=None,\n                port_index=0,\n                display_name=\"Splitter\",\n            )\n        )\n\n        # Get the building we're dragging from\n        building = self.canvas.document.find_building(self._connect_start_building or \"\")\n        if not building:\n            return options\n\n        # Get needed items for this input port\n        needed_item_ids = self._get_needed_items_for_input(building, self._connect_start_port)\n\n        if needed_item_ids:\n            # Find recipes that produce these items\n            recipes = self.canvas.get_all_recipes()\n            for recipe in recipes.values():\n                for i, out in enumerate(recipe.outputs):\n                    if out.item_id in needed_item_ids:\n                        options.append(\n                            BuildingOption(\n                                building_type=recipe.building_type,\n                                recipe=recipe,\n                                port_index=i,\n                                display_name=f\"{recipe.building_type.value}: {recipe.name}\",\n                            )\n                        )\n                        break  # Only add each recipe once\n\n            # Also offer Miner if any needed item could be mined\n            # (We don't have a full item database to check, so skip for now)\n\n            # Offer Source for any item\n            options.append(\n                BuildingOption(\n                    building_type=BuildingType.SOURCE,\n                    recipe=None,\n                    port_index=0,\n                    display_name=\"Source\",\n                )\n            )\n        else:\n            # No recipe set - offer all production buildings without recipes\n            for bt in BuildingType:\n                if bt in (\n                    BuildingType.SMELTER,\n                    BuildingType.FOUNDRY,\n                    BuildingType.CONSTRUCTOR,\n                    BuildingType.ASSEMBLER,\n                    BuildingType.MANUFACTURER,\n                    BuildingType.REFINERY,\n                    BuildingType.PACKAGER,\n                    BuildingType.BLENDER,\n                    BuildingType.MINER,\n                ):\n                    options.append(\n                        BuildingOption(\n                            building_type=bt,\n                            recipe=None,\n                            port_index=0,\n                            display_name=f\"{bt.value} (no recipe)\",\n                        )\n                    )\n\n            # Also offer Source\n            options.append(\n                BuildingOption(\n                    building_type=BuildingType.SOURCE,\n                    recipe=None,\n                    port_index=0,\n                    display_name=\"Source\",\n                )\n            )\n\n        return options\n\n    def _get_item_from_flow_solver(self) -> str | None:\n        \"\"\"Get the item ID flowing from the current output port via flow solver.\"\"\"\n        flow_solver = self.canvas.flow_solver\n        if not flow_solver or not flow_solver._solved_model:\n            return None\n\n        graph = flow_solver._solved_model.graph\n        building_id = self._connect_start_building\n        port_index = self._connect_start_port\n\n        # Find the node for this building\n        for node in graph.nodes.values():\n            if node.building_id and node.building_id.element_id == building_id:\n                if port_index < len(node.outputs):\n                    item_name = node.outputs[port_index].item_name\n                    if item_name:\n                        # item_name is display name, we need item_id\n                        # Look it up in items\n                        return self._item_name_to_id(item_name)\n                break\n\n        return None\n\n    def _item_name_to_id(self, item_name: str) -> str | None:\n        \"\"\"Convert item display name to item ID.\"\"\"\n        from satisfactory_planner.core import load_items\n\n        for item_id, name, _is_fluid in load_items():\n            if name == item_name:\n                return item_id\n        return None\n\n    def _get_needed_items_for_input(self, building: Building, input_port: int) -> list[str]:\n        \"\"\"Get item IDs needed for a specific input port of a building.\"\"\"\n        if building.recipe_id:\n            recipe = self.canvas.get_recipe(building.recipe_id)\n            if recipe and input_port < len(recipe.inputs):\n                return [recipe.inputs[input_port].item_id]\n\n        # For buildings without recipes, we can't determine needed items\n        return []\n\n    def _spawn_and_connect(self, option: BuildingOption, scene_pos: QPointF) -> None:\n        \"\"\"Spawn a building and connect it with a belt.\n\n        Positions the building so the target port aligns with scene_pos.\n        \"\"\"\n        from satisfactory_planner.core.models import BUILDING_METADATA\n\n        # Create the building\n        building = Building(\n            id=generate_id(),\n            building_type=option.building_type,\n            x=0,\n            y=0,\n            recipe_id=option.recipe.id if option.recipe else None,\n        )\n\n        # Calculate building position so target port aligns with scene_pos\n        # For forward drag, we're connecting to the new building's INPUT\n        # For backward drag, we're connecting to the new building's OUTPUT\n        if self._drag_forward:\n            # New building's input port should be at scene_pos\n            port_pos = building.input_port_pos(option.port_index)\n        else:\n            # New building's output port should be at scene_pos\n            port_pos = building.output_port_pos(option.port_index)\n\n        # port_pos is relative to building at (0,0), so offset is negative\n        building.x = scene_pos.x() - port_pos[0]\n        building.y = scene_pos.y() - port_pos[1]\n\n        # Snap to grid if enabled\n        if self.canvas.grid_snap:\n            grid = self.canvas.grid_size\n            building.x = round(building.x / grid) * grid\n            building.y = round(building.y / grid) * grid\n\n        # Place building command\n        place_cmd = PlaceBuildingCommand(\n            scene_room_id=self._connect_scene_room_id,\n            building=building,\n            canvas=self.canvas,\n        )\n        self.canvas.command_stack.execute(place_cmd)\n\n        # Now complete the belt connection\n        self.complete(building.id, option.port_index)\n</replace>\n</edit>\n\nNow update `PortItem` to support backward dragging from input ports:\n\n<edit file=\"src/satisfactory_planner/ui/items/port_item.py\">\n<search>\n    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle press to start belt drag from output port.\"\"\"\n        if event.button() == Qt.MouseButton.LeftButton and self.is_output:\n            # scene_room_id was captured at construction time\n            self.canvas.start_belt_drag(\n                self.building_id, self.port_index, self.scenePos(), self.scene_room_id\n            )\n            event.accept()\n        else:\n            super().mousePressEvent(event)\n</search>\n<replace>\n    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle press to start belt drag from port.\n\n        Output ports start forward drag, input ports start backward drag.\n        \"\"\"\n        if event.button() == Qt.MouseButton.LeftButton:\n            # scene_room_id was captured at construction time\n            self.canvas.start_belt_drag(\n                self.building_id,\n                self.port_index,\n                self.scenePos(),\n                self.scene_room_id,\n                is_output=self.is_output,\n            )\n            event.accept()\n        else:\n            super().mousePressEvent(event)\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/items/port_item.py\">\n<search>\n    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle release to complete belt connection on input port.\"\"\"\n        if (\n            event.button() == Qt.MouseButton.LeftButton\n            and not self.is_output\n            and self.canvas.is_dragging_belt()\n        ):\n            self.canvas.complete_belt_connection(self.building_id, self.port_index)\n            event.accept()\n            return\n        super().mouseReleaseEvent(event)\n</search>\n<replace>\n    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:\n        \"\"\"Handle release to complete belt connection on target port.\n\n        For forward drag, input ports are targets.\n        For backward drag, output ports are targets.\n        \"\"\"\n        if event.button() == Qt.MouseButton.LeftButton and self.canvas.is_dragging_belt():\n            # The BeltConnector handles determining if this port is a valid target\n            self.canvas.complete_belt_connection(self.building_id, self.port_index)\n            event.accept()\n            return\n        super().mouseReleaseEvent(event)\n</replace>\n</edit>\n\nNow update `FactoryCanvas` to handle the `is_output` parameter and right-click during belt drag:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n    def start_belt_drag(\n        self,\n        building_id: str,\n        port_index: int,\n        start_pos: QPointF,\n        scene_room_id: str | None = None,\n    ) -> None:\n        \"\"\"Start dragging a belt connection from an output port.\"\"\"\n        self._belt_connector.start_drag(building_id, port_index, start_pos, scene_room_id)\n</search>\n<replace>\n    def start_belt_drag(\n        self,\n        building_id: str,\n        port_index: int,\n        start_pos: QPointF,\n        scene_room_id: str | None = None,\n        is_output: bool = True,\n    ) -> None:\n        \"\"\"Start dragging a belt connection from a port.\n\n        Args:\n            building_id: Building to connect from\n            port_index: Which port\n            start_pos: Scene position\n            scene_room_id: Room context\n            is_output: True for forward drag (from output), False for backward (from input)\n        \"\"\"\n        self._belt_connector.start_drag(\n            building_id, port_index, start_pos, scene_room_id, is_output\n        )\n</replace>\n</edit>\n\nNow add right-click handling during belt drag in `mouseReleaseEvent`:\n\n<edit file=\"src/satisfactory_planner/ui/canvas/factory_canvas.py\">\n<search>\n        if event.button() == Qt.MouseButton.RightButton:\n            if self._placement.is_placing:\n                self._placement.set_building_mode(None)\n                return\n            if self._drawing.is_box_selecting:\n                self._drawing.cancel_box_select()\n                return\n            item_at_pos = self.itemAt(event.pos())\n            if item_at_pos is None or item_at_pos is self._selection.outline_item:\n                self._is_panning = True\n                self._pan_start = QPointF(float(event.pos().x()), float(event.pos().y()))\n                self.setCursor(Qt.CursorShape.ClosedHandCursor)\n                return\n</search>\n<replace>\n        if event.button() == Qt.MouseButton.RightButton:\n            if self._belt_connector.is_connecting:\n                # Right-click during belt drag shows building picker\n                scene_pos = self.mapToScene(event.pos())\n                self._belt_connector.show_building_picker(scene_pos)\n                return\n            if self._placement.is_placing:\n                self._placement.set_building_mode(None)\n                return\n            if self._drawing.is_box_selecting:\n                self._drawing.cancel_box_select()\n                return\n            item_at_pos = self.itemAt(event.pos())\n            if item_at_pos is None or item_at_pos is self._selection.outline_item:\n                self._is_panning = True\n                self._pan_start = QPointF(float(event.pos().x()), float(event.pos().y()))\n                self.setCursor(Qt.CursorShape.ClosedHandCursor)\n                return\n</replace>\n</edit>\n\nNow let's run the tests to see if everything works:\n\n<run_tests/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/belt_connector.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/belt_connector.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/belt_connector.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/belt_connector.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/belt_connector.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/belt_connector.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/belt_connector.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/belt_connector.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/belt_connector.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/belt_connector.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/belt_connector.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/belt_connector.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/belt_connector.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/belt_connector.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/items/port_item.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/items/port_item.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/canvas/factory_canvas.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/factory_canvas.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nFound 2 errors (2 fixed, 0 remaining).\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_1kn75i4w\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 50 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .........                            [ 36%]\ntests/test_core/test_models.py .........                                 [ 54%]\ntests/test_core/test_room_commands.py ..............                     [ 82%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 50 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_1kn75i4w\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "modified_files": [
+            "src/satisfactory_planner/ui/canvas/belt_connector.py"
+          ],
+          "output": "ruff check --fix src/ tests/ spikes/\nFound 2 errors (2 fixed, 0 remaining).\nruff format src/ tests/ spikes/\n83 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 52 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_1kn75i4w\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 50 items\n\ntests/test_core/test_commands.py .........                               [ 18%]\ntests/test_core/test_flow_solver.py .........                            [ 36%]\ntests/test_core/test_models.py .........                                 [ 54%]\ntests/test_core/test_room_commands.py ..............                     [ 82%]\ntests/test_smoke.py ..                                                   [ 86%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 50 passed in 0.17s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_1kn75i4w\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "files_modified",
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        }
+      ]
+    }
+  ]
+}
