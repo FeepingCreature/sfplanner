@@ -44,7 +44,7 @@ def detect_dangling_ports(graph: FlowGraph) -> list[Warning]:
             for item_name in unconnected_inputs:
                 warnings.append(
                     Warning(
-                        type=WarningType.RESOURCE_UNDERFLOW,
+                        type=WarningType.INPUT_MISSING,
                         message=f"{item_name} input missing.",
                         item_key=node_id,
                         severity=0.8,

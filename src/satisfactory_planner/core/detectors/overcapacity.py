@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from satisfactory_planner.core.flow_models import INFINITE_RATE
 from satisfactory_planner.core.flow_solver import Warning, WarningType
 from satisfactory_planner.core.item_key import ItemKey
 
@@ -32,6 +33,9 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
     # Use bottlenecks from two-pass solve if available
     if model.bottlenecks:
         for edge_id, (theoretical, actual) in model.bottlenecks.items():
+            # Skip if theoretical is our infinity value (open splitter output etc)
+            if theoretical >= INFINITE_RATE - 1:
+                continue
             edge = model.graph.edges[edge_id]
             # Use belt_id if available, otherwise fall back to edge_id
             item_key = edge.belt_id if edge.belt_id else edge_id

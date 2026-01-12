@@ -21,11 +21,41 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
 
     An underflow occurs when a node's input receives less than demanded.
     We backchain to find the root cause.
+
+    Important: We must distinguish input-limited from output-limited.
+    If a building's outputs are reduced because downstream can't consume,
+    the LP proportionally reduces inputs too. We shouldn't report that
+    as input underflow - it's output-limited (downstream bottleneck).
     """
     if not model.success:
         return []
 
     warnings: list[Warning] = []
+
+    # First, detect sink underflow (sink has min_rate but not getting enough)
+    for node_id, node in model.graph.nodes.items():
+        if node.node_type != NodeType.SINK:
+            continue
+
+        incoming = model.graph.get_incoming_edges(node_id)
+        if not incoming:
+            continue
+
+        # Check if sink has a min_rate set and is not being satisfied
+        for input_port in node.inputs:
+            if input_port.rate <= 0 or input_port.rate >= 99999:  # No min set
+                continue
+
+            actual_flow = sum(model.flows.get(e.id, 0.0) for e in incoming)
+            if actual_flow < input_port.rate - 0.01:
+                warnings.append(
+                    Warning(
+                        type=WarningType.RESOURCE_UNDERFLOW,
+                        message=f"Sink wants {input_port.rate:.1f}/min but only receiving {actual_flow:.1f}/min",
+                        item_key=node_id,
+                        severity=(input_port.rate - actual_flow) / input_port.rate,
+                    )
+                )
 
     for node_id, node in model.graph.nodes.items():
         if node.node_type != NodeType.PRODUCER:
@@ -105,8 +135,13 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 )
             )
 
-        # Report the worst underflow (most limiting)
-        if worst_underflow is not None:
+        # Before reporting input underflow, check if building is actually output-limited
+        # If outputs are reduced because downstream can't consume, inputs are proportionally
+        # reduced by the LP - that's not input underflow, it's output-limited.
+        is_output_limited = _is_output_limited(model, node_id, node, outgoing)
+
+        # Report the worst underflow (most limiting) - but only if not output-limited
+        if worst_underflow is not None and not is_output_limited:
             _, item_name, actual_flow, demanded, edges = worst_underflow
             feeding_edge = edges[0] if edges else None
             caused_by = (
@@ -123,6 +158,62 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
             )
 
     return warnings
+
+
+def _is_output_limited(
+    model: SolvedModel,
+    node_id: ItemKey,
+    node: object,  # FlowNode but avoiding circular import
+    outgoing: list[FlowEdge],
+) -> bool:
+    """Check if a producer is output-limited rather than input-limited.
+
+    A building is output-limited if:
+    1. Its outputs are reduced below their intended rate
+    2. The reduction is due to downstream constraints, not belt capacity
+
+    When output-limited, the LP proportionally reduces inputs to match.
+    We shouldn't report that as input underflow.
+    """
+    from satisfactory_planner.core.flow_models import FlowNode
+
+    if not isinstance(node, FlowNode):
+        return False
+
+    if not outgoing or not node.outputs:
+        return False
+
+    # Check if any output is below its intended rate
+    for i, out_edge in enumerate(outgoing):
+        if i >= len(node.outputs):
+            continue
+
+        actual_output = model.flows.get(out_edge.id, 0.0)
+        intended_output = node.outputs[i].rate
+
+        if intended_output <= 0:
+            continue
+
+        # Output is reduced
+        if actual_output < intended_output - 0.01:
+            edge = model.graph.edges[out_edge.id]
+
+            # Is it reduced because belt is at capacity? That's a belt bottleneck.
+            if actual_output >= edge.capacity - 0.01:
+                continue  # Belt-limited, not downstream-limited
+
+            # Is it reduced because downstream can't consume?
+            # Check if actual_output matches downstream demand
+            dest_node = model.graph.nodes.get(edge.dest_node_id)
+            if dest_node:
+                # If the output equals what downstream wants, we're output-limited
+                from satisfactory_planner.core.flow_lp_solver import _get_downstream_demand
+
+                demand = _get_downstream_demand(dest_node, edge.item_name)
+                if demand is not None and abs(actual_output - demand) < 0.01:
+                    return True
+
+    return False
 
 
 def _build_causal_chain(

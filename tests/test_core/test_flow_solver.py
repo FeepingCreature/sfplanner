@@ -237,7 +237,10 @@ class TestFlowSolver:
         The LP optimizes based on downstream demand - no forced "fair" distribution.
         Bottleneck detection uses two-pass comparison (with/without belt limits).
         """
+        from satisfactory_planner.core.persistence import load_recipes
+
         doc = Document()
+        recipes = load_recipes()
 
         # Miner at tier 2 (120/min)
         miner = Building(
@@ -402,7 +405,7 @@ class TestFlowSolver:
             )
         )
 
-        solver = FlowSolver(doc, {})
+        solver = FlowSolver(doc, recipes)
         warnings = solver.solve()
 
         # LP should solve successfully

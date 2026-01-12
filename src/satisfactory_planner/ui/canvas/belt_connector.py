@@ -404,6 +404,18 @@ class BeltConnector:
                             )
                         )
                         break  # Only add each recipe once
+
+            # Offer Sink for known item
+            item_name = self._item_id_to_name(ItemId(item_id))
+            options.append(
+                BuildingOption(
+                    building_type=BuildingType.SINK,
+                    recipe=None,
+                    port_index=0,
+                    display_name=f"Sink: {item_name or item_id}",
+                    item_id=ItemId(item_id),
+                )
+            )
         else:
             # No item known - offer all production buildings without recipes
             for bt in BuildingType:
