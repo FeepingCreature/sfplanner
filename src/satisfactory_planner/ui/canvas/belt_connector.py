@@ -599,6 +599,17 @@ class BeltConnector:
 
         scene_room_id = self._connect_start_item.placement_id
 
+        # For Source, determine the item_id from what we're looking for
+        item_id = None
+        if option.building_type == BuildingType.SOURCE and not self._drag_forward:
+            # When dragging backward, we know what item is needed
+            building = self.canvas.document.find_building(self._connect_start_item.element_id)
+            if building:
+                needed = self._get_all_recipe_inputs(self._connect_start_item, building)
+                if needed:
+                    # Use first needed item (could be smarter but this is reasonable)
+                    item_id = needed[0]
+
         # Create the building
         building = Building(
             id=generate_id(),
@@ -606,6 +617,7 @@ class BeltConnector:
             x=0,
             y=0,
             recipe_id=option.recipe.id if option.recipe else None,
+            item_id=item_id,
         )
 
         # Calculate building position so target port aligns with scene_pos

@@ -44,15 +44,22 @@ class SolvedModel:
     )  # edge_id → (theoretical, actual)
 
 
-def _get_downstream_demand(node: FlowNode, port_index: int) -> float | None:
-    """Get the demand of a node's input port.
+def _get_downstream_demand(node: FlowNode, item_name: str | None) -> float | None:
+    """Get the demand of a node for a specific item.
 
-    For producers, this is the recipe input rate.
+    For producers, this is the recipe input rate for that item.
+    Satisfactory allows any belt ordering on inputs, so we match by item type.
     For splitters/mergers, we return None (no fixed demand).
     """
     if node.node_type == NodeType.PRODUCER:
-        if port_index < len(node.inputs):
-            return node.inputs[port_index].rate
+        if item_name:
+            # Find the input port that matches this item
+            for inp in node.inputs:
+                if inp.item_name == item_name:
+                    return inp.rate
+        # Fallback: if no item match, return first input rate
+        if node.inputs:
+            return node.inputs[0].rate
     elif node.node_type == NodeType.SINK:
         # Sinks consume everything, no limit
         return None
@@ -297,7 +304,7 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
             for i, out_edge in enumerate(outgoing):
                 if i < len(node.outputs):
                     dest_node = graph.nodes[out_edge.dest_node_id]
-                    demand = _get_downstream_demand(dest_node, out_edge.dest_port_index)
+                    demand = _get_downstream_demand(dest_node, out_edge.item_name)
                     if demand is not None:
                         row = [0.0] * n_edges
                         row[edge_to_idx[out_edge.id]] = 1.0
@@ -351,7 +358,7 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
                 # Instead, we let the LP optimize flow based on actual demand
                 for out_edge in outgoing:
                     dest_node = graph.nodes[out_edge.dest_node_id]
-                    demand = _get_downstream_demand(dest_node, out_edge.dest_port_index)
+                    demand = _get_downstream_demand(dest_node, out_edge.item_name)
                     if demand is not None:
                         row = [0.0] * n_edges
                         row[edge_to_idx[out_edge.id]] = 1.0
