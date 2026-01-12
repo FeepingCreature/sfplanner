@@ -206,7 +206,6 @@ class ConstraintSystem:
         bounds_tightened = 0
         trivial_removed = 0
         duplicates_removed = 0
-        redundant_eq_removed = 0
 
         while changed and iterations < max_iterations:
             changed = False
@@ -304,25 +303,10 @@ class ConstraintSystem:
                 new_constraints.append(constraint)
             self.constraints = new_constraints
 
-            # Pass 6: Remove redundant simple equalities (already merged)
-            new_constraints = []
-            for constraint in self.constraints:
-                eq = constraint.is_simple_equality()
-                if eq:
-                    v1, v2 = eq
-                    c1 = self._find_canonical(v1)
-                    c2 = self._find_canonical(v2)
-                    if c1 == c2:
-                        redundant_eq_removed += 1
-                        changed = True
-                        continue
-                new_constraints.append(constraint)
-            self.constraints = new_constraints
-
-            # Note: Pass 7 (source variable elimination) was removed because
-            # Pass 1 already handles all 2-var equalities via is_two_var_equality().
-            # The remaining equalities are 3+ var conservation constraints
-            # (splitters/mergers) which require full Gaussian elimination.
+            # Note: Pass 6 (redundant equality removal) and Pass 7 (source variable
+            # elimination) were removed - Pass 1 already handles all 2-var equalities
+            # via is_two_var_equality(). The remaining equalities are 3+ var
+            # conservation constraints (splitters/mergers).
 
         # Log summary if any simplifications occurred
         final_constraints = len(self.constraints)
@@ -340,8 +324,7 @@ class ConstraintSystem:
             )
             logger.debug(
                 f"  Details: {merges} var merges, {bounds_tightened} bounds tightened, "
-                f"{trivial_removed} trivial removed, {duplicates_removed} dup bounds removed, "
-                f"{redundant_eq_removed} redundant eq removed"
+                f"{trivial_removed} trivial removed, {duplicates_removed} dup bounds removed"
             )
 
     def get_reduced_system(
