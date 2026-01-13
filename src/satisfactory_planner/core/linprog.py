@@ -388,17 +388,17 @@ class LPResult:
 
 
 def linsolve(
-    objective,
-    ineq_left=(),
-    ineq_right=(),
-    eq_left=(),
-    eq_right=(),
-    nonneg_variables=(),
-    num=RealFiniteTolerance(),
-    verbose=False,
-    do_coerce=True,
-    return_duals=False,
-):
+    objective: list[float],
+    ineq_left: list[list[float]] | tuple[()] = (),
+    ineq_right: list[float] | tuple[()] = (),
+    eq_left: list[list[float]] | tuple[()] = (),
+    eq_right: list[float] | tuple[()] = (),
+    nonneg_variables: list[int] | tuple[()] = (),
+    num: NumberTypeclass = RealFiniteTolerance(),
+    verbose: bool = False,
+    do_coerce: bool = True,
+    return_duals: bool = False,
+) -> tuple[str, list[float] | None] | LPResult:
     """Solve arbitrary linear programming problem.
 
     Minimize linear function Cx -> min under set of conditions:

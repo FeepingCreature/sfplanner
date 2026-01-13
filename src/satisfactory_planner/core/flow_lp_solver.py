@@ -23,9 +23,19 @@ from satisfactory_planner.core.flow_models import (
     NodeType,
 )
 from satisfactory_planner.core.item_key import ItemKey
-from satisfactory_planner.core.linprog import RESOLUTION_SOLVED, linsolve
+from satisfactory_planner.core.linprog import RESOLUTION_SOLVED, LPResult, linsolve
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ConstraintSource:
+    """Identifies the source of an LP constraint for bottleneck tracing."""
+
+    kind: str  # "production_rate", "downstream_demand", "belt_capacity", "input_limit"
+    edge_id: ItemKey  # The edge this constraint applies to
+    node_id: ItemKey | None = None  # The node that owns this constraint (if applicable)
+    description: str = ""  # Human-readable description
 
 
 @dataclass
@@ -44,6 +54,10 @@ class SolvedModel:
     bottlenecks: dict[ItemKey, tuple[float, float]] = field(
         default_factory=dict
     )  # edge_id → (theoretical, actual)
+    # Binding constraint sources from LP duals
+    binding_sources: dict[ConstraintSource, float] = field(
+        default_factory=dict
+    )  # source → dual value
 
 
 def _get_downstream_demand(node: FlowNode, item_name: str | None) -> float | None:
@@ -91,27 +105,28 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
         return SolvedModel(graph=graph, flows={})
 
     # Two-pass solve: first without belt limits, then with
-    theoretical_result = _solve_lp(graph, use_belt_limits=False)
-    if not theoretical_result[0]:
+    theo_success, theo_flows, theo_msg, _ = _solve_lp(graph, use_belt_limits=False)
+    if not theo_success:
         # If theoretical solve fails, return the error
         return SolvedModel(
             graph=graph,
             flows={},
             success=False,
-            message=theoretical_result[2],
+            message=theo_msg,
         )
 
-    actual_result = _solve_lp(graph, use_belt_limits=True)
-    if not actual_result[0]:
+    actual_success, actual_flows, actual_msg, binding_sources = _solve_lp(
+        graph, use_belt_limits=True
+    )
+    if not actual_success:
         return SolvedModel(
             graph=graph,
             flows={},
             success=False,
-            message=actual_result[2],
+            message=actual_msg,
         )
 
-    theoretical_flows = theoretical_result[1]
-    actual_flows = actual_result[1]
+    theoretical_flows = theo_flows
 
     # Identify belt bottlenecks: where theoretical > actual
     bottlenecks: dict[ItemKey, tuple[float, float]] = {}
@@ -127,8 +142,8 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
     # Write DOT file for visualization (disabled for now)
     # _write_dot_file(graph, actual_flows, theoretical_flows, bottlenecks)
 
-    # Compute efficiencies using actual flows
-    efficiencies = _compute_efficiencies(graph, actual_flows)
+    # Compute efficiencies using actual flows and binding constraint info
+    efficiencies = _compute_efficiencies(graph, actual_flows, binding_sources)
 
     return SolvedModel(
         graph=graph,
@@ -137,6 +152,7 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
         success=True,
         theoretical_flows=theoretical_flows,
         bottlenecks=bottlenecks,
+        binding_sources=binding_sources,
     )
 
 
@@ -265,7 +281,9 @@ def _write_dot_file(
     logger.info(f"  View with: dot -Tpng {dot_path} -o ~/flow_graph.png && open ~/flow_graph.png")
 
 
-def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemKey, float], str]:
+def _solve_lp(
+    graph: FlowGraph, use_belt_limits: bool
+) -> tuple[bool, dict[ItemKey, float], str, dict[ConstraintSource, float]]:
     """Run the LP solver.
 
     Args:
@@ -273,7 +291,7 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
         use_belt_limits: If True, apply belt capacity constraints
 
     Returns:
-        (success, flows, error_message)
+        (success, flows, error_message, binding_sources)
     """
     # Create edge index mapping
     edge_ids = list(graph.edges.keys())
@@ -281,8 +299,7 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
     n_edges = len(edge_ids)
 
     # Use constraint optimizer for symbolic simplification
-    # Type parameter is for constraint source tracking (not yet used)
-    cs: ConstraintSystem[None] = ConstraintSystem(n_vars=n_edges)
+    cs: ConstraintSystem[ConstraintSource] = ConstraintSystem(n_vars=n_edges)
     cs.objective = [-1.0] * n_edges  # maximize total flow
 
     for node_id, node in graph.nodes.items():
@@ -293,7 +310,16 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
             # Miner/Source: no inputs, output <= production rate
             for i, out_edge in enumerate(outgoing):
                 if i < len(node.outputs):
-                    cs.add_inequality({edge_to_idx[out_edge.id]: 1.0}, node.outputs[i].rate)
+                    cs.add_inequality(
+                        {edge_to_idx[out_edge.id]: 1.0},
+                        node.outputs[i].rate,
+                        source=ConstraintSource(
+                            kind="production_rate",
+                            edge_id=out_edge.id,
+                            node_id=node_id,
+                            description=f"Miner output rate {node.outputs[i].rate}/min",
+                        ),
+                    )
 
         elif node.node_type == NodeType.PRODUCER:
             # Producer: outputs are LIMITED by downstream demand (inequality)
@@ -302,10 +328,28 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
                     dest_node = graph.nodes[out_edge.dest_node_id]
                     demand = _get_downstream_demand(dest_node, out_edge.item_name)
                     if demand is not None:
-                        cs.add_inequality({edge_to_idx[out_edge.id]: 1.0}, demand)
+                        cs.add_inequality(
+                            {edge_to_idx[out_edge.id]: 1.0},
+                            demand,
+                            source=ConstraintSource(
+                                kind="downstream_demand",
+                                edge_id=out_edge.id,
+                                node_id=out_edge.dest_node_id,
+                                description=f"Downstream demand {demand}/min",
+                            ),
+                        )
 
                     # Output also can't exceed production capacity
-                    cs.add_inequality({edge_to_idx[out_edge.id]: 1.0}, node.outputs[i].rate)
+                    cs.add_inequality(
+                        {edge_to_idx[out_edge.id]: 1.0},
+                        node.outputs[i].rate,
+                        source=ConstraintSource(
+                            kind="production_rate",
+                            edge_id=out_edge.id,
+                            node_id=node_id,
+                            description=f"Production rate {node.outputs[i].rate}/min",
+                        ),
+                    )
 
             if incoming:
                 # Build map of item_name -> total incoming flow for that item
@@ -319,7 +363,17 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
                     if item_edges:
                         # Sum of all belts for this item <= required rate
                         coeffs = {edge_to_idx[e.id]: 1.0 for e in item_edges}
-                        cs.add_inequality(coeffs, input_port.rate)
+                        # Use first edge as representative for source tracking
+                        cs.add_inequality(
+                            coeffs,
+                            input_port.rate,
+                            source=ConstraintSource(
+                                kind="input_limit",
+                                edge_id=item_edges[0].id,
+                                node_id=node_id,
+                                description=f"Input limit {input_port.rate}/min for {input_port.item_name}",
+                            ),
+                        )
                     elif input_port.item_name:
                         # Missing input - force outputs to zero
                         for out_edge in outgoing:
@@ -366,7 +420,16 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
                     dest_node = graph.nodes[out_edge.dest_node_id]
                     demand = _get_downstream_demand(dest_node, out_edge.item_name)
                     if demand is not None:
-                        cs.add_inequality({edge_to_idx[out_edge.id]: 1.0}, demand)
+                        cs.add_inequality(
+                            {edge_to_idx[out_edge.id]: 1.0},
+                            demand,
+                            source=ConstraintSource(
+                                kind="downstream_demand",
+                                edge_id=out_edge.id,
+                                node_id=out_edge.dest_node_id,
+                                description=f"Downstream demand {demand}/min",
+                            ),
+                        )
 
         elif node.node_type == NodeType.MERGER:
             if incoming and outgoing:
@@ -382,7 +445,16 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
             # Sink inputs are limited by the port rate
             for i, in_edge in enumerate(incoming):
                 if i < len(node.inputs) and node.inputs[i].rate < INFINITE_RATE - 1:
-                    cs.add_inequality({edge_to_idx[in_edge.id]: 1.0}, node.inputs[i].rate)
+                    cs.add_inequality(
+                        {edge_to_idx[in_edge.id]: 1.0},
+                        node.inputs[i].rate,
+                        source=ConstraintSource(
+                            kind="downstream_demand",
+                            edge_id=in_edge.id,
+                            node_id=node_id,
+                            description=f"Sink capacity {node.inputs[i].rate}/min",
+                        ),
+                    )
 
         elif node.node_type == NodeType.PORT_IN:
             # PORT_IN: receives from external belt, passes to internal
@@ -419,9 +491,18 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
         idx = edge_to_idx[edge_id]
         if use_belt_limits:
             upper_bound = edge.capacity if edge.capacity > 0 else 10000.0
+            cs.add_inequality(
+                {idx: 1.0},
+                upper_bound,
+                source=ConstraintSource(
+                    kind="belt_capacity",
+                    edge_id=edge_id,
+                    description=f"Belt capacity {upper_bound}/min",
+                ),
+            )
         else:
             upper_bound = INFINITE_RATE
-        cs.add_inequality({idx: 1.0}, upper_bound)
+            cs.add_inequality({idx: 1.0}, upper_bound)  # No source - not a real constraint
 
     # Optimize the constraint system before solving
     cs.optimize()
@@ -431,17 +512,21 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
 
     # If no active variables, return zero flows
     if not active_vars:
-        return (True, dict.fromkeys(edge_ids, 0.0), "")
+        return (True, dict.fromkeys(edge_ids, 0.0), "", {})
 
-    # Solve using pylinprog (vendored, untyped)
-    resolution, reduced_solution = linsolve(  # type: ignore[no-untyped-call]
+    # Solve using pylinprog with dual extraction
+    result = linsolve(
         objective,
         ineq_left=ineq_matrix,
         ineq_right=ineq_rhs,
         eq_left=eq_matrix,
         eq_right=eq_rhs,
         nonneg_variables=list(range(len(active_vars))),
+        return_duals=True,
     )
+    assert isinstance(result, LPResult)
+    resolution = result.resolution
+    reduced_solution = result.solution
 
     if resolution != RESOLUTION_SOLVED:
         from satisfactory_planner.core.linprog import (
@@ -463,18 +548,26 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
         else:
             msg = f"Flow analysis failed: {resolution}"
 
-        return (False, {}, msg)
+        return (False, {}, msg, {})
 
     # Expand reduced solution back to full variable space
+    assert reduced_solution is not None
     full_solution = cs.expand_solution(reduced_solution, active_vars)
+
+    # Extract binding constraint sources (only when using belt limits - the "real" solve)
+    binding_sources: dict[ConstraintSource, float] = {}
+    if use_belt_limits and result.ineq_duals:
+        binding_sources = cs.get_binding_sources(reduced_solution, active_vars, result.ineq_duals)
 
     # Extract flows
     flows = {edge_ids[i]: max(0.0, full_solution[i]) for i in range(n_edges)}
-    return (True, flows, "")
+    return (True, flows, "", binding_sources)
 
 
 def _compute_efficiencies(
-    graph: FlowGraph, flows: dict[ItemKey, float]
+    graph: FlowGraph,
+    flows: dict[ItemKey, float],
+    binding_sources: dict[ConstraintSource, float] | None = None,
 ) -> dict[ItemKey, BuildingEfficiency]:
     """Compute duty cycle and limiting factor for each producer.
 
@@ -535,7 +628,9 @@ def _compute_efficiencies(
             continue
 
         duty_cycle = min_ratio
-        limiting_factor, limiting_details = _find_limiting_factor(graph, flows, node, duty_cycle)
+        limiting_factor, limiting_details = _find_limiting_factor(
+            graph, flows, node, duty_cycle, binding_sources
+        )
 
         efficiencies[node_id] = BuildingEfficiency(
             building_id=node.building_id or node_id,
@@ -555,10 +650,16 @@ def _find_limiting_factor(
     flows: dict[ItemKey, float],
     node: FlowNode,
     duty_cycle: float,
+    binding_sources: dict[ConstraintSource, float] | None = None,
 ) -> tuple[LimitingFactor, str]:
     """Determine why a producer isn't at 100% duty cycle.
 
-    Returns the MOST limiting factor (lowest ratio), not just the first one found.
+    Uses LP dual values (shadow prices) to identify the TRUE limiting constraint.
+    This avoids the problem where output limits cause proportionally reduced inputs
+    (due to recipe ratios), making it look like an input problem when it's really
+    an output problem.
+
+    A constraint with a positive dual is "binding" - it's actually limiting flow.
     """
     if duty_cycle >= 0.999:
         return LimitingFactor.NONE, "Running at full capacity"
@@ -566,7 +667,44 @@ def _find_limiting_factor(
     incoming = graph.get_incoming_edges(node.id)
     outgoing = graph.get_outgoing_edges(node.id)
 
-    # Track the most limiting factor
+    # If we have binding source info, use it to determine the true limiting factor
+    if binding_sources:
+        # Look for binding constraints on this node's edges
+        # Priority: belt_capacity > downstream_demand > production_rate > input_limit
+        best_source: ConstraintSource | None = None
+        best_dual = 0.0
+
+        for source, dual in binding_sources.items():
+            if dual <= 0:
+                continue  # Not actually binding
+
+            # Check if this constraint affects this node
+            is_relevant = False
+            if (
+                source.node_id == node.id
+                or source.edge_id in [e.id for e in outgoing]
+                or source.edge_id in [e.id for e in incoming]
+            ):
+                is_relevant = True
+
+            if is_relevant and dual > best_dual:
+                best_dual = dual
+                best_source = source
+
+        if best_source:
+            # Map constraint kind to limiting factor
+            if best_source.kind == "belt_capacity":
+                return LimitingFactor.BELT_CAPACITY, best_source.description
+            elif best_source.kind == "downstream_demand":
+                return LimitingFactor.DOWNSTREAM, best_source.description
+            elif best_source.kind == "production_rate":
+                # This shouldn't normally be the limit for a running building
+                return LimitingFactor.NONE, best_source.description
+            elif best_source.kind == "input_limit":
+                return LimitingFactor.INPUT_STARVED, best_source.description
+
+    # Fallback: heuristic analysis (original logic)
+    # This is used when binding_sources is not available or doesn't find a match
     worst_ratio: float | None = None
     worst_factor = LimitingFactor.NONE
     worst_details = "Unknown"
