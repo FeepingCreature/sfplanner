@@ -316,7 +316,7 @@ def _solve_lp(
                             kind="production_rate",
                             edge_id=out_edge.id,
                             node_id=node_id,
-                            description=f"Miner output rate {node.outputs[i].rate}/min",
+                            description=f"Source output rate {node.outputs[i].rate}/min",
                         ),
                     )
 
