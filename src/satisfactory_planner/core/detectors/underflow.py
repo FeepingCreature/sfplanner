@@ -171,12 +171,19 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 )
             )
 
-        # Report the worst underflow (most limiting) - BUT only if we don't already
-        # have a known limiting factor from the LP solver.
-        # If the LP identified DOWNSTREAM, BELT_CAPACITY, or INPUT_STARVED,
-        # we trust that result instead of our heuristic.
-        if worst_underflow is not None and not has_known_limiting_factor:
-            # Truly input-starved - report the underflow
+        # Report underflow based on LP's limiting factor analysis OR heuristic fallback
+        if efficiency and efficiency.limiting_factor == LimitingFactor.INPUT_STARVED:
+            # LP identified INPUT_STARVED - use its accurate info for the warning
+            warnings.append(
+                Warning(
+                    type=WarningType.RESOURCE_UNDERFLOW,
+                    message=efficiency.limiting_details,
+                    item_key=node_id,
+                    severity=1.0 - efficiency.duty_cycle,
+                )
+            )
+        elif worst_underflow is not None and not has_known_limiting_factor:
+            # Fallback: use heuristic if LP didn't identify a limiting factor
             _, item_name, actual_flow, demanded, edges = worst_underflow
             feeding_edge = edges[0] if edges else None
             caused_by = (
