@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from satisfactory_planner.core.flow_models import FlowEdge, NodeType
+from satisfactory_planner.core.flow_models import NodeType
 from satisfactory_planner.core.flow_solver import Warning, WarningType
 from satisfactory_planner.core.item_key import ItemKey
 
@@ -86,14 +86,13 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                     )
             continue
 
-        # Build a map of item_name -> (total incoming flow, edges) for that item
+        # Build a map of item_name -> total incoming flow for that item
         # (Satisfactory allows any belt ordering, so we match by item type not port index)
-        incoming_by_item: dict[str, tuple[float, list[FlowEdge]]] = {}
+        incoming_by_item: dict[str, float] = {}
         for edge in incoming:
             if edge.item_name:
                 flow = model.flows.get(edge.id, 0.0)
-                current = incoming_by_item.get(edge.item_name, (0.0, []))
-                incoming_by_item[edge.item_name] = (current[0] + flow, current[1] + [edge])
+                incoming_by_item[edge.item_name] = incoming_by_item.get(edge.item_name, 0.0) + flow
 
         # Check if this node is output-limited or already has a known limiting factor.
         # If the building is downstream/belt limited, reduced/zero input flow
@@ -105,21 +104,10 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
             LimitingFactor.DOWNSTREAM,
             LimitingFactor.BELT_CAPACITY,
         )
-        # If LP already knows which input is starved, don't report underflow warnings
-        # (the efficiency.limiting_details already has the correct info)
-        has_known_limiting_factor = efficiency and efficiency.limiting_factor in (
-            LimitingFactor.DOWNSTREAM,
-            LimitingFactor.BELT_CAPACITY,
-            LimitingFactor.INPUT_STARVED,
-        )
 
-        # Track missing inputs and underflows separately
-        # We want to report the MOST limiting factor (lowest ratio)
+        # Track missing inputs
         missing_inputs: list[str] = []
         truly_missing_inputs: list[str] = []  # No belt connected at all
-        worst_underflow: tuple[float, str, float, float, list[FlowEdge]] | None = (
-            None  # (ratio, item, actual, demanded, edges)
-        )
 
         for input_port in node.inputs:
             if input_port.rate <= 0 or not input_port.item_name:
@@ -130,24 +118,10 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 # No belt at all for this item - this is ALWAYS a problem
                 truly_missing_inputs.append(input_port.item_name)
             else:
-                actual_flow, edges = item_data
-                demanded = input_port.rate
-
-                if actual_flow < 0.01:
+                actual_flow = item_data
+                if actual_flow < 0.01 and not is_output_limited:
                     # Belt exists but no flow - only report if NOT output-limited
-                    if not is_output_limited:
-                        missing_inputs.append(input_port.item_name)
-                elif actual_flow < demanded - 0.01:
-                    # Some flow but not enough - track if it's the worst
-                    ratio = actual_flow / demanded
-                    if worst_underflow is None or ratio < worst_underflow[0]:
-                        worst_underflow = (
-                            ratio,
-                            input_port.item_name,
-                            actual_flow,
-                            demanded,
-                            edges,
-                        )
+                    missing_inputs.append(input_port.item_name)
 
         # Report truly missing inputs (no belt connected) - always a problem
         for item_name in truly_missing_inputs:
@@ -171,7 +145,7 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 )
             )
 
-        # Report underflow based on LP's limiting factor analysis OR heuristic fallback
+        # Report underflow based on LP's limiting factor analysis
         if efficiency and efficiency.limiting_factor == LimitingFactor.INPUT_STARVED:
             # LP identified INPUT_STARVED - use its accurate info for the warning
             warnings.append(
@@ -180,22 +154,6 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                     message=efficiency.limiting_details,
                     item_key=node_id,
                     severity=1.0 - efficiency.duty_cycle,
-                )
-            )
-        elif worst_underflow is not None and not has_known_limiting_factor:
-            # Fallback: use heuristic if LP didn't identify a limiting factor
-            _, item_name, actual_flow, demanded, edges = worst_underflow
-            feeding_edge = edges[0] if edges else None
-            caused_by = (
-                _build_causal_chain(model, feeding_edge.id, demanded) if feeding_edge else []
-            )
-            warnings.append(
-                Warning(
-                    type=WarningType.RESOURCE_UNDERFLOW,
-                    message=f"{item_name}: {actual_flow:.1f} < {demanded:.1f}/min demanded",
-                    item_key=node_id,
-                    severity=(demanded - actual_flow) / demanded,
-                    caused_by=caused_by,
                 )
             )
 
