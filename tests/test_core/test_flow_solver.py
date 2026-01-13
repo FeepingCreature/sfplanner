@@ -459,6 +459,144 @@ class TestLimitingFactorDetection:
             f"but got {smelter_eff.limiting_factor}: {smelter_eff.limiting_details}"
         )
 
+    def test_multi_stage_production_chain(self) -> None:
+        """When sink caps output, all upstream producers should identify the constraint.
+
+        Scenario:
+        - Source Iron Plate -> Assembler
+        - Source Iron Rod -> Constructor Screw -> Assembler
+        - Assembler Reinforced Iron Plate -> Sink (capped at 1.0/min)
+
+        The sink's cap limits the whole chain. The Constructor should report
+        DOWNSTREAM (it's output-limited because the Assembler can't consume more),
+        not "Unknown".
+        """
+        from satisfactory_planner.core.flow_lp_solver import LimitingFactor
+        from satisfactory_planner.core.persistence import load_recipes
+
+        doc = Document()
+        recipes = load_recipes()
+
+        # Source for Iron Plates (direct to assembler)
+        source_plates = Building(
+            id="source_plates",
+            building_type=BuildingType.SOURCE,
+            x=-200,
+            y=-50,
+            item_id="Iron Plate",
+            max_rate=100.0,
+        )
+        doc.add_building(source_plates)
+
+        # Source for Iron Rods (feeds constructor)
+        source_rods = Building(
+            id="source_rods",
+            building_type=BuildingType.SOURCE,
+            x=-200,
+            y=50,
+            item_id="Iron Rod",
+            max_rate=100.0,
+        )
+        doc.add_building(source_rods)
+
+        # Constructor making Screws from Iron Rods
+        constructor = Building(
+            id="constructor",
+            building_type=BuildingType.CONSTRUCTOR,
+            x=-100,
+            y=50,
+            recipe_id="Screw",
+        )
+        doc.add_building(constructor)
+
+        # Assembler making Reinforced Iron Plates
+        assembler = Building(
+            id="assembler",
+            building_type=BuildingType.ASSEMBLER,
+            x=0,
+            y=0,
+            recipe_id="Reinforced Iron Plate",
+        )
+        doc.add_building(assembler)
+
+        # Sink with cap - THE BOTTLENECK
+        sink = Building(
+            id="sink",
+            building_type=BuildingType.SINK,
+            x=100,
+            y=0,
+            item_id="Reinforced Iron Plate",
+            max_rate=1.0,  # Very low cap
+        )
+        doc.add_building(sink)
+
+        # Connect: source_plates -> assembler input 0
+        doc.add_belt(
+            Belt(
+                id="b_plates_assembler",
+                tier=1,
+                source_building_id="source_plates",
+                source_port_index=0,
+                dest_building_id="assembler",
+                dest_port_index=0,
+            )
+        )
+
+        # Connect: source_rods -> constructor
+        doc.add_belt(
+            Belt(
+                id="b_rods_constructor",
+                tier=1,
+                source_building_id="source_rods",
+                source_port_index=0,
+                dest_building_id="constructor",
+                dest_port_index=0,
+            )
+        )
+
+        # Connect: constructor -> assembler input 1
+        doc.add_belt(
+            Belt(
+                id="b_constructor_assembler",
+                tier=1,
+                source_building_id="constructor",
+                source_port_index=0,
+                dest_building_id="assembler",
+                dest_port_index=1,
+            )
+        )
+
+        # Connect: assembler -> sink
+        doc.add_belt(
+            Belt(
+                id="b_assembler_sink",
+                tier=1,
+                source_building_id="assembler",
+                source_port_index=0,
+                dest_building_id="sink",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc, recipes)
+        solver.solve()
+
+        # Get efficiency for the constructor
+        constructor_key = ItemKey("constructor")
+        constructor_eff = solver.get_efficiency(constructor_key)
+
+        assert constructor_eff is not None, "Constructor should have efficiency info"
+        assert constructor_eff.duty_cycle < 1.0, (
+            f"Duty cycle should be less than 100% (sink caps output), got {constructor_eff.duty_cycle}"
+        )
+
+        # THE KEY ASSERTION: Constructor should be DOWNSTREAM limited
+        # The sink caps the assembler, which caps demand for screws from constructor
+        assert constructor_eff.limiting_factor == LimitingFactor.DOWNSTREAM, (
+            f"Constructor should be DOWNSTREAM (assembler can't consume more screws), "
+            f"but got {constructor_eff.limiting_factor}: {constructor_eff.limiting_details}"
+        )
+
 
 class TestFlowSolver:
     """Tests for the flow solver."""

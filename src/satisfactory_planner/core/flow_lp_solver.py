@@ -709,7 +709,67 @@ def _find_limiting_factor(
     if result:
         return result
 
+    # Still nothing? Walk downstream through producers to find output constraints
+    # This handles cases like: Constructor -> Assembler -> Sink (capped)
+    # The constructor is limited by the assembler's reduced demand for screws
+    result = _find_downstream_binding_constraint(graph, outgoing, binding_by_edge)
+    if result:
+        return result
+
     return LimitingFactor.NONE, "Unknown (no matching constraint)"
+
+
+def _find_downstream_binding_constraint(
+    graph: FlowGraph,
+    starting_edges: list[FlowEdge],
+    binding_by_edge: dict[ItemKey, tuple[ConstraintSource, float]],
+) -> tuple[LimitingFactor, str] | None:
+    """Walk downstream through producers to find binding constraints.
+
+    This handles multi-stage production chains where the output is limited
+    by a downstream bottleneck (e.g., Constructor -> Assembler -> capped Sink).
+    The constructor's output is limited because the assembler can't consume more.
+    """
+    from collections import deque
+
+    visited: set[ItemKey] = set()
+    queue: deque[FlowEdge] = deque(starting_edges)
+
+    while queue:
+        edge = queue.popleft()
+        if edge.id in visited:
+            continue
+        visited.add(edge.id)
+
+        # Check if this edge has a binding constraint
+        if edge.id in binding_by_edge:
+            source, _ = binding_by_edge[edge.id]
+            if source.kind == "downstream_demand":
+                return LimitingFactor.DOWNSTREAM, source.description
+            elif source.kind == "belt_capacity":
+                return LimitingFactor.BELT_CAPACITY, source.description
+
+        # Get the destination node of this edge
+        dest_node = graph.nodes.get(edge.dest_node_id)
+        if not dest_node:
+            continue
+
+        # For producers, continue walking downstream through their outputs
+        # This traces through the production chain
+        if dest_node.node_type == NodeType.PRODUCER:
+            downstream_edges = graph.get_outgoing_edges(dest_node.id)
+            for downstream_edge in downstream_edges:
+                if downstream_edge.id not in visited:
+                    queue.append(downstream_edge)
+
+        # For splitters/mergers, also continue downstream
+        if dest_node.node_type in (NodeType.SPLITTER, NodeType.MERGER):
+            downstream_edges = graph.get_outgoing_edges(dest_node.id)
+            for downstream_edge in downstream_edges:
+                if downstream_edge.id not in visited:
+                    queue.append(downstream_edge)
+
+    return None
 
 
 def _find_upstream_binding_constraint(
