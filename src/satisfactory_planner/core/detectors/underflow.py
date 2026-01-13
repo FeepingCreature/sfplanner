@@ -86,60 +86,38 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                     )
             continue
 
-        # Build a map of item_name -> total incoming flow for that item
+        # Build a set of items that have belts connected (regardless of flow)
+        # AND a map of item_name -> total incoming flow for that item
         # (Satisfactory allows any belt ordering, so we match by item type not port index)
+        items_with_belts: set[str] = set()
         incoming_by_item: dict[str, float] = {}
         for edge in incoming:
             if edge.item_name:
+                items_with_belts.add(edge.item_name)
                 flow = model.flows.get(edge.id, 0.0)
                 incoming_by_item[edge.item_name] = incoming_by_item.get(edge.item_name, 0.0) + flow
 
-        # Check if this node is output-limited or already has a known limiting factor.
-        # If the building is downstream/belt limited, reduced/zero input flow
-        # is a CONSEQUENCE, not a cause - don't report missing inputs.
-        # If the LP already identified INPUT_STARVED with a specific input,
-        # don't override it with our heuristic.
+        # Get efficiency info from LP to determine the true limiting factor
         efficiency = model.efficiencies.get(node_id)
-        is_output_limited = efficiency and efficiency.limiting_factor in (
-            LimitingFactor.DOWNSTREAM,
-            LimitingFactor.BELT_CAPACITY,
-        )
 
-        # Track missing inputs
-        missing_inputs: list[str] = []
-        truly_missing_inputs: list[str] = []  # No belt connected at all
+        # Track truly missing inputs (no belt connected at all)
+        truly_missing_inputs: list[str] = []
 
         for input_port in node.inputs:
             if input_port.rate <= 0 or not input_port.item_name:
                 continue
 
-            item_data = incoming_by_item.get(input_port.item_name)
-            if item_data is None:
+            if input_port.item_name not in items_with_belts:
                 # No belt at all for this item - this is ALWAYS a problem
                 truly_missing_inputs.append(input_port.item_name)
-            else:
-                actual_flow = item_data
-                if actual_flow < 0.01 and not is_output_limited:
-                    # Belt exists but no flow - only report if NOT output-limited
-                    missing_inputs.append(input_port.item_name)
 
         # Report truly missing inputs (no belt connected) - always a problem
+        # Zero flow with a belt connected is NOT "input missing" - it's an upstream issue
         for item_name in truly_missing_inputs:
             warnings.append(
                 Warning(
                     type=WarningType.INPUT_MISSING,
                     message=f"{item_name} input not connected.",
-                    item_key=node_id,
-                    severity=1.0,
-                )
-            )
-
-        # Report missing inputs (belt exists but no flow) - only if not output-limited
-        for item_name in missing_inputs:
-            warnings.append(
-                Warning(
-                    type=WarningType.INPUT_MISSING,
-                    message=f"{item_name} input missing.",
                     item_key=node_id,
                     severity=1.0,
                 )
