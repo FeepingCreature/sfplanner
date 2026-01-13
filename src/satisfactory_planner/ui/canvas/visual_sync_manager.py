@@ -264,13 +264,20 @@ class VisualSyncManager:
         Groups warnings by element and shows only the highest-priority warning
         for each element (e.g., INPUT_MISSING takes precedence over RESOURCE_UNDERFLOW).
         """
+        import logging
+
         from satisfactory_planner.core.flow_solver import Warning
         from satisfactory_planner.ui.items.warning_icon_item import WARNING_PRIORITY
+
+        logger = logging.getLogger(__name__)
 
         # Remove existing warning icons
         for icon in self._warning_icons:
             self.canvas._scene.removeItem(icon)
         self._warning_icons.clear()
+
+        logger.debug(f"_update_warning_icons: {len(warnings)} warnings")
+        logger.debug(f"  _building_items keys: {list(self.canvas._building_items.keys())}")
 
         # Group warnings by element, keeping only highest priority per element
         warnings_by_element: dict[ItemKey, Warning] = {}
@@ -291,7 +298,9 @@ class VisualSyncManager:
 
         # Add warning icons for the highest-priority warning per element
         for warning in warnings_by_element.values():
+            logger.debug(f"  warning: {warning.type.value} item_key={warning.item_key}")
             position = self._get_element_position(warning.item_key)
+            logger.debug(f"    position={position}")
             if position:
                 # Offset slightly so icon doesn't cover the element
                 offset_pos = QPointF(position.x() + 30, position.y() - 10)
