@@ -281,7 +281,8 @@ def _solve_lp(graph: FlowGraph, use_belt_limits: bool) -> tuple[bool, dict[ItemK
     n_edges = len(edge_ids)
 
     # Use constraint optimizer for symbolic simplification
-    cs = ConstraintSystem(n_vars=n_edges)
+    # Type parameter is for constraint source tracking (not yet used)
+    cs: ConstraintSystem[None] = ConstraintSystem(n_vars=n_edges)
     cs.objective = [-1.0] * n_edges  # maximize total flow
 
     for node_id, node in graph.nodes.items():

@@ -14,8 +14,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import Generic, TypeVar
 
 logger = logging.getLogger(__name__)
+
+# Type variable for constraint source tags
+T = TypeVar("T")
 
 
 class ConstraintType(Enum):
@@ -125,8 +129,13 @@ class LinearConstraint:
 
 
 @dataclass
-class ConstraintSystem:
-    """A system of linear constraints that can be optimized."""
+class ConstraintSystem(Generic[T]):
+    """A system of linear constraints that can be optimized.
+
+    Generic over T, the type of source tags for constraints.
+    Source tags are passed through without inspection - the LP solver
+    doesn't care what they are, just returns them with binding info.
+    """
 
     n_vars: int
     constraints: list[LinearConstraint] = field(default_factory=list)
@@ -138,13 +147,29 @@ class ConstraintSystem:
     _upper_bounds: dict[int, float] = field(default_factory=dict)  # var -> tightest bound
     _eliminated_vars: set[int] = field(default_factory=set)
 
+    # Source tracking for binding constraint identification
+    _inequality_sources: list[T | None] = field(default_factory=list)  # source per inequality
+    _bound_sources: dict[int, T] = field(
+        default_factory=dict
+    )  # canonical var -> source of tightest bound
+    _var_sources: dict[int, set[T]] = field(
+        default_factory=dict
+    )  # canonical var -> all merged sources
+
     def add_equality(self, coeffs: dict[int, float], rhs: float) -> None:
         """Add equality constraint: sum(coeffs[i] * x_i) = rhs."""
         self.constraints.append(LinearConstraint(ConstraintType.EQUALITY, coeffs.copy(), rhs))
 
-    def add_inequality(self, coeffs: dict[int, float], rhs: float) -> None:
-        """Add inequality constraint: sum(coeffs[i] * x_i) <= rhs."""
+    def add_inequality(self, coeffs: dict[int, float], rhs: float, source: T | None = None) -> None:
+        """Add inequality constraint: sum(coeffs[i] * x_i) <= rhs.
+
+        Args:
+            coeffs: Variable coefficients
+            rhs: Right-hand side bound
+            source: Optional source tag for tracking binding constraints
+        """
         self.constraints.append(LinearConstraint(ConstraintType.LESS_EQUAL, coeffs.copy(), rhs))
+        self._inequality_sources.append(source)
 
     def _find_canonical_and_scale(self, var: int) -> tuple[int, float]:
         """Find canonical representative and cumulative scale factor.
@@ -178,6 +203,9 @@ class ConstraintSystem:
 
         After merge: var1 = scale * var2 (if var2 becomes canonical)
         or equivalently: var2 = (1/scale) * var1 (if var1 becomes canonical)
+
+        Also merges source tags: the canonical variable inherits all sources
+        from merged variables.
         """
         c1, s1 = self._find_canonical_and_scale(var1)
         c2, s2 = self._find_canonical_and_scale(var2)
@@ -189,10 +217,21 @@ class ConstraintSystem:
                 # c2 maps to c1: c2 = (s1 / (scale * s2)) * c1
                 self._var_mapping[c2] = c1
                 self._var_scale[c2] = s1 / (scale * s2)
+                # Merge sources: c1 inherits from c2
+                self._merge_var_sources(c1, c2)
             else:
                 # c1 maps to c2: c1 = (scale * s2 / s1) * c2
                 self._var_mapping[c1] = c2
                 self._var_scale[c1] = (scale * s2) / s1
+                # Merge sources: c2 inherits from c1
+                self._merge_var_sources(c2, c1)
+
+    def _merge_var_sources(self, canonical: int, merged: int) -> None:
+        """Merge source tags when combining variables."""
+        if merged in self._var_sources:
+            if canonical not in self._var_sources:
+                self._var_sources[canonical] = set()
+            self._var_sources[canonical].update(self._var_sources[merged])
 
     def optimize(self) -> None:
         """Apply all simplification passes."""
@@ -241,7 +280,20 @@ class ConstraintSystem:
                 constraint.coeffs = {v: c for v, c in new_coeffs.items() if abs(c) > 1e-9}
 
             # Pass 3: Collect and tighten upper bounds (including scaled bounds)
-            for constraint in self.constraints:
+            # Track which source provides the tightest bound
+            for idx, constraint in enumerate(self.constraints):
+                # Get source for this constraint (only inequalities have sources)
+                source = None
+                if constraint.constraint_type == ConstraintType.LESS_EQUAL:
+                    # Find the inequality index for this constraint
+                    ineq_idx = sum(
+                        1
+                        for c in self.constraints[:idx]
+                        if c.constraint_type == ConstraintType.LESS_EQUAL
+                    )
+                    if ineq_idx < len(self._inequality_sources):
+                        source = self._inequality_sources[ineq_idx]
+
                 # Check for simple upper bound first
                 ub = constraint.is_upper_bound()
                 if ub:
@@ -249,10 +301,14 @@ class ConstraintSystem:
                     canonical = self._find_canonical(var)
                     if canonical not in self._upper_bounds:
                         self._upper_bounds[canonical] = bound
+                        if source is not None:
+                            self._bound_sources[canonical] = source
                     else:
                         old_bound = self._upper_bounds[canonical]
-                        self._upper_bounds[canonical] = min(old_bound, bound)
                         if bound < old_bound:
+                            self._upper_bounds[canonical] = bound
+                            if source is not None:
+                                self._bound_sources[canonical] = source
                             bounds_tightened += 1
                 # Also check for scaled upper bounds: coeff * x <= K means x <= K/coeff
                 elif (
@@ -265,10 +321,14 @@ class ConstraintSystem:
                         canonical = self._find_canonical(var)
                         if canonical not in self._upper_bounds:
                             self._upper_bounds[canonical] = effective_bound
+                            if source is not None:
+                                self._bound_sources[canonical] = source
                         else:
                             old_bound = self._upper_bounds[canonical]
                             if effective_bound < old_bound:
                                 self._upper_bounds[canonical] = effective_bound
+                                if source is not None:
+                                    self._bound_sources[canonical] = source
                                 bounds_tightened += 1
 
             # Pass 4: Remove trivial constraints
@@ -400,3 +460,59 @@ class ConstraintSystem:
                 solution[i] = scale * canonical_to_value[canonical]
 
         return solution
+
+    def get_binding_sources(
+        self,
+        reduced_solution: list[float],
+        active_vars: list[int],
+        duals: list[float],
+        tol: float = 1e-6,
+    ) -> dict[T, float]:
+        """Get source tags for binding inequality constraints with their dual values.
+
+        Args:
+            reduced_solution: Solution in reduced variable space
+            active_vars: Mapping from reduced indices to original variables
+            duals: Shadow prices for reduced inequality constraints
+            tol: Tolerance for considering a dual as non-zero
+
+        Returns:
+            Dict mapping source tags to their dual values (only for binding constraints)
+        """
+        binding: dict[T, float] = {}
+
+        # Get the reduced system to match duals to constraints
+        _, _, _, ineq_matrix, ineq_rhs, _ = self.get_reduced_system()
+
+        # Check each reduced inequality constraint
+        for ineq_idx, (row, _rhs) in enumerate(zip(ineq_matrix, ineq_rhs, strict=True)):
+            if ineq_idx >= len(duals):
+                continue
+
+            dual = duals[ineq_idx]
+            if abs(dual) < tol:
+                continue  # Not binding
+
+            # Find which original constraint this came from
+            # For single-variable bounds, we can look up the source directly
+            if sum(1 for c in row if abs(c) > tol) == 1:
+                # Single variable bound - find the variable
+                for i, coeff in enumerate(row):
+                    if abs(coeff) > tol:
+                        canonical = active_vars[i]
+                        if canonical in self._bound_sources:
+                            source = self._bound_sources[canonical]
+                            binding[source] = dual
+                        break
+
+        return binding
+
+    def get_var_sources(self, var: int) -> set[T]:
+        """Get all source tags associated with a variable (through merges)."""
+        canonical = self._find_canonical(var)
+        return self._var_sources.get(canonical, set())
+
+    def get_bound_source(self, var: int) -> T | None:
+        """Get the source tag for the tightest bound on a variable."""
+        canonical = self._find_canonical(var)
+        return self._bound_sources.get(canonical)

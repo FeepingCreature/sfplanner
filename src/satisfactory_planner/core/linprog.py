@@ -6,6 +6,7 @@ License: MIT
 Vendored for packaging size (scipy adds 78MB and doesn't work with Nuitka).
 """
 
+from dataclasses import dataclass
 from fractions import Fraction
 
 
@@ -255,7 +256,11 @@ def _reduce_c_row(c, a, basis, num):
 
 
 def _simplex_with_basis(a, b, c, basis, num, verbose=False):
-    """Internal simplex solver when basis is known and c is already reduced."""
+    """Internal simplex solver when basis is known and c is already reduced.
+
+    Returns:
+        (resolution, solution, final_c) where final_c is the objective row at termination.
+    """
     solver = SimplexSolver(a, b, c, basis, numclass=num, clean_c_row=False)
     if verbose:
         print("############ Regular simplex:#############")
@@ -267,11 +272,15 @@ def _simplex_with_basis(a, b, c, basis, num, verbose=False):
             print("############ Regular step:#############")
             solver.show()
 
-    return solver.resolution, solver.vertex()
+    return solver.resolution, solver.vertex(), solver.c
 
 
 def _simplex_canonical_m(a, b, c, basis, num, verbose=False):
-    """Simplex method in canonical form, when initial basis is not fully known."""
+    """Simplex method in canonical form, when initial basis is not fully known.
+
+    Returns:
+        (resolution, solution, final_c) where final_c is the objective row at termination.
+    """
     n_artificial = sum(int(bi is None) for bi in basis)
     n = len(c)
 
@@ -325,7 +334,7 @@ def _simplex_canonical_m(a, b, c, basis, num, verbose=False):
         else:
             if verbose:
                 print("### Empty simplex")
-            return RESOLUTION_INCOMPATIBLE, None
+            return RESOLUTION_INCOMPATIBLE, None, None
 
     # Trim to real variables only
     new_a = [row[:n] for row in m_solver.a]
@@ -361,12 +370,21 @@ def _simplex_canonical_m(a, b, c, basis, num, verbose=False):
     
     if not new_a:
         # All constraints redundant - return trivial zero solution
-        return RESOLUTION_SOLVED, [num.zero()] * n
+        return RESOLUTION_SOLVED, [num.zero()] * n, [num.zero()] * n
     
     # Reduce c for the current basis and continue optimizing
     c_reduced = _reduce_c_row(c, new_a, new_basis, num)
     
     return _simplex_with_basis(new_a, new_b, c_reduced, new_basis, num, verbose=verbose)
+
+
+@dataclass
+class LPResult:
+    """Result of solving a linear program."""
+
+    resolution: str  # RESOLUTION_SOLVED, RESOLUTION_INCOMPATIBLE, RESOLUTION_UNBOUNDED
+    solution: list[float] | None  # Variable values if solved
+    ineq_duals: list[float] | None  # Shadow prices for inequality constraints
 
 
 def linsolve(
@@ -379,6 +397,7 @@ def linsolve(
     num=RealFiniteTolerance(),
     verbose=False,
     do_coerce=True,
+    return_duals=False,
 ):
     """Solve arbitrary linear programming problem.
 
@@ -397,11 +416,15 @@ def linsolve(
              Default is RealFiniteTolerance().
         do_coerce: if True, convert values using typeclass coerce method.
         verbose: if True, print solution steps.
+        return_duals: if True, return LPResult with shadow prices.
 
     Returns:
-        tuple (resolution, x) where resolution is one of:
-        RESOLUTION_SOLVED, RESOLUTION_INCOMPATIBLE, RESOLUTION_UNBOUNDED
-        If RESOLUTION_SOLVED, x contains solution vector.
+        If return_duals=False (default):
+            tuple (resolution, x) where resolution is one of:
+            RESOLUTION_SOLVED, RESOLUTION_INCOMPATIBLE, RESOLUTION_UNBOUNDED
+            If RESOLUTION_SOLVED, x contains solution vector.
+        If return_duals=True:
+            LPResult with resolution, solution, and inequality duals.
     """
     nonneg_variables = set(nonneg_variables)
     n = len(objective)
@@ -470,7 +493,7 @@ def linsolve(
         b_extended = num.coerce_vec(b_extended)
         c_nonneg = num.coerce_vec(c_nonneg)
 
-    resolution, solution = _simplex_canonical_m(
+    resolution, solution, final_c = _simplex_canonical_m(
         a_extended,
         b_extended,
         c_nonneg + [num.zero()] * num_inequalities,
@@ -483,6 +506,24 @@ def linsolve(
         orig_solution = solution[:n]
         for negative_var, positive_var in negative_part2positive_part.items():
             orig_solution[positive_var] -= solution[negative_var]
+
+        if return_duals:
+            # Extract duals for inequality constraints from slack variable coefficients
+            # Slack variable for inequality i is at index n_nonneg + i
+            # Its coefficient in final c row is the reduced cost
+            # For a <= constraint, the reduced cost of the slack IS the dual directly
+            # Positive dual means: relaxing this bound would improve (decrease) the objective
+            ineq_duals = []
+            for i in range(num_inequalities):
+                slack_idx = n_nonneg + i
+                if slack_idx < len(final_c):
+                    ineq_duals.append(float(final_c[slack_idx]))
+                else:
+                    ineq_duals.append(0.0)
+            return LPResult(resolution, orig_solution, ineq_duals)
+
         return resolution, orig_solution
     else:
+        if return_duals:
+            return LPResult(resolution, None, None)
         return resolution, solution
