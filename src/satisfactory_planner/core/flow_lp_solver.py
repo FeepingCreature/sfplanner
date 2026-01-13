@@ -690,8 +690,18 @@ def _find_limiting_factor(
             elif source.kind == "downstream_demand":
                 return LimitingFactor.DOWNSTREAM, source.description
             elif source.kind == "production_rate":
-                # Production rate shouldn't normally be the bottleneck for
-                # a running building (that's just "at capacity")
+                # Production rate on an INCOMING edge means upstream is starving us
+                # Production rate on an OUTGOING edge means we're at capacity (skip)
+                incoming_edge_ids = {e.id for e in incoming}
+                if source.edge_id in incoming_edge_ids:
+                    # Find the item name from the edge
+                    edge = graph.edges.get(source.edge_id)
+                    item_name = edge.item_name if edge else "input"
+                    return (
+                        LimitingFactor.INPUT_STARVED,
+                        f"{item_name} limited by upstream ({source.description})",
+                    )
+                # Otherwise it's our own production rate - skip
                 continue
             elif source.kind == "input_limit":
                 return LimitingFactor.INPUT_STARVED, source.description
