@@ -5,6 +5,116 @@ from satisfactory_planner.core.item_key import ItemKey
 from satisfactory_planner.core.models import Belt, Building, BuildingType, Document
 
 
+class TestLimitingFactorDetection:
+    """Tests for correct limiting factor detection using LP duals."""
+
+    def test_downstream_sink_limits_constructor(self) -> None:
+        """When sink caps flow, constructor should report DOWNSTREAM, not INPUT_STARVED.
+
+        Scenario: Smelter -> Constructor -> Sink(max=1.0/min)
+        The sink's low capacity limits the whole chain. The constructor should
+        NOT report "lack of iron ingots" - it should report "downstream demand".
+        """
+        from satisfactory_planner.core.flow_lp_solver import LimitingFactor
+        from satisfactory_planner.core.persistence import load_recipes
+
+        doc = Document()
+        recipes = load_recipes()
+
+        # Smelter producing iron ingots (30/min)
+        smelter = Building(
+            id="smelter",
+            building_type=BuildingType.SMELTER,
+            x=0,
+            y=0,
+            recipe_id="Iron Ingot",
+        )
+        doc.add_building(smelter)
+
+        # Source for smelter input
+        source = Building(
+            id="source",
+            building_type=BuildingType.SOURCE,
+            x=-100,
+            y=0,
+            item_id="Iron Ore",
+        )
+        doc.add_building(source)
+
+        # Constructor making iron plates (20/min output normally)
+        constructor = Building(
+            id="constructor",
+            building_type=BuildingType.CONSTRUCTOR,
+            x=100,
+            y=0,
+            recipe_id="Iron Plate",
+        )
+        doc.add_building(constructor)
+
+        # Sink with max rate of 1.0/min - THE BOTTLENECK
+        sink = Building(
+            id="sink",
+            building_type=BuildingType.SINK,
+            x=200,
+            y=0,
+            item_id="Iron Plate",
+            max_rate=1.0,  # Very low - this should be the limiting factor
+        )
+        doc.add_building(sink)
+
+        # Connect: source -> smelter -> constructor -> sink
+        doc.add_belt(
+            Belt(
+                id="b_source_smelter",
+                tier=1,
+                source_building_id="source",
+                source_port_index=0,
+                dest_building_id="smelter",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_smelter_constructor",
+                tier=1,
+                source_building_id="smelter",
+                source_port_index=0,
+                dest_building_id="constructor",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_constructor_sink",
+                tier=1,
+                source_building_id="constructor",
+                source_port_index=0,
+                dest_building_id="sink",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc, recipes)
+        solver.solve()
+
+        # Get efficiency for the constructor
+        from satisfactory_planner.core.item_key import ItemKey
+
+        constructor_key = ItemKey("constructor")
+        constructor_eff = solver.get_efficiency(constructor_key)
+
+        assert constructor_eff is not None, "Constructor should have efficiency info"
+        assert constructor_eff.duty_cycle < 0.1, (
+            f"Duty cycle should be very low, got {constructor_eff.duty_cycle}"
+        )
+
+        # THE KEY ASSERTION: It should be DOWNSTREAM limited, not INPUT_STARVED
+        assert constructor_eff.limiting_factor == LimitingFactor.DOWNSTREAM, (
+            f"Constructor should be DOWNSTREAM limited (sink caps at 1/min), "
+            f"but got {constructor_eff.limiting_factor}: {constructor_eff.limiting_details}"
+        )
+
+
 class TestFlowSolver:
     """Tests for the flow solver."""
 
