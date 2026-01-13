@@ -26,9 +26,14 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
     If a building's outputs are reduced because downstream can't consume,
     the LP proportionally reduces inputs too. We shouldn't report that
     as input underflow - it's output-limited (downstream bottleneck).
+
+    We use the LP dual values (via efficiencies) to determine the TRUE
+    limiting factor and skip underflow warnings when output-limited.
     """
     if not model.success:
         return []
+
+    from satisfactory_planner.core.flow_models import LimitingFactor
 
     warnings: list[Warning] = []
 
@@ -135,25 +140,34 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 )
             )
 
-        # Report the worst underflow (most limiting)
-        # TODO: Distinguish input-limited from output-limited. If outputs are reduced
-        # because downstream can't consume, the LP proportionally reduces inputs too.
-        # We shouldn't report that as input underflow - it's output-limited.
+        # Report the worst underflow (most limiting) - BUT only if truly input-limited.
+        # Check the efficiency info to see if this building is output-limited.
+        # If it's downstream/belt limited, the reduced input is a CONSEQUENCE,
+        # not the cause - don't report it as underflow.
         if worst_underflow is not None:
-            _, item_name, actual_flow, demanded, edges = worst_underflow
-            feeding_edge = edges[0] if edges else None
-            caused_by = (
-                _build_causal_chain(model, feeding_edge.id, demanded) if feeding_edge else []
+            # Check if this node is output-limited (downstream or belt)
+            efficiency = model.efficiencies.get(node_id)
+            is_output_limited = efficiency and efficiency.limiting_factor in (
+                LimitingFactor.DOWNSTREAM,
+                LimitingFactor.BELT_CAPACITY,
             )
-            warnings.append(
-                Warning(
-                    type=WarningType.RESOURCE_UNDERFLOW,
-                    message=f"{item_name}: {actual_flow:.1f} < {demanded:.1f}/min demanded",
-                    item_key=node_id,
-                    severity=(demanded - actual_flow) / demanded,
-                    caused_by=caused_by,
+
+            if not is_output_limited:
+                # Truly input-starved - report the underflow
+                _, item_name, actual_flow, demanded, edges = worst_underflow
+                feeding_edge = edges[0] if edges else None
+                caused_by = (
+                    _build_causal_chain(model, feeding_edge.id, demanded) if feeding_edge else []
                 )
-            )
+                warnings.append(
+                    Warning(
+                        type=WarningType.RESOURCE_UNDERFLOW,
+                        message=f"{item_name}: {actual_flow:.1f} < {demanded:.1f}/min demanded",
+                        item_key=node_id,
+                        severity=(demanded - actual_flow) / demanded,
+                        caused_by=caused_by,
+                    )
+                )
 
     return warnings
 

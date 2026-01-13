@@ -114,6 +114,19 @@ class TestLimitingFactorDetection:
             f"but got {constructor_eff.limiting_factor}: {constructor_eff.limiting_details}"
         )
 
+        # ALSO: There should be NO underflow warning for the constructor
+        # The reduced input is a consequence of output limiting, not a cause
+        warnings = solver.solve()
+        constructor_underflow = [
+            w
+            for w in warnings
+            if w.type == WarningType.RESOURCE_UNDERFLOW and w.item_key.element_id == "constructor"
+        ]
+        assert len(constructor_underflow) == 0, (
+            f"Constructor should NOT have underflow warning (it's output-limited), "
+            f"but got: {[w.message for w in constructor_underflow]}"
+        )
+
 
 class TestFlowSolver:
     """Tests for the flow solver."""
