@@ -309,6 +309,8 @@ def _solve_lp(
             # Miner/Source: no inputs, output <= production rate
             for i, out_edge in enumerate(outgoing):
                 if i < len(node.outputs):
+                    # Use the actual building type name (Miner vs Source)
+                    building_name = node.building_type_name or "Source"
                     cs.add_inequality(
                         {edge_to_idx[out_edge.id]: 1.0},
                         node.outputs[i].rate,
@@ -316,7 +318,7 @@ def _solve_lp(
                             kind="production_rate",
                             edge_id=out_edge.id,
                             node_id=node_id,
-                            description=f"Source output rate {node.outputs[i].rate}/min",
+                            description=f"{building_name} output rate {node.outputs[i].rate}/min",
                         ),
                     )
 

@@ -57,6 +57,7 @@ class FlowNode:
     id: ItemKey
     node_type: NodeType
     building_id: ItemKey | None = None  # Reference back to visual Building
+    building_type_name: str | None = None  # Display name like "Miner" or "Source"
 
     # Recipe info (for PRODUCER nodes)
     recipe_id: str | None = None

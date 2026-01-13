@@ -241,6 +241,116 @@ class TestLimitingFactorDetection:
             f"but got: {foundry_eff.limiting_details}"
         )
 
+    def test_upstream_source_through_splitter(self) -> None:
+        """When source goes through splitter to producer, BFS finds the binding constraint.
+
+        Scenario: Source(max=1.0/min) -> Splitter -> Smelter -> Sink
+        The source's low output limits the chain. The splitter has no constraints
+        of its own, so we need to BFS upstream to find the source's constraint.
+        """
+        from satisfactory_planner.core.flow_lp_solver import LimitingFactor
+        from satisfactory_planner.core.persistence import load_recipes
+
+        doc = Document()
+        recipes = load_recipes()
+
+        # Source with very limited output - THE BOTTLENECK
+        source = Building(
+            id="source",
+            building_type=BuildingType.SOURCE,
+            x=-100,
+            y=0,
+            item_id="Iron Ore",
+            max_rate=1.0,  # Very low - this should be the limiting factor
+        )
+        doc.add_building(source)
+
+        # Splitter in between (no constraints of its own)
+        splitter = Building(
+            id="splitter",
+            building_type=BuildingType.SPLITTER,
+            x=0,
+            y=0,
+        )
+        doc.add_building(splitter)
+
+        # Smelter producing iron ingots
+        smelter = Building(
+            id="smelter",
+            building_type=BuildingType.SMELTER,
+            x=100,
+            y=0,
+            recipe_id="Iron Ingot",
+        )
+        doc.add_building(smelter)
+
+        # Sink (unlimited)
+        sink = Building(
+            id="sink",
+            building_type=BuildingType.SINK,
+            x=200,
+            y=0,
+            item_id="Iron Ingot",
+        )
+        doc.add_building(sink)
+
+        # Connect: source -> splitter -> smelter -> sink
+        doc.add_belt(
+            Belt(
+                id="b_source_splitter",
+                tier=1,
+                source_building_id="source",
+                source_port_index=0,
+                dest_building_id="splitter",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_splitter_smelter",
+                tier=1,
+                source_building_id="splitter",
+                source_port_index=0,
+                dest_building_id="smelter",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_smelter_sink",
+                tier=1,
+                source_building_id="smelter",
+                source_port_index=0,
+                dest_building_id="sink",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc, recipes)
+        solver.solve()
+
+        # Get efficiency for the smelter
+        smelter_key = ItemKey("smelter")
+        smelter_eff = solver.get_efficiency(smelter_key)
+
+        assert smelter_eff is not None, "Smelter should have efficiency info"
+        assert smelter_eff.duty_cycle < 0.1, (
+            f"Duty cycle should be very low, got {smelter_eff.duty_cycle}"
+        )
+
+        # THE KEY ASSERTION: Smelter should be INPUT_STARVED
+        # The BFS should walk upstream through the splitter to find the source constraint
+        assert smelter_eff.limiting_factor == LimitingFactor.INPUT_STARVED, (
+            f"Smelter should be INPUT_STARVED (source caps at 1/min via splitter), "
+            f"but got {smelter_eff.limiting_factor}: {smelter_eff.limiting_details}"
+        )
+
+        # The details should mention "Source" (the building type), not "Miner"
+        assert "Source" in smelter_eff.limiting_details, (
+            f"Limiting details should mention 'Source' (the building type), "
+            f"but got: {smelter_eff.limiting_details}"
+        )
+
     def test_upstream_source_limits_smelter(self) -> None:
         """When source caps flow, the smelter (direct downstream) reports INPUT_STARVED.
 

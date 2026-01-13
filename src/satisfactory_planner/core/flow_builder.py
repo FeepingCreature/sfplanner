@@ -680,6 +680,7 @@ def _build_scene(
             id=node_key,
             node_type=_get_node_type(building.building_type),
             building_id=node_key,
+            building_type_name=building.building_type.value,
             recipe_id=building.recipe_id,
             clock_speed=building.clock_speed,
             inputs=inputs,
