@@ -95,13 +95,22 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 current = incoming_by_item.get(edge.item_name, (0.0, []))
                 incoming_by_item[edge.item_name] = (current[0] + flow, current[1] + [edge])
 
-        # Check if this node is output-limited BEFORE analyzing inputs.
+        # Check if this node is output-limited or already has a known limiting factor.
         # If the building is downstream/belt limited, reduced/zero input flow
         # is a CONSEQUENCE, not a cause - don't report missing inputs.
+        # If the LP already identified INPUT_STARVED with a specific input,
+        # don't override it with our heuristic.
         efficiency = model.efficiencies.get(node_id)
         is_output_limited = efficiency and efficiency.limiting_factor in (
             LimitingFactor.DOWNSTREAM,
             LimitingFactor.BELT_CAPACITY,
+        )
+        # If LP already knows which input is starved, don't report underflow warnings
+        # (the efficiency.limiting_details already has the correct info)
+        has_known_limiting_factor = efficiency and efficiency.limiting_factor in (
+            LimitingFactor.DOWNSTREAM,
+            LimitingFactor.BELT_CAPACITY,
+            LimitingFactor.INPUT_STARVED,
         )
 
         # Track missing inputs and underflows separately
@@ -162,34 +171,26 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 )
             )
 
-        # Report the worst underflow (most limiting) - BUT only if truly input-limited.
-        # Check the efficiency info to see if this building is output-limited.
-        # If it's downstream/belt limited, the reduced input is a CONSEQUENCE,
-        # not the cause - don't report it as underflow.
-        if worst_underflow is not None:
-            # Check if this node is output-limited (downstream or belt)
-            efficiency = model.efficiencies.get(node_id)
-            is_output_limited = efficiency and efficiency.limiting_factor in (
-                LimitingFactor.DOWNSTREAM,
-                LimitingFactor.BELT_CAPACITY,
+        # Report the worst underflow (most limiting) - BUT only if we don't already
+        # have a known limiting factor from the LP solver.
+        # If the LP identified DOWNSTREAM, BELT_CAPACITY, or INPUT_STARVED,
+        # we trust that result instead of our heuristic.
+        if worst_underflow is not None and not has_known_limiting_factor:
+            # Truly input-starved - report the underflow
+            _, item_name, actual_flow, demanded, edges = worst_underflow
+            feeding_edge = edges[0] if edges else None
+            caused_by = (
+                _build_causal_chain(model, feeding_edge.id, demanded) if feeding_edge else []
             )
-
-            if not is_output_limited:
-                # Truly input-starved - report the underflow
-                _, item_name, actual_flow, demanded, edges = worst_underflow
-                feeding_edge = edges[0] if edges else None
-                caused_by = (
-                    _build_causal_chain(model, feeding_edge.id, demanded) if feeding_edge else []
+            warnings.append(
+                Warning(
+                    type=WarningType.RESOURCE_UNDERFLOW,
+                    message=f"{item_name}: {actual_flow:.1f} < {demanded:.1f}/min demanded",
+                    item_key=node_id,
+                    severity=(demanded - actual_flow) / demanded,
+                    caused_by=caused_by,
                 )
-                warnings.append(
-                    Warning(
-                        type=WarningType.RESOURCE_UNDERFLOW,
-                        message=f"{item_name}: {actual_flow:.1f} < {demanded:.1f}/min demanded",
-                        item_key=node_id,
-                        severity=(demanded - actual_flow) / demanded,
-                        caused_by=caused_by,
-                    )
-                )
+            )
 
     return warnings
 
