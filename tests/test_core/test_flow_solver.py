@@ -127,6 +127,120 @@ class TestLimitingFactorDetection:
             f"but got: {[w.message for w in constructor_underflow]}"
         )
 
+    def test_multi_input_limited_by_one_input(self) -> None:
+        """When one input of a multi-input building is capped, identify the correct input.
+
+        Scenario: Source(Iron Ore) -> Foundry(Steel Ingot) <- Source(Coal, max=1.0) -> Sink
+        The Coal source is capped at 1.0/min. The Foundry should report that COAL
+        is the limiting input, not Iron Ore.
+        """
+        from satisfactory_planner.core.flow_lp_solver import LimitingFactor
+        from satisfactory_planner.core.persistence import load_recipes
+
+        doc = Document()
+        recipes = load_recipes()
+
+        # Source of Iron Ore (unlimited)
+        iron_source = Building(
+            id="iron_source",
+            building_type=BuildingType.SOURCE,
+            x=-100,
+            y=-50,
+            item_id="Iron Ore",
+        )
+        doc.add_building(iron_source)
+
+        # Source of Coal (LIMITED - the bottleneck)
+        coal_source = Building(
+            id="coal_source",
+            building_type=BuildingType.SOURCE,
+            x=-100,
+            y=50,
+            item_id="Coal",
+            max_rate=1.0,  # Very low - THIS should be the limiting factor
+        )
+        doc.add_building(coal_source)
+
+        # Foundry making Steel Ingot (needs Iron Ore + Coal)
+        foundry = Building(
+            id="foundry",
+            building_type=BuildingType.FOUNDRY,
+            x=0,
+            y=0,
+            recipe_id="Steel Ingot",
+        )
+        doc.add_building(foundry)
+
+        # Sink (unlimited)
+        sink = Building(
+            id="sink",
+            building_type=BuildingType.SINK,
+            x=100,
+            y=0,
+            item_id="Steel Ingot",
+        )
+        doc.add_building(sink)
+
+        # Connect: iron_source -> foundry input 0
+        doc.add_belt(
+            Belt(
+                id="b_iron",
+                tier=1,
+                source_building_id="iron_source",
+                source_port_index=0,
+                dest_building_id="foundry",
+                dest_port_index=0,
+            )
+        )
+
+        # Connect: coal_source -> foundry input 1
+        doc.add_belt(
+            Belt(
+                id="b_coal",
+                tier=1,
+                source_building_id="coal_source",
+                source_port_index=0,
+                dest_building_id="foundry",
+                dest_port_index=1,
+            )
+        )
+
+        # Connect: foundry -> sink
+        doc.add_belt(
+            Belt(
+                id="b_out",
+                tier=1,
+                source_building_id="foundry",
+                source_port_index=0,
+                dest_building_id="sink",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc, recipes)
+        solver.solve()
+
+        # Get efficiency for the foundry
+        foundry_key = ItemKey("foundry")
+        foundry_eff = solver.get_efficiency(foundry_key)
+
+        assert foundry_eff is not None, "Foundry should have efficiency info"
+        assert foundry_eff.duty_cycle < 0.1, (
+            f"Duty cycle should be very low (coal capped at 1/min), got {foundry_eff.duty_cycle}"
+        )
+
+        # THE KEY ASSERTION: It should be INPUT_STARVED and mention COAL, not Iron Ore
+        assert foundry_eff.limiting_factor == LimitingFactor.INPUT_STARVED, (
+            f"Foundry should be INPUT_STARVED (coal caps at 1/min), "
+            f"but got {foundry_eff.limiting_factor}: {foundry_eff.limiting_details}"
+        )
+
+        # The details should mention Coal, not Iron Ore
+        assert "Coal" in foundry_eff.limiting_details, (
+            f"Limiting details should mention Coal (the actual bottleneck), "
+            f"but got: {foundry_eff.limiting_details}"
+        )
+
     def test_upstream_source_limits_constructor(self) -> None:
         """When source caps flow, constructor should report INPUT_STARVED, not DOWNSTREAM.
 
