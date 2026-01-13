@@ -659,6 +659,10 @@ def _find_limiting_factor(
     an output problem.
 
     A constraint with a positive dual is "binding" - it's actually limiting flow.
+
+    When no binding constraint is found on direct edges (e.g., there's a splitter
+    between the source and this node), we walk upstream through the graph to find
+    the actual binding constraint.
     """
     if duty_cycle >= 0.999:
         return LimitingFactor.NONE, "Running at full capacity"
@@ -669,39 +673,90 @@ def _find_limiting_factor(
     incoming = graph.get_incoming_edges(node.id)
     outgoing = graph.get_outgoing_edges(node.id)
 
-    # Without variable merging, each edge keeps its own constraints.
-    # We look for binding constraints on our direct edges.
-    node_edge_ids = {e.id for e in incoming} | {e.id for e in outgoing}
-    incoming_edge_ids = {e.id for e in incoming}
-    outgoing_edge_ids = {e.id for e in outgoing}
-
+    # Build lookup of binding constraints by edge_id for efficient access
+    binding_by_edge: dict[ItemKey, tuple[ConstraintSource, float]] = {}
     for source, dual in binding_sources.items():
-        if dual <= 0:
-            continue  # Not actually binding
+        if dual > 0:
+            binding_by_edge[source.edge_id] = (source, dual)
 
-        # Check if this constraint is on one of our edges
-        if source.edge_id not in node_edge_ids and source.node_id != node.id:
-            continue  # Not relevant to this node
-
-        # Map constraint kind to limiting factor
-        if source.kind == "belt_capacity":
-            return LimitingFactor.BELT_CAPACITY, source.description
-        elif source.kind == "downstream_demand":
-            if source.edge_id in outgoing_edge_ids:
+    # Check outgoing edges for downstream/belt constraints
+    for edge in outgoing:
+        if edge.id in binding_by_edge:
+            source, _ = binding_by_edge[edge.id]
+            if source.kind == "belt_capacity":
+                return LimitingFactor.BELT_CAPACITY, source.description
+            elif source.kind == "downstream_demand":
                 return LimitingFactor.DOWNSTREAM, source.description
-            continue
-        elif source.kind == "production_rate":
-            # Production rate on an INCOMING edge means upstream is starving us
-            # Production rate on an OUTGOING edge means we're at capacity (skip)
-            if source.edge_id in incoming_edge_ids:
-                edge = graph.edges.get(source.edge_id)
-                item_name = edge.item_name if edge else "input"
+
+    # Check incoming edges for direct input constraints
+    for edge in incoming:
+        if edge.id in binding_by_edge:
+            source, _ = binding_by_edge[edge.id]
+            if source.kind == "production_rate":
+                item_name = edge.item_name or "input"
                 return (
                     LimitingFactor.INPUT_STARVED,
                     f"{item_name} limited by upstream ({source.description})",
                 )
-            continue
-        elif source.kind == "input_limit":
-            return LimitingFactor.INPUT_STARVED, source.description
+            elif source.kind == "input_limit":
+                return LimitingFactor.INPUT_STARVED, source.description
+
+    # No direct binding constraint found - walk upstream through splitters/mergers
+    # to find the actual binding constraint (BFS)
+    result = _find_upstream_binding_constraint(graph, incoming, binding_by_edge)
+    if result:
+        return result
 
     return LimitingFactor.NONE, "Unknown (no matching constraint)"
+
+
+def _find_upstream_binding_constraint(
+    graph: FlowGraph,
+    starting_edges: list[FlowEdge],
+    binding_by_edge: dict[ItemKey, tuple[ConstraintSource, float]],
+) -> tuple[LimitingFactor, str] | None:
+    """Walk upstream through splitters/mergers to find binding constraints.
+
+    Stops when we hit a producer/miner (those have their own efficiency) or find
+    a binding constraint.
+    """
+    from collections import deque
+
+    visited: set[ItemKey] = set()
+    queue: deque[FlowEdge] = deque(starting_edges)
+
+    while queue:
+        edge = queue.popleft()
+        if edge.id in visited:
+            continue
+        visited.add(edge.id)
+
+        # Check if this edge has a binding constraint
+        if edge.id in binding_by_edge:
+            source, _ = binding_by_edge[edge.id]
+            if source.kind == "production_rate":
+                item_name = edge.item_name or "input"
+                return (
+                    LimitingFactor.INPUT_STARVED,
+                    f"{item_name} limited by upstream ({source.description})",
+                )
+            elif source.kind == "belt_capacity":
+                return LimitingFactor.BELT_CAPACITY, source.description
+
+        # Get the source node of this edge
+        source_node = graph.nodes.get(edge.source_node_id)
+        if not source_node:
+            continue
+
+        # Stop at producers/miners - they have their own constraints
+        if source_node.node_type in (NodeType.PRODUCER, NodeType.MINER):
+            continue
+
+        # For splitters/mergers, continue walking upstream
+        if source_node.node_type in (NodeType.SPLITTER, NodeType.MERGER):
+            upstream_edges = graph.get_incoming_edges(source_node.id)
+            for upstream_edge in upstream_edges:
+                if upstream_edge.id not in visited:
+                    queue.append(upstream_edge)
+
+    return None
