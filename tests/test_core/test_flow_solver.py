@@ -127,6 +127,110 @@ class TestLimitingFactorDetection:
             f"but got: {[w.message for w in constructor_underflow]}"
         )
 
+    def test_upstream_source_limits_constructor(self) -> None:
+        """When source caps flow, constructor should report INPUT_STARVED, not DOWNSTREAM.
+
+        Scenario: Source(max=1.0/min) -> Smelter -> Constructor -> Sink
+        The source's low output limits the whole chain. The constructor should
+        report "input starved" or similar, NOT "downstream demand".
+        """
+        from satisfactory_planner.core.flow_lp_solver import LimitingFactor
+        from satisfactory_planner.core.persistence import load_recipes
+
+        doc = Document()
+        recipes = load_recipes()
+
+        # Source with very limited output - THE BOTTLENECK
+        source = Building(
+            id="source",
+            building_type=BuildingType.SOURCE,
+            x=-100,
+            y=0,
+            item_id="Iron Ore",
+            max_rate=1.0,  # Very low - this should be the limiting factor
+        )
+        doc.add_building(source)
+
+        # Smelter producing iron ingots
+        smelter = Building(
+            id="smelter",
+            building_type=BuildingType.SMELTER,
+            x=0,
+            y=0,
+            recipe_id="Iron Ingot",
+        )
+        doc.add_building(smelter)
+
+        # Constructor making iron plates
+        constructor = Building(
+            id="constructor",
+            building_type=BuildingType.CONSTRUCTOR,
+            x=100,
+            y=0,
+            recipe_id="Iron Plate",
+        )
+        doc.add_building(constructor)
+
+        # Sink (unlimited)
+        sink = Building(
+            id="sink",
+            building_type=BuildingType.SINK,
+            x=200,
+            y=0,
+            item_id="Iron Plate",
+        )
+        doc.add_building(sink)
+
+        # Connect: source -> smelter -> constructor -> sink
+        doc.add_belt(
+            Belt(
+                id="b_source_smelter",
+                tier=1,
+                source_building_id="source",
+                source_port_index=0,
+                dest_building_id="smelter",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_smelter_constructor",
+                tier=1,
+                source_building_id="smelter",
+                source_port_index=0,
+                dest_building_id="constructor",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_constructor_sink",
+                tier=1,
+                source_building_id="constructor",
+                source_port_index=0,
+                dest_building_id="sink",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc, recipes)
+        solver.solve()
+
+        # Get efficiency for the constructor
+        constructor_key = ItemKey("constructor")
+        constructor_eff = solver.get_efficiency(constructor_key)
+
+        assert constructor_eff is not None, "Constructor should have efficiency info"
+        assert constructor_eff.duty_cycle < 0.1, (
+            f"Duty cycle should be very low, got {constructor_eff.duty_cycle}"
+        )
+
+        # THE KEY ASSERTION: It should be INPUT_STARVED, not DOWNSTREAM
+        assert constructor_eff.limiting_factor == LimitingFactor.INPUT_STARVED, (
+            f"Constructor should be INPUT_STARVED (source caps at 1/min), "
+            f"but got {constructor_eff.limiting_factor}: {constructor_eff.limiting_details}"
+        )
+
 
 class TestFlowSolver:
     """Tests for the flow solver."""

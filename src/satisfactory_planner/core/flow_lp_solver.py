@@ -669,16 +669,20 @@ def _find_limiting_factor(
 
     # If we have binding source info, use it to determine the true limiting factor
     if binding_sources:
-        # Due to variable merging (recipe ratios), there's typically only ONE
-        # binding constraint that limits this node's flow. We just need to find it.
-        #
-        # The key insight: after merging, ALL edges in a recipe chain share
-        # the same LP variable. So any binding constraint on that variable
-        # applies to ALL edges in the chain. We just pick the first/only one.
+        # We need to find the binding constraint that affects THIS node specifically.
+        # Due to variable merging (recipe ratios), edges in a chain share LP variables,
+        # but we should still only report constraints relevant to this node.
 
+        node_edge_ids = {e.id for e in incoming} | {e.id for e in outgoing}
+
+        # First pass: look for constraints directly on this node's edges
         for source, dual in binding_sources.items():
             if dual <= 0:
                 continue  # Not actually binding
+
+            # Check if this constraint is on one of our edges
+            if source.edge_id not in node_edge_ids and source.node_id != node.id:
+                continue  # Not relevant to this node
 
             # Map constraint kind to limiting factor
             if source.kind == "belt_capacity":
