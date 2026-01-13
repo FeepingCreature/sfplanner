@@ -670,26 +670,54 @@ def _find_limiting_factor(
     # If we have binding source info, use it to determine the true limiting factor
     if binding_sources:
         # Look for binding constraints on this node's edges
-        # Priority: belt_capacity > downstream_demand > production_rate > input_limit
+        # Due to recipe ratio constraints, edges get merged in the LP - a constraint
+        # on a downstream edge affects upstream edges through the merge chain.
+        # We look at ALL binding constraints and pick the most relevant one.
+        #
+        # Priority by kind:
+        #   belt_capacity > downstream_demand > production_rate > input_limit
+        # This ensures we report "output limited by downstream" rather than
+        # "input starved" when the real cause is downstream demand.
+
         best_source: ConstraintSource | None = None
         best_dual = 0.0
+        best_priority = -1
+
+        # Priority ordering: higher = more likely to be the "true" cause
+        kind_priority = {
+            "belt_capacity": 4,
+            "downstream_demand": 3,
+            "production_rate": 2,
+            "input_limit": 1,
+        }
 
         for source, dual in binding_sources.items():
             if dual <= 0:
                 continue  # Not actually binding
 
-            # Check if this constraint affects this node
-            is_relevant = False
-            if (
+            priority = kind_priority.get(source.kind, 0)
+
+            # Check if this constraint affects this node directly
+            is_direct = (
                 source.node_id == node.id
                 or source.edge_id in [e.id for e in outgoing]
                 or source.edge_id in [e.id for e in incoming]
-            ):
-                is_relevant = True
+            )
 
-            if is_relevant and dual > best_dual:
+            # For downstream_demand and belt_capacity, they might be on a
+            # downstream edge that's merged with this node's output through
+            # recipe ratio constraints. These are still relevant!
+            # We accept all binding constraints but prioritize direct ones.
+
+            # Use (priority, is_direct, dual) to pick best
+            # Higher priority wins, then direct over indirect, then higher dual
+            score = (priority, is_direct, dual)
+            best_score = (best_priority, True, best_dual) if best_source else (-1, False, 0)
+
+            if score > best_score:
                 best_dual = dual
                 best_source = source
+                best_priority = priority
 
         if best_source:
             # Map constraint kind to limiting factor
