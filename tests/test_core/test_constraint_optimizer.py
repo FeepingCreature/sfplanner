@@ -115,59 +115,6 @@ class TestSourceTracking:
         assert "tight_bound" in binding
         assert binding["tight_bound"] == 1.0
 
-    def test_source_survives_variable_merge(self) -> None:
-        """When variables are merged, bound sources are preserved on canonical."""
-        cs: ConstraintSystem[str] = ConstraintSystem(n_vars=3)
-        cs.objective = [-1.0, -1.0, -1.0]  # maximize all
-        # x0 = x1 (equality merge)
-        cs.add_equality({0: 1.0, 1: -1.0}, 0.0)
-        # Bound on x1
-        cs.add_inequality({1: 1.0}, 60.0, source="belt_on_x1")
-        # Bound on x2 to make it interesting
-        cs.add_inequality({2: 1.0}, 100.0, source="belt_on_x2")
-
-        cs.optimize()
-
-        # After merge, x0 is canonical (lower index)
-        # The bound source should still be accessible via either variable
-        assert cs.get_bound_source(0) == "belt_on_x1"
-        assert cs.get_bound_source(1) == "belt_on_x1"
-        assert cs.get_bound_source(2) == "belt_on_x2"
-
-        # Verify solution: x0 = x1 = 60, x2 = 100
-        active_vars, eq_matrix, eq_rhs, ineq_matrix, ineq_rhs, objective = cs.get_reduced_system()
-
-        # Should have collapsed to 2 variables (x0/x1 merged, x2 separate)
-        assert len(active_vars) == 2
-
-        result = linsolve(
-            objective,
-            ineq_left=ineq_matrix,
-            ineq_right=ineq_rhs,
-            eq_left=eq_matrix,
-            eq_right=eq_rhs,
-            nonneg_variables=list(range(len(active_vars))),
-            return_duals=True,
-        )
-        assert isinstance(result, LPResult)
-        assert result.resolution == RESOLUTION_SOLVED
-        assert result.solution is not None
-
-        # Expand and verify
-        full_solution = cs.expand_solution(result.solution, active_vars)
-        assert full_solution[0] == 60.0  # x0 at merged bound
-        assert full_solution[1] == 60.0  # x1 = x0
-        assert full_solution[2] == 100.0  # x2 at its own bound
-
-        # Both bounds should be binding
-        binding = cs.get_binding_sources(result.solution, active_vars, result.ineq_duals or [])
-        assert "belt_on_x1" in binding
-        assert "belt_on_x2" in binding
-        # x0 and x1 are merged, so objective is -2*x0 - x2
-        # Relaxing x0's bound by 1 improves objective by 2, hence dual = 2
-        assert binding["belt_on_x1"] == 2.0
-        assert binding["belt_on_x2"] == 1.0
-
     def test_get_binding_sources_with_duals(self) -> None:
         """get_binding_sources returns sources for constraints with non-zero duals."""
         cs: ConstraintSystem[str] = ConstraintSystem(n_vars=2)
@@ -288,22 +235,6 @@ class TestSourceTracking:
 class TestConstraintSystem:
     """Tests for ConstraintSystem optimization."""
 
-    def test_simple_chain_collapse(self) -> None:
-        """Test that x_0 = x_1, x_1 = x_2 collapses to one variable."""
-        cs = ConstraintSystem(n_vars=3)
-        cs.add_equality({0: 1.0, 1: -1.0}, 0.0)  # x_0 = x_1
-        cs.add_equality({1: 1.0, 2: -1.0}, 0.0)  # x_1 = x_2
-        cs.add_inequality({2: 1.0}, 100.0)  # x_2 <= 100
-        cs.objective = [-1.0, -1.0, -1.0]
-
-        cs.optimize()
-        active_vars, eq, eq_rhs, ineq, ineq_rhs, obj = cs.get_reduced_system()
-
-        # Should reduce to 1 variable with 1 upper bound
-        assert len(active_vars) == 1
-        assert len(eq) == 0  # Equalities are eliminated
-        assert len(ineq) == 1  # One upper bound remains
-
     def test_bound_tightening(self) -> None:
         """Test that multiple bounds on same var keep tightest."""
         cs = ConstraintSystem(n_vars=1)
@@ -318,22 +249,6 @@ class TestConstraintSystem:
         # Should have one bound at 50
         assert len(ineq) == 1
         assert ineq_rhs[0] == 50.0
-
-    def test_expand_solution(self) -> None:
-        """Test expanding reduced solution to original variables."""
-        cs = ConstraintSystem(n_vars=3)
-        cs.add_equality({0: 1.0, 1: -1.0}, 0.0)  # x_0 = x_1
-        cs.add_equality({1: 1.0, 2: -1.0}, 0.0)  # x_1 = x_2
-        cs.objective = [-1.0, -1.0, -1.0]
-
-        cs.optimize()
-        active_vars, _, _, _, _, _ = cs.get_reduced_system()
-
-        # Solve reduced: all equal, say value is 42
-        reduced_solution = [42.0]
-        full_solution = cs.expand_solution(reduced_solution, active_vars)
-
-        assert full_solution == [42.0, 42.0, 42.0]
 
     def test_preserves_complex_constraints(self) -> None:
         """Test that non-trivial constraints are preserved."""
@@ -351,59 +266,3 @@ class TestConstraintSystem:
         assert len(active_vars) == 3
         # Conservation constraint preserved
         assert len(eq) == 1
-
-    def test_trivial_constraint_removal(self) -> None:
-        """Test that 0 <= K is removed."""
-        cs = ConstraintSystem(n_vars=2)
-        cs.add_equality({0: 1.0, 1: -1.0}, 0.0)  # x_0 = x_1
-        cs.add_inequality({0: 1.0}, 100.0)
-        cs.objective = [-1.0, -1.0]
-
-        cs.optimize()
-
-        # After substitution, one equality becomes trivial (0 = 0)
-        # Count non-trivial constraints
-        non_trivial = [c for c in cs.constraints if not c.is_trivial()]
-        # Should just have the upper bound
-        upper_bounds = [c for c in non_trivial if c.is_upper_bound()]
-        assert len(upper_bounds) == 1
-
-    def test_scaled_equality_preserved(self) -> None:
-        """Test that scaled equalities are preserved (not merged) for source tracking."""
-        cs: ConstraintSystem[str] = ConstraintSystem(n_vars=2)
-        # 30*a - 15*b = 0 means a = 0.5*b
-        # We no longer merge scaled equalities to preserve constraint source tracking
-        cs.add_equality({0: 30.0, 1: -15.0}, 0.0)
-        cs.add_inequality({0: 1.0}, 50.0, source="bound_a")  # a <= 50
-        cs.add_inequality({1: 1.0}, 100.0, source="bound_b")  # b <= 100
-        cs.objective = [-1.0, -1.0]
-
-        cs.optimize()
-        active_vars, eq, eq_rhs, ineq, ineq_rhs, obj = cs.get_reduced_system()
-
-        # Both variables should remain active (no merging of scaled equalities)
-        assert len(active_vars) == 2
-        # The equality constraint should still be present
-        assert len(eq) == 1
-        # Both bounds should be preserved
-        assert len(ineq) == 2
-
-    def test_simple_equality_still_merges(self) -> None:
-        """Test that simple equalities (x = y) still merge."""
-        cs: ConstraintSystem[str] = ConstraintSystem(n_vars=2)
-        # a - b = 0 means a = b (simple equality, coefficient 1)
-        cs.add_equality({0: 1.0, 1: -1.0}, 0.0)
-        cs.add_inequality({0: 1.0}, 30.0, source="bound_a")  # a <= 30
-        cs.add_inequality({1: 1.0}, 50.0, source="bound_b")  # b <= 50
-        cs.objective = [-1.0, -1.0]
-
-        cs.optimize()
-        active_vars, eq, eq_rhs, ineq, ineq_rhs, obj = cs.get_reduced_system()
-
-        # Simple equality DOES merge, so only 1 variable
-        assert len(active_vars) == 1
-        # No equality constraints after merge
-        assert len(eq) == 0
-        # Tightest bound wins (30 < 50)
-        assert len(ineq) == 1
-        assert ineq_rhs[0] == 30.0

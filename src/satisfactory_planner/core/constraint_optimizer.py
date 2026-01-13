@@ -250,20 +250,10 @@ class ConstraintSystem(Generic[T]):
             changed = False
             iterations += 1
 
-            # Pass 1: Find and merge simple equalities (x_i = x_j, same coefficient)
-            # NOTE: We do NOT merge scaled equalities (U*x_i + V*x_j = 0) because
+            # NOTE: We do NOT merge variables (even simple equalities) because
             # that loses track of which variable's bound is binding, breaking
             # our ability to trace limiting factors through production chains.
-            for constraint in self.constraints:
-                simple = constraint.is_simple_equality()
-                if simple:
-                    v1, v2 = simple
-                    canon1 = self._find_canonical(v1)
-                    canon2 = self._find_canonical(v2)
-                    if canon1 != canon2:
-                        self._merge_vars(v1, v2, 1.0)
-                        merges += 1
-                        changed = True
+            # The LP solver handles equalities directly.
 
             # Pass 2: Substitute canonical variables into all constraints (with scaling)
             for constraint in self.constraints:
