@@ -669,67 +669,28 @@ def _find_limiting_factor(
 
     # If we have binding source info, use it to determine the true limiting factor
     if binding_sources:
-        # Look for binding constraints on this node's edges
-        # Due to recipe ratio constraints, edges get merged in the LP - a constraint
-        # on a downstream edge affects upstream edges through the merge chain.
-        # We look at ALL binding constraints and pick the most relevant one.
+        # Due to variable merging (recipe ratios), there's typically only ONE
+        # binding constraint that limits this node's flow. We just need to find it.
         #
-        # Priority by kind:
-        #   belt_capacity > downstream_demand > production_rate > input_limit
-        # This ensures we report "output limited by downstream" rather than
-        # "input starved" when the real cause is downstream demand.
-
-        best_source: ConstraintSource | None = None
-        best_dual = 0.0
-        best_priority = -1
-
-        # Priority ordering: higher = more likely to be the "true" cause
-        kind_priority = {
-            "belt_capacity": 4,
-            "downstream_demand": 3,
-            "production_rate": 2,
-            "input_limit": 1,
-        }
+        # The key insight: after merging, ALL edges in a recipe chain share
+        # the same LP variable. So any binding constraint on that variable
+        # applies to ALL edges in the chain. We just pick the first/only one.
 
         for source, dual in binding_sources.items():
             if dual <= 0:
                 continue  # Not actually binding
 
-            priority = kind_priority.get(source.kind, 0)
-
-            # Check if this constraint affects this node directly
-            is_direct = (
-                source.node_id == node.id
-                or source.edge_id in [e.id for e in outgoing]
-                or source.edge_id in [e.id for e in incoming]
-            )
-
-            # For downstream_demand and belt_capacity, they might be on a
-            # downstream edge that's merged with this node's output through
-            # recipe ratio constraints. These are still relevant!
-            # We accept all binding constraints but prioritize direct ones.
-
-            # Use (priority, is_direct, dual) to pick best
-            # Higher priority wins, then direct over indirect, then higher dual
-            score = (priority, is_direct, dual)
-            best_score = (best_priority, True, best_dual) if best_source else (-1, False, 0)
-
-            if score > best_score:
-                best_dual = dual
-                best_source = source
-                best_priority = priority
-
-        if best_source:
             # Map constraint kind to limiting factor
-            if best_source.kind == "belt_capacity":
-                return LimitingFactor.BELT_CAPACITY, best_source.description
-            elif best_source.kind == "downstream_demand":
-                return LimitingFactor.DOWNSTREAM, best_source.description
-            elif best_source.kind == "production_rate":
-                # This shouldn't normally be the limit for a running building
-                return LimitingFactor.NONE, best_source.description
-            elif best_source.kind == "input_limit":
-                return LimitingFactor.INPUT_STARVED, best_source.description
+            if source.kind == "belt_capacity":
+                return LimitingFactor.BELT_CAPACITY, source.description
+            elif source.kind == "downstream_demand":
+                return LimitingFactor.DOWNSTREAM, source.description
+            elif source.kind == "production_rate":
+                # Production rate shouldn't normally be the bottleneck for
+                # a running building (that's just "at capacity")
+                continue
+            elif source.kind == "input_limit":
+                return LimitingFactor.INPUT_STARVED, source.description
 
     # Fallback: heuristic analysis (original logic)
     # This is used when binding_sources is not available or doesn't find a match
