@@ -667,47 +667,73 @@ def _find_limiting_factor(
     incoming = graph.get_incoming_edges(node.id)
     outgoing = graph.get_outgoing_edges(node.id)
 
+    logger.debug(f"_find_limiting_factor for node {node.id} (duty_cycle={duty_cycle:.3f})")
+    logger.debug(f"  incoming edges: {[e.id for e in incoming]}")
+    logger.debug(f"  outgoing edges: {[e.id for e in outgoing]}")
+
     # If we have binding source info, use it to determine the true limiting factor
     if binding_sources:
+        logger.debug(f"  binding_sources has {len(binding_sources)} entries:")
+        for source, dual in binding_sources.items():
+            logger.debug(
+                f"    {source.kind} edge={source.edge_id} node={source.node_id} dual={dual:.3f} desc={source.description}"
+            )
         # We need to find the binding constraint that affects THIS node specifically.
         # Due to variable merging (recipe ratios), edges in a chain share LP variables,
         # but we should still only report constraints relevant to this node.
 
         node_edge_ids = {e.id for e in incoming} | {e.id for e in outgoing}
+        incoming_edge_ids = {e.id for e in incoming}
+
+        logger.debug(f"  node_edge_ids: {node_edge_ids}")
+        logger.debug(f"  incoming_edge_ids: {incoming_edge_ids}")
 
         # First pass: look for constraints directly on this node's edges
         for source, dual in binding_sources.items():
             if dual <= 0:
+                logger.debug(
+                    f"  skipping {source.kind} edge={source.edge_id}: dual={dual:.3f} <= 0"
+                )
                 continue  # Not actually binding
 
             # Check if this constraint is on one of our edges
             if source.edge_id not in node_edge_ids and source.node_id != node.id:
+                logger.debug(
+                    f"  skipping {source.kind} edge={source.edge_id}: not in node_edge_ids and node_id={source.node_id} != {node.id}"
+                )
                 continue  # Not relevant to this node
+
+            logger.debug(f"  MATCHED {source.kind} edge={source.edge_id} node={source.node_id}")
 
             # Map constraint kind to limiting factor
             if source.kind == "belt_capacity":
+                logger.debug(f"  -> returning BELT_CAPACITY: {source.description}")
                 return LimitingFactor.BELT_CAPACITY, source.description
             elif source.kind == "downstream_demand":
+                logger.debug(f"  -> returning DOWNSTREAM: {source.description}")
                 return LimitingFactor.DOWNSTREAM, source.description
             elif source.kind == "production_rate":
                 # Production rate on an INCOMING edge means upstream is starving us
                 # Production rate on an OUTGOING edge means we're at capacity (skip)
-                incoming_edge_ids = {e.id for e in incoming}
                 if source.edge_id in incoming_edge_ids:
                     # Find the item name from the edge
                     edge = graph.edges.get(source.edge_id)
                     item_name = edge.item_name if edge else "input"
+                    logger.debug(f"  -> returning INPUT_STARVED (upstream): {item_name}")
                     return (
                         LimitingFactor.INPUT_STARVED,
                         f"{item_name} limited by upstream ({source.description})",
                     )
                 # Otherwise it's our own production rate - skip
+                logger.debug("  skipping production_rate on outgoing edge (at capacity)")
                 continue
             elif source.kind == "input_limit":
+                logger.debug(f"  -> returning INPUT_STARVED (input_limit): {source.description}")
                 return LimitingFactor.INPUT_STARVED, source.description
 
     # Fallback: heuristic analysis (original logic)
     # This is used when binding_sources is not available or doesn't find a match
+    logger.debug("  No binding source matched, falling back to heuristic analysis")
     worst_ratio: float | None = None
     worst_factor = LimitingFactor.NONE
     worst_details = "Unknown"

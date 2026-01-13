@@ -484,6 +484,10 @@ class ConstraintSystem(Generic[T]):
         # Get the reduced system to match duals to constraints
         _, _, _, ineq_matrix, ineq_rhs, _ = self.get_reduced_system()
 
+        logger.debug(f"get_binding_sources: {len(duals)} duals, {len(ineq_matrix)} inequalities")
+        logger.debug(f"  active_vars: {active_vars}")
+        logger.debug(f"  _bound_sources keys: {list(self._bound_sources.keys())}")
+
         # Check each reduced inequality constraint
         for ineq_idx, (row, _rhs) in enumerate(zip(ineq_matrix, ineq_rhs, strict=True)):
             if ineq_idx >= len(duals):
@@ -493,6 +497,8 @@ class ConstraintSystem(Generic[T]):
             if abs(dual) < tol:
                 continue  # Not binding
 
+            logger.debug(f"  ineq[{ineq_idx}] dual={dual:.3f} row={row} rhs={_rhs}")
+
             # Find which original constraint this came from
             # For single-variable bounds, we can look up the source directly
             if sum(1 for c in row if abs(c) > tol) == 1:
@@ -500,11 +506,18 @@ class ConstraintSystem(Generic[T]):
                 for i, coeff in enumerate(row):
                     if abs(coeff) > tol:
                         canonical = active_vars[i]
+                        logger.debug(f"    single-var bound on canonical={canonical}")
                         if canonical in self._bound_sources:
                             source = self._bound_sources[canonical]
+                            logger.debug(f"    found source: {source}")
                             binding[source] = dual
+                        else:
+                            logger.debug(f"    no source for canonical={canonical}")
                         break
+            else:
+                logger.debug("    multi-var constraint, skipping")
 
+        logger.debug(f"  returning {len(binding)} binding sources")
         return binding
 
     def get_var_sources(self, var: int) -> set[T]:
