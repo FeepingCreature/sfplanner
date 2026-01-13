@@ -250,18 +250,18 @@ class ConstraintSystem(Generic[T]):
             changed = False
             iterations += 1
 
-            # Pass 1: Find and merge two-variable equalities (U*x_i + V*x_j = 0)
+            # Pass 1: Find and merge simple equalities (x_i = x_j, same coefficient)
+            # NOTE: We do NOT merge scaled equalities (U*x_i + V*x_j = 0) because
+            # that loses track of which variable's bound is binding, breaking
+            # our ability to trace limiting factors through production chains.
             for constraint in self.constraints:
-                ratio = constraint.is_two_var_equality()
-                if ratio:
-                    v1, c1_coeff, v2, c2_coeff = ratio
+                simple = constraint.is_simple_equality()
+                if simple:
+                    v1, v2 = simple
                     canon1 = self._find_canonical(v1)
                     canon2 = self._find_canonical(v2)
                     if canon1 != canon2:
-                        # U*v1 + V*v2 = 0 means v1 = (-V/U) * v2
-                        # scale = -c2_coeff / c1_coeff
-                        scale = -c2_coeff / c1_coeff
-                        self._merge_vars(v1, v2, scale)
+                        self._merge_vars(v1, v2, 1.0)
                         merges += 1
                         changed = True
 

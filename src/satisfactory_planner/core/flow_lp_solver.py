@@ -669,110 +669,39 @@ def _find_limiting_factor(
     incoming = graph.get_incoming_edges(node.id)
     outgoing = graph.get_outgoing_edges(node.id)
 
+    # Without variable merging, each edge keeps its own constraints.
+    # We look for binding constraints on our direct edges.
     node_edge_ids = {e.id for e in incoming} | {e.id for e in outgoing}
     incoming_edge_ids = {e.id for e in incoming}
     outgoing_edge_ids = {e.id for e in outgoing}
-
-    # Due to variable merging (recipe ratios), the binding constraint may be on
-    # an edge upstream in the chain, not directly on our edges. We check:
-    # 1. Constraints directly on our edges
-    # 2. For upstream constraints, trace if they affect our inputs
 
     for source, dual in binding_sources.items():
         if dual <= 0:
             continue  # Not actually binding
 
-        # Direct match: constraint is on one of our edges
-        is_direct_match = source.edge_id in node_edge_ids or source.node_id == node.id
-
-        # Upstream match: constraint is on an upstream edge that feeds into us
-        # This happens when variables are merged through a production chain
-        is_upstream_match = False
-        upstream_item_name: str | None = None
-        if not is_direct_match and source.kind == "production_rate":
-            # Check if the constraint's edge is upstream of any of our inputs
-            # by following the graph backwards
-            upstream_item_name = _trace_upstream_constraint(graph, source.edge_id, incoming)
-            is_upstream_match = upstream_item_name is not None
-
-        if not is_direct_match and not is_upstream_match:
+        # Check if this constraint is on one of our edges
+        if source.edge_id not in node_edge_ids and source.node_id != node.id:
             continue  # Not relevant to this node
 
         # Map constraint kind to limiting factor
         if source.kind == "belt_capacity":
             return LimitingFactor.BELT_CAPACITY, source.description
         elif source.kind == "downstream_demand":
-            # Downstream demand on our OUTPUT edge means we're downstream-limited
             if source.edge_id in outgoing_edge_ids:
                 return LimitingFactor.DOWNSTREAM, source.description
-            # Downstream demand on our INPUT edge doesn't make sense, skip
             continue
         elif source.kind == "production_rate":
-            # Production rate constraint - need to determine if it's input or output
+            # Production rate on an INCOMING edge means upstream is starving us
+            # Production rate on an OUTGOING edge means we're at capacity (skip)
             if source.edge_id in incoming_edge_ids:
-                # Direct input constraint
                 edge = graph.edges.get(source.edge_id)
                 item_name = edge.item_name if edge else "input"
                 return (
                     LimitingFactor.INPUT_STARVED,
                     f"{item_name} limited by upstream ({source.description})",
                 )
-            elif is_upstream_match and upstream_item_name:
-                # Upstream constraint traced to our input
-                return (
-                    LimitingFactor.INPUT_STARVED,
-                    f"{upstream_item_name} limited by upstream ({source.description})",
-                )
-            elif source.edge_id in outgoing_edge_ids:
-                # Our own production rate - we're at capacity, not a problem
-                continue
             continue
         elif source.kind == "input_limit":
             return LimitingFactor.INPUT_STARVED, source.description
 
     return LimitingFactor.NONE, "Unknown (no matching constraint)"
-
-
-def _trace_upstream_constraint(
-    graph: FlowGraph, constraint_edge_id: ItemKey, incoming_edges: list[FlowEdge]
-) -> str | None:
-    """Check if a constraint edge is upstream of any incoming edges.
-
-    Returns the item_name of the incoming edge if found, None otherwise.
-    Uses BFS to trace backwards through the graph.
-    """
-    # Build a set of edges we're looking for
-    target_edges = {e.id for e in incoming_edges}
-
-    # BFS from the constraint edge forward to see if we reach any target
-    visited: set[ItemKey] = set()
-    queue = [constraint_edge_id]
-
-    while queue:
-        current_edge_id = queue.pop(0)
-        if current_edge_id in visited:
-            continue
-        visited.add(current_edge_id)
-
-        # Check if we've reached a target
-        if current_edge_id in target_edges:
-            edge = graph.edges.get(current_edge_id)
-            return edge.item_name if edge else "input"
-
-        # Get the edge and follow it forward
-        edge = graph.edges.get(current_edge_id)
-        if not edge:
-            continue
-
-        # Get the destination node and its outgoing edges
-        dest_node = graph.nodes.get(edge.dest_node_id)
-        if not dest_node:
-            continue
-
-        # Only follow through producers (recipe ratio merging)
-        if dest_node.node_type == NodeType.PRODUCER:
-            for out_edge in graph.get_outgoing_edges(dest_node.id):
-                if out_edge.id not in visited:
-                    queue.append(out_edge.id)
-
-    return None

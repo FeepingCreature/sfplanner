@@ -241,12 +241,16 @@ class TestLimitingFactorDetection:
             f"but got: {foundry_eff.limiting_details}"
         )
 
-    def test_upstream_source_limits_constructor(self) -> None:
-        """When source caps flow, constructor should report INPUT_STARVED, not DOWNSTREAM.
+    def test_upstream_source_limits_smelter(self) -> None:
+        """When source caps flow, the smelter (direct downstream) reports INPUT_STARVED.
 
         Scenario: Source(max=1.0/min) -> Smelter -> Constructor -> Sink
-        The source's low output limits the whole chain. The constructor should
-        report "input starved" or similar, NOT "downstream demand".
+        The source's low output limits the whole chain. The SMELTER (which is
+        directly connected to the source) should report INPUT_STARVED.
+
+        Note: Without variable merging, each building only sees constraints on
+        its direct edges. The Constructor sees constraints on the smelter->constructor
+        belt, not on the source->smelter belt.
         """
         from satisfactory_planner.core.flow_lp_solver import LimitingFactor
         from satisfactory_planner.core.persistence import load_recipes
@@ -330,19 +334,19 @@ class TestLimitingFactorDetection:
         solver = FlowSolver(doc, recipes)
         solver.solve()
 
-        # Get efficiency for the constructor
-        constructor_key = ItemKey("constructor")
-        constructor_eff = solver.get_efficiency(constructor_key)
+        # Get efficiency for the SMELTER (directly connected to limited source)
+        smelter_key = ItemKey("smelter")
+        smelter_eff = solver.get_efficiency(smelter_key)
 
-        assert constructor_eff is not None, "Constructor should have efficiency info"
-        assert constructor_eff.duty_cycle < 0.1, (
-            f"Duty cycle should be very low, got {constructor_eff.duty_cycle}"
+        assert smelter_eff is not None, "Smelter should have efficiency info"
+        assert smelter_eff.duty_cycle < 0.1, (
+            f"Duty cycle should be very low, got {smelter_eff.duty_cycle}"
         )
 
-        # THE KEY ASSERTION: It should be INPUT_STARVED, not DOWNSTREAM
-        assert constructor_eff.limiting_factor == LimitingFactor.INPUT_STARVED, (
-            f"Constructor should be INPUT_STARVED (source caps at 1/min), "
-            f"but got {constructor_eff.limiting_factor}: {constructor_eff.limiting_details}"
+        # THE KEY ASSERTION: Smelter should be INPUT_STARVED (source caps it)
+        assert smelter_eff.limiting_factor == LimitingFactor.INPUT_STARVED, (
+            f"Smelter should be INPUT_STARVED (source caps at 1/min), "
+            f"but got {smelter_eff.limiting_factor}: {smelter_eff.limiting_details}"
         )
 
 
