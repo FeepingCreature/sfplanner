@@ -13,7 +13,6 @@ from pathlib import Path
 from satisfactory_planner.core.constraint_optimizer import ConstraintSystem
 from satisfactory_planner.core.flow_models import (
     BOTTLENECK_TOLERANCE,
-    FLOW_TOLERANCE,
     INFINITE_RATE,
     BuildingEfficiency,
     FlowEdge,
@@ -664,142 +663,116 @@ def _find_limiting_factor(
     if duty_cycle >= 0.999:
         return LimitingFactor.NONE, "Running at full capacity"
 
+    if not binding_sources:
+        return LimitingFactor.NONE, "Unknown (no constraint info)"
+
     incoming = graph.get_incoming_edges(node.id)
     outgoing = graph.get_outgoing_edges(node.id)
 
-    logger.debug(f"_find_limiting_factor for node {node.id} (duty_cycle={duty_cycle:.3f})")
-    logger.debug(f"  incoming edges: {[e.id for e in incoming]}")
-    logger.debug(f"  outgoing edges: {[e.id for e in outgoing]}")
+    node_edge_ids = {e.id for e in incoming} | {e.id for e in outgoing}
+    incoming_edge_ids = {e.id for e in incoming}
+    outgoing_edge_ids = {e.id for e in outgoing}
 
-    # If we have binding source info, use it to determine the true limiting factor
-    if binding_sources:
-        logger.debug(f"  binding_sources has {len(binding_sources)} entries:")
-        for source, dual in binding_sources.items():
-            logger.debug(
-                f"    {source.kind} edge={source.edge_id} node={source.node_id} dual={dual:.3f} desc={source.description}"
-            )
-        # We need to find the binding constraint that affects THIS node specifically.
-        # Due to variable merging (recipe ratios), edges in a chain share LP variables,
-        # but we should still only report constraints relevant to this node.
+    # Due to variable merging (recipe ratios), the binding constraint may be on
+    # an edge upstream in the chain, not directly on our edges. We check:
+    # 1. Constraints directly on our edges
+    # 2. For upstream constraints, trace if they affect our inputs
 
-        node_edge_ids = {e.id for e in incoming} | {e.id for e in outgoing}
-        incoming_edge_ids = {e.id for e in incoming}
+    for source, dual in binding_sources.items():
+        if dual <= 0:
+            continue  # Not actually binding
 
-        logger.debug(f"  node_edge_ids: {node_edge_ids}")
-        logger.debug(f"  incoming_edge_ids: {incoming_edge_ids}")
+        # Direct match: constraint is on one of our edges
+        is_direct_match = source.edge_id in node_edge_ids or source.node_id == node.id
 
-        # First pass: look for constraints directly on this node's edges
-        for source, dual in binding_sources.items():
-            if dual <= 0:
-                logger.debug(
-                    f"  skipping {source.kind} edge={source.edge_id}: dual={dual:.3f} <= 0"
-                )
-                continue  # Not actually binding
+        # Upstream match: constraint is on an upstream edge that feeds into us
+        # This happens when variables are merged through a production chain
+        is_upstream_match = False
+        upstream_item_name: str | None = None
+        if not is_direct_match and source.kind == "production_rate":
+            # Check if the constraint's edge is upstream of any of our inputs
+            # by following the graph backwards
+            upstream_item_name = _trace_upstream_constraint(graph, source.edge_id, incoming)
+            is_upstream_match = upstream_item_name is not None
 
-            # Check if this constraint is on one of our edges
-            if source.edge_id not in node_edge_ids and source.node_id != node.id:
-                logger.debug(
-                    f"  skipping {source.kind} edge={source.edge_id}: not in node_edge_ids and node_id={source.node_id} != {node.id}"
-                )
-                continue  # Not relevant to this node
+        if not is_direct_match and not is_upstream_match:
+            continue  # Not relevant to this node
 
-            logger.debug(f"  MATCHED {source.kind} edge={source.edge_id} node={source.node_id}")
-
-            # Map constraint kind to limiting factor
-            if source.kind == "belt_capacity":
-                logger.debug(f"  -> returning BELT_CAPACITY: {source.description}")
-                return LimitingFactor.BELT_CAPACITY, source.description
-            elif source.kind == "downstream_demand":
-                logger.debug(f"  -> returning DOWNSTREAM: {source.description}")
+        # Map constraint kind to limiting factor
+        if source.kind == "belt_capacity":
+            return LimitingFactor.BELT_CAPACITY, source.description
+        elif source.kind == "downstream_demand":
+            # Downstream demand on our OUTPUT edge means we're downstream-limited
+            if source.edge_id in outgoing_edge_ids:
                 return LimitingFactor.DOWNSTREAM, source.description
-            elif source.kind == "production_rate":
-                # Production rate on an INCOMING edge means upstream is starving us
-                # Production rate on an OUTGOING edge means we're at capacity (skip)
-                if source.edge_id in incoming_edge_ids:
-                    # Find the item name from the edge
-                    edge = graph.edges.get(source.edge_id)
-                    item_name = edge.item_name if edge else "input"
-                    logger.debug(f"  -> returning INPUT_STARVED (upstream): {item_name}")
-                    return (
-                        LimitingFactor.INPUT_STARVED,
-                        f"{item_name} limited by upstream ({source.description})",
-                    )
-                # Otherwise it's our own production rate - skip
-                logger.debug("  skipping production_rate on outgoing edge (at capacity)")
-                continue
-            elif source.kind == "input_limit":
-                logger.debug(f"  -> returning INPUT_STARVED (input_limit): {source.description}")
-                return LimitingFactor.INPUT_STARVED, source.description
-
-    # Fallback: heuristic analysis (original logic)
-    # This is used when binding_sources is not available or doesn't find a match
-    logger.debug("  No binding source matched, falling back to heuristic analysis")
-    worst_ratio: float | None = None
-    worst_factor = LimitingFactor.NONE
-    worst_details = "Unknown"
-
-    def check_limit(ratio: float, factor: LimitingFactor, details: str) -> None:
-        """Update worst if this is more limiting."""
-        nonlocal worst_ratio, worst_factor, worst_details
-        if worst_ratio is None or ratio < worst_ratio:
-            worst_ratio = ratio
-            worst_factor = factor
-            worst_details = details
-
-    # Build map of item_name -> total incoming flow and edges
-    incoming_by_item: dict[str | None, tuple[float, list[FlowEdge]]] = {}
-    for edge in incoming:
-        item = edge.item_name
-        current = incoming_by_item.get(item, (0.0, []))
-        incoming_by_item[item] = (current[0] + flows.get(edge.id, 0.0), current[1] + [edge])
-
-    # Check all inputs (match by item type, not port index)
-    for input_port in node.inputs:
-        if input_port.rate <= 0:
+            # Downstream demand on our INPUT edge doesn't make sense, skip
             continue
-        item_data = incoming_by_item.get(input_port.item_name)
-        if item_data:
-            actual_input, edges = item_data
-            ratio = actual_input / input_port.rate
-            if ratio < 1.0 - FLOW_TOLERANCE / input_port.rate:
-                # Check if any feeding belt is at capacity
-                belt_limited = False
-                for edge in edges:
-                    edge_flow = flows.get(edge.id, 0.0)
-                    if edge_flow >= edge.capacity - FLOW_TOLERANCE:
-                        check_limit(
-                            ratio,
-                            LimitingFactor.BELT_CAPACITY,
-                            f"{input_port.item_name} belt at capacity ({edge.capacity}/min)",
-                        )
-                        belt_limited = True
-                        break
-                if not belt_limited:
-                    check_limit(
-                        ratio,
-                        LimitingFactor.INPUT_STARVED,
-                        f"{input_port.item_name}: {actual_input:.1f} < {input_port.rate:.1f}/min needed",
-                    )
-        # Note: missing inputs are handled by INPUT_MISSING warning, not efficiency
+        elif source.kind == "production_rate":
+            # Production rate constraint - need to determine if it's input or output
+            if source.edge_id in incoming_edge_ids:
+                # Direct input constraint
+                edge = graph.edges.get(source.edge_id)
+                item_name = edge.item_name if edge else "input"
+                return (
+                    LimitingFactor.INPUT_STARVED,
+                    f"{item_name} limited by upstream ({source.description})",
+                )
+            elif is_upstream_match and upstream_item_name:
+                # Upstream constraint traced to our input
+                return (
+                    LimitingFactor.INPUT_STARVED,
+                    f"{upstream_item_name} limited by upstream ({source.description})",
+                )
+            elif source.edge_id in outgoing_edge_ids:
+                # Our own production rate - we're at capacity, not a problem
+                continue
+            continue
+        elif source.kind == "input_limit":
+            return LimitingFactor.INPUT_STARVED, source.description
 
-    # Check all outputs
-    for i, out_edge in enumerate(outgoing):
-        if i < len(node.outputs) and node.outputs[i].rate > 0:
-            actual_output = flows.get(out_edge.id, 0.0)
-            ratio = actual_output / node.outputs[i].rate
-            if ratio < 1.0 - FLOW_TOLERANCE / node.outputs[i].rate:
-                edge = graph.edges[out_edge.id]
-                if actual_output >= edge.capacity - FLOW_TOLERANCE:
-                    check_limit(
-                        ratio,
-                        LimitingFactor.BELT_CAPACITY,
-                        f"Output belt at capacity ({edge.capacity}/min)",
-                    )
-                else:
-                    check_limit(
-                        ratio,
-                        LimitingFactor.DOWNSTREAM,
-                        f"Downstream only consumes {actual_output:.1f}/min",
-                    )
+    return LimitingFactor.NONE, "Unknown (no matching constraint)"
 
-    return worst_factor, worst_details
+
+def _trace_upstream_constraint(
+    graph: FlowGraph, constraint_edge_id: ItemKey, incoming_edges: list[FlowEdge]
+) -> str | None:
+    """Check if a constraint edge is upstream of any incoming edges.
+
+    Returns the item_name of the incoming edge if found, None otherwise.
+    Uses BFS to trace backwards through the graph.
+    """
+    # Build a set of edges we're looking for
+    target_edges = {e.id for e in incoming_edges}
+
+    # BFS from the constraint edge forward to see if we reach any target
+    visited: set[ItemKey] = set()
+    queue = [constraint_edge_id]
+
+    while queue:
+        current_edge_id = queue.pop(0)
+        if current_edge_id in visited:
+            continue
+        visited.add(current_edge_id)
+
+        # Check if we've reached a target
+        if current_edge_id in target_edges:
+            edge = graph.edges.get(current_edge_id)
+            return edge.item_name if edge else "input"
+
+        # Get the edge and follow it forward
+        edge = graph.edges.get(current_edge_id)
+        if not edge:
+            continue
+
+        # Get the destination node and its outgoing edges
+        dest_node = graph.nodes.get(edge.dest_node_id)
+        if not dest_node:
+            continue
+
+        # Only follow through producers (recipe ratio merging)
+        if dest_node.node_type == NodeType.PRODUCER:
+            for out_edge in graph.get_outgoing_edges(dest_node.id):
+                if out_edge.id not in visited:
+                    queue.append(out_edge.id)
+
+    return None
