@@ -806,8 +806,8 @@ class TestFlowSolver:
         assert output_flow is not None
         assert output_flow == 0.0, f"Expected 0 output, got {output_flow}"
 
-        # Should warn about missing input
-        assert any("Iron Plate" in w.message and "missing" in w.message for w in warnings), (
+        # Should warn about missing input (no belt connected)
+        assert any("Iron Plate" in w.message and "not connected" in w.message for w in warnings), (
             f"Expected warning about missing Iron Plate input: {[w.message for w in warnings]}"
         )
 

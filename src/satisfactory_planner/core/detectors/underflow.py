@@ -95,9 +95,19 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                 current = incoming_by_item.get(edge.item_name, (0.0, []))
                 incoming_by_item[edge.item_name] = (current[0] + flow, current[1] + [edge])
 
+        # Check if this node is output-limited BEFORE analyzing inputs.
+        # If the building is downstream/belt limited, reduced/zero input flow
+        # is a CONSEQUENCE, not a cause - don't report missing inputs.
+        efficiency = model.efficiencies.get(node_id)
+        is_output_limited = efficiency and efficiency.limiting_factor in (
+            LimitingFactor.DOWNSTREAM,
+            LimitingFactor.BELT_CAPACITY,
+        )
+
         # Track missing inputs and underflows separately
         # We want to report the MOST limiting factor (lowest ratio)
         missing_inputs: list[str] = []
+        truly_missing_inputs: list[str] = []  # No belt connected at all
         worst_underflow: tuple[float, str, float, float, list[FlowEdge]] | None = (
             None  # (ratio, item, actual, demanded, edges)
         )
@@ -108,15 +118,16 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
 
             item_data = incoming_by_item.get(input_port.item_name)
             if item_data is None:
-                # No belt at all for this item
-                missing_inputs.append(input_port.item_name)
+                # No belt at all for this item - this is ALWAYS a problem
+                truly_missing_inputs.append(input_port.item_name)
             else:
                 actual_flow, edges = item_data
                 demanded = input_port.rate
 
                 if actual_flow < 0.01:
-                    # Belt exists but no flow - treat as missing
-                    missing_inputs.append(input_port.item_name)
+                    # Belt exists but no flow - only report if NOT output-limited
+                    if not is_output_limited:
+                        missing_inputs.append(input_port.item_name)
                 elif actual_flow < demanded - 0.01:
                     # Some flow but not enough - track if it's the worst
                     ratio = actual_flow / demanded
@@ -129,7 +140,18 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
                             edges,
                         )
 
-        # Report missing inputs first (highest priority)
+        # Report truly missing inputs (no belt connected) - always a problem
+        for item_name in truly_missing_inputs:
+            warnings.append(
+                Warning(
+                    type=WarningType.INPUT_MISSING,
+                    message=f"{item_name} input not connected.",
+                    item_key=node_id,
+                    severity=1.0,
+                )
+            )
+
+        # Report missing inputs (belt exists but no flow) - only if not output-limited
         for item_name in missing_inputs:
             warnings.append(
                 Warning(
