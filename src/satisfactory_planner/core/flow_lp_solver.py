@@ -724,11 +724,14 @@ def _find_downstream_binding_constraint(
     starting_edges: list[FlowEdge],
     binding_by_edge: dict[ItemKey, tuple[ConstraintSource, float]],
 ) -> tuple[LimitingFactor, str] | None:
-    """Walk downstream through producers to find binding constraints.
+    """Walk downstream through the graph to find binding constraints.
 
     This handles multi-stage production chains where the output is limited
     by a downstream bottleneck (e.g., Constructor -> Assembler -> capped Sink).
-    The constructor's output is limited because the assembler can't consume more.
+
+    When we reach a PRODUCER that's consuming our output, we report it as the
+    limiting factor (even if the real root cause is further downstream). This
+    gives the user actionable info: "the assembler can't consume more screws".
     """
     from collections import deque
 
@@ -754,20 +757,30 @@ def _find_downstream_binding_constraint(
         if not dest_node:
             continue
 
-        # For producers, continue walking downstream through their outputs
-        # This traces through the production chain
+        # For producers: report them as the bottleneck rather than tracing further.
+        # The user cares that "the assembler can't consume more", not the root cause.
         if dest_node.node_type == NodeType.PRODUCER:
-            downstream_edges = graph.get_outgoing_edges(dest_node.id)
-            for downstream_edge in downstream_edges:
-                if downstream_edge.id not in visited:
-                    queue.append(downstream_edge)
+            # The producer's reduced demand is limiting us
+            item_name = edge.item_name or "output"
+            return (
+                LimitingFactor.DOWNSTREAM,
+                f"{dest_node.recipe_id or 'Producer'} demand for {item_name}",
+            )
 
-        # For splitters/mergers, also continue downstream
+        # For splitters/mergers, continue downstream
         if dest_node.node_type in (NodeType.SPLITTER, NodeType.MERGER):
             downstream_edges = graph.get_outgoing_edges(dest_node.id)
             for downstream_edge in downstream_edges:
                 if downstream_edge.id not in visited:
                     queue.append(downstream_edge)
+
+        # For sinks, check if they have a binding constraint
+        if dest_node.node_type == NodeType.SINK:
+            # The sink's capacity is limiting - but we should have found the
+            # binding constraint on the edge already. If not, report the sink.
+            for inp in dest_node.inputs:
+                if inp.rate < 1e9:  # Has a cap
+                    return LimitingFactor.DOWNSTREAM, f"Sink capacity {inp.rate}/min"
 
     return None
 

@@ -592,9 +592,20 @@ class TestLimitingFactorDetection:
 
         # THE KEY ASSERTION: Constructor should be DOWNSTREAM limited
         # The sink caps the assembler, which caps demand for screws from constructor
+        # The limiting details should mention the ASSEMBLER (the direct consumer),
+        # not the sink (the root cause) - this gives actionable feedback.
         assert constructor_eff.limiting_factor == LimitingFactor.DOWNSTREAM, (
             f"Constructor should be DOWNSTREAM (assembler can't consume more screws), "
             f"but got {constructor_eff.limiting_factor}: {constructor_eff.limiting_details}"
+        )
+
+        # Should mention the assembler's demand, not the sink
+        assert (
+            "Reinforced Iron Plate" in constructor_eff.limiting_details
+            or "Screw" in constructor_eff.limiting_details
+        ), (
+            f"Limiting details should mention the assembler's recipe or the item, "
+            f"but got: {constructor_eff.limiting_details}"
         )
 
 
