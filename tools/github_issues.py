@@ -27,7 +27,7 @@ def get_schema() -> dict[str, Any]:
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["check", "list", "get", "create", "comment", "close", "reopen", "update"],
+                        "enum": ["check", "list", "get", "create", "comment", "edit_comment", "close", "reopen", "update"],
                         "description": "Action to perform. 'check' compares GitHub state against seen.json to find new/updated issues.",
                     },
                     "issue_number": {
@@ -41,6 +41,10 @@ def get_schema() -> dict[str, Any]:
                     "body": {
                         "type": "string",
                         "description": "Issue/comment body in markdown",
+                    },
+                    "comment_id": {
+                        "type": "integer",
+                        "description": "Comment ID (required for edit_comment)",
                     },
                     "labels": {
                         "type": "array",
@@ -363,6 +367,26 @@ def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
             return {
                 "success": True,
                 "message": f"Added comment to issue #{issue_number}",
+                "comment": _format_comment(comment),
+            }
+        
+        elif action == "edit_comment":
+            comment_id = args.get("comment_id")
+            body = args.get("body")
+            if not comment_id:
+                return {"success": False, "error": "comment_id is required"}
+            if not body:
+                return {"success": False, "error": "body is required"}
+            
+            comment = _api_request(
+                token, "PATCH",
+                f"/repos/{REPO}/issues/comments/{comment_id}",
+                {"body": body},
+            )
+            
+            return {
+                "success": True,
+                "message": f"Updated comment {comment_id}",
                 "comment": _format_comment(comment),
             }
         

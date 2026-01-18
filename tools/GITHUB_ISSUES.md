@@ -153,6 +153,14 @@ Parameters:
 github_issues(action="comment", issue_number=42, body="My comment here")
 ```
 
+### Edit Comment
+
+```
+github_issues(action="edit_comment", comment_id=12345678, body="Updated comment text")
+```
+
+The `comment_id` is returned when you create a comment, or visible in `get` results.
+
 ### Close Issue
 
 **Don't use this directly.** Use `Closes #N` in commit messages instead.
