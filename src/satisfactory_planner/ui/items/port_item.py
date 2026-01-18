@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from satisfactory_planner.core.flow_models import INFINITE_RATE
 from satisfactory_planner.core.item_key import ItemKey
 
 if TYPE_CHECKING:
@@ -190,6 +191,10 @@ class PortItem(QGraphicsItem):
             if node.building_id and node.building_id.element_id == self.building_id:
                 if self.port_index < len(node.outputs):
                     port = node.outputs[self.port_index]
+                    # Skip ports with infinite rate (miners, sources)
+                    # They don't have meaningful "spare capacity"
+                    if port.rate >= INFINITE_RATE - 1:
+                        break
                     # Spare = rate - actual_rate
                     spare = port.rate - port.actual_rate
                     if spare > 0.1:  # Only show if meaningful
