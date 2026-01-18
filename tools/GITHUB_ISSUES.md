@@ -161,6 +161,12 @@ github_issues(action="edit_comment", comment_id=12345678, body="Updated comment 
 
 The `comment_id` is returned when you create a comment, or visible in `get` results.
 
+### Delete Comment
+
+```
+github_issues(action="delete_comment", comment_id=12345678)
+```
+
 ### Close Issue
 
 **Don't use this directly.** Use `Closes #N` in commit messages instead.

@@ -27,7 +27,7 @@ def get_schema() -> dict[str, Any]:
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["check", "list", "get", "create", "comment", "edit_comment", "close", "reopen", "update"],
+                        "enum": ["check", "list", "get", "create", "comment", "edit_comment", "delete_comment", "close", "reopen", "update"],
                         "description": "Action to perform. 'check' compares GitHub state against seen.json to find new/updated issues.",
                     },
                     "issue_number": {
@@ -388,6 +388,21 @@ def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
                 "success": True,
                 "message": f"Updated comment {comment_id}",
                 "comment": _format_comment(comment),
+            }
+        
+        elif action == "delete_comment":
+            comment_id = args.get("comment_id")
+            if not comment_id:
+                return {"success": False, "error": "comment_id is required"}
+            
+            _api_request(
+                token, "DELETE",
+                f"/repos/{REPO}/issues/comments/{comment_id}",
+            )
+            
+            return {
+                "success": True,
+                "message": f"Deleted comment {comment_id}",
             }
         
         elif action == "close":
