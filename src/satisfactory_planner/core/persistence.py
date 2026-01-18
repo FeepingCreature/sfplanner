@@ -98,11 +98,11 @@ def load_recipes() -> dict[RecipeId, Recipe]:
         return {}
 
 
-def load_items() -> list[tuple[ItemId, str, bool]]:
+def load_items() -> list[tuple[ItemId, str, bool, bool]]:
     """Load items from game_data.json.
 
     Returns:
-        List of (item_id, display_name, is_fluid) tuples.
+        List of (item_id, display_name, is_fluid, is_mineable) tuples.
     """
     try:
         data = _load_game_data()
@@ -111,7 +111,8 @@ def load_items() -> list[tuple[ItemId, str, bool]]:
             item_id = ItemId(item_data["id"])
             name = item_data.get("name", item_data["id"])
             is_fluid = item_data.get("is_fluid", False)
-            items.append((item_id, name, is_fluid))
+            is_mineable = item_data.get("is_mineable", False)
+            items.append((item_id, name, is_fluid, is_mineable))
         return items
     except (KeyError, TypeError):
         return []

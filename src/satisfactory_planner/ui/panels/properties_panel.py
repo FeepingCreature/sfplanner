@@ -683,14 +683,14 @@ class PropertiesPanel(QWidget):
         # Build list of (name, id) tuples
         item_list: list[tuple[str, str]] = []
 
-        # For miners, filter to non-fluid items (ores, coal, etc.)
+        # For miners, filter to only mineable resources (ores, water, oil, etc.)
         if building_type == BuildingType.MINER:
-            for item_id, name, is_fluid in items:
-                if not is_fluid:
+            for item_id, name, _is_fluid, is_mineable in items:
+                if is_mineable:
                     item_list.append((name, item_id))
         else:
             # Source/Sink can use any item
-            for item_id, name, _is_fluid in items:
+            for item_id, name, _is_fluid, _is_mineable in items:
                 item_list.append((name, item_id))
 
         # Use SearchableComboBox's set_items (handles sorting)

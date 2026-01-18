@@ -189,7 +189,7 @@ class RecipeEditorDialog(QDialog):
         """Load items from game_data.json as (name, id) tuples."""
         items = load_items()
         # Return as (display_name, item_id) for SearchableComboBox
-        return [(name, item_id) for item_id, name, _is_fluid in items]
+        return [(name, item_id) for item_id, name, _is_fluid, _is_mineable in items]
 
     def _update_button_states(self) -> None:
         """Enable/disable buttons based on selection."""
