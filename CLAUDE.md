@@ -110,22 +110,27 @@ This applies to any typed wrapper: `ItemKey`, `RecipeId`, `ItemId`, etc. If the 
 
 ## GitHub Issues Workflow
 
-We track GitHub issues with a conversational workflow:
-
-1. **ISSUES.md** - Human-readable status tracking (awaiting feedback, blocked, etc.)
-2. **.forge/github_issues_seen.json** - Timestamps for detecting new comments
-3. **tools/GITHUB_ISSUES.md** - Full workflow documentation
-
-**Quick check for new activity:**
+**Check for new activity:**
 ```
-github_issues(action="list")  # Get all open issues
-# Compare updated_at against seen.json timestamps
-# Issues with newer updated_at have new comments
+github_issues(action="check")
+→ "2 new, 1 updated, 4 unchanged"
 ```
 
-**After commenting on an issue:** Update seen.json with the current timestamp.
+**Read an issue** (auto-marks as seen):
+```
+github_issues(action="get", issue_number=N)
+```
 
-**Issue lifecycle:** New → In Progress → Awaiting Feedback → Closed (with commit links)
+**Comment** (auto-marks as awaiting_feedback):
+```
+github_issues(action="comment", issue_number=N, body="...")
+```
+
+The tool auto-tracks timestamps in `.forge/github_issues_seen.json`. The `check` action compares GitHub's `updated_at` against our last-seen timestamps to detect new comments.
+
+**ISSUES.md** is only for blocked/complex issues that need design decisions. Don't track every issue there - just ones that can't be auto-handled.
+
+See **tools/GITHUB_ISSUES.md** for full documentation.
 
 ## Web Tools (web_search / web_fetch)
 

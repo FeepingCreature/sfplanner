@@ -6,56 +6,71 @@ Tool for interacting with GitHub issues on FeepingCreature/sfplanner.
 
 ### Checking for New Activity
 
-1. **List open issues**: `github_issues(action="list")`
-2. **Compare with ISSUES.md**: Check if any issues are missing from our tracking
-3. **Check for new comments**: For tracked issues, compare `updated_at` with `.forge/github_issues_seen.json`
-4. **Review new activity**: Fetch issues with new comments, read and respond
+Use the `check` action - it does all the comparison automatically:
+
+```
+github_issues(action="check")
+```
+
+Returns:
+- `new_issues`: Issues we haven't seen before
+- `updated_issues`: Issues with activity since we last looked
+- `summary`: "3 new, 2 updated, 5 unchanged"
 
 ### Typical Session Flow
 
 ```
-1. "Check GitHub issues" →
-   - List all open issues
-   - Compare against ISSUES.md and seen timestamps
-   - Report: "3 new issues, 2 issues have new comments"
+1. github_issues(action="check")
+   → "2 new, 1 updated, 4 unchanged"
 
-2. For new issues →
-   - Read full issue
-   - Either: implement if straightforward, OR add to ISSUES.md with questions
+2. For new/updated issues:
+   github_issues(action="get", issue_number=N)
+   → Full issue with comments (auto-marks as seen)
 
-3. For issues with new comments →
-   - Read the new comments
-   - Continue the conversation (implement, ask follow-ups, etc.)
+3. Respond:
+   - Implement if straightforward
+   - Or comment with questions (auto-marks as awaiting_feedback)
+   - Or add to ISSUES.md if blocked/complex
 
-4. After responding to an issue →
-   - Update `.forge/github_issues_seen.json` with current timestamp
-   - Update ISSUES.md status if needed
+4. No manual timestamp updates needed - get/comment auto-update seen.json
 ```
 
 ### State Files
 
-**ISSUES.md** (repo root): Human-readable tracking of issue status
-- "Awaiting Feedback" - AI asked questions, waiting for human
-- "Blocked / Complex" - Needs design work or external input
-- "Recently Completed" - Done this session
+**ISSUES.md** (repo root): Human-readable tracking for blocked/complex issues only
+- Issues that need design decisions or are blocked on external factors
+- Don't need to track every issue here - just the ones that can't be auto-handled
 
-**.forge/github_issues_seen.json**: Machine-readable timestamps
+**.forge/github_issues_seen.json**: Auto-managed timestamps
 ```json
 {
   "issues": {
-    "7": {"last_seen_at": "2026-01-18T14:19:51Z"},
-    "8": {"last_seen_at": "2026-01-18T14:19:52Z"}
+    "7": {"last_seen_at": "2026-01-18T14:19:51Z", "status": "awaiting_feedback"},
+    "8": {"last_seen_at": "2026-01-18T14:19:52Z", "status": "seen"}
   }
 }
 ```
 
+Status values:
+- `seen`: We've read it
+- `awaiting_feedback`: We commented and are waiting for response
+- `closed`: Issue is closed
+
+### Auto-Tracking
+
+The tool automatically updates seen.json:
+- `get`: Marks issue as "seen" with current timestamp
+- `comment`: Marks issue as "awaiting_feedback" with new timestamp
+- `close`: Marks issue as "closed"
+
+This means the `check` action accurately detects when humans respond to our comments.
+
 ### Closing the Loop
 
 When an issue is fully resolved:
-1. Close on GitHub: `github_issues(action="close", issue_number=N)`
-2. Add explanatory comment with commit links
-3. Remove from ISSUES.md (or move to "Recently Completed")
-4. Remove from seen.json (optional, doesn't hurt to keep)
+1. Comment with explanation and commit links
+2. Close on GitHub: `github_issues(action="close", issue_number=N)`
+3. Remove from ISSUES.md if it was there
 
 ## Configuration
 

@@ -27,8 +27,8 @@ def get_schema() -> dict[str, Any]:
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["list", "get", "create", "comment", "close", "reopen", "update"],
-                        "description": "Action to perform",
+                        "enum": ["check", "list", "get", "create", "comment", "close", "reopen", "update"],
+                        "description": "Action to perform. 'check' compares GitHub state against seen.json to find new/updated issues.",
                     },
                     "issue_number": {
                         "type": "integer",
@@ -203,6 +203,33 @@ def _format_comment(comment: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+SEEN_FILE = ".forge/github_issues_seen.json"
+
+
+def _load_seen(vfs: "WorkInProgressVFS") -> dict[str, Any]:
+    """Load the seen issues state file."""
+    try:
+        content = vfs.read_file(SEEN_FILE)
+        return json.loads(content)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"issues": {}}
+
+
+def _save_seen(vfs: "WorkInProgressVFS", seen: dict[str, Any]) -> None:
+    """Save the seen issues state file."""
+    vfs.write_file(SEEN_FILE, json.dumps(seen, indent=2) + "\n")
+
+
+def _mark_seen(vfs: "WorkInProgressVFS", issue_number: int, updated_at: str, status: str = "seen") -> None:
+    """Mark an issue as seen with current timestamp."""
+    seen = _load_seen(vfs)
+    seen["issues"][str(issue_number)] = {
+        "last_seen_at": updated_at,
+        "status": status,
+    }
+    _save_seen(vfs, seen)
+
+
 def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
     """Execute the GitHub issues tool."""
     action = args.get("action")
@@ -220,7 +247,49 @@ def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
         return {"success": False, "error": f"Authentication failed: {e}"}
     
     try:
-        if action == "list":
+        if action == "check":
+            # Compare GitHub state against seen.json
+            seen = _load_seen(vfs)
+            seen_issues = seen.get("issues", {})
+            
+            endpoint = f"/repos/{REPO}/issues?state=open"
+            issues = _api_request(token, "GET", endpoint)
+            # Filter out pull requests
+            issues = [i for i in issues if "pull_request" not in i]
+            
+            new_issues = []
+            updated_issues = []
+            unchanged_issues = []
+            
+            for issue in issues:
+                num = str(issue["number"])
+                updated_at = issue["updated_at"]
+                
+                if num not in seen_issues:
+                    new_issues.append({
+                        "number": issue["number"],
+                        "title": issue["title"],
+                        "created_at": issue["created_at"],
+                    })
+                elif seen_issues[num].get("last_seen_at", "") < updated_at:
+                    updated_issues.append({
+                        "number": issue["number"],
+                        "title": issue["title"],
+                        "last_seen_at": seen_issues[num].get("last_seen_at"),
+                        "updated_at": updated_at,
+                    })
+                else:
+                    unchanged_issues.append(issue["number"])
+            
+            return {
+                "success": True,
+                "new_issues": new_issues,
+                "updated_issues": updated_issues,
+                "unchanged_count": len(unchanged_issues),
+                "summary": f"{len(new_issues)} new, {len(updated_issues)} updated, {len(unchanged_issues)} unchanged",
+            }
+        
+        elif action == "list":
             state = args.get("state", "open")
             labels = args.get("labels", [])
             
@@ -248,6 +317,9 @@ def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
             
             result = _format_issue(issue, include_body=True)
             result["comments"] = [_format_comment(c) for c in comments]
+            
+            # Auto-mark as seen when reading
+            _mark_seen(vfs, issue_number, issue["updated_at"], status="seen")
             
             return {"success": True, "issue": result}
         
@@ -284,6 +356,10 @@ def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
                 {"body": body},
             )
             
+            # Fetch updated issue to get new updated_at timestamp
+            issue = _api_request(token, "GET", f"/repos/{REPO}/issues/{issue_number}")
+            _mark_seen(vfs, issue_number, issue["updated_at"], status="awaiting_feedback")
+            
             return {
                 "success": True,
                 "message": f"Added comment to issue #{issue_number}",
@@ -300,6 +376,9 @@ def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
                 f"/repos/{REPO}/issues/{issue_number}",
                 {"state": "closed"},
             )
+            
+            # Mark as closed in seen.json
+            _mark_seen(vfs, issue_number, issue["updated_at"], status="closed")
             
             return {
                 "success": True,
