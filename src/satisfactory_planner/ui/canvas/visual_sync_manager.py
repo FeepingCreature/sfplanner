@@ -232,7 +232,13 @@ class VisualSyncManager:
         for belt_item in self.canvas._belt_items.values():
             flow_rate = solved.flows.get(belt_item.item_key) if solved else None
             optimal_flow_rate = solved.theoretical_flows.get(belt_item.item_key) if solved else None
-            belt_item.set_flow_rate(flow_rate, optimal_flow_rate)
+            # Get item name from the flow graph edge
+            item_name = None
+            if solved:
+                edge = solved.graph.edges.get(belt_item.item_key)
+                if edge:
+                    item_name = edge.item_name
+            belt_item.set_flow_rate(flow_rate, optimal_flow_rate, item_name)
 
         # Update all building items - each uses its item_key to look up results
         for building_item in self.canvas._building_items.values():
@@ -248,7 +254,13 @@ class VisualSyncManager:
                 optimal_flow_rate = (
                     solved.theoretical_flows.get(belt_item.item_key) if solved else None
                 )
-                belt_item.set_flow_rate(flow_rate, optimal_flow_rate)
+                # Get item name from the flow graph edge
+                item_name = None
+                if solved:
+                    edge = solved.graph.edges.get(belt_item.item_key)
+                    if edge:
+                        item_name = edge.item_name
+                belt_item.set_flow_rate(flow_rate, optimal_flow_rate, item_name)
 
             for building_item in room_item._building_items.values():
                 eff = solved.efficiencies.get(building_item.item_key) if solved else None
