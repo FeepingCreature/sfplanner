@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from satisfactory_planner.ui.canvas import FactoryCanvas
 
 
-# Belt colors by tier (darker = lower tier)
+# Belt colors by tier (darker = lower tier) - used as fallback when item unknown
 BELT_COLORS = {
     1: QColor(100, 100, 100),
     2: QColor(120, 120, 120),
@@ -32,6 +32,54 @@ BELT_COLORS = {
     5: QColor(180, 180, 180),
     6: QColor(200, 180, 100),  # Gold for max tier
 }
+
+# Item colors for belt visualization - maps item names to colors
+# Colors chosen to be visually distinct and roughly match in-game item colors
+ITEM_COLORS: dict[str, QColor] = {
+    # Ores
+    "Iron Ore": QColor(139, 90, 43),  # Brown
+    "Copper Ore": QColor(184, 115, 51),  # Copper orange
+    "Limestone": QColor(180, 170, 150),  # Tan/beige
+    "Coal": QColor(50, 50, 50),  # Dark gray
+    "Caterium Ore": QColor(255, 200, 50),  # Gold
+    "Raw Quartz": QColor(255, 182, 193),  # Pink
+    "Sulfur": QColor(255, 255, 100),  # Yellow
+    "Bauxite": QColor(150, 75, 75),  # Reddish brown
+    "Uranium": QColor(50, 255, 50),  # Bright green (radioactive)
+    "SAM": QColor(150, 50, 200),  # Purple
+    # Ingots
+    "Iron Ingot": QColor(120, 120, 140),  # Steel gray
+    "Copper Ingot": QColor(200, 120, 50),  # Copper
+    "Steel Ingot": QColor(80, 80, 100),  # Dark steel
+    "Caterium Ingot": QColor(220, 180, 50),  # Gold
+    "Aluminum Ingot": QColor(200, 200, 210),  # Light silver
+    # Basic parts
+    "Iron Plate": QColor(100, 100, 120),  # Gray-blue
+    "Iron Rod": QColor(110, 110, 130),  # Slightly different gray
+    "Copper Sheet": QColor(210, 130, 60),  # Copper
+    "Screw": QColor(140, 140, 160),  # Light steel
+    "Wire": QColor(190, 100, 40),  # Copper wire
+    "Cable": QColor(60, 60, 70),  # Dark (insulated)
+    "Concrete": QColor(150, 150, 140),  # Gray
+    "Steel Beam": QColor(70, 70, 90),  # Dark steel
+    "Steel Pipe": QColor(75, 75, 95),  # Dark steel
+    # Electronics
+    "Rotor": QColor(100, 100, 110),  # Metal gray
+    "Stator": QColor(90, 90, 100),  # Metal gray
+    "Motor": QColor(80, 80, 90),  # Darker metal
+    "Circuit Board": QColor(0, 100, 0),  # Green PCB
+    "Computer": QColor(50, 50, 60),  # Dark
+    "Supercomputer": QColor(40, 40, 50),  # Darker
+    "AI Limiter": QColor(200, 50, 50),  # Red
+    # Misc
+    "Plastic": QColor(240, 240, 250),  # White-ish
+    "Rubber": QColor(30, 30, 35),  # Black
+    "Fuel": QColor(200, 150, 50),  # Amber
+    "Packaged Fuel": QColor(180, 130, 40),  # Darker amber
+}
+
+# Default color for unknown items
+DEFAULT_ITEM_COLOR = QColor(150, 150, 150)  # Neutral gray
 
 # Belt widths by tier
 BELT_WIDTHS = {
@@ -68,6 +116,7 @@ class BeltItem(QGraphicsPathItem):
         self._dest_placement = dest_placement
         self._flow_rate: float | None = None  # Set by flow solver
         self._optimal_flow_rate: float | None = None  # set by flow solver, flow without belt limits
+        self._item_name: str | None = None  # Set by flow solver - what item flows through
         # FIXME isn't this redundant with source_placement?
         self._placement_id: str | None = None  # Set when belt is inside a room placement
 
@@ -92,8 +141,11 @@ class BeltItem(QGraphicsPathItem):
         return stroker.createStroke(self.path())
 
     def _setup_appearance(self) -> None:
-        """Configure appearance based on tier."""
-        color = BELT_COLORS.get(self.belt.tier, BELT_COLORS[1])
+        """Configure appearance based on item being transported (or tier as fallback)."""
+        if self._item_name:
+            color = ITEM_COLORS.get(self._item_name, DEFAULT_ITEM_COLOR)
+        else:
+            color = BELT_COLORS.get(self.belt.tier, BELT_COLORS[1])
         width = BELT_WIDTHS.get(self.belt.tier, BELT_WIDTHS[1])
         self.setPen(QPen(color, width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
 
@@ -321,10 +373,19 @@ class BeltItem(QGraphicsPathItem):
         """Set the placement ID for belts inside room placements."""
         self._placement_id = placement_id
 
-    def set_flow_rate(self, flow_rate: float | None, optimal_flow_rate: float | None) -> None:
-        """Set belt flow rate for efficiency outline."""
+    def set_flow_rate(
+        self,
+        flow_rate: float | None,
+        optimal_flow_rate: float | None,
+        item_name: str | None = None,
+    ) -> None:
+        """Set belt flow rate and item for visualization."""
         self._flow_rate = flow_rate
         self._optimal_flow_rate = optimal_flow_rate
+        # Update item name and refresh appearance if changed
+        if item_name != self._item_name:
+            self._item_name = item_name
+            self._setup_appearance()
         self.update()
 
     @property
