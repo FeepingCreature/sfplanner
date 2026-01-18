@@ -2,6 +2,61 @@
 
 Tool for interacting with GitHub issues on FeepingCreature/sfplanner.
 
+## Issue Management Workflow
+
+### Checking for New Activity
+
+1. **List open issues**: `github_issues(action="list")`
+2. **Compare with ISSUES.md**: Check if any issues are missing from our tracking
+3. **Check for new comments**: For tracked issues, compare `updated_at` with `.forge/github_issues_seen.json`
+4. **Review new activity**: Fetch issues with new comments, read and respond
+
+### Typical Session Flow
+
+```
+1. "Check GitHub issues" →
+   - List all open issues
+   - Compare against ISSUES.md and seen timestamps
+   - Report: "3 new issues, 2 issues have new comments"
+
+2. For new issues →
+   - Read full issue
+   - Either: implement if straightforward, OR add to ISSUES.md with questions
+
+3. For issues with new comments →
+   - Read the new comments
+   - Continue the conversation (implement, ask follow-ups, etc.)
+
+4. After responding to an issue →
+   - Update `.forge/github_issues_seen.json` with current timestamp
+   - Update ISSUES.md status if needed
+```
+
+### State Files
+
+**ISSUES.md** (repo root): Human-readable tracking of issue status
+- "Awaiting Feedback" - AI asked questions, waiting for human
+- "Blocked / Complex" - Needs design work or external input
+- "Recently Completed" - Done this session
+
+**.forge/github_issues_seen.json**: Machine-readable timestamps
+```json
+{
+  "issues": {
+    "7": {"last_seen_at": "2026-01-18T14:19:51Z"},
+    "8": {"last_seen_at": "2026-01-18T14:19:52Z"}
+  }
+}
+```
+
+### Closing the Loop
+
+When an issue is fully resolved:
+1. Close on GitHub: `github_issues(action="close", issue_number=N)`
+2. Add explanatory comment with commit links
+3. Remove from ISSUES.md (or move to "Recently Completed")
+4. Remove from seen.json (optional, doesn't hurt to keep)
+
 ## Configuration
 
 Create `~/.config/forge/github.json`:

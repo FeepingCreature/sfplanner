@@ -108,6 +108,25 @@ This applies to any typed wrapper: `ItemKey`, `RecipeId`, `ItemId`, etc. If the 
 
 **Push back on user requests that smell wrong:** If the user asks for something that contradicts what was just discussed, or seems to violate domain semantics, push back and ask for clarification rather than silently implementing something incorrect. The user can make mistakes too!
 
+## GitHub Issues Workflow
+
+We track GitHub issues with a conversational workflow:
+
+1. **ISSUES.md** - Human-readable status tracking (awaiting feedback, blocked, etc.)
+2. **.forge/github_issues_seen.json** - Timestamps for detecting new comments
+3. **tools/GITHUB_ISSUES.md** - Full workflow documentation
+
+**Quick check for new activity:**
+```
+github_issues(action="list")  # Get all open issues
+# Compare updated_at against seen.json timestamps
+# Issues with newer updated_at have new comments
+```
+
+**After commenting on an issue:** Update seen.json with the current timestamp.
+
+**Issue lifecycle:** New → In Progress → Awaiting Feedback → Closed (with commit links)
+
 ## Web Tools (web_search / web_fetch)
 
 **Compact aggressively after use** - these add lots of tokens to context.
