@@ -280,6 +280,9 @@ class BeltItem(QGraphicsPathItem):
         # Arrow/chevron size
         arrow_size = 5
 
+        # Calculate the total width of one marker group
+        group_width = trailing_chevrons * chevron_spacing
+
         # Use belt tier color but brighter/more visible
         base_color = BELT_COLORS.get(self.belt.tier, BELT_COLORS[1])
         arrow_color = QColor(
@@ -289,13 +292,25 @@ class BeltItem(QGraphicsPathItem):
             220,
         )
 
-        num_groups = int(length / group_spacing)
+        # Calculate marker group positions
+        # For short belts, place one group centered
+        # For longer belts, distribute groups evenly with spacing
+        num_groups = max(1, int(length / group_spacing))
 
-        for i in range(1, num_groups + 1):
-            # Position of the solid triangle (front of the group)
-            group_start_dist = i * group_spacing
-            if group_start_dist >= length:
-                break
+        if num_groups == 1:
+            # Single group: center it on the belt
+            # Position the solid triangle so the whole group is centered
+            # The group spans from solid_pos to solid_pos + group_width
+            # Center of group = solid_pos + group_width/2, so solid_pos = center - group_width/2
+            group_positions = [length / 2 - group_width / 2]
+        else:
+            # Multiple groups: distribute evenly, avoiding endpoints
+            # Start at group_spacing, then every group_spacing after
+            group_positions = [i * group_spacing for i in range(1, num_groups + 1)]
+
+        for group_start_dist in group_positions:
+            if group_start_dist <= 0 or group_start_dist >= length:
+                continue
 
             # Draw solid filled triangle at the front
             t = group_start_dist / length
