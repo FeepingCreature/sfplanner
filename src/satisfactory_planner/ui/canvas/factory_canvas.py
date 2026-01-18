@@ -7,7 +7,7 @@ from collections.abc import Callable
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsScene,
     QGraphicsView,
+    QMenu,
 )
 
 from satisfactory_planner.core import (
@@ -493,9 +494,9 @@ class FactoryCanvas(QGraphicsView):
                 return
             item_at_pos = self.itemAt(event.pos())
             if item_at_pos is None or item_at_pos is self._selection.outline_item:
-                self._is_panning = True
-                self._pan_start = QPointF(float(event.pos().x()), float(event.pos().y()))
-                self.setCursor(Qt.CursorShape.ClosedHandCursor)
+                # Show context menu on empty canvas space
+                scene_pos = self.mapToScene(event.pos())
+                self._show_context_menu(event.pos(), scene_pos)
                 return
 
         if event.button() == Qt.MouseButton.LeftButton:
@@ -908,6 +909,104 @@ class FactoryCanvas(QGraphicsView):
                 belt_item = self._belt_items.get(belt.id)
                 if belt_item:
                     belt_item._update_path_from_endpoints()
+
+    def _show_context_menu(self, screen_pos: QPointF | QPoint, scene_pos: QPointF) -> None:
+        """Show context menu for quick building placement on empty canvas.
+
+        Args:
+            screen_pos: Position in widget coordinates (for menu placement)
+            scene_pos: Position in scene coordinates (for building placement)
+        """
+        menu = QMenu(self)
+
+        # Production buildings submenu
+        production_menu = menu.addMenu("Production")
+        production_types = [
+            BuildingType.SMELTER,
+            BuildingType.FOUNDRY,
+            BuildingType.CONSTRUCTOR,
+            BuildingType.ASSEMBLER,
+            BuildingType.MANUFACTURER,
+            BuildingType.REFINERY,
+            BuildingType.PACKAGER,
+            BuildingType.BLENDER,
+        ]
+        for bt in production_types:
+            action = production_menu.addAction(bt.value)
+            action.setData(bt)
+
+        # Logistics submenu
+        logistics_menu = menu.addMenu("Logistics")
+        logistics_types = [
+            BuildingType.SPLITTER,
+            BuildingType.MERGER,
+        ]
+        for bt in logistics_types:
+            action = logistics_menu.addAction(bt.value)
+            action.setData(bt)
+
+        # Source/Sink submenu
+        io_menu = menu.addMenu("Source/Sink")
+        io_types = [
+            BuildingType.SOURCE,
+            BuildingType.SINK,
+            BuildingType.MINER,
+        ]
+        for bt in io_types:
+            action = io_menu.addAction(bt.value)
+            action.setData(bt)
+
+        # Room ports (only show if we're at document level, not inside a room)
+        # For simplicity, always show - placement will handle validity
+        ports_menu = menu.addMenu("Room Ports")
+        port_types = [
+            BuildingType.PORT_IN,
+            BuildingType.PORT_OUT,
+        ]
+        for bt in port_types:
+            action = ports_menu.addAction(bt.value)
+            action.setData(bt)
+
+        # Execute menu and handle selection
+        # Handle both QPoint and QPointF
+        if isinstance(screen_pos, QPoint):
+            global_pos = self.mapToGlobal(screen_pos)
+        else:
+            global_pos = self.mapToGlobal(screen_pos.toPoint())
+        action = menu.exec(global_pos)
+        if action and action.data():
+            building_type = action.data()
+            self._place_building_at(building_type, scene_pos)
+
+    def _place_building_at(self, building_type: BuildingType, scene_pos: QPointF) -> None:
+        """Place a building at the given scene position.
+
+        Args:
+            building_type: Type of building to place
+            scene_pos: Position in scene coordinates
+        """
+        from satisfactory_planner.core.models import generate_id
+        from satisfactory_planner.ui.commands import PlaceBuildingCommand
+
+        # Snap to grid
+        snapped_pos = self._snap_to_grid(scene_pos)
+
+        # Create the building
+        building = Building(
+            id=generate_id(),
+            building_type=building_type,
+            x=snapped_pos.x(),
+            y=snapped_pos.y(),
+            rotation=0,
+        )
+
+        # Execute command to add it
+        cmd = PlaceBuildingCommand(
+            scene_room_id=None,  # Add to document level
+            building=building,
+            canvas=self,
+        )
+        self.command_stack.execute(cmd)
 
     def window(self) -> MainWindow:
         """Return the MainWindow that contains this canvas."""
