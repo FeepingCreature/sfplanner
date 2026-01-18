@@ -253,7 +253,12 @@ class BeltItem(QGraphicsPathItem):
     def _draw_flow_arrows(self, painter: QPainter) -> None:
         """Draw directional triangles along the belt to show flow direction and capacity.
 
-        Higher tier belts show more closely-spaced triangles (>>> >>> vs >   >).
+        Uses grouped triangles to indicate tier:
+        - Tier 1-2: Single triangle  >
+        - Tier 3-4: Double triangle  >>
+        - Tier 5-6: Triple triangle  >>>
+
+        This makes capacity readable at a glance - "that's a triple, high capacity".
         """
         path = self.path()
         length = path.length()
@@ -261,29 +266,26 @@ class BeltItem(QGraphicsPathItem):
         if length < 40:
             return  # Too short for arrows
 
-        # Spacing varies by tier - higher tier = denser triangles
-        # Tier 1: 60/min  -> spacing 70 (sparse)
-        # Tier 6: 1200/min -> spacing 30 (dense)
-        tier_spacing = {
-            1: 70,
-            2: 60,
-            3: 50,
-            4: 45,
-            5: 38,
-            6: 30,
+        # Number of triangles in each group based on tier
+        tier_group_count = {
+            1: 1,
+            2: 1,
+            3: 2,
+            4: 2,
+            5: 3,
+            6: 3,
         }
-        arrow_spacing = tier_spacing.get(self.belt.tier, 50)
+        triangles_per_group = tier_group_count.get(self.belt.tier, 1)
 
-        # Arrow size also scales slightly with tier
-        tier_size = {
-            1: 4,
-            2: 5,
-            3: 5,
-            4: 6,
-            5: 6,
-            6: 7,
-        }
-        arrow_size = tier_size.get(self.belt.tier, 5)
+        # Spacing between groups (not individual triangles)
+        # All tiers use same group spacing for consistent rhythm
+        group_spacing = 60
+
+        # Spacing between triangles within a group (tight clustering)
+        intra_group_spacing = 8
+
+        # Arrow size - consistent across tiers for clean look
+        arrow_size = 5
 
         # Use belt tier color but brighter/more visible
         base_color = BELT_COLORS.get(self.belt.tier, BELT_COLORS[1])
@@ -298,28 +300,40 @@ class BeltItem(QGraphicsPathItem):
         painter.setPen(QPen(arrow_color.darker(120), 1))
         painter.setBrush(QBrush(arrow_color))
 
-        num_arrows = int(length / arrow_spacing)
+        num_groups = int(length / group_spacing)
 
-        for i in range(1, num_arrows + 1):
-            t = (i * arrow_spacing) / length
-            if t >= 1.0:
+        for i in range(1, num_groups + 1):
+            # Position of group center along the path
+            group_center_dist = i * group_spacing
+            if group_center_dist >= length:
                 break
-            point = path.pointAtPercent(t)
-            angle = path.angleAtPercent(t)
 
-            painter.save()
-            painter.translate(point)
-            painter.rotate(-angle)
+            # Draw each triangle in the group
+            for j in range(triangles_per_group):
+                # Offset from group center: centered around the group position
+                offset = (j - (triangles_per_group - 1) / 2) * intra_group_spacing
+                triangle_dist = group_center_dist + offset
 
-            # Draw a triangle arrow pointing in flow direction
-            painter.drawPolygon(
-                [
-                    QPointF(arrow_size, 0),
-                    QPointF(-arrow_size, -arrow_size),
-                    QPointF(-arrow_size, arrow_size),
-                ]
-            )
-            painter.restore()
+                if triangle_dist <= 0 or triangle_dist >= length:
+                    continue
+
+                t = triangle_dist / length
+                point = path.pointAtPercent(t)
+                angle = path.angleAtPercent(t)
+
+                painter.save()
+                painter.translate(point)
+                painter.rotate(-angle)
+
+                # Draw a triangle arrow pointing in flow direction
+                painter.drawPolygon(
+                    [
+                        QPointF(arrow_size, 0),
+                        QPointF(-arrow_size, -arrow_size),
+                        QPointF(-arrow_size, arrow_size),
+                    ]
+                )
+                painter.restore()
 
     def _draw_flow_rate(self, painter: QPainter) -> None:
         """Draw the flow rate at the belt midpoint."""
