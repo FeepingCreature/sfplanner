@@ -34,6 +34,7 @@ from satisfactory_planner.ui.dialogs import SettingsDialog
 from satisfactory_planner.ui.panels.library_panel import LibraryPanel
 from satisfactory_planner.ui.panels.properties_panel import PropertiesPanel
 from satisfactory_planner.ui.panels.warnings_panel import WarningsPanel
+from satisfactory_planner.ui.print_dialog import PrintOptionsDialog, print_scene
 
 if TYPE_CHECKING:
     pass
@@ -156,6 +157,13 @@ class MainWindow(QMainWindow):
         save_action.setShortcut(QKeySequence.StandardKey.Save)
         save_action.triggered.connect(self._save_document)
         file_menu.addAction(save_action)
+
+        file_menu.addSeparator()
+
+        print_action = QAction("Print...", self)
+        print_action.setShortcut(QKeySequence.StandardKey.Print)
+        print_action.triggered.connect(self._print_document)
+        file_menu.addAction(print_action)
 
         file_menu.addSeparator()
 
@@ -539,6 +547,30 @@ class MainWindow(QMainWindow):
 
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to save file:\n{e}")
+
+    def _print_document(self) -> None:
+        """Open print dialog for current document."""
+        if not self.current_tab or not self.current_tab.canvas:
+            return
+
+        # Show print options dialog
+        options = PrintOptionsDialog(self)
+        if options.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        # Get the scene to print
+        scene = self.current_tab.canvas.scene()
+        title = self.current_tab.name
+
+        # Open print preview
+        print_scene(
+            scene,
+            parent=self,
+            document_title=title,
+            black_white=options.is_black_white(),
+            include_title=options.include_title(),
+            margin_mm=options.margin_mm(),
+        )
 
     def _open_settings(self) -> None:
         """Open settings dialog."""
