@@ -318,9 +318,9 @@ class BeltItem(QGraphicsPathItem):
                 )
                 painter.restore()
 
-            # Draw trailing chevrons (just the front edges, no fill)
+            # Draw leading chevrons ahead of the solid triangle (no fill)
             for j in range(trailing_chevrons):
-                chevron_dist = group_start_dist - (j + 1) * chevron_spacing
+                chevron_dist = group_start_dist + (j + 1) * chevron_spacing
 
                 if chevron_dist <= 0 or chevron_dist >= length:
                     continue
