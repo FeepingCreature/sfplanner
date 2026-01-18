@@ -193,6 +193,27 @@ class MainWindow(QMainWindow):
         # View menu (merged with Layout)
         view_menu = self.menuBar().addMenu("View")
 
+        # Zoom actions
+        zoom_in_action = QAction("Zoom In", self)
+        zoom_in_action.setShortcut("+")
+        zoom_in_action.triggered.connect(self._zoom_in)
+        view_menu.addAction(zoom_in_action)
+
+        zoom_out_action = QAction("Zoom Out", self)
+        zoom_out_action.setShortcut("-")
+        zoom_out_action.triggered.connect(self._zoom_out)
+        view_menu.addAction(zoom_out_action)
+
+        zoom_fit_action = QAction("Zoom to All", self)
+        zoom_fit_action.setShortcut("0")
+        zoom_fit_action.triggered.connect(self._zoom_fit)
+        view_menu.addAction(zoom_fit_action)
+
+        zoom_selection_action = QAction("Zoom to Selection", self)
+        zoom_selection_action.setShortcut(".")
+        zoom_selection_action.triggered.connect(self._zoom_selection)
+        view_menu.addAction(zoom_selection_action)
+
         # Panel visibility toggles
         view_menu.addSeparator()
         for dock_widget in self._dock_widgets:
@@ -692,6 +713,24 @@ class MainWindow(QMainWindow):
                 # Add some padding
                 scene_rect.adjust(-50, -50, 50, 50)
                 canvas.fitInView(scene_rect, Qt.AspectRatioMode.KeepAspectRatio)
+
+    def _zoom_selection(self) -> None:
+        """Fit selected items in view on current canvas."""
+        if self.current_tab and self.current_tab.canvas:
+            canvas = self.current_tab.canvas
+            selected_items = canvas.scene().selectedItems()
+            if not selected_items:
+                return
+            # Calculate bounding rect of all selected items
+            from PySide6.QtCore import QRectF
+
+            bounds = QRectF()
+            for item in selected_items:
+                bounds = bounds.united(item.sceneBoundingRect())
+            if not bounds.isEmpty():
+                # Add some padding
+                bounds.adjust(-50, -50, 50, 50)
+                canvas.fitInView(bounds, Qt.AspectRatioMode.KeepAspectRatio)
 
     def _on_grid_size_changed(self, text: str) -> None:
         """Handle grid size dropdown change."""
