@@ -2,6 +2,26 @@
 
 Tool for interacting with GitHub issues on FeepingCreature/sfplanner.
 
+## Quick Start for Subsessions
+
+If you're a subsession tasked with handling a GitHub issue:
+
+```
+1. Read the issue:
+   github_issues(action="get", issue_number=N)
+   
+2. Implement the fix/feature
+
+3. Commit with "Closes #N" in the message:
+   <commit message="Fix the thing\n\nCloses #N"/>
+
+4. Comment explaining what was done:
+   github_issues(action="comment", issue_number=N, body="Implemented in <commit-sha>...")
+```
+
+**IMPORTANT: Never close issues directly.** Use `Closes #N` in commit messages instead.
+When the code is pushed to GitHub, the commit will auto-close the issue with a proper link.
+
 ## Issue Management Workflow
 
 ### Checking for New Activity
@@ -65,12 +85,15 @@ The tool automatically updates seen.json:
 
 This means the `check` action accurately detects when humans respond to our comments.
 
-### Closing the Loop
+### Closing Issues
 
-When an issue is fully resolved:
-1. Comment with explanation and commit links
-2. Close on GitHub: `github_issues(action="close", issue_number=N)`
-3. Remove from ISSUES.md if it was there
+**Never use `github_issues(action="close")`** - instead:
+
+1. Include `Closes #N` or `Fixes #N` in your commit message
+2. Comment on the issue explaining what was done with a commit link
+3. When the code is pushed, GitHub auto-closes the issue
+
+This ensures issues are linked to the commits that resolved them.
 
 ## Configuration
 
@@ -131,6 +154,9 @@ github_issues(action="comment", issue_number=42, body="My comment here")
 ```
 
 ### Close Issue
+
+**Don't use this directly.** Use `Closes #N` in commit messages instead.
+Only use this for issues that won't be fixed (e.g., "won't fix", "duplicate").
 
 ```
 github_issues(action="close", issue_number=42)
