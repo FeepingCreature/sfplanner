@@ -75,9 +75,15 @@ class ClipboardManager:
                     clock_speed=old_building.clock_speed,
                     rotation=old_building.rotation,
                 )
-                scene_room_id = self.canvas.get_room_at_point(
-                    QPointF(new_building.x, new_building.y)
-                )
+                # Check if pasting into a room - convert to room-local coordinates
+                paste_pos = QPointF(new_building.x, new_building.y)
+                placement = self.canvas.get_room_placement_at_point(paste_pos)
+                if placement:
+                    new_building.x = new_building.x - placement.x
+                    new_building.y = new_building.y - placement.y
+                    scene_room_id = placement.room_id
+                else:
+                    scene_room_id = None
                 cmd = PlaceBuildingCommand(
                     scene_room_id=scene_room_id, building=new_building, canvas=self.canvas
                 )

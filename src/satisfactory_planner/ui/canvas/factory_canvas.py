@@ -800,6 +800,15 @@ class FactoryCanvas(QGraphicsView):
                 return item.room.id
         return None
 
+    def get_room_placement_at_point(self, pos: QPointF) -> RoomPlacement | None:
+        """Get the RoomPlacement at a scene position, if any."""
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
+        for item in self._scene.items(pos):
+            if isinstance(item, RoomItem):
+                return item.placement
+        return None
+
     def get_scene_for_item(self, item: QGraphicsItem) -> str | None:
         """Get the room_id for the scene an item belongs to."""
         scene = self._selection.get_scene_for_item(item)

@@ -152,14 +152,25 @@ class PlacementManager:
 
     def _place_building(self, building_type: BuildingType, x: float, y: float) -> None:
         """Place a building at the given position."""
+        # Check if dropping into a room - need to convert to room-local coordinates
+        placement = self.canvas.get_room_placement_at_point(QPointF(x, y))
+        if placement:
+            # Convert scene coordinates to room-local coordinates
+            local_x = x - placement.x
+            local_y = y - placement.y
+            scene_room_id = placement.room_id
+        else:
+            local_x = x
+            local_y = y
+            scene_room_id = None
+
         building = Building(
             id=generate_id(),
             building_type=building_type,
-            x=x,
-            y=y,
+            x=local_x,
+            y=local_y,
             rotation=self._placement_rotation,
         )
-        scene_room_id = self.canvas.get_room_at_point(QPointF(x, y))
         cmd = PlaceBuildingCommand(
             scene_room_id=scene_room_id, building=building, canvas=self.canvas
         )
@@ -219,14 +230,25 @@ class PlacementManager:
                 scene_pos = QPointF(scene_pos.x() - spec.width / 2, scene_pos.y() - spec.height / 2)
             snapped = self.canvas._snap_to_grid(scene_pos)
 
+            # Check if dropping into a room - need to convert to room-local coordinates
+            placement = self.canvas.get_room_placement_at_point(snapped)
+            if placement:
+                # Convert scene coordinates to room-local coordinates
+                local_x = snapped.x() - placement.x
+                local_y = snapped.y() - placement.y
+                scene_room_id = placement.room_id
+            else:
+                local_x = snapped.x()
+                local_y = snapped.y()
+                scene_room_id = None
+
             building = Building(
                 id=generate_id(),
                 building_type=self._drag_building_type,
-                x=snapped.x(),
-                y=snapped.y(),
+                x=local_x,
+                y=local_y,
                 rotation=self._drag_rotation,
             )
-            scene_room_id = self.canvas.get_room_at_point(snapped)
             cmd = PlaceBuildingCommand(
                 scene_room_id=scene_room_id, building=building, canvas=self.canvas
             )
