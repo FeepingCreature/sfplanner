@@ -1071,7 +1071,7 @@ class FactoryCanvas(QGraphicsView):
         # Cache items on first access
         if not hasattr(self, "_item_names"):
             self._item_names: dict[str, str] = {}
-            for iid, name, _is_fluid in load_items():
+            for iid, name, _is_fluid, _is_mineable in load_items():
                 self._item_names[iid] = name
         return self._item_names.get(item_id, item_id)  # Fallback to ID if not found
 

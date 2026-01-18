@@ -628,18 +628,18 @@ class BeltConnector:
         """Convert item display name to item ID."""
         from satisfactory_planner.core import load_items
 
-        for item_id, name, _is_fluid in load_items():
+        for item_id, name, _is_fluid, _is_mineable in load_items():
             if name == item_name:
-                return item_id
+                return str(item_id)
         return None
 
     def _item_id_to_name(self, item_id: ItemId) -> str | None:
         """Convert item ID to display name."""
         from satisfactory_planner.core import load_items
 
-        for iid, name, _is_fluid in load_items():
+        for iid, name, _is_fluid, _is_mineable in load_items():
             if iid == item_id:
-                return name
+                return str(name)
         return None
 
     def _spawn_and_connect(self, option: BuildingOption, scene_pos: QPointF) -> None:
