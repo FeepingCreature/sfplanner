@@ -84,6 +84,42 @@
       "streaming": true,
       "actual_cost": 0.0865275,
       "generation_id": "gen-1768751958-iVoWEzJRF1pUTJJUtx6N"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1768751967099.json",
+      "response_file": "/tmp/forge_debug/response_1768751967099.json",
+      "timestamp": 1768751967.0990894,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000161,
+      "generation_id": "gen-1768751967-9JRbgGw5f1T9yJ20LmWw"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768752003606.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768752003606.json",
+      "timestamp": 1768752003.6065102,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.02439025,
+      "generation_id": "gen-1768752003-e6CAfdDs5J8ig6sCJtQL"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768752008047.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768752008047.json",
+      "timestamp": 1768752008.048076,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.025971,
+      "generation_id": "gen-1768752008-iZwLFT4KAQ9DfTX772pX"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768752014621.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768752014621.json",
+      "timestamp": 1768752014.6218247,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.02398525,
+      "generation_id": "gen-1768752014-mcP3n4jwZa6O4XCOyPpz"
     }
   ],
   "messages": [
@@ -335,6 +371,69 @@
     {
       "role": "assistant",
       "content": "Done! Commented on issue #8 with the commit link and \"Closes #8\" to let GitHub close it automatically.\n\nThe final implementation shows belt tier as chevrons leading a solid triangle:\n- Tier 1: `|>` (solid only)\n- Tier 6: `>>>>>|>` (5 chevrons + solid)\n\nThis gives an instant visual read of belt capacity at a glance."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 44a476a1",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Ah, I think you need to edit the comment to make the commit a full repo link."
+    },
+    {
+      "role": "assistant",
+      "content": "You're right - GitHub needs a full URL to auto-link the commit. Let me update the comment:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"action\": \"update\", \"issue_number\": 8}",
+            "name": "github_issues"
+          },
+          "id": "toolu_vrtx_01YC1XC4NbyZ4TJZsknu9Med",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01YC1XC4NbyZ4TJZsknu9Med",
+      "content": "{\"error\": \"At least one field to update is required\", \"success\": false}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `github_issues`\n```json\n{\n  \"action\": \"update\",\n  \"issue_number\": 8\n}\n```\n**Result:**\n```json\n{\n  \"error\": \"At least one field to update is required\",\n  \"success\": false\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "I need to add a new comment since I can't edit the existing one. Let me add a corrected comment:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"action\": \"comment\", \"issue_number\": 8, \"body\": \"Correction - full commit link: https://github.com/FeepingCreature/sfplanner/commit/cb7c644e\\n\\nCloses #8\"}",
+            "name": "github_issues"
+          },
+          "id": "toolu_vrtx_01PGy1Sv2S1MmPRh9iErSuLd",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01PGy1Sv2S1MmPRh9iErSuLd",
+      "content": "{\"comment\": {\"author\": \"forge-ai-ide[bot]\", \"body\": \"Correction - full commit link: https://github.com/FeepingCreature/sfplanner/commit/cb7c644e\\n\\nCloses #8\", \"created_at\": \"2026-01-18T16:00:13Z\", \"id\": 3765438173}, \"message\": \"Added comment to issue #8\", \"success\": true}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `github_issues`\n```json\n{\n  \"action\": \"comment\",\n  \"body\": \"Correction - full commit link: https://github.com/FeepingCreature/sfplanner/commit/cb7c644e\\n\\nCloses #8\",\n  \"issue_number\": 8\n}\n```\n**Result:**\n```json\n{\n  \"comment\": {\n    \"author\": \"forge-ai-ide[bot]\",\n    \"body\": \"Correction - full commit link: https://github.com/FeepingCreature/sfplanner/commit/cb7c644e\\n\\nCloses #8\",\n    \"created_at\": \"2026-01-18T16:00:13Z\",\n    \"id\": 3765438173\n  },\n  \"message\": \"Added comment to issue #8\",\n  \"success\": true\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Done! Added a follow-up comment with the full commit URL so GitHub will properly link it and close the issue."
     }
   ],
   "parent_session": null,
