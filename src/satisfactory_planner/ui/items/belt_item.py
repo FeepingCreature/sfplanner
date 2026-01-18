@@ -199,22 +199,59 @@ class BeltItem(QGraphicsPathItem):
             self._draw_flow_rate(painter)
 
     def _draw_flow_arrows(self, painter: QPainter) -> None:
-        """Draw small arrows along the belt to show flow direction."""
+        """Draw directional triangles along the belt to show flow direction and capacity.
+
+        Higher tier belts show more closely-spaced triangles (>>> >>> vs >   >).
+        """
         path = self.path()
         length = path.length()
 
-        if length < 50:
+        if length < 40:
             return  # Too short for arrows
 
-        # Draw arrows at regular intervals
-        arrow_spacing = 50
+        # Spacing varies by tier - higher tier = denser triangles
+        # Tier 1: 60/min  -> spacing 70 (sparse)
+        # Tier 6: 1200/min -> spacing 30 (dense)
+        tier_spacing = {
+            1: 70,
+            2: 60,
+            3: 50,
+            4: 45,
+            5: 38,
+            6: 30,
+        }
+        arrow_spacing = tier_spacing.get(self.belt.tier, 50)
+
+        # Arrow size also scales slightly with tier
+        tier_size = {
+            1: 4,
+            2: 5,
+            3: 5,
+            4: 6,
+            5: 6,
+            6: 7,
+        }
+        arrow_size = tier_size.get(self.belt.tier, 5)
+
+        # Use belt tier color but brighter/more visible
+        base_color = BELT_COLORS.get(self.belt.tier, BELT_COLORS[1])
+        # Make arrows lighter/more visible than the belt line
+        arrow_color = QColor(
+            min(255, base_color.red() + 60),
+            min(255, base_color.green() + 60),
+            min(255, base_color.blue() + 60),
+            220,
+        )
+
+        painter.setPen(QPen(arrow_color.darker(120), 1))
+        painter.setBrush(QBrush(arrow_color))
+
         num_arrows = int(length / arrow_spacing)
 
-        painter.setPen(QPen(QColor(100, 100, 100, 150), 1))
-        painter.setBrush(QBrush(QColor(100, 100, 100, 150)))
-
-        for i in range(1, num_arrows):
+        for i in range(1, num_arrows + 1):
             t = (i * arrow_spacing) / length
+            if t >= 1.0:
+                break
             point = path.pointAtPercent(t)
             angle = path.angleAtPercent(t)
 
@@ -222,8 +259,7 @@ class BeltItem(QGraphicsPathItem):
             painter.translate(point)
             painter.rotate(-angle)
 
-            # Draw a small triangle arrow
-            arrow_size = 4
+            # Draw a triangle arrow pointing in flow direction
             painter.drawPolygon(
                 [
                     QPointF(arrow_size, 0),
