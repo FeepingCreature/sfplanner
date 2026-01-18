@@ -1,0 +1,13 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "## Task: Fix GitHub Issue #12 - Miner items should be limited to actually mineable ores/fluids\n\n### Problem\nCurrently, miners can be configured to mine any item, but they should only be able to mine actual ores and fluids that exist as resource nodes in Satisfactory.\n\n### What to investigate\n1. Look at `src/satisfactory_planner/ui/` for where miner recipe/item selection happens - likely in a properties panel or context menu\n2. Look at `src/satisfactory_planner/core/models.py` for BuildingType.MINER and how miners work\n3. Look at `src/satisfactory_planner/core/persistence.py` for `load_items()` to understand item data structure\n4. Check what data is available about items - there may be a flag or category indicating if an item is mineable\n\n### Expected solution\n- Filter the item list shown for miners to only include mineable resources (ores like Iron Ore, Copper Ore, etc. and fluids like Crude Oil, Water)\n- This might involve:\n  - Adding a property to items indicating they're mineable\n  - Or filtering by known mineable item IDs\n  - Or checking if the item appears as a miner recipe output\n\n### Definition of done\n- When selecting an item/recipe for a MINER building, only mineable resources are shown\n- Tests pass (`make test`)\n- Commit with message referencing issue #12"
+    }
+  ],
+  "active_files": [],
+  "parent_session": "master",
+  "child_sessions": [],
+  "state": "running",
+  "yield_message": null
+}
