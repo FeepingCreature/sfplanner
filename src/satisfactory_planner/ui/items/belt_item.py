@@ -253,12 +253,14 @@ class BeltItem(QGraphicsPathItem):
     def _draw_flow_arrows(self, painter: QPainter) -> None:
         """Draw directional triangles along the belt to show flow direction and capacity.
 
-        Uses grouped triangles to indicate tier:
-        - Tier 1-2: Single triangle  >
-        - Tier 3-4: Double triangle  >>
-        - Tier 5-6: Triple triangle  >>>
-
-        This makes capacity readable at a glance - "that's a triple, high capacity".
+        Each marker group has one solid filled triangle followed by chevron outlines.
+        Number of trailing chevrons indicates tier:
+        - Tier 1: |>      (solid only)
+        - Tier 2: |>>     (solid + 1 chevron)
+        - Tier 3: |>>>    (solid + 2 chevrons)
+        - Tier 4: |>>>>   (solid + 3 chevrons)
+        - Tier 5: |>>>>>  (solid + 4 chevrons)
+        - Tier 6: |>>>>>> (solid + 5 chevrons)
         """
         path = self.path()
         length = path.length()
@@ -266,30 +268,20 @@ class BeltItem(QGraphicsPathItem):
         if length < 40:
             return  # Too short for arrows
 
-        # Number of triangles in each group based on tier
-        tier_group_count = {
-            1: 1,
-            2: 1,
-            3: 2,
-            4: 2,
-            5: 3,
-            6: 3,
-        }
-        triangles_per_group = tier_group_count.get(self.belt.tier, 1)
+        # Number of trailing chevrons based on tier (tier 1 = 0 chevrons, tier 6 = 5)
+        trailing_chevrons = self.belt.tier - 1
 
-        # Spacing between groups (not individual triangles)
-        # All tiers use same group spacing for consistent rhythm
-        group_spacing = 60
+        # Spacing between marker groups along the belt
+        group_spacing = 80
 
-        # Spacing between triangles within a group (tight clustering)
-        intra_group_spacing = 8
+        # Spacing between elements within a group
+        chevron_spacing = 6
 
-        # Arrow size - consistent across tiers for clean look
+        # Arrow/chevron size
         arrow_size = 5
 
         # Use belt tier color but brighter/more visible
         base_color = BELT_COLORS.get(self.belt.tier, BELT_COLORS[1])
-        # Make arrows lighter/more visible than the belt line
         arrow_color = QColor(
             min(255, base_color.red() + 60),
             min(255, base_color.green() + 60),
@@ -297,27 +289,17 @@ class BeltItem(QGraphicsPathItem):
             220,
         )
 
-        painter.setPen(QPen(arrow_color.darker(120), 1))
-        painter.setBrush(QBrush(arrow_color))
-
         num_groups = int(length / group_spacing)
 
         for i in range(1, num_groups + 1):
-            # Position of group center along the path
-            group_center_dist = i * group_spacing
-            if group_center_dist >= length:
+            # Position of the solid triangle (front of the group)
+            group_start_dist = i * group_spacing
+            if group_start_dist >= length:
                 break
 
-            # Draw each triangle in the group
-            for j in range(triangles_per_group):
-                # Offset from group center: centered around the group position
-                offset = (j - (triangles_per_group - 1) / 2) * intra_group_spacing
-                triangle_dist = group_center_dist + offset
-
-                if triangle_dist <= 0 or triangle_dist >= length:
-                    continue
-
-                t = triangle_dist / length
+            # Draw solid filled triangle at the front
+            t = group_start_dist / length
+            if 0 < t < 1:
                 point = path.pointAtPercent(t)
                 angle = path.angleAtPercent(t)
 
@@ -325,7 +307,8 @@ class BeltItem(QGraphicsPathItem):
                 painter.translate(point)
                 painter.rotate(-angle)
 
-                # Draw a triangle arrow pointing in flow direction
+                painter.setPen(QPen(arrow_color.darker(120), 1))
+                painter.setBrush(QBrush(arrow_color))
                 painter.drawPolygon(
                     [
                         QPointF(arrow_size, 0),
@@ -333,6 +316,31 @@ class BeltItem(QGraphicsPathItem):
                         QPointF(-arrow_size, arrow_size),
                     ]
                 )
+                painter.restore()
+
+            # Draw trailing chevrons (just the front edges, no fill)
+            for j in range(trailing_chevrons):
+                chevron_dist = group_start_dist - (j + 1) * chevron_spacing
+
+                if chevron_dist <= 0 or chevron_dist >= length:
+                    continue
+
+                t = chevron_dist / length
+                point = path.pointAtPercent(t)
+                angle = path.angleAtPercent(t)
+
+                painter.save()
+                painter.translate(point)
+                painter.rotate(-angle)
+
+                # Draw chevron as two lines forming a ">" shape
+                painter.setPen(QPen(arrow_color, 1.5))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                chevron_path = QPainterPath()
+                chevron_path.moveTo(-arrow_size * 0.7, -arrow_size * 0.8)
+                chevron_path.lineTo(arrow_size * 0.5, 0)
+                chevron_path.lineTo(-arrow_size * 0.7, arrow_size * 0.8)
+                painter.drawPath(chevron_path)
                 painter.restore()
 
     def _draw_flow_rate(self, painter: QPainter) -> None:
