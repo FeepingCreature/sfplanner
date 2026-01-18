@@ -16,6 +16,9 @@
 - [ ] Mid-drag doesn't update other linked room instances (only syncs on release)
 - [ ] Can select items across multiple room instances (funny, not breaking)
 
+## Pending GitHub Issues (need manual merge)
+- [ ] #5: Very short belts get occluded by ports (z-order fix needed) - session errored, needs retry
+
 ## Known Incomplete Items
 - [x] Belt routing: Dubins path (circle-line-circle) implementation
 - [ ] Measure actual in-game belt turning radius
