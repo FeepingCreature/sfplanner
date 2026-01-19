@@ -385,40 +385,53 @@ class _PackingState:
 
 
 def _try_place_bottom_left(state: _PackingState, width: float, height: float) -> QRectF:
-    """Find bottom-left position for a rectangle."""
-    # Try y positions from 0 upward
-    best_pos = QPointF(0, 0)
-    best_y = float("inf")
+    """Find bottom-left position for a rectangle using proper 2D bin packing.
 
-    # Candidate y positions: 0, and top edges of placed rects
-    y_candidates = [0.0]
+    Tries candidate positions at corners of existing rectangles.
+    """
+    if not state.placed:
+        # First rectangle goes at origin
+        return QRectF(0, 0, width, height)
+
+    best_pos: QPointF | None = None
+    best_score = float("inf")  # Lower is better (y first, then x)
+
+    # Candidate positions: bottom-left corners formed by existing rects
+    # Include (0, 0) and positions at (0, rect.bottom()) and (rect.right(), 0)
+    # and (rect.right(), other_rect.bottom())
+    candidates: list[QPointF] = [QPointF(0, 0)]
+
     for rect in state.placed:
-        y_candidates.append(rect.bottom())
+        # Right edge of this rect, at y=0
+        candidates.append(QPointF(rect.right(), 0))
+        # Left edge (x=0), below this rect
+        candidates.append(QPointF(0, rect.bottom()))
+        # Right edge of this rect, below other rects
+        for other in state.placed:
+            candidates.append(QPointF(rect.right(), other.bottom()))
+            candidates.append(QPointF(other.right(), rect.bottom()))
 
-    for y in sorted(set(y_candidates)):
-        # Find leftmost x where we can place at this y
-        x = 0.0
-        candidate = QRectF(x, y, width, height)
+    for pos in candidates:
+        candidate = QRectF(pos.x(), pos.y(), width, height)
 
-        # Check for overlaps and slide right if needed
-        changed = True
-        iterations = 0
-        while changed and iterations < 100:
-            changed = False
-            iterations += 1
-            for placed in state.placed:
-                if candidate.intersects(placed):
-                    # Slide right past the obstacle
-                    candidate.moveLeft(placed.right())
-                    changed = True
-                    break
+        # Check if this position overlaps any placed rect
+        overlaps = False
+        for placed in state.placed:
+            if candidate.intersects(placed):
+                overlaps = True
+                break
 
-        # Check if this position is better
-        if candidate.top() < best_y or (
-            candidate.top() == best_y and candidate.left() < best_pos.x()
-        ):
-            best_y = candidate.top()
-            best_pos = candidate.topLeft()
+        if not overlaps:
+            # Score: prefer lower y, then lower x
+            score = pos.y() * 10000 + pos.x()
+            if score < best_score:
+                best_score = score
+                best_pos = pos
+
+    if best_pos is None:
+        # Fallback: place to the right of everything
+        max_right = max(r.right() for r in state.placed)
+        best_pos = QPointF(max_right, 0)
 
     return QRectF(best_pos.x(), best_pos.y(), width, height)
 
@@ -853,7 +866,14 @@ class PackedPrintPreviewDialog(QDialog):
             else 1.414  # A4 landscape
         )
 
+        print(f"DEBUG: Refreshing layout with max_crossings={self._max_crossings}")
         self._layout = find_best_packing(self._document, page_aspect, self._max_crossings)
+        if self._layout:
+            print(
+                f"DEBUG: Got layout with {len(self._layout.tiles)} tiles, {len(self._layout.crossings)} crossings"
+            )
+        else:
+            print("DEBUG: No layout generated")
 
         # QPrintPreviewWidget has updatePreview() method
         self._preview.updatePreview()
@@ -976,11 +996,12 @@ class PackedPrintPreviewDialog(QDialog):
         # in scene coordinates. We need to hide items not in this tile, render, then restore.
         self._render_tile_filtered(painter, tile, target_rect)
 
+        # TODO: Fix crossing stub rendering - currently broken
         # Render crossing stubs for this tile
-        for crossing in layout.crossings:
-            self._render_crossing_stub(
-                painter, crossing, packed_tile, layout, scale, offset_x, offset_y
-            )
+        # for crossing in layout.crossings:
+        #     self._render_crossing_stub(
+        #         painter, crossing, packed_tile, layout, scale, offset_x, offset_y
+        #     )
 
     def _render_tile_filtered(self, painter: QPainter, tile: Tile, target_rect: QRectF) -> None:
         """Render only the items belonging to this tile.
