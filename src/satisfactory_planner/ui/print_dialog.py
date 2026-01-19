@@ -558,15 +558,27 @@ def find_best_packing(
     if not partitions:
         return None
 
+    print(f"DEBUG find_best_packing: Generated {len(partitions)} partitions")
+    for i, p in enumerate(partitions):
+        tile_sizes = [(t.bounds.width(), t.bounds.height()) for t in p.tiles]
+        print(
+            f"DEBUG   Partition {i}: {len(p.tiles)} tiles, {p.crossing_count} crossings, sizes={tile_sizes}"
+        )
+
     best_layout: PackedLayout | None = None
     best_zoom = 0.0
 
-    for partition in partitions:
+    for i, partition in enumerate(partitions):
         layout = pack_tiles(partition.tiles, page_aspect)
-        if layout and layout.zoom > best_zoom:
-            best_zoom = layout.zoom
-            layout.crossings = partition.crossings
-            best_layout = layout
+        if layout:
+            print(
+                f"DEBUG   Partition {i} packed: zoom={layout.zoom:.6f}, bounds={layout.total_bounds}"
+            )
+            if layout.zoom > best_zoom:
+                best_zoom = layout.zoom
+                layout.crossings = partition.crossings
+                best_layout = layout
+                print("DEBUG   -> New best!")
 
     return best_layout
 
