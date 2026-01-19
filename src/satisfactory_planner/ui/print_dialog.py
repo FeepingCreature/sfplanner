@@ -808,7 +808,8 @@ class PackedPrintPreviewDialog(QDialog):
         toolbar.addWidget(refresh_btn)
 
         # Printer setup
-        self._printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        # Use ScreenResolution for preview - it will use HighResolution when actually printing
+        self._printer = QPrinter(QPrinter.PrinterMode.ScreenResolution)
         self._printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
         self._printer.setPageOrientation(QPageLayout.Orientation.Landscape)
         margins = QMarginsF(self._margin_mm, self._margin_mm, self._margin_mm, self._margin_mm)
@@ -1030,6 +1031,12 @@ class PackedPrintPreviewDialog(QDialog):
                 item.setVisible(False)
 
         try:
+            # Debug logging
+            print(f"DEBUG: Tile bounds (scene coords): {tile.bounds}")
+            print(f"DEBUG: Tile building_ids: {tile.building_ids}")
+            print(f"DEBUG: Target rect (page coords): {target_rect}")
+            print(f"DEBUG: Items hidden: {len(items_to_hide)}")
+
             # Render directly to painter - let Qt handle resolution scaling
             # This works better for preview (screen res) vs print (high res)
             self._scene.render(painter, target_rect, tile.bounds)
@@ -1167,11 +1174,16 @@ class PackedPrintPreviewDialog(QDialog):
 
     def _do_print(self) -> None:
         """Execute the print."""
+        # Create a high-resolution printer for actual printing
+        print_printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        # Copy page layout from preview printer
+        print_printer.setPageLayout(self._printer.pageLayout())
+
         # Open native print dialog
-        print_dialog = QPrintDialog(self._printer, self)
+        print_dialog = QPrintDialog(print_printer, self)
         if print_dialog.exec() == QPrintDialog.DialogCode.Accepted:
-            # Render to the configured printer
-            self._render_preview(self._printer)
+            # Render to the high-res printer
+            self._render_preview(print_printer)
             self.accept()
 
 
