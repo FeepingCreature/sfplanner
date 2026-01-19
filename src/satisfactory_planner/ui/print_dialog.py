@@ -880,11 +880,15 @@ class PackedPrintPreviewDialog(QDialog):
         assert layout is not None
 
         # Reserve space for title
+        # Note: For high-res printers, we need to scale font size relative to page dimensions
+        # A 14pt font at 300dpi would be tiny; we need to scale based on logical page size
         title_height = 0.0
         if self._include_title:
-            title_height = 50
+            # Title height as fraction of page (about 3%)
+            title_height = page_rect.height() * 0.03
             font = painter.font()
-            font.setPointSize(14)
+            # Font size proportional to title height (in device pixels)
+            font.setPixelSize(max(12, int(title_height * 0.6)))
             font.setBold(True)
             painter.setFont(font)
             painter.setPen(QColor(0, 0, 0))
@@ -927,6 +931,16 @@ class PackedPrintPreviewDialog(QDialog):
 
         painter.end()
 
+    # Debug tile colors for visualizing packing
+    _TILE_COLORS = [
+        QColor(255, 200, 200, 80),  # Light red
+        QColor(200, 255, 200, 80),  # Light green
+        QColor(200, 200, 255, 80),  # Light blue
+        QColor(255, 255, 200, 80),  # Light yellow
+        QColor(255, 200, 255, 80),  # Light magenta
+        QColor(200, 255, 255, 80),  # Light cyan
+    ]
+
     def _render_tile(
         self,
         painter: QPainter,
@@ -939,6 +953,7 @@ class PackedPrintPreviewDialog(QDialog):
         """Render a single tile."""
         tile = packed_tile.tile
         packed_bounds = packed_tile.packed_bounds
+        tile_idx = layout.tiles.index(packed_tile)
 
         # Calculate target rect on page
         target_rect = QRectF(
@@ -948,8 +963,12 @@ class PackedPrintPreviewDialog(QDialog):
             packed_bounds.height() * scale,
         )
 
-        # Draw tile border (light gray)
-        painter.setPen(QPen(QColor(200, 200, 200), 1))
+        # Draw tile background with debug color
+        bg_color = self._TILE_COLORS[tile_idx % len(self._TILE_COLORS)]
+        painter.fillRect(target_rect, bg_color)
+
+        # Draw tile border
+        painter.setPen(QPen(QColor(100, 100, 100), 2))
         painter.drawRect(target_rect)
 
         # Render scene content for this tile
@@ -1052,12 +1071,17 @@ class PackedPrintPreviewDialog(QDialog):
         label = f"{label} #{crossing.crossing_id}" if label else f"#{crossing.crossing_id}"
 
         font = QFont()
-        font.setPointSize(8)
+        # Scale font size based on scale factor (roughly 8pt equivalent)
+        font.setPixelSize(max(8, int(12 * scale)))
         painter.setFont(font)
         painter.setPen(QColor(0, 0, 0))
 
         # Position label near edge point
-        label_rect = QRectF(page_edge.x() + 5, page_edge.y() - 10, 100, 20)
+        label_width = 100 * scale
+        label_height = 20 * scale
+        label_rect = QRectF(
+            page_edge.x() + 5, page_edge.y() - label_height / 2, label_width, label_height
+        )
         painter.drawText(label_rect, Qt.AlignmentFlag.AlignLeft, label)
 
     def _closest_edge_point(self, point: QPointF, rect: QRectF) -> QPointF:
