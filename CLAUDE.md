@@ -69,6 +69,8 @@ When a belt connects output→input, both half-circles face the same direction (
 
 **Defer to next frame when child items misbehave** - Qt sometimes needs to finish processing `addItem()` before child item geometry/visibility is valid. If items are invisible or mispositioned after being added, use `QTimer.singleShot(0, callback)` to defer the fix to the next event loop iteration.
 
+**Font sizes must be DPI-independent** - Always use `setPixelSize()` with sizes relative to the widget/page dimensions, never `setPointSize()`. Point sizes scale with monitor DPI, which makes text huge on high-DPI screens and tiny on low-DPI. Font is part of the UI and should maintain consistent visual size regardless of display resolution. For print rendering, calculate pixel size as a fraction of the page dimensions (e.g., `int(page_height * 0.03)` for ~3% height title).
+
 ## File Loading Strategy
 
 **Load files directly instead of grepping repeatedly.** Three `grep_context` calls cost more than one `update_context` to load the file. When you need to understand a file:

@@ -274,12 +274,6 @@ def generate_partitions(
     """
     nodes, edges = _build_adjacency(document)
 
-    print(
-        f"DEBUG generate_partitions: {len(nodes)} nodes, {len(edges)} edges, max_crossings={max_crossings}"
-    )
-    for belt_id, src, dst in edges:
-        print(f"DEBUG   Edge: {belt_id[:8]} from {src[:8]} to {dst[:8]}")
-
     if not nodes:
         return []
 
@@ -564,32 +558,15 @@ def find_best_packing(
     if not partitions:
         return None
 
-    print(f"DEBUG find_best_packing: Generated {len(partitions)} partitions")
-    for i, p in enumerate(partitions):
-        tile_sizes = [(t.bounds.width(), t.bounds.height()) for t in p.tiles]
-        print(
-            f"DEBUG   Partition {i}: {len(p.tiles)} tiles, {p.crossing_count} crossings, sizes={tile_sizes}"
-        )
-
     best_layout: PackedLayout | None = None
     best_zoom = 0.0
-    best_partition_idx = -1
 
-    for i, partition in enumerate(partitions):
+    for partition in partitions:
         layout = pack_tiles(partition.tiles, page_aspect)
-        if layout:
-            print(
-                f"DEBUG   Partition {i} packed: zoom={layout.zoom:.6f}, bounds={layout.total_bounds}"
-            )
-            if layout.zoom > best_zoom:
-                best_zoom = layout.zoom
-                layout.crossings = partition.crossings
-                best_layout = layout
-                best_partition_idx = i
-                print("DEBUG   -> New best!")
-
-    if best_layout:
-        print(f"DEBUG WINNER: Partition {best_partition_idx} with zoom={best_zoom:.6f}")
+        if layout and layout.zoom > best_zoom:
+            best_zoom = layout.zoom
+            layout.crossings = partition.crossings
+            best_layout = layout
 
     return best_layout
 
@@ -812,7 +789,7 @@ class PackedPrintPreviewDialog(QDialog):
 
         # Settings
         self._black_white = True
-        self._max_crossings = 2
+        self._max_crossings = 0
         self._include_title = True
         self._margin_mm = 10
 
@@ -905,14 +882,7 @@ class PackedPrintPreviewDialog(QDialog):
             else 1.414  # A4 landscape
         )
 
-        print(f"DEBUG: Refreshing layout with max_crossings={self._max_crossings}")
         self._layout = find_best_packing(self._document, page_aspect, self._max_crossings)
-        if self._layout:
-            print(
-                f"DEBUG: Got layout with {len(self._layout.tiles)} tiles, {len(self._layout.crossings)} crossings"
-            )
-        else:
-            print("DEBUG: No layout generated")
 
         # QPrintPreviewWidget has updatePreview() method
         self._preview.updatePreview()
@@ -1092,12 +1062,6 @@ class PackedPrintPreviewDialog(QDialog):
                 item.setVisible(False)
 
         try:
-            # Debug logging
-            print(f"DEBUG: Tile bounds (scene coords): {tile.bounds}")
-            print(f"DEBUG: Tile building_ids: {tile.building_ids}")
-            print(f"DEBUG: Target rect (page coords): {target_rect}")
-            print(f"DEBUG: Items hidden: {len(items_to_hide)}")
-
             # Render directly to painter - let Qt handle resolution scaling
             # This works better for preview (screen res) vs print (high res)
             self._scene.render(painter, target_rect, tile.bounds)
