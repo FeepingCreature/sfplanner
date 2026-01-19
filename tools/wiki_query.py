@@ -10,7 +10,7 @@ import urllib.request
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from forge.vfs.work_in_progress import WorkInProgressVFS
+    from forge.tools.context import ToolContext
 
 
 def get_schema() -> dict[str, Any]:
@@ -160,7 +160,7 @@ def _ask_model(api_key: str, model: str, prompt: str) -> tuple[bool, str]:
         return False, f"Model error: {e}"
 
 
-def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
+def execute(ctx: "ToolContext", args: dict[str, Any]) -> dict[str, Any]:
     from forge.config.settings import Settings
 
     search_term = args.get("search_term", "")
