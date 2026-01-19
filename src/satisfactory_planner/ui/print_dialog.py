@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QMarginsF, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QPageLayout, QPageSize, QPainter, QPen
-from PySide6.QtPrintSupport import QPrinter, QPrintPreviewDialog
+from PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog, QPrintPreviewWidget
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -874,13 +874,9 @@ class PackedPrintPreviewDialog(QDialog):
         margins = QMarginsF(self._margin_mm, self._margin_mm, self._margin_mm, self._margin_mm)
         self._printer.setPageMargins(margins, QPageLayout.Unit.Millimeter)
 
-        # Print preview widget
-        self._preview = QPrintPreviewDialog(self._printer, self)
-        self._preview.setWindowFlags(Qt.WindowType.Widget)
+        # Print preview widget (not dialog - we want to embed it)
+        self._preview = QPrintPreviewWidget(self._printer, self)
         self._preview.paintRequested.connect(self._render_preview)
-
-        # Extract just the preview widget, not the whole dialog
-        # QPrintPreviewDialog contains the preview, we embed it
         layout.addWidget(self._preview)
 
         # Buttons
@@ -916,9 +912,8 @@ class PackedPrintPreviewDialog(QDialog):
 
         self._layout = find_best_packing(self._document, page_aspect, self._max_crossings)
 
-        # Trigger preview update by emitting paintRequested
-        # QPrintPreviewDialog doesn't expose updatePreview directly
-        self._preview.paintRequested.emit(self._printer)
+        # QPrintPreviewWidget has updatePreview() method
+        self._preview.updatePreview()
 
     def _render_preview(self, printer: QPrinter) -> None:
         """Render callback for print preview."""
@@ -1173,8 +1168,12 @@ class PackedPrintPreviewDialog(QDialog):
 
     def _do_print(self) -> None:
         """Execute the print."""
-        self._preview.accept()
-        self.accept()
+        # Open native print dialog
+        print_dialog = QPrintDialog(self._printer, self)
+        if print_dialog.exec() == QPrintDialog.DialogCode.Accepted:
+            # Render to the configured printer
+            self._render_preview(self._printer)
+            self.accept()
 
 
 # =============================================================================
