@@ -661,12 +661,13 @@ def _render_to_printer(
     page_rect = printer.pageRect(QPrinter.Unit.DevicePixel)
 
     # Reserve space for title if needed
-    title_height = 0
+    title_height = 0.0
     if title:
-        title_height = 50  # pixels for title
-        painter.setFont(painter.font())
+        # Title height as fraction of page (about 3%)
+        title_height = page_rect.height() * 0.03
         font = painter.font()
-        font.setPointSize(14)
+        # Font size proportional to title height (in device pixels, DPI-independent)
+        font.setPixelSize(max(12, int(title_height * 0.6)))
         font.setBold(True)
         painter.setFont(font)
         painter.setPen(QColor(0, 0, 0))
@@ -1138,14 +1139,21 @@ class PackedPrintPreviewDialog(QDialog):
         label = f"{label} #{crossing.crossing_id}" if label else f"#{crossing.crossing_id}"
 
         font = QFont()
-        # Scale font size based on scale factor (roughly 8pt equivalent)
-        font.setPixelSize(max(8, int(12 * scale)))
+        # Font size as fraction of page height (about 1.5% for stub labels)
+        # We need page_rect here - get it from the painter's device
+        device = painter.device()
+        if hasattr(device, "pageRect"):
+            page_height = device.pageRect(QPrinter.Unit.DevicePixel).height()
+        else:
+            page_height = 800  # Fallback for non-printer devices
+        font.setPixelSize(max(10, int(page_height * 0.015)))
         painter.setFont(font)
         painter.setPen(QColor(0, 0, 0))
 
-        # Position label near edge point
-        label_width = 100 * scale
-        label_height = 20 * scale
+        # Position label near edge point - use font metrics for sizing
+        fm = painter.fontMetrics()
+        label_width = fm.horizontalAdvance(label) + 10
+        label_height = fm.height()
         label_rect = QRectF(
             page_edge.x() + 5, page_edge.y() - label_height / 2, label_width, label_height
         )
