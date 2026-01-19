@@ -220,6 +220,69 @@
       "streaming": true,
       "actual_cost": 0.04873425,
       "generation_id": "gen-1768849415-S5QF7e7jEWa4TPhg2gtm"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1768849425414.json",
+      "response_file": "/tmp/forge_debug/response_1768849425414.json",
+      "timestamp": 1768849425.4143405,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.000158,
+      "generation_id": "gen-1768849425-rD9o3X8VrvWkTaIms6df"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768849433196.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768849433196.json",
+      "timestamp": 1768849433.1971185,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05630375,
+      "generation_id": "gen-1768849434-5PuvDfHFhJjkm0kuCxh7"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768849448442.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768849448442.json",
+      "timestamp": 1768849448.4434595,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.05887675,
+      "generation_id": "gen-1768849448-dRE8xverOIGaGQmRD3ot"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768849463517.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768849463517.json",
+      "timestamp": 1768849463.51872,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.44481875,
+      "generation_id": "gen-1768849464-DGbU0bbW13lyqsR2YqSw"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768849483062.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768849483062.json",
+      "timestamp": 1768849483.0630226,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.060643,
+      "generation_id": "gen-1768849484-1UNuTpb02rI99RFNZZE4"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768849501952.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768849501952.json",
+      "timestamp": 1768849501.95346,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.43334125,
+      "generation_id": "gen-1768849503-jyYJYt4yyAuHagkprNxz"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768849513736.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768849513736.json",
+      "timestamp": 1768849513.737431,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.06231875,
+      "generation_id": "gen-1768849514-2znO9B96TkLkcvjeUQ2w"
     }
   ],
   "messages": [
@@ -621,6 +684,181 @@
           "success": true,
           "summary": "\u2713 Tests passed (make test)",
           "test_command": "make test"
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 87bc7faf",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "just remove the legacy function?"
+    },
+    {
+      "role": "assistant",
+      "content": "Good idea, let's clean it up:\n\n<edit file=\"src/satisfactory_planner/ui/print_dialog.py\">\n<search>\nfrom PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewWidget\n</search>\n<replace>\nfrom PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewWidget\n</replace>\n</edit>"
+    },
+    {
+      "role": "user",
+      "content": "\u274c `edit` failed:\n\nSearch text not found in src/satisfactory_planner/ui/print_dialog.py.\n\n**CLOSE MATCH - the text exists but has differences.\nCheck the diff below to see exactly what's different.**\n\nFound 88.9% similar text at line 28 (edit distance: 11):\n\n```\nfrom PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog, QPrintPreviewWidget\n```\n\nDiff (--- your search vs +++ actual file):\n```diff\n--- expected\n+++ actual\n@@ -1 +1 @@\n-from PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewWidget+from PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog, QPrintPreviewWidget\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Right, my previous edit already added it back. Let me remove both the import and the legacy function:\n\n<edit file=\"src/satisfactory_planner/ui/print_dialog.py\">\n<search>\nfrom PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog, QPrintPreviewWidget\n</search>\n<replace>\nfrom PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewWidget\n</replace>\n</edit>\n\n<edit file=\"src/satisfactory_planner/ui/print_dialog.py\">\n<search>\ndef print_scene(\n    scene: QGraphicsScene,\n    parent: QWidget | None = None,\n    document_title: str = \"Factory Blueprint\",\n    black_white: bool = True,\n    include_title: bool = True,\n    margin_mm: int = 10,\n) -> None:\n    \"\"\"Open print preview dialog for the scene.\n\n    DEPRECATED: Use print_scene_packed() instead for automatic tiling.\n\n    Args:\n        scene: The QGraphicsScene to print\n        parent: Parent widget for dialogs\n        document_title: Title to display on the print\n        black_white: Whether to render in black/white\n        include_title: Whether to include the title on the print\n        margin_mm: Margin in millimeters\n    \"\"\"\n    printer = QPrinter(QPrinter.PrinterMode.HighResolution)\n    printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))\n    printer.setPageOrientation(QPageLayout.Orientation.Landscape)\n\n    # Set margins\n    margins = QMarginsF(margin_mm, margin_mm, margin_mm, margin_mm)\n    printer.setPageMargins(margins, QPageLayout.Unit.Millimeter)\n\n    def render_preview(preview_printer: QPrinter) -> None:\n        \"\"\"Render callback for print preview.\"\"\"\n        _render_to_printer(\n            preview_printer,\n            scene,\n            document_title if include_title else None,\n            black_white,\n        )\n\n    # Show print preview dialog\n    preview = QPrintPreviewDialog(printer, parent)\n    preview.setWindowTitle(f\"Print Preview - {document_title}\")\n    preview.paintRequested.connect(render_preview)\n    preview.exec()\n</search>\n<replace>\n</replace>\n</edit>\n\nNow let me check if `print_scene` is used anywhere and update those call sites:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"print_scene[^_]\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_016QPu4MwE8Lvou3s8YbizmH",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/print_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/print_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/print_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/print_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_016QPu4MwE8Lvou3s8YbizmH",
+      "content": "{\"message\": \"Found 1 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/print_dialog.py:1192 \\u2500\\u2500\\n    1189 | ) -> None:\\n    1190 |     \\\"\\\"\\\"Open packed print preview dialog.\\n    1191 | \\n>>> 1192 |     This is the new entry point that replaces print_scene().\\n    1193 |     It automatically partitions and packs the factory for optimal printing.\\n    1194 | \\n    1195 |     Args:\", \"success\": true, \"total_matches\": 1}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"print_scene[^_]\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 1 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/print_dialog.py:1192 \\u2500\\u2500\\n    1189 | ) -> None:\\n    1190 |     \\\"\\\"\\\"Open packed print preview dialog.\\n    1191 | \\n>>> 1192 |     This is the new entry point that replaces print_scene().\\n    1193 |     It automatically partitions and packs the factory for optimal printing.\\n    1194 | \\n    1195 |     Args:\",\n  \"success\": true,\n  \"total_matches\": 1\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good, the only reference is in a docstring. Let me remove the legacy `print_scene` function and `PrintOptionsDialog`, and also remove `QPrintPreviewDialog` from the import:\n\n<edit file=\"src/satisfactory_planner/ui/print_dialog.py\">\n<search>\nfrom PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog, QPrintPreviewWidget\n</search>\n<replace>\nfrom PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewWidget\n</replace>\n</edit>"
+    },
+    {
+      "role": "user",
+      "content": "\u274c `edit` failed:\n\nSearch text not found in src/satisfactory_planner/ui/print_dialog.py.\n\n**CLOSE MATCH - the text exists but has differences.\nCheck the diff below to see exactly what's different.**\n\nFound 88.9% similar text at line 28 (edit distance: 11):\n\n```\nfrom PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewWidget\n```\n\nDiff (--- your search vs +++ actual file):\n```diff\n--- expected\n+++ actual\n@@ -1 +1 @@\n-from PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog, QPrintPreviewWidget+from PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewWidget\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "The file already has the correct import without `QPrintPreviewDialog`. Now I need to remove the legacy `PrintOptionsDialog` class. Let me check what's in the file and remove it:\n\n<edit file=\"src/satisfactory_planner/ui/print_dialog.py\">\n<search>\n# =============================================================================\n# Legacy dialog (kept for compatibility)\n# =============================================================================\n\n\nclass PrintOptionsDialog(QDialog):\n    \"\"\"Dialog for print options before showing print preview.\n\n    DEPRECATED: Use PackedPrintPreviewDialog instead.\n    \"\"\"\n\n    def __init__(self, parent: QWidget | None = None) -> None:\n        super().__init__(parent)\n        self.setWindowTitle(\"Print Options\")\n        self.setModal(True)\n\n        layout = QVBoxLayout(self)\n\n        # Black and white option\n        self.bw_checkbox = QCheckBox(\"Black && White (printer-friendly)\")\n        self.bw_checkbox.setChecked(True)\n        layout.addWidget(self.bw_checkbox)\n\n        # Include title option\n        self.title_checkbox = QCheckBox(\"Include document title\")\n        self.title_checkbox.setChecked(True)\n        layout.addWidget(self.title_checkbox)\n\n        # Margin setting\n        margin_layout = QHBoxLayout()\n        margin_layout.addWidget(QLabel(\"Margin (mm):\"))\n        self.margin_spin = QSpinBox()\n        self.margin_spin.setRange(0, 50)\n        self.margin_spin.setValue(10)\n        margin_layout.addWidget(self.margin_spin)\n        margin_layout.addStretch()\n        layout.addLayout(margin_layout)\n\n        # Buttons\n        buttons = QDialogButtonBox(\n            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel\n        )\n        buttons.accepted.connect(self.accept)\n        buttons.rejected.connect(self.reject)\n        layout.addWidget(buttons)\n\n    def is_black_white(self) -> bool:\n        \"\"\"Return whether black/white mode is selected.\"\"\"\n        return self.bw_checkbox.isChecked()\n\n    def include_title(self) -> bool:\n        \"\"\"Return whether to include document title.\"\"\"\n        return self.title_checkbox.isChecked()\n\n    def margin_mm(self) -> int:\n        \"\"\"Return margin in millimeters.\"\"\"\n        return self.margin_spin.value()\n</search>\n<replace>\n</replace>\n</edit>\n\nNow check if `PrintOptionsDialog` is used anywhere else and remove unused imports:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"PrintOptionsDialog\", \"include_extensions\": [\".py\"]}",
+            "name": "grep_context"
+          },
+          "id": "toolu_01174kGGHiRgBeThWpwVcv4i",
+          "type": "function"
+        }
+      ],
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/print_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/print_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01174kGGHiRgBeThWpwVcv4i",
+      "content": "{\"message\": \"No matches found for pattern: PrintOptionsDialog\", \"snippets\": [], \"success\": true, \"total_matches\": 0}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"PrintOptionsDialog\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"No matches found for pattern: PrintOptionsDialog\",\n  \"snippets\": [],\n  \"success\": true,\n  \"total_matches\": 0\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good, the file is already clean - no `PrintOptionsDialog` and the import is correct. Now I need to check if there are any unused imports (like `QDialogButtonBox`) and also update the call site in main_window to use `print_scene_packed`:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"pattern\": \"print_scene|print_dialog\", \"include_extensions\": [\".py\"], \"max_matches\": 15}",
+            "name": "grep_context"
+          },
+          "id": "toolu_01DGYDPyBBA2rH89JKLp7iJf",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_01DGYDPyBBA2rH89JKLp7iJf",
+      "content": "{\"message\": \"Found 6 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:37 \\u2500\\u2500\\n      34 | from satisfactory_planner.ui.panels.library_panel import LibraryPanel\\n      35 | from satisfactory_planner.ui.panels.properties_panel import PropertiesPanel\\n      36 | from satisfactory_planner.ui.panels.warnings_panel import WarningsPanel\\n>>>   37 | from satisfactory_planner.ui.print_dialog import print_scene_packed\\n      38 | \\n      39 | if TYPE_CHECKING:\\n      40 |     pass\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:583 \\u2500\\u2500\\n     580 |         title = self.current_tab.name\\n     581 | \\n     582 |         # Open packed print preview (includes all options in toolbar)\\n>>>  583 |         print_scene_packed(\\n     584 |             document=document,\\n     585 |             scene=scene,\\n     586 |             parent=self,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/print_dialog.py:1116 \\u2500\\u2500\\n    1113 |     def _do_print(self) -> None:\\n    1114 |         \\\"\\\"\\\"Execute the print.\\\"\\\"\\\"\\n    1115 |         # Open native print dialog\\n>>> 1116 |         print_dialog = QPrintDialog(self._printer, self)\\n    1117 |         if print_dialog.exec() == QPrintDialog.DialogCode.Accepted:\\n    1118 |             # Render to the configured printer\\n    1119 |             self._render_preview(self._printer)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/print_dialog.py:1117 \\u2500\\u2500\\n    1114 |         \\\"\\\"\\\"Execute the print.\\\"\\\"\\\"\\n    1115 |         # Open native print dialog\\n    1116 |         print_dialog = QPrintDialog(self._printer, self)\\n>>> 1117 |         if print_dialog.exec() == QPrintDialog.DialogCode.Accepted:\\n    1118 |             # Render to the configured printer\\n    1119 |             self._render_preview(self._printer)\\n    1120 |             self.accept()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/print_dialog.py:1128 \\u2500\\u2500\\n    1125 | # =============================================================================\\n    1126 | \\n    1127 | \\n>>> 1128 | def print_scene_packed(\\n    1129 |     document: Document,\\n    1130 |     scene: QGraphicsScene,\\n    1131 |     parent: QWidget | None = None,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/print_dialog.py:1136 \\u2500\\u2500\\n    1133 | ) -> None:\\n    1134 |     \\\"\\\"\\\"Open packed print preview dialog.\\n    1135 | \\n>>> 1136 |     This is the new entry point that replaces print_scene().\\n    1137 |     It automatically partitions and packs the factory for optimal printing.\\n    1138 | \\n    1139 |     Args:\", \"success\": true, \"total_matches\": 6}",
+      "_skip_display": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"max_matches\": 15,\n  \"pattern\": \"print_scene|print_dialog\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 6 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:37 \\u2500\\u2500\\n      34 | from satisfactory_planner.ui.panels.library_panel import LibraryPanel\\n      35 | from satisfactory_planner.ui.panels.properties_panel import PropertiesPanel\\n      36 | from satisfactory_planner.ui.panels.warnings_panel import WarningsPanel\\n>>>   37 | from satisfactory_planner.ui.print_dialog import print_scene_packed\\n      38 | \\n      39 | if TYPE_CHECKING:\\n      40 |     pass\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/main_window.py:583 \\u2500\\u2500\\n     580 |         title = self.current_tab.name\\n     581 | \\n     582 |         # Open packed print preview (includes all options in toolbar)\\n>>>  583 |         print_scene_packed(\\n     584 |             document=document,\\n     585 |             scene=scene,\\n     586 |             parent=self,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/print_dialog.py:1116 \\u2500\\u2500\\n    1113 |     def _do_print(self) -> None:\\n    1114 |         \\\"\\\"\\\"Execute the print.\\\"\\\"\\\"\\n    1115 |         # Open native print dialog\\n>>> 1116 |         print_dialog = QPrintDialog(self._printer, self)\\n    1117 |         if print_dialog.exec() == QPrintDialog.DialogCode.Accepted:\\n    1118 |             # Render to the configured printer\\n    1119 |             self._render_preview(self._printer)\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/print_dialog.py:1117 \\u2500\\u2500\\n    1114 |         \\\"\\\"\\\"Execute the print.\\\"\\\"\\\"\\n    1115 |         # Open native print dialog\\n    1116 |         print_dialog = QPrintDialog(self._printer, self)\\n>>> 1117 |         if print_dialog.exec() == QPrintDialog.DialogCode.Accepted:\\n    1118 |             # Render to the configured printer\\n    1119 |             self._render_preview(self._printer)\\n    1120 |             self.accept()\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/print_dialog.py:1128 \\u2500\\u2500\\n    1125 | # =============================================================================\\n    1126 | \\n    1127 | \\n>>> 1128 | def print_scene_packed(\\n    1129 |     document: Document,\\n    1130 |     scene: QGraphicsScene,\\n    1131 |     parent: QWidget | None = None,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/print_dialog.py:1136 \\u2500\\u2500\\n    1133 | ) -> None:\\n    1134 |     \\\"\\\"\\\"Open packed print preview dialog.\\n    1135 | \\n>>> 1136 |     This is the new entry point that replaces print_scene().\\n    1137 |     It automatically partitions and packs the factory for optimal printing.\\n    1138 | \\n    1139 |     Args:\",\n  \"success\": true,\n  \"total_matches\": 6\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "assistant",
+      "content": "Good, the main_window.py is already using `print_scene_packed`. The file looks clean. Let me just remove the unused `QDialogButtonBox` import and run tests:\n\n<edit file=\"src/satisfactory_planner/ui/print_dialog.py\">\n<search>\nfrom PySide6.QtWidgets import (\n    QCheckBox,\n    QDialog,\n    QDialogButtonBox,\n    QGraphicsScene,\n    QHBoxLayout,\n    QLabel,\n    QPushButton,\n    QSpinBox,\n    QToolBar,\n    QVBoxLayout,\n    QWidget,\n)\n</search>\n<replace>\nfrom PySide6.QtWidgets import (\n    QCheckBox,\n    QDialog,\n    QGraphicsScene,\n    QHBoxLayout,\n    QLabel,\n    QPushButton,\n    QSpinBox,\n    QToolBar,\n    QVBoxLayout,\n    QWidget,\n)\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Redesign print dialog with automatic tile packing\n\n- Replace old PrintOptionsDialog + QPrintPreviewDialog flow with new\n  PackedPrintPreviewDialog that opens directly with preview\n- Add toolbar with monochrome toggle, max crossings spinbox, title checkbox\n- Implement graph partitioning algorithm using DFS edge cutting\n- Implement greedy bottom-left rectangle packing with random restarts\n- Render crossing stubs with labels for belts that span tiles\n- Use QPrintPreviewWidget for embedded preview with updatePreview() support\"/>\n\nDone! The print dialog has been redesigned with:\n\n1. **Direct preview**: Opens straight to print preview with all settings in a toolbar\n2. **Toolbar controls**: Monochrome toggle, max crossings spinbox (0-20), include title checkbox, refresh button\n3. **Graph partitioning**: DFS explores cutting belts to create tile partitions, respecting max_crossings limit\n4. **Rectangle packing**: Greedy bottom-left algorithm with 10 random restarts to find best zoom\n5. **Crossing stubs**: Cut belts are rendered as dashed lines to tile edges with labels like \"#1\" or \"Iron Ore #1\"\n\nThe algorithm finds the partition that maximizes zoom (readability) while staying within the crossing limit. For factories that fit well on a page, it keeps everything in one tile (0 crossings). For wide layouts, it can split into multiple tiles that pack more efficiently.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/print_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/print_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n1 file reformatted, 85 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 54 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_wlpy9rux\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 74 items\n\ntests/test_core/test_commands.py .........                               [ 12%]\ntests/test_core/test_constraint_optimizer.py ................            [ 33%]\ntests/test_core/test_flow_solver.py .................                    [ 56%]\ntests/test_core/test_models.py .........                                 [ 68%]\ntests/test_core/test_room_commands.py ..............                     [ 87%]\ntests/test_smoke.py ..                                                   [ 90%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 74 passed in 0.22s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_wlpy9rux\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "modified_files": [
+            "src/satisfactory_planner/ui/print_dialog.py"
+          ],
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n1 file reformatted, 85 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 54 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_wlpy9rux\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 74 items\n\ntests/test_core/test_commands.py .........                               [ 12%]\ntests/test_core/test_constraint_optimizer.py ................            [ 33%]\ntests/test_core/test_flow_solver.py .................                    [ 56%]\ntests/test_core/test_models.py .........                                 [ 68%]\ntests/test_core/test_room_commands.py ..............                     [ 87%]\ntests/test_smoke.py ..                                                   [ 90%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 74 passed in 0.22s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_wlpy9rux\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "files_modified",
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "0c78062237fd",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
         }
       ]
     }

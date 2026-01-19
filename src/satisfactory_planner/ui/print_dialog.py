@@ -25,11 +25,10 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QMarginsF, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QPageLayout, QPageSize, QPainter, QPen
-from PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog, QPrintPreviewWidget
+from PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewWidget
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
-    QDialogButtonBox,
     QGraphicsScene,
     QHBoxLayout,
     QLabel,
@@ -541,65 +540,6 @@ def find_best_packing(
             best_layout = layout
 
     return best_layout
-
-
-# =============================================================================
-# Legacy dialog (kept for compatibility)
-# =============================================================================
-
-
-class PrintOptionsDialog(QDialog):
-    """Dialog for print options before showing print preview.
-
-    DEPRECATED: Use PackedPrintPreviewDialog instead.
-    """
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Print Options")
-        self.setModal(True)
-
-        layout = QVBoxLayout(self)
-
-        # Black and white option
-        self.bw_checkbox = QCheckBox("Black && White (printer-friendly)")
-        self.bw_checkbox.setChecked(True)
-        layout.addWidget(self.bw_checkbox)
-
-        # Include title option
-        self.title_checkbox = QCheckBox("Include document title")
-        self.title_checkbox.setChecked(True)
-        layout.addWidget(self.title_checkbox)
-
-        # Margin setting
-        margin_layout = QHBoxLayout()
-        margin_layout.addWidget(QLabel("Margin (mm):"))
-        self.margin_spin = QSpinBox()
-        self.margin_spin.setRange(0, 50)
-        self.margin_spin.setValue(10)
-        margin_layout.addWidget(self.margin_spin)
-        margin_layout.addStretch()
-        layout.addLayout(margin_layout)
-
-        # Buttons
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
-
-    def is_black_white(self) -> bool:
-        """Return whether black/white mode is selected."""
-        return self.bw_checkbox.isChecked()
-
-    def include_title(self) -> bool:
-        """Return whether to include document title."""
-        return self.title_checkbox.isChecked()
-
-    def margin_mm(self) -> int:
-        """Return margin in millimeters."""
-        return self.margin_spin.value()
 
 
 # =============================================================================
@@ -1200,47 +1140,3 @@ def print_scene_packed(
     """
     dialog = PackedPrintPreviewDialog(document, scene, parent, document_title)
     dialog.exec()
-
-
-def print_scene(
-    scene: QGraphicsScene,
-    parent: QWidget | None = None,
-    document_title: str = "Factory Blueprint",
-    black_white: bool = True,
-    include_title: bool = True,
-    margin_mm: int = 10,
-) -> None:
-    """Open print preview dialog for the scene.
-
-    DEPRECATED: Use print_scene_packed() instead for automatic tiling.
-
-    Args:
-        scene: The QGraphicsScene to print
-        parent: Parent widget for dialogs
-        document_title: Title to display on the print
-        black_white: Whether to render in black/white
-        include_title: Whether to include the title on the print
-        margin_mm: Margin in millimeters
-    """
-    printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-    printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
-    printer.setPageOrientation(QPageLayout.Orientation.Landscape)
-
-    # Set margins
-    margins = QMarginsF(margin_mm, margin_mm, margin_mm, margin_mm)
-    printer.setPageMargins(margins, QPageLayout.Unit.Millimeter)
-
-    def render_preview(preview_printer: QPrinter) -> None:
-        """Render callback for print preview."""
-        _render_to_printer(
-            preview_printer,
-            scene,
-            document_title if include_title else None,
-            black_white,
-        )
-
-    # Show print preview dialog
-    preview = QPrintPreviewDialog(printer, parent)
-    preview.setWindowTitle(f"Print Preview - {document_title}")
-    preview.paintRequested.connect(render_preview)
-    preview.exec()
