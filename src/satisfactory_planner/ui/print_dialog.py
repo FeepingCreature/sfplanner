@@ -384,66 +384,71 @@ class _PackingState:
     """Already placed rectangles."""
 
 
-def _try_place_bottom_left(state: _PackingState, width: float, height: float) -> QRectF:
-    """Find bottom-left position for a rectangle using proper 2D bin packing.
+def _try_place_bottom_left(
+    state: _PackingState, width: float, height: float, target_aspect: float = 1.5
+) -> QRectF:
+    """Find best position for a rectangle to minimize total bounding box.
 
-    Tries candidate positions at corners of existing rectangles.
+    Uses a scoring function that considers the resulting aspect ratio
+    relative to the target page aspect ratio.
     """
     if not state.placed:
-        # First rectangle goes at origin
-        print(f"DEBUG pack: First rect {width:.0f}x{height:.0f} at origin")
         return QRectF(0, 0, width, height)
 
     best_pos: QPointF | None = None
-    best_score = float("inf")  # Lower is better (y first, then x)
+    best_score = float("inf")
 
     # Candidate positions: corners formed by existing rects
     candidates: set[tuple[float, float]] = {(0.0, 0.0)}
 
     for rect in state.placed:
-        # Right edge of this rect, at y=0
         candidates.add((rect.right(), 0.0))
-        # Left edge (x=0), below this rect
         candidates.add((0.0, rect.bottom()))
-        # Corners formed by combinations of rects
         for other in state.placed:
             candidates.add((rect.right(), other.bottom()))
             candidates.add((other.right(), rect.bottom()))
 
-    print(f"DEBUG pack: Placing {width:.0f}x{height:.0f}, candidates: {len(candidates)}")
+    # Current bounds of placed rects
+    current_bounds = QRectF()
+    for rect in state.placed:
+        current_bounds = rect if current_bounds.isEmpty() else current_bounds.united(rect)
 
     for x, y in candidates:
         candidate = QRectF(x, y, width, height)
 
         # Check if this position overlaps any placed rect
-        # Use a small epsilon to avoid floating point issues
         overlaps = False
         for placed in state.placed:
-            # Check for real intersection (not just touching)
+            # Check for real intersection (not just touching edges)
             if (
-                candidate.left() < placed.right() - 0.1
-                and candidate.right() > placed.left() + 0.1
-                and candidate.top() < placed.bottom() - 0.1
-                and candidate.bottom() > placed.top() + 0.1
+                candidate.left() < placed.right() - 0.01
+                and candidate.right() > placed.left() + 0.01
+                and candidate.top() < placed.bottom() - 0.01
+                and candidate.bottom() > placed.top() + 0.01
             ):
                 overlaps = True
                 break
 
         if not overlaps:
-            # Score: prefer lower y, then lower x (bottom-left)
-            score = y * 10000 + x
+            # Score based on resulting bounding box area and aspect ratio fit
+            new_bounds = current_bounds.united(candidate)
+            area = new_bounds.width() * new_bounds.height()
+
+            # Penalize aspect ratios that don't match target
+            new_aspect = new_bounds.width() / new_bounds.height() if new_bounds.height() > 0 else 1
+            aspect_penalty = abs(new_aspect - target_aspect) * 1000
+
+            score = area + aspect_penalty
+
             if score < best_score:
                 best_score = score
                 best_pos = QPointF(x, y)
-                print(f"DEBUG pack:   Valid pos ({x:.0f}, {y:.0f}) score={score:.0f}")
 
     if best_pos is None:
         # Fallback: place to the right of everything
         max_right = max(r.right() for r in state.placed)
         best_pos = QPointF(max_right, 0)
-        print(f"DEBUG pack:   Fallback to ({best_pos.x():.0f}, 0)")
 
-    print(f"DEBUG pack:   -> Placed at ({best_pos.x():.0f}, {best_pos.y():.0f})")
     return QRectF(best_pos.x(), best_pos.y(), width, height)
 
 
@@ -498,8 +503,8 @@ def pack_tiles(
             width = tile.bounds.width()
             height = tile.bounds.height()
 
-            # Place using bottom-left
-            packed_rect = _try_place_bottom_left(state, width, height)
+            # Place using aspect-aware packing
+            packed_rect = _try_place_bottom_left(state, width, height, page_aspect)
             state.placed.append(packed_rect)
             packed_tiles.append(PackedTile(tile=tile, packed_bounds=packed_rect))
 
