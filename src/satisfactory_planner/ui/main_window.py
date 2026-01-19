@@ -34,7 +34,7 @@ from satisfactory_planner.ui.dialogs import SettingsDialog
 from satisfactory_planner.ui.panels.library_panel import LibraryPanel
 from satisfactory_planner.ui.panels.properties_panel import PropertiesPanel
 from satisfactory_planner.ui.panels.warnings_panel import WarningsPanel
-from satisfactory_planner.ui.print_dialog import PrintOptionsDialog, print_scene
+from satisfactory_planner.ui.print_dialog import print_scene_packed
 
 if TYPE_CHECKING:
     pass
@@ -574,23 +574,17 @@ class MainWindow(QMainWindow):
         if not self.current_tab or not self.current_tab.canvas:
             return
 
-        # Show print options dialog
-        options = PrintOptionsDialog(self)
-        if options.exec() != QDialog.DialogCode.Accepted:
-            return
-
-        # Get the scene to print
+        # Get the scene and document to print
         scene = self.current_tab.canvas.scene()
+        document = self.current_tab.document
         title = self.current_tab.name
 
-        # Open print preview
-        print_scene(
-            scene,
+        # Open packed print preview (includes all options in toolbar)
+        print_scene_packed(
+            document=document,
+            scene=scene,
             parent=self,
             document_title=title,
-            black_white=options.is_black_white(),
-            include_title=options.include_title(),
-            margin_mm=options.margin_mm(),
         )
 
     def _open_settings(self) -> None:

@@ -1,11 +1,30 @@
-"""Print dialog for rendering factory blueprints in black/white style."""
+"""Print dialog with automatic tile packing for factory blueprints.
+
+The print system automatically partitions large factory layouts into tiles
+that pack efficiently onto a printed page, maximizing readability.
+
+Algorithm overview:
+1. Graph Partitioning: DFS explores cutting belts to create tile partitions
+   - Each partition has a "crossing cost" (number of cut belts)
+   - Prune partitions exceeding max_crossings setting
+2. Rectangle Packing: Greedy bottom-left placement with random restarts
+   - Try multiple orderings (by area, random shuffles)
+   - Pack tiles preserving aspect ratios
+   - Compute uniform zoom to fit page
+3. Rendering: Draw each tile with crossing stubs for cut belts
+   - Stubs show item name + number (e.g., "Iron Ore #1")
+   - Stubs point toward nearest tile edge
+"""
 
 from __future__ import annotations
 
+import math
+import random
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QMarginsF, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QPageLayout, QPageSize, QPainter
+from PySide6.QtCore import QMarginsF, QPointF, QRectF, Qt
+from PySide6.QtGui import QColor, QFont, QImage, QPageLayout, QPageSize, QPainter, QPen
 from PySide6.QtPrintSupport import QPrinter, QPrintPreviewDialog
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -14,16 +33,526 @@ from PySide6.QtWidgets import (
     QGraphicsScene,
     QHBoxLayout,
     QLabel,
+    QPushButton,
     QSpinBox,
+    QToolBar,
     QVBoxLayout,
+    QWidget,
 )
 
 if TYPE_CHECKING:
-    from PySide6.QtWidgets import QWidget
+    from satisfactory_planner.core.models import Document
+
+
+# =============================================================================
+# Data structures for packing algorithm
+# =============================================================================
+
+
+@dataclass
+class Tile:
+    """A tile in the packed layout, representing a partition of buildings."""
+
+    building_ids: frozenset[str]
+    """IDs of buildings in this tile."""
+
+    bounds: QRectF
+    """Bounding box in original scene coordinates."""
+
+    @property
+    def aspect_ratio(self) -> float:
+        """Width / height ratio."""
+        if self.bounds.height() == 0:
+            return 1.0
+        return self.bounds.width() / self.bounds.height()
+
+
+@dataclass
+class CrossingStub:
+    """A belt that crosses between tiles, rendered as a labeled stub."""
+
+    belt_id: str
+    """Original belt ID."""
+
+    item_name: str | None
+    """Item being transported, if known from flow analysis."""
+
+    crossing_id: int
+    """Numeric ID for this crossing (1, 2, 3...)."""
+
+    source_tile_index: int
+    """Index of tile containing the source building."""
+
+    dest_tile_index: int
+    """Index of tile containing the destination building."""
+
+    source_port_pos: QPointF
+    """Position of source port in scene coordinates."""
+
+    dest_port_pos: QPointF
+    """Position of destination port in scene coordinates."""
+
+
+@dataclass
+class Partition:
+    """A partitioning of the factory into tiles."""
+
+    tiles: list[Tile]
+    """The tiles in this partition."""
+
+    crossings: list[CrossingStub]
+    """Belts that cross between tiles."""
+
+    @property
+    def crossing_count(self) -> int:
+        """Number of cut belts."""
+        return len(self.crossings)
+
+
+@dataclass
+class PackedTile:
+    """A tile with its position in the packed layout."""
+
+    tile: Tile
+    """The original tile."""
+
+    packed_bounds: QRectF
+    """Position and size in packed layout coordinates."""
+
+
+@dataclass
+class PackedLayout:
+    """A complete packed layout ready for rendering."""
+
+    tiles: list[PackedTile]
+    """Tiles with their packed positions."""
+
+    crossings: list[CrossingStub]
+    """Crossing stubs to render."""
+
+    total_bounds: QRectF
+    """Bounding box of the entire packed layout."""
+
+    zoom: float
+    """Zoom factor to fit page (higher = more readable)."""
+
+
+@dataclass
+class PartitionCandidate:
+    """A candidate partition during DFS exploration."""
+
+    cut_edges: frozenset[str]
+    """Belt IDs that are cut."""
+
+    components: list[frozenset[str]]
+    """Connected components (sets of building IDs)."""
+
+
+# =============================================================================
+# Graph partitioning algorithm
+# =============================================================================
+
+
+def _get_building_bounds(document: Document, building_id: str) -> QRectF:
+    """Get bounding box for a building or room placement."""
+    # Check top-level buildings
+    building = document.buildings.get(building_id)
+    if building:
+        return QRectF(building.x, building.y, building.width, building.height)
+
+    # Check room placements
+    placement = document.room_placements.get(building_id)
+    if placement:
+        room = document.rooms.get(placement.room_id)
+        if room:
+            return QRectF(placement.x, placement.y, room.width or 100, room.height or 100)
+
+    return QRectF(0, 0, 50, 50)  # Fallback
+
+
+def _build_adjacency(
+    document: Document,
+) -> tuple[set[str], list[tuple[str, str, str]]]:
+    """Build adjacency info from document.
+
+    Returns:
+        Tuple of (node_ids, edges) where edges are (belt_id, source_id, dest_id).
+        Rooms/placements are treated as single nodes.
+    """
+    nodes: set[str] = set()
+    edges: list[tuple[str, str, str]] = []
+
+    # Collect top-level buildings
+    for building in document.buildings.values():
+        nodes.add(building.id)
+
+    # Collect room placements as single nodes
+    for placement in document.room_placements.values():
+        nodes.add(placement.id)
+
+    # Collect edges from top-level belts
+    for belt in document.belts.values():
+        source_id = belt.source_building_id
+        dest_id = belt.dest_building_id
+
+        # Map building IDs to their containing placement if any
+        source_node = _get_containing_node(document, source_id)
+        dest_node = _get_containing_node(document, dest_id)
+
+        if source_node and dest_node and source_node != dest_node:
+            edges.append((belt.id, source_node, dest_node))
+
+    return nodes, edges
+
+
+def _get_containing_node(document: Document, building_id: str) -> str | None:
+    """Get the node ID that contains a building.
+
+    For top-level buildings, returns the building ID.
+    For buildings inside rooms, returns the placement ID.
+    """
+    # Check if it's a top-level building
+    if building_id in document.buildings:
+        return building_id
+
+    # Check if it's a room placement
+    for placement in document.room_placements.values():
+        if placement.id == building_id:
+            return placement.id
+        # Check buildings inside the room
+        room = document.rooms.get(placement.room_id)
+        if room and building_id in room.buildings:
+            return placement.id
+
+    return None
+
+
+def _connected_components(
+    nodes: set[str], edges: list[tuple[str, str, str]], cut_edges: frozenset[str]
+) -> list[frozenset[str]]:
+    """Find connected components with given edges removed."""
+    # Build adjacency list excluding cut edges
+    adj: dict[str, set[str]] = {n: set() for n in nodes}
+    for belt_id, src, dst in edges:
+        if belt_id not in cut_edges:
+            adj[src].add(dst)
+            adj[dst].add(src)
+
+    # BFS to find components
+    visited: set[str] = set()
+    components: list[frozenset[str]] = []
+
+    for start in nodes:
+        if start in visited:
+            continue
+        component: set[str] = set()
+        queue = [start]
+        while queue:
+            node = queue.pop()
+            if node in visited:
+                continue
+            visited.add(node)
+            component.add(node)
+            queue.extend(adj[node] - visited)
+        if component:
+            components.append(frozenset(component))
+
+    return components
+
+
+def generate_partitions(
+    document: Document, max_crossings: int, max_candidates: int = 100
+) -> list[Partition]:
+    """Generate candidate partitions using DFS edge cutting.
+
+    Args:
+        document: The factory document.
+        max_crossings: Maximum number of belt crossings allowed.
+        max_candidates: Maximum number of partitions to generate.
+
+    Returns:
+        List of valid partitions, always including the trivial single-tile case.
+    """
+    nodes, edges = _build_adjacency(document)
+
+    if not nodes:
+        return []
+
+    candidates: list[PartitionCandidate] = []
+
+    def dfs(cut_edges: frozenset[str], edge_index: int) -> None:
+        """DFS to explore edge cutting combinations."""
+        if len(candidates) >= max_candidates:
+            return
+
+        if len(cut_edges) > max_crossings:
+            return
+
+        components = _connected_components(nodes, edges, cut_edges)
+        candidate = PartitionCandidate(cut_edges=cut_edges, components=components)
+        candidates.append(candidate)
+
+        # Try cutting each remaining edge
+        for i in range(edge_index, len(edges)):
+            belt_id = edges[i][0]
+            dfs(cut_edges | {belt_id}, i + 1)
+
+    # Start DFS
+    dfs(frozenset(), 0)
+
+    # Convert candidates to Partitions with geometric info
+    partitions: list[Partition] = []
+    for candidate in candidates:
+        tiles = []
+        for component in candidate.components:
+            # Compute bounding box for this component
+            bounds = QRectF()
+            for building_id in component:
+                b_bounds = _get_building_bounds(document, building_id)
+                bounds = b_bounds if bounds.isEmpty() else bounds.united(b_bounds)
+
+            # Add padding for belt stubs
+            padding = 30
+            bounds.adjust(-padding, -padding, padding, padding)
+
+            tiles.append(Tile(building_ids=component, bounds=bounds))
+
+        # Create crossing stubs
+        crossings: list[CrossingStub] = []
+        crossing_id = 1
+        for belt_id in candidate.cut_edges:
+            # Find the belt and its endpoints
+            belt = document.belts.get(belt_id)
+            if not belt:
+                continue
+
+            source_node = _get_containing_node(document, belt.source_building_id)
+            dest_node = _get_containing_node(document, belt.dest_building_id)
+
+            # Find which tiles contain source and dest
+            source_tile_idx = -1
+            dest_tile_idx = -1
+            for idx, tile in enumerate(tiles):
+                if source_node in tile.building_ids:
+                    source_tile_idx = idx
+                if dest_node in tile.building_ids:
+                    dest_tile_idx = idx
+
+            if source_tile_idx >= 0 and dest_tile_idx >= 0:
+                # Get port positions
+                source_building = document.buildings.get(belt.source_building_id)
+                dest_building = document.buildings.get(belt.dest_building_id)
+
+                source_pos = QPointF(0, 0)
+                dest_pos = QPointF(0, 0)
+
+                if source_building:
+                    px, py = source_building.output_port_pos(belt.source_port_index)
+                    source_pos = QPointF(px, py)
+
+                if dest_building:
+                    px, py = dest_building.input_port_pos(belt.dest_port_index)
+                    dest_pos = QPointF(px, py)
+
+                crossings.append(
+                    CrossingStub(
+                        belt_id=belt_id,
+                        item_name=None,  # TODO: Get from flow analysis
+                        crossing_id=crossing_id,
+                        source_tile_index=source_tile_idx,
+                        dest_tile_index=dest_tile_idx,
+                        source_port_pos=source_pos,
+                        dest_port_pos=dest_pos,
+                    )
+                )
+                crossing_id += 1
+
+        partitions.append(Partition(tiles=tiles, crossings=crossings))
+
+    return partitions
+
+
+# =============================================================================
+# Rectangle packing algorithm
+# =============================================================================
+
+
+@dataclass
+class _PackingState:
+    """State during greedy packing."""
+
+    placed: list[QRectF] = field(default_factory=list)
+    """Already placed rectangles."""
+
+
+def _try_place_bottom_left(state: _PackingState, width: float, height: float) -> QRectF:
+    """Find bottom-left position for a rectangle."""
+    # Try y positions from 0 upward
+    best_pos = QPointF(0, 0)
+    best_y = float("inf")
+
+    # Candidate y positions: 0, and top edges of placed rects
+    y_candidates = [0.0]
+    for rect in state.placed:
+        y_candidates.append(rect.bottom())
+
+    for y in sorted(set(y_candidates)):
+        # Find leftmost x where we can place at this y
+        x = 0.0
+        candidate = QRectF(x, y, width, height)
+
+        # Check for overlaps and slide right if needed
+        changed = True
+        iterations = 0
+        while changed and iterations < 100:
+            changed = False
+            iterations += 1
+            for placed in state.placed:
+                if candidate.intersects(placed):
+                    # Slide right past the obstacle
+                    candidate.moveLeft(placed.right())
+                    changed = True
+                    break
+
+        # Check if this position is better
+        if candidate.top() < best_y or (
+            candidate.top() == best_y and candidate.left() < best_pos.x()
+        ):
+            best_y = candidate.top()
+            best_pos = candidate.topLeft()
+
+    return QRectF(best_pos.x(), best_pos.y(), width, height)
+
+
+def pack_tiles(
+    tiles: list[Tile], page_aspect: float, num_attempts: int = 10
+) -> PackedLayout | None:
+    """Pack tiles onto a page using greedy bottom-left with random restarts.
+
+    Args:
+        tiles: Tiles to pack.
+        page_aspect: Target page width/height ratio.
+        num_attempts: Number of random orderings to try.
+
+    Returns:
+        Best packed layout, or None if no tiles.
+    """
+    if not tiles:
+        return None
+
+    best_layout: PackedLayout | None = None
+    best_zoom = 0.0
+
+    # Generate orderings to try
+    orderings: list[list[int]] = []
+
+    # Sorted by area (largest first)
+    by_area = sorted(
+        range(len(tiles)),
+        key=lambda i: tiles[i].bounds.width() * tiles[i].bounds.height(),
+        reverse=True,
+    )
+    orderings.append(by_area)
+
+    # Sorted by height (tallest first)
+    by_height = sorted(range(len(tiles)), key=lambda i: tiles[i].bounds.height(), reverse=True)
+    orderings.append(by_height)
+
+    # Random shuffles
+    indices = list(range(len(tiles)))
+    for _ in range(num_attempts - 2):
+        shuffled = indices.copy()
+        random.shuffle(shuffled)
+        orderings.append(shuffled)
+
+    # Try each ordering
+    for ordering in orderings:
+        state = _PackingState()
+        packed_tiles: list[PackedTile] = []
+
+        for idx in ordering:
+            tile = tiles[idx]
+            width = tile.bounds.width()
+            height = tile.bounds.height()
+
+            # Place using bottom-left
+            packed_rect = _try_place_bottom_left(state, width, height)
+            state.placed.append(packed_rect)
+            packed_tiles.append(PackedTile(tile=tile, packed_bounds=packed_rect))
+
+        # Compute total bounds
+        total_bounds = QRectF()
+        for pt in packed_tiles:
+            if total_bounds.isEmpty():
+                total_bounds = pt.packed_bounds
+            else:
+                total_bounds = total_bounds.united(pt.packed_bounds)
+
+        # Compute zoom to fit page
+        if total_bounds.width() > 0 and total_bounds.height() > 0:
+            packed_aspect = total_bounds.width() / total_bounds.height()
+            # Width-limited vs height-limited
+            zoom = page_aspect / packed_aspect if packed_aspect > page_aspect else 1.0
+
+            # Actual zoom is inverse of how much we need to shrink
+            # Larger total_bounds = lower zoom
+            zoom = 1.0 / max(total_bounds.width(), total_bounds.height())
+
+            if zoom > best_zoom:
+                best_zoom = zoom
+                best_layout = PackedLayout(
+                    tiles=packed_tiles,
+                    crossings=[],  # Will be filled in by caller
+                    total_bounds=total_bounds,
+                    zoom=zoom,
+                )
+
+    return best_layout
+
+
+def find_best_packing(
+    document: Document,
+    page_aspect: float,
+    max_crossings: int,
+) -> PackedLayout | None:
+    """Find the best partition and packing for a document.
+
+    Args:
+        document: The factory document.
+        page_aspect: Target page width/height ratio.
+        max_crossings: Maximum belt crossings allowed.
+
+    Returns:
+        Best packed layout, or None if document is empty.
+    """
+    partitions = generate_partitions(document, max_crossings)
+
+    if not partitions:
+        return None
+
+    best_layout: PackedLayout | None = None
+    best_zoom = 0.0
+
+    for partition in partitions:
+        layout = pack_tiles(partition.tiles, page_aspect)
+        if layout and layout.zoom > best_zoom:
+            best_zoom = layout.zoom
+            layout.crossings = partition.crossings
+            best_layout = layout
+
+    return best_layout
+
+
+# =============================================================================
+# Legacy dialog (kept for compatibility)
+# =============================================================================
 
 
 class PrintOptionsDialog(QDialog):
-    """Dialog for print options before showing print preview."""
+    """Dialog for print options before showing print preview.
+
+    DEPRECATED: Use PackedPrintPreviewDialog instead.
+    """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -71,6 +600,11 @@ class PrintOptionsDialog(QDialog):
     def margin_mm(self) -> int:
         """Return margin in millimeters."""
         return self.margin_spin.value()
+
+
+# =============================================================================
+# Scene rendering utilities
+# =============================================================================
 
 
 def render_scene_to_image(
@@ -136,48 +670,6 @@ def render_scene_to_image(
 
     painter.end()
     return image
-
-
-def print_scene(
-    scene: QGraphicsScene,
-    parent: QWidget | None = None,
-    document_title: str = "Factory Blueprint",
-    black_white: bool = True,
-    include_title: bool = True,
-    margin_mm: int = 10,
-) -> None:
-    """Open print preview dialog for the scene.
-
-    Args:
-        scene: The QGraphicsScene to print
-        parent: Parent widget for dialogs
-        document_title: Title to display on the print
-        black_white: Whether to render in black/white
-        include_title: Whether to include the title on the print
-        margin_mm: Margin in millimeters
-    """
-    printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-    printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
-    printer.setPageOrientation(QPageLayout.Orientation.Landscape)
-
-    # Set margins
-    margins = QMarginsF(margin_mm, margin_mm, margin_mm, margin_mm)
-    printer.setPageMargins(margins, QPageLayout.Unit.Millimeter)
-
-    def render_preview(preview_printer: QPrinter) -> None:
-        """Render callback for print preview."""
-        _render_to_printer(
-            preview_printer,
-            scene,
-            document_title if include_title else None,
-            black_white,
-        )
-
-    # Show print preview dialog
-    preview = QPrintPreviewDialog(printer, parent)
-    preview.setWindowTitle(f"Print Preview - {document_title}")
-    preview.paintRequested.connect(render_preview)
-    preview.exec()
 
 
 def _render_to_printer(
@@ -292,3 +784,464 @@ def _render_to_printer(
         scene.render(painter, target_rect, scene_rect)
 
     painter.end()
+
+
+# =============================================================================
+# New packed print preview dialog
+# =============================================================================
+
+
+class PackedPrintPreviewDialog(QDialog):
+    """Print preview dialog with automatic tile packing.
+
+    Provides a toolbar with:
+    - Color/Monochrome toggle
+    - Max crossings spinbox
+    - Include title checkbox
+    - Refresh button
+    """
+
+    def __init__(
+        self,
+        document: Document,
+        scene: QGraphicsScene,
+        parent: QWidget | None = None,
+        document_title: str = "Factory Blueprint",
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(f"Print Preview - {document_title}")
+        self.setModal(True)
+        self.resize(800, 600)
+
+        self._document = document
+        self._scene = scene
+        self._document_title = document_title
+        self._layout: PackedLayout | None = None
+
+        # Settings
+        self._black_white = True
+        self._max_crossings = 2
+        self._include_title = True
+        self._margin_mm = 10
+
+        self._setup_ui()
+        self._refresh_layout()
+
+    def _setup_ui(self) -> None:
+        """Set up the dialog UI."""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Toolbar
+        toolbar = QToolBar()
+        layout.addWidget(toolbar)
+
+        # Monochrome toggle
+        self._bw_checkbox = QCheckBox("Monochrome")
+        self._bw_checkbox.setChecked(self._black_white)
+        self._bw_checkbox.toggled.connect(self._on_settings_changed)
+        toolbar.addWidget(self._bw_checkbox)
+
+        toolbar.addSeparator()
+
+        # Max crossings
+        toolbar.addWidget(QLabel(" Max crossings: "))
+        self._crossings_spin = QSpinBox()
+        self._crossings_spin.setRange(0, 20)
+        self._crossings_spin.setValue(self._max_crossings)
+        self._crossings_spin.valueChanged.connect(self._on_settings_changed)
+        toolbar.addWidget(self._crossings_spin)
+
+        toolbar.addSeparator()
+
+        # Include title
+        self._title_checkbox = QCheckBox("Include title")
+        self._title_checkbox.setChecked(self._include_title)
+        self._title_checkbox.toggled.connect(self._on_settings_changed)
+        toolbar.addWidget(self._title_checkbox)
+
+        toolbar.addSeparator()
+
+        # Refresh button
+        refresh_btn = QPushButton("Refresh")
+        refresh_btn.clicked.connect(self._refresh_layout)
+        toolbar.addWidget(refresh_btn)
+
+        # Printer setup
+        self._printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        self._printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
+        self._printer.setPageOrientation(QPageLayout.Orientation.Landscape)
+        margins = QMarginsF(self._margin_mm, self._margin_mm, self._margin_mm, self._margin_mm)
+        self._printer.setPageMargins(margins, QPageLayout.Unit.Millimeter)
+
+        # Print preview widget
+        self._preview = QPrintPreviewDialog(self._printer, self)
+        self._preview.setWindowFlags(Qt.WindowType.Widget)
+        self._preview.paintRequested.connect(self._render_preview)
+
+        # Extract just the preview widget, not the whole dialog
+        # QPrintPreviewDialog contains the preview, we embed it
+        layout.addWidget(self._preview)
+
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        print_btn = QPushButton("Print")
+        print_btn.clicked.connect(self._do_print)
+        button_layout.addWidget(print_btn)
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.reject)
+        button_layout.addWidget(close_btn)
+
+        layout.addLayout(button_layout)
+
+    def _on_settings_changed(self) -> None:
+        """Handle settings changes."""
+        self._black_white = self._bw_checkbox.isChecked()
+        self._max_crossings = self._crossings_spin.value()
+        self._include_title = self._title_checkbox.isChecked()
+        self._refresh_layout()
+
+    def _refresh_layout(self) -> None:
+        """Regenerate the packed layout."""
+        # Get page aspect ratio
+        page_rect = self._printer.pageRect(QPrinter.Unit.Millimeter)
+        page_aspect = (
+            page_rect.width() / page_rect.height()
+            if page_rect.height() > 0
+            else 1.414  # A4 landscape
+        )
+
+        self._layout = find_best_packing(self._document, page_aspect, self._max_crossings)
+
+        # Trigger preview update by emitting paintRequested
+        # QPrintPreviewDialog doesn't expose updatePreview directly
+        self._preview.paintRequested.emit(self._printer)
+
+    def _render_preview(self, printer: QPrinter) -> None:
+        """Render callback for print preview."""
+        if self._layout is None:
+            # Fall back to simple scene render
+            _render_to_printer(
+                printer,
+                self._scene,
+                self._document_title if self._include_title else None,
+                self._black_white,
+            )
+            return
+
+        self._render_packed_layout(printer)
+
+    def _render_packed_layout(self, printer: QPrinter) -> None:
+        """Render the packed layout to the printer."""
+        painter = QPainter(printer)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+
+        page_rect = printer.pageRect(QPrinter.Unit.DevicePixel)
+        layout = self._layout
+        assert layout is not None
+
+        # Reserve space for title
+        title_height = 0.0
+        if self._include_title:
+            title_height = 50
+            font = painter.font()
+            font.setPointSize(14)
+            font.setBold(True)
+            painter.setFont(font)
+            painter.setPen(QColor(0, 0, 0))
+            title_rect = QRectF(page_rect.x(), page_rect.y(), page_rect.width(), title_height)
+            painter.drawText(title_rect, Qt.AlignmentFlag.AlignCenter, self._document_title)
+
+        # Calculate render area
+        render_rect = QRectF(
+            page_rect.x(),
+            page_rect.y() + title_height,
+            page_rect.width(),
+            page_rect.height() - title_height,
+        )
+
+        # Calculate scale to fit packed layout in render area
+        if layout.total_bounds.width() > 0 and layout.total_bounds.height() > 0:
+            scale = min(
+                render_rect.width() / layout.total_bounds.width(),
+                render_rect.height() / layout.total_bounds.height(),
+            )
+        else:
+            scale = 1.0
+
+        # Center the layout
+        scaled_width = layout.total_bounds.width() * scale
+        scaled_height = layout.total_bounds.height() * scale
+        offset_x = render_rect.x() + (render_rect.width() - scaled_width) / 2
+        offset_y = render_rect.y() + (render_rect.height() - scaled_height) / 2
+
+        # Render each tile
+        for packed_tile in layout.tiles:
+            self._render_tile(
+                painter,
+                packed_tile,
+                layout,
+                scale,
+                offset_x,
+                offset_y,
+            )
+
+        painter.end()
+
+    def _render_tile(
+        self,
+        painter: QPainter,
+        packed_tile: PackedTile,
+        layout: PackedLayout,
+        scale: float,
+        offset_x: float,
+        offset_y: float,
+    ) -> None:
+        """Render a single tile."""
+        tile = packed_tile.tile
+        packed_bounds = packed_tile.packed_bounds
+
+        # Calculate target rect on page
+        target_rect = QRectF(
+            offset_x + (packed_bounds.x() - layout.total_bounds.x()) * scale,
+            offset_y + (packed_bounds.y() - layout.total_bounds.y()) * scale,
+            packed_bounds.width() * scale,
+            packed_bounds.height() * scale,
+        )
+
+        # Draw tile border (light gray)
+        painter.setPen(QPen(QColor(200, 200, 200), 1))
+        painter.drawRect(target_rect)
+
+        # Render scene content for this tile
+        # We need to render only the buildings in this tile
+        # For now, render the scene region corresponding to this tile's bounds
+        if self._black_white:
+            self._render_tile_bw(painter, tile.bounds, target_rect)
+        else:
+            self._scene.render(painter, target_rect, tile.bounds)
+
+        # Render crossing stubs for this tile
+        for crossing in layout.crossings:
+            self._render_crossing_stub(
+                painter, crossing, packed_tile, layout, scale, offset_x, offset_y
+            )
+
+    def _render_tile_bw(self, painter: QPainter, scene_rect: QRectF, target_rect: QRectF) -> None:
+        """Render a tile region in black and white."""
+        # Render to intermediate image
+        img_width = max(1, int(target_rect.width()))
+        img_height = max(1, int(target_rect.height()))
+
+        color_image = QImage(img_width, img_height, QImage.Format.Format_RGB32)
+        color_image.fill(Qt.GlobalColor.white)
+
+        img_painter = QPainter(color_image)
+        img_painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        img_painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+        self._scene.render(img_painter, QRectF(0, 0, img_width, img_height), scene_rect)
+        img_painter.end()
+
+        # Convert to grayscale
+        grayscale = color_image.convertToFormat(QImage.Format.Format_Grayscale8)
+        painter.drawImage(target_rect.topLeft().toPoint(), grayscale)
+
+    def _render_crossing_stub(
+        self,
+        painter: QPainter,
+        crossing: CrossingStub,
+        packed_tile: PackedTile,
+        layout: PackedLayout,
+        scale: float,
+        offset_x: float,
+        offset_y: float,
+    ) -> None:
+        """Render a crossing stub (belt exit/entry point)."""
+        tile = packed_tile.tile
+        tile_idx = layout.tiles.index(packed_tile)
+
+        # Check if this crossing involves this tile
+        is_source = crossing.source_tile_index == tile_idx
+        is_dest = crossing.dest_tile_index == tile_idx
+
+        if not is_source and not is_dest:
+            return
+
+        # Get the port position and tile bounds
+        port_pos = crossing.source_port_pos if is_source else crossing.dest_port_pos
+
+        # Find closest point on tile edge
+        edge_point = self._closest_edge_point(port_pos, tile.bounds)
+
+        # Transform to page coordinates
+        packed_bounds = packed_tile.packed_bounds
+
+        def to_page(p: QPointF) -> QPointF:
+            """Transform scene point to page coordinates."""
+            # First, get position relative to tile bounds
+            rel_x = (p.x() - tile.bounds.x()) / tile.bounds.width()
+            rel_y = (p.y() - tile.bounds.y()) / tile.bounds.height()
+            # Then map to packed bounds
+            packed_x = packed_bounds.x() + rel_x * packed_bounds.width()
+            packed_y = packed_bounds.y() + rel_y * packed_bounds.height()
+            # Finally scale to page
+            return QPointF(
+                offset_x + (packed_x - layout.total_bounds.x()) * scale,
+                offset_y + (packed_y - layout.total_bounds.y()) * scale,
+            )
+
+        page_port = to_page(port_pos)
+        page_edge = to_page(edge_point)
+
+        # Draw the stub line (dashed)
+        pen = QPen(QColor(0, 0, 0), 2)
+        pen.setStyle(Qt.PenStyle.DashLine)
+        painter.setPen(pen)
+        painter.drawLine(page_port, page_edge)
+
+        # Draw arrow at edge
+        painter.setPen(QPen(QColor(0, 0, 0), 2, Qt.PenStyle.SolidLine))
+        if is_source:
+            # Outgoing arrow at edge
+            self._draw_arrow(painter, page_port, page_edge)
+        else:
+            # Incoming arrow from edge
+            self._draw_arrow(painter, page_edge, page_port)
+
+        # Draw label
+        label = crossing.item_name or ""
+        label = f"{label} #{crossing.crossing_id}" if label else f"#{crossing.crossing_id}"
+
+        font = QFont()
+        font.setPointSize(8)
+        painter.setFont(font)
+        painter.setPen(QColor(0, 0, 0))
+
+        # Position label near edge point
+        label_rect = QRectF(page_edge.x() + 5, page_edge.y() - 10, 100, 20)
+        painter.drawText(label_rect, Qt.AlignmentFlag.AlignLeft, label)
+
+    def _closest_edge_point(self, point: QPointF, rect: QRectF) -> QPointF:
+        """Find the closest point on the rectangle edge to the given point."""
+        # Clamp point to be inside rect first
+        px = max(rect.left(), min(rect.right(), point.x()))
+        py = max(rect.top(), min(rect.bottom(), point.y()))
+
+        # Find distances to each edge
+        dist_left = abs(px - rect.left())
+        dist_right = abs(px - rect.right())
+        dist_top = abs(py - rect.top())
+        dist_bottom = abs(py - rect.bottom())
+
+        min_dist = min(dist_left, dist_right, dist_top, dist_bottom)
+
+        if min_dist == dist_left:
+            return QPointF(rect.left(), py)
+        elif min_dist == dist_right:
+            return QPointF(rect.right(), py)
+        elif min_dist == dist_top:
+            return QPointF(px, rect.top())
+        else:
+            return QPointF(px, rect.bottom())
+
+    def _draw_arrow(self, painter: QPainter, start: QPointF, end: QPointF, size: float = 8) -> None:
+        """Draw an arrow from start to end."""
+        dx = end.x() - start.x()
+        dy = end.y() - start.y()
+        length = math.sqrt(dx * dx + dy * dy)
+
+        if length < 0.001:
+            return
+
+        # Normalize
+        dx /= length
+        dy /= length
+
+        # Arrow head points
+        angle = math.pi / 6  # 30 degrees
+        ax1 = end.x() - size * (dx * math.cos(angle) - dy * math.sin(angle))
+        ay1 = end.y() - size * (dy * math.cos(angle) + dx * math.sin(angle))
+        ax2 = end.x() - size * (dx * math.cos(angle) + dy * math.sin(angle))
+        ay2 = end.y() - size * (dy * math.cos(angle) - dx * math.sin(angle))
+
+        painter.drawLine(end, QPointF(ax1, ay1))
+        painter.drawLine(end, QPointF(ax2, ay2))
+
+    def _do_print(self) -> None:
+        """Execute the print."""
+        self._preview.accept()
+        self.accept()
+
+
+# =============================================================================
+# Public API
+# =============================================================================
+
+
+def print_scene_packed(
+    document: Document,
+    scene: QGraphicsScene,
+    parent: QWidget | None = None,
+    document_title: str = "Factory Blueprint",
+) -> None:
+    """Open packed print preview dialog.
+
+    This is the new entry point that replaces print_scene().
+    It automatically partitions and packs the factory for optimal printing.
+
+    Args:
+        document: The factory document (for graph analysis).
+        scene: The QGraphicsScene to render.
+        parent: Parent widget for the dialog.
+        document_title: Title to display on the print.
+    """
+    dialog = PackedPrintPreviewDialog(document, scene, parent, document_title)
+    dialog.exec()
+
+
+def print_scene(
+    scene: QGraphicsScene,
+    parent: QWidget | None = None,
+    document_title: str = "Factory Blueprint",
+    black_white: bool = True,
+    include_title: bool = True,
+    margin_mm: int = 10,
+) -> None:
+    """Open print preview dialog for the scene.
+
+    DEPRECATED: Use print_scene_packed() instead for automatic tiling.
+
+    Args:
+        scene: The QGraphicsScene to print
+        parent: Parent widget for dialogs
+        document_title: Title to display on the print
+        black_white: Whether to render in black/white
+        include_title: Whether to include the title on the print
+        margin_mm: Margin in millimeters
+    """
+    printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+    printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
+    printer.setPageOrientation(QPageLayout.Orientation.Landscape)
+
+    # Set margins
+    margins = QMarginsF(margin_mm, margin_mm, margin_mm, margin_mm)
+    printer.setPageMargins(margins, QPageLayout.Unit.Millimeter)
+
+    def render_preview(preview_printer: QPrinter) -> None:
+        """Render callback for print preview."""
+        _render_to_printer(
+            preview_printer,
+            scene,
+            document_title if include_title else None,
+            black_white,
+        )
+
+    # Show print preview dialog
+    preview = QPrintPreviewDialog(printer, parent)
+    preview.setWindowTitle(f"Print Preview - {document_title}")
+    preview.paintRequested.connect(render_preview)
+    preview.exec()
