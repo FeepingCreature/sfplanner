@@ -274,6 +274,12 @@ def generate_partitions(
     """
     nodes, edges = _build_adjacency(document)
 
+    print(
+        f"DEBUG generate_partitions: {len(nodes)} nodes, {len(edges)} edges, max_crossings={max_crossings}"
+    )
+    for belt_id, src, dst in edges:
+        print(f"DEBUG   Edge: {belt_id[:8]} from {src[:8]} to {dst[:8]}")
+
     if not nodes:
         return []
 
