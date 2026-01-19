@@ -391,48 +391,59 @@ def _try_place_bottom_left(state: _PackingState, width: float, height: float) ->
     """
     if not state.placed:
         # First rectangle goes at origin
+        print(f"DEBUG pack: First rect {width:.0f}x{height:.0f} at origin")
         return QRectF(0, 0, width, height)
 
     best_pos: QPointF | None = None
     best_score = float("inf")  # Lower is better (y first, then x)
 
-    # Candidate positions: bottom-left corners formed by existing rects
-    # Include (0, 0) and positions at (0, rect.bottom()) and (rect.right(), 0)
-    # and (rect.right(), other_rect.bottom())
-    candidates: list[QPointF] = [QPointF(0, 0)]
+    # Candidate positions: corners formed by existing rects
+    candidates: set[tuple[float, float]] = {(0.0, 0.0)}
 
     for rect in state.placed:
         # Right edge of this rect, at y=0
-        candidates.append(QPointF(rect.right(), 0))
+        candidates.add((rect.right(), 0.0))
         # Left edge (x=0), below this rect
-        candidates.append(QPointF(0, rect.bottom()))
-        # Right edge of this rect, below other rects
+        candidates.add((0.0, rect.bottom()))
+        # Corners formed by combinations of rects
         for other in state.placed:
-            candidates.append(QPointF(rect.right(), other.bottom()))
-            candidates.append(QPointF(other.right(), rect.bottom()))
+            candidates.add((rect.right(), other.bottom()))
+            candidates.add((other.right(), rect.bottom()))
 
-    for pos in candidates:
-        candidate = QRectF(pos.x(), pos.y(), width, height)
+    print(f"DEBUG pack: Placing {width:.0f}x{height:.0f}, candidates: {len(candidates)}")
+
+    for x, y in candidates:
+        candidate = QRectF(x, y, width, height)
 
         # Check if this position overlaps any placed rect
+        # Use a small epsilon to avoid floating point issues
         overlaps = False
         for placed in state.placed:
-            if candidate.intersects(placed):
+            # Check for real intersection (not just touching)
+            if (
+                candidate.left() < placed.right() - 0.1
+                and candidate.right() > placed.left() + 0.1
+                and candidate.top() < placed.bottom() - 0.1
+                and candidate.bottom() > placed.top() + 0.1
+            ):
                 overlaps = True
                 break
 
         if not overlaps:
-            # Score: prefer lower y, then lower x
-            score = pos.y() * 10000 + pos.x()
+            # Score: prefer lower y, then lower x (bottom-left)
+            score = y * 10000 + x
             if score < best_score:
                 best_score = score
-                best_pos = pos
+                best_pos = QPointF(x, y)
+                print(f"DEBUG pack:   Valid pos ({x:.0f}, {y:.0f}) score={score:.0f}")
 
     if best_pos is None:
         # Fallback: place to the right of everything
         max_right = max(r.right() for r in state.placed)
         best_pos = QPointF(max_right, 0)
+        print(f"DEBUG pack:   Fallback to ({best_pos.x():.0f}, 0)")
 
+    print(f"DEBUG pack:   -> Placed at ({best_pos.x():.0f}, {best_pos.y():.0f})")
     return QRectF(best_pos.x(), best_pos.y(), width, height)
 
 
