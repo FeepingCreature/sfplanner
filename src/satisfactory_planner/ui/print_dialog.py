@@ -1030,39 +1030,9 @@ class PackedPrintPreviewDialog(QDialog):
                 item.setVisible(False)
 
         try:
-            # Render to intermediate image at high resolution
-            # Use 2000px on the longest dimension for good quality
-            base_resolution = 2000
-            tile_aspect = (
-                tile.bounds.width() / tile.bounds.height() if tile.bounds.height() > 0 else 1.0
-            )
-
-            if tile_aspect >= 1.0:
-                img_width = base_resolution
-                img_height = max(1, int(base_resolution / tile_aspect))
-            else:
-                img_height = base_resolution
-                img_width = max(1, int(base_resolution * tile_aspect))
-
-            print(f"DEBUG: Rendering tile, bounds={tile.bounds}, target={target_rect}")
-            print(f"DEBUG: Image size: {img_width}x{img_height}")
-
-            color_image = QImage(img_width, img_height, QImage.Format.Format_RGB32)
-            color_image.fill(Qt.GlobalColor.white)
-
-            img_painter = QPainter(color_image)
-            img_painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-            img_painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
-            img_painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-            self._scene.render(img_painter, QRectF(0, 0, img_width, img_height), tile.bounds)
-            img_painter.end()
-
-            # Convert to grayscale if needed
-            if self._black_white:
-                color_image = color_image.convertToFormat(QImage.Format.Format_Grayscale8)
-
-            # Draw to target (Qt handles scaling)
-            painter.drawImage(target_rect, color_image)
+            # Render directly to painter - let Qt handle resolution scaling
+            # This works better for preview (screen res) vs print (high res)
+            self._scene.render(painter, target_rect, tile.bounds)
 
         finally:
             # Restore visibility
