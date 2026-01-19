@@ -990,6 +990,10 @@ class PackedPrintPreviewDialog(QDialog):
         """
         from PySide6.QtWidgets import QGraphicsItem
 
+        from satisfactory_planner.ui.items.belt_item import BeltItem
+        from satisfactory_planner.ui.items.building_item import BuildingItem
+        from satisfactory_planner.ui.items.room_item import RoomItem
+
         # Collect items to hide (those not in this tile)
         items_to_hide: list[QGraphicsItem] = []
 
@@ -999,32 +1003,29 @@ class PackedPrintPreviewDialog(QDialog):
                 continue
 
             # Determine if this item belongs to the tile
-            item_id: str | None = None
             should_hide = False
 
-            # Check for building_id attribute (BuildingItem)
-            if hasattr(item, "building_id"):
-                item_id = item.building_id
+            # BuildingItem has .building.id
+            if isinstance(item, BuildingItem):
+                item_id = item.building.id
                 should_hide = item_id not in tile.building_ids
-            # Check for placement_id attribute (RoomItem)
-            elif hasattr(item, "placement_id"):
-                item_id = item.placement_id
+            # RoomItem has .placement.id
+            elif isinstance(item, RoomItem):
+                item_id = item.placement.id
                 should_hide = item_id not in tile.building_ids
-            # Check for belt_id attribute (BeltItem)
-            elif hasattr(item, "belt_id"):
-                belt_id: str = item.belt_id
-                belt = self._document.belts.get(belt_id)
-                if belt:
-                    # Belt belongs to tile if BOTH endpoints are in the tile
-                    source_node = _get_containing_node(self._document, belt.source_building_id)
-                    dest_node = _get_containing_node(self._document, belt.dest_building_id)
-                    source_in = source_node and source_node in tile.building_ids
-                    dest_in = dest_node and dest_node in tile.building_ids
-                    # Hide if neither endpoint is in tile
-                    should_hide = not source_in and not dest_in
-                    # Also hide crossing belts (one end in, one end out) - they get stubs
-                    if source_in != dest_in:
-                        should_hide = True
+            # BeltItem has .belt.id
+            elif isinstance(item, BeltItem):
+                belt = item.belt
+                # Belt belongs to tile if BOTH endpoints are in the tile
+                source_node = _get_containing_node(self._document, belt.source_building_id)
+                dest_node = _get_containing_node(self._document, belt.dest_building_id)
+                source_in = source_node and source_node in tile.building_ids
+                dest_in = dest_node and dest_node in tile.building_ids
+                # Hide if neither endpoint is in tile
+                should_hide = not source_in and not dest_in
+                # Also hide crossing belts (one end in, one end out) - they get stubs
+                if source_in != dest_in:
+                    should_hide = True
 
             if should_hide and item.isVisible():
                 items_to_hide.append(item)
