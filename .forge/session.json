@@ -608,6 +608,15 @@
       "streaming": true,
       "actual_cost": 0.4038975,
       "generation_id": "gen-1768864701-RP6cCpIuA9PyorWGsDS9"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768864937893.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768864937893.json",
+      "timestamp": 1768864937.8944228,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.08282025,
+      "generation_id": "gen-1768864938-P6mR27MVmkgfM4tb0Lrv"
     }
   ],
   "messages": [
@@ -2130,6 +2139,50 @@
         },
         {
           "commit": "9b394ee6922e",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 793062d5",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "Oh hang on I see.\nWith max 1 crossing it cuts off the thing I want and does DEBUG   Partition 29: 4 tiles, 1 crossings, sizes=[(380.0, 520.0), (1470.0, 740.0), (870.0, 399.13043478260875), (510.0, 230.0)]\nBut with max 2 crossing it does DEBUG   Partition 58: 5 tiles, 2 crossings, sizes=[(1470.0, 1160.0), (678.695652173913, 399.13043478260875), (510.0, 230.0), (140.0, 140.0), (110.0, 110.0)] and cuts off two individual buildings instead...?"
+    },
+    {
+      "role": "assistant",
+      "content": "Ah, I see the issue! The DFS is exploring all combinations, but when we allow 2 crossings, it's finding that cutting two *different* belts (to individual buildings) gives more tiles, but those tiny tiles (140x140, 110x110) don't actually help the packing - they're overhead.\n\nThe problem is that the partition selection is purely based on zoom, which is `1/max(width, height)`. More tiles means more overhead (padding, etc.), and tiny tiles don't help.\n\nThe real issue is: we should prefer partitions that **reduce the total bounding area** rather than just counting crossings. Cutting the belt between merger/splitter should split a big rectangular region into two smaller ones that pack better.\n\nLet me look at what's happening - the partition with the belt cut you want (1 crossing, 4 tiles) has sizes `[(380, 520), (1470, 740), (870, 399), (510, 230)]`. But which partition is winning?\n\nI think the problem might be that the \"trivial\" partition (0 crossings, 1 tile) is winning because a single large tile has no packing overhead. Let me add logging to show which partition wins:\n\n<edit file=\"src/satisfactory_planner/ui/print_dialog.py\">\n<search>\n    best_layout: PackedLayout | None = None\n    best_zoom = 0.0\n\n    for i, partition in enumerate(partitions):\n        layout = pack_tiles(partition.tiles, page_aspect)\n        if layout:\n            print(\n                f\"DEBUG   Partition {i} packed: zoom={layout.zoom:.6f}, bounds={layout.total_bounds}\"\n            )\n            if layout.zoom > best_zoom:\n                best_zoom = layout.zoom\n                layout.crossings = partition.crossings\n                best_layout = layout\n                print(\"DEBUG   -> New best!\")\n\n    return best_layout\n</search>\n<replace>\n    best_layout: PackedLayout | None = None\n    best_zoom = 0.0\n    best_partition_idx = -1\n\n    for i, partition in enumerate(partitions):\n        layout = pack_tiles(partition.tiles, page_aspect)\n        if layout:\n            print(\n                f\"DEBUG   Partition {i} packed: zoom={layout.zoom:.6f}, bounds={layout.total_bounds}\"\n            )\n            if layout.zoom > best_zoom:\n                best_zoom = layout.zoom\n                layout.crossings = partition.crossings\n                best_layout = layout\n                best_partition_idx = i\n                print(\"DEBUG   -> New best!\")\n\n    if best_layout:\n        print(f\"DEBUG WINNER: Partition {best_partition_idx} with zoom={best_zoom:.6f}\")\n\n    return best_layout\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Add debug logging to show winning partition\"/>\n\nCan you run it again and tell me which partition number wins? I suspect partition 0 (trivial, no cuts) is winning because `zoom = 1/max(width,height)` favors a single large tile over multiple smaller ones that need to be packed together.\n\nIf that's the case, the fix would be to change the scoring to account for how well the packed layout fits the page aspect ratio, not just raw zoom.",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/print_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/print_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n87 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 54 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_67q_27ut\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 82 items\n\ntests/test_core/test_bin_packing.py ........                             [  9%]\ntests/test_core/test_commands.py .........                               [ 20%]\ntests/test_core/test_constraint_optimizer.py ................            [ 40%]\ntests/test_core/test_flow_solver.py .................                    [ 60%]\ntests/test_core/test_models.py .........                                 [ 71%]\ntests/test_core/test_room_commands.py ..............                     [ 89%]\ntests/test_smoke.py ..                                                   [ 91%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 82 passed in 0.22s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_67q_27ut\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n87 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 54 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_67q_27ut\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 82 items\n\ntests/test_core/test_bin_packing.py ........                             [  9%]\ntests/test_core/test_commands.py .........                               [ 20%]\ntests/test_core/test_constraint_optimizer.py ................            [ 40%]\ntests/test_core/test_flow_solver.py .................                    [ 60%]\ntests/test_core/test_models.py .........                                 [ 71%]\ntests/test_core/test_room_commands.py ..............                     [ 89%]\ntests/test_smoke.py ..                                                   [ 91%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 82 passed in 0.22s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_67q_27ut\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "6e4139b4e777",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"

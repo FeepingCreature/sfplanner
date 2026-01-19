@@ -573,6 +573,7 @@ def find_best_packing(
 
     best_layout: PackedLayout | None = None
     best_zoom = 0.0
+    best_partition_idx = -1
 
     for i, partition in enumerate(partitions):
         layout = pack_tiles(partition.tiles, page_aspect)
@@ -584,7 +585,11 @@ def find_best_packing(
                 best_zoom = layout.zoom
                 layout.crossings = partition.crossings
                 best_layout = layout
+                best_partition_idx = i
                 print("DEBUG   -> New best!")
+
+    if best_layout:
+        print(f"DEBUG WINNER: Partition {best_partition_idx} with zoom={best_zoom:.6f}")
 
     return best_layout
 
