@@ -364,6 +364,24 @@
       "streaming": true,
       "actual_cost": 0.54329125,
       "generation_id": "gen-1768863529-BPVYH7aIrVq7kwjq6QjZ"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_1768863627936.json",
+      "response_file": "/tmp/forge_debug/response_1768863627936.json",
+      "timestamp": 1768863627.9366274,
+      "model": "anthropic/claude-haiku-4.5",
+      "streaming": false,
+      "actual_cost": 0.004522,
+      "generation_id": "gen-1768863628-Z1prWy810iwtYH39exDH"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768863653061.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768863653061.json",
+      "timestamp": 1768863653.062072,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.553075,
+      "generation_id": "gen-1768863653-iBuUHe0HSrd92c90L8WH"
     }
   ],
   "messages": [
@@ -1200,6 +1218,52 @@
             "mid_turn_commit"
           ],
           "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Generated summaries for 93 files",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "hm we might be hitting some fallback path. can you remove any fallback paths from the print preview rendering code?"
+    },
+    {
+      "role": "assistant",
+      "content": "Good idea. Let me look at the rendering code and remove any fallback paths that might be causing issues:\n\n<edit file=\"src/satisfactory_planner/ui/print_dialog.py\">\n<search>\n    def _render_preview(self, printer: QPrinter) -> None:\n        \"\"\"Render callback for print preview.\"\"\"\n        if self._layout is None:\n            # Fall back to simple scene render\n            _render_to_printer(\n                printer,\n                self._scene,\n                self._document_title if self._include_title else None,\n                self._black_white,\n            )\n            return\n\n        self._render_packed_layout(printer)\n</search>\n<replace>\n    def _render_preview(self, printer: QPrinter) -> None:\n        \"\"\"Render callback for print preview.\"\"\"\n        if self._layout is None:\n            # No layout - draw error message\n            painter = QPainter(printer)\n            painter.drawText(100, 100, \"No layout generated - document may be empty\")\n            painter.end()\n            return\n\n        self._render_packed_layout(printer)\n</replace>\n</edit>\n\nNow let me also check for issues in `_render_tile_filtered` - I suspect the intermediate image dimensions might be coming out wrong. Let me add some debug and simplify:\n\n<edit file=\"src/satisfactory_planner/ui/print_dialog.py\">\n<search>\n        try:\n            # Render to intermediate image\n            # For quality, we want at least 150 DPI equivalent resolution\n            # Calculate based on tile bounds (scene units) not target_rect (device pixels)\n            # Assume ~1 scene unit = 1 pixel at 100% zoom, aim for higher res\n            min_dimension = 800  # Minimum pixels for smallest tile dimension\n            tile_aspect = (\n                tile.bounds.width() / tile.bounds.height() if tile.bounds.height() > 0 else 1.0\n            )\n\n            if tile_aspect >= 1.0:\n                img_height = min_dimension\n                img_width = int(min_dimension * tile_aspect)\n            else:\n                img_width = min_dimension\n                img_height = int(min_dimension / tile_aspect)\n\n            # But also ensure we're at least as big as target for high-DPI output\n            img_width = max(img_width, int(target_rect.width()))\n            img_height = max(img_height, int(target_rect.height()))\n\n            # Cap to avoid memory issues\n            max_dim = 4000\n            if img_width > max_dim or img_height > max_dim:\n                ratio = min(max_dim / img_width, max_dim / img_height)\n                img_width = int(img_width * ratio)\n                img_height = int(img_height * ratio)\n\n            color_image = QImage(img_width, img_height, QImage.Format.Format_RGB32)\n            color_image.fill(Qt.GlobalColor.white)\n\n            img_painter = QPainter(color_image)\n            img_painter.setRenderHint(QPainter.RenderHint.Antialiasing)\n            img_painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)\n            img_painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)\n            self._scene.render(img_painter, QRectF(0, 0, img_width, img_height), tile.bounds)\n            img_painter.end()\n\n            # Convert to grayscale if needed\n            if self._black_white:\n                color_image = color_image.convertToFormat(QImage.Format.Format_Grayscale8)\n\n            # Draw to target (Qt handles scaling)\n            painter.drawImage(target_rect, color_image)\n</search>\n<replace>\n        try:\n            # Render to intermediate image at high resolution\n            # Use 2000px on the longest dimension for good quality\n            base_resolution = 2000\n            tile_aspect = (\n                tile.bounds.width() / tile.bounds.height() if tile.bounds.height() > 0 else 1.0\n            )\n\n            if tile_aspect >= 1.0:\n                img_width = base_resolution\n                img_height = max(1, int(base_resolution / tile_aspect))\n            else:\n                img_height = base_resolution\n                img_width = max(1, int(base_resolution * tile_aspect))\n\n            print(f\"DEBUG: Rendering tile, bounds={tile.bounds}, target={target_rect}\")\n            print(f\"DEBUG: Image size: {img_width}x{img_height}\")\n\n            color_image = QImage(img_width, img_height, QImage.Format.Format_RGB32)\n            color_image.fill(Qt.GlobalColor.white)\n\n            img_painter = QPainter(color_image)\n            img_painter.setRenderHint(QPainter.RenderHint.Antialiasing)\n            img_painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)\n            img_painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)\n            self._scene.render(img_painter, QRectF(0, 0, img_width, img_height), tile.bounds)\n            img_painter.end()\n\n            # Convert to grayscale if needed\n            if self._black_white:\n                color_image = color_image.convertToFormat(QImage.Format.Format_Grayscale8)\n\n            # Draw to target (Qt handles scaling)\n            painter.drawImage(target_rect, color_image)\n</replace>\n</edit>\n\n<run_tests/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/print_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/print_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/print_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/print_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n86 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 54 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_1q98cym3\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 74 items\n\ntests/test_core/test_commands.py .........                               [ 12%]\ntests/test_core/test_constraint_optimizer.py ................            [ 33%]\ntests/test_core/test_flow_solver.py .................                    [ 56%]\ntests/test_core/test_models.py .........                                 [ 68%]\ntests/test_core/test_room_commands.py ..............                     [ 87%]\ntests/test_smoke.py ..                                                   [ 90%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 74 passed in 0.22s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_1q98cym3\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n86 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 54 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_1q98cym3\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 74 items\n\ntests/test_core/test_commands.py .........                               [ 12%]\ntests/test_core/test_constraint_optimizer.py ................            [ 33%]\ntests/test_core/test_flow_solver.py .................                    [ 56%]\ntests/test_core/test_models.py .........                                 [ 68%]\ntests/test_core/test_room_commands.py ..............                     [ 87%]\ntests/test_smoke.py ..                                                   [ 90%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 74 passed in 0.22s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_1q98cym3\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.07s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
         }
       ]
     }

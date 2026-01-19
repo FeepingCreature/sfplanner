@@ -860,13 +860,10 @@ class PackedPrintPreviewDialog(QDialog):
     def _render_preview(self, printer: QPrinter) -> None:
         """Render callback for print preview."""
         if self._layout is None:
-            # Fall back to simple scene render
-            _render_to_printer(
-                printer,
-                self._scene,
-                self._document_title if self._include_title else None,
-                self._black_white,
-            )
+            # No layout - draw error message
+            painter = QPainter(printer)
+            painter.drawText(100, 100, "No layout generated - document may be empty")
+            painter.end()
             return
 
         self._render_packed_layout(printer)
@@ -1033,32 +1030,22 @@ class PackedPrintPreviewDialog(QDialog):
                 item.setVisible(False)
 
         try:
-            # Render to intermediate image
-            # For quality, we want at least 150 DPI equivalent resolution
-            # Calculate based on tile bounds (scene units) not target_rect (device pixels)
-            # Assume ~1 scene unit = 1 pixel at 100% zoom, aim for higher res
-            min_dimension = 800  # Minimum pixels for smallest tile dimension
+            # Render to intermediate image at high resolution
+            # Use 2000px on the longest dimension for good quality
+            base_resolution = 2000
             tile_aspect = (
                 tile.bounds.width() / tile.bounds.height() if tile.bounds.height() > 0 else 1.0
             )
 
             if tile_aspect >= 1.0:
-                img_height = min_dimension
-                img_width = int(min_dimension * tile_aspect)
+                img_width = base_resolution
+                img_height = max(1, int(base_resolution / tile_aspect))
             else:
-                img_width = min_dimension
-                img_height = int(min_dimension / tile_aspect)
+                img_height = base_resolution
+                img_width = max(1, int(base_resolution * tile_aspect))
 
-            # But also ensure we're at least as big as target for high-DPI output
-            img_width = max(img_width, int(target_rect.width()))
-            img_height = max(img_height, int(target_rect.height()))
-
-            # Cap to avoid memory issues
-            max_dim = 4000
-            if img_width > max_dim or img_height > max_dim:
-                ratio = min(max_dim / img_width, max_dim / img_height)
-                img_width = int(img_width * ratio)
-                img_height = int(img_height * ratio)
+            print(f"DEBUG: Rendering tile, bounds={tile.bounds}, target={target_rect}")
+            print(f"DEBUG: Image size: {img_width}x{img_height}")
 
             color_image = QImage(img_width, img_height, QImage.Format.Format_RGB32)
             color_image.fill(Qt.GlobalColor.white)
