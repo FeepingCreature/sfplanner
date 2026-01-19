@@ -996,32 +996,39 @@ class PackedPrintPreviewDialog(QDialog):
         items_to_hide: list[QGraphicsItem] = []
 
         for item in self._scene.items():
+            # Skip child items - they're controlled by their parent
+            if item.parentItem() is not None:
+                continue
+
             # Determine if this item belongs to the tile
             item_id: str | None = None
+            should_hide = False
 
             # Check for building_id attribute (BuildingItem)
             if hasattr(item, "building_id"):
                 item_id = item.building_id
+                should_hide = item_id not in tile.building_ids
             # Check for placement_id attribute (RoomItem)
             elif hasattr(item, "placement_id"):
                 item_id = item.placement_id
+                should_hide = item_id not in tile.building_ids
             # Check for belt_id attribute (BeltItem)
             elif hasattr(item, "belt_id"):
                 belt_id: str = item.belt_id
-                # Belt belongs to tile if source is in tile
                 belt = self._document.belts.get(belt_id)
                 if belt:
+                    # Belt belongs to tile if BOTH endpoints are in the tile
                     source_node = _get_containing_node(self._document, belt.source_building_id)
-                    if source_node and source_node in tile.building_ids:
-                        continue  # Keep visible
-                    # Hide if source not in tile
-                    if item.isVisible():
-                        items_to_hide.append(item)
-                        item.setVisible(False)
-                continue
+                    dest_node = _get_containing_node(self._document, belt.dest_building_id)
+                    source_in = source_node and source_node in tile.building_ids
+                    dest_in = dest_node and dest_node in tile.building_ids
+                    # Hide if neither endpoint is in tile
+                    should_hide = not source_in and not dest_in
+                    # Also hide crossing belts (one end in, one end out) - they get stubs
+                    if source_in != dest_in:
+                        should_hide = True
 
-            if item_id is not None and item_id not in tile.building_ids and item.isVisible():
-                # Hide this item
+            if should_hide and item.isVisible():
                 items_to_hide.append(item)
                 item.setVisible(False)
 

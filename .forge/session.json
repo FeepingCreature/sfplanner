@@ -337,6 +337,24 @@
       "streaming": true,
       "actual_cost": 0.073257,
       "generation_id": "gen-1768851619-BcSKkYmwUGJqDoYJGh6h"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768852034909.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768852034909.json",
+      "timestamp": 1768852034.9128404,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.502635,
+      "generation_id": "gen-1768852035-RaKhZoG7XKBXYSdQrpMi"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1768852045887.json",
+      "response_file": "/tmp/forge_debug/response_stream_1768852045887.json",
+      "timestamp": 1768852045.8888717,
+      "model": "anthropic/claude-opus-4.5",
+      "streaming": true,
+      "actual_cost": 0.5456675,
+      "generation_id": "gen-1768852046-Nim6ZlITwP5IsD7ddJSP"
     }
   ],
   "messages": [
@@ -1056,6 +1074,70 @@
         },
         {
           "commit": "b90f53f5a008",
+          "message": "Committed: 1 file(s) modified/created",
+          "side_effects": [
+            "mid_turn_commit"
+          ],
+          "success": true
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: fbe78221",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "hm, I'm not sure if the filtering worked."
+    },
+    {
+      "role": "assistant",
+      "content": "Let me check the filtering logic and add some debug output to understand what's happening:",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/print_dialog.py\", \"line\": 995, \"context\": 30}",
+            "name": "get_lines"
+          },
+          "id": "toolu_vrtx_01Mp2yuXMfZFUkeYPWB3avpo",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01Mp2yuXMfZFUkeYPWB3avpo",
+      "content": "{\"content\": \"     965 |             packed_bounds.height() * scale,\\n     966 |         )\\n     967 | \\n     968 |         # Draw tile background with debug color\\n     969 |         bg_color = self._TILE_COLORS[tile_idx % len(self._TILE_COLORS)]\\n     970 |         painter.fillRect(target_rect, bg_color)\\n     971 | \\n     972 |         # Draw tile border\\n     973 |         painter.setPen(QPen(QColor(100, 100, 100), 2))\\n     974 |         painter.drawRect(target_rect)\\n     975 | \\n     976 |         # Render scene content for this tile\\n     977 |         # IMPORTANT: We can't just render tile.bounds region because tiles may overlap\\n     978 |         # in scene coordinates. We need to hide items not in this tile, render, then restore.\\n     979 |         self._render_tile_filtered(painter, tile, target_rect)\\n     980 | \\n     981 |         # Render crossing stubs for this tile\\n     982 |         for crossing in layout.crossings:\\n     983 |             self._render_crossing_stub(\\n     984 |                 painter, crossing, packed_tile, layout, scale, offset_x, offset_y\\n     985 |             )\\n     986 | \\n     987 |     def _render_tile_filtered(self, painter: QPainter, tile: Tile, target_rect: QRectF) -> None:\\n     988 |         \\\"\\\"\\\"Render only the items belonging to this tile.\\n     989 | \\n     990 |         We temporarily hide scene items not in this tile, render, then restore.\\n     991 |         This handles the case where tiles overlap in scene coordinates.\\n     992 |         \\\"\\\"\\\"\\n     993 |         from PySide6.QtWidgets import QGraphicsItem\\n     994 | \\n>>>  995 |         # Collect items to hide (those not in this tile)\\n     996 |         items_to_hide: list[QGraphicsItem] = []\\n     997 | \\n     998 |         for item in self._scene.items():\\n     999 |             # Determine if this item belongs to the tile\\n    1000 |             item_id: str | None = None\\n    1001 | \\n    1002 |             # Check for building_id attribute (BuildingItem)\\n    1003 |             if hasattr(item, \\\"building_id\\\"):\\n    1004 |                 item_id = item.building_id\\n    1005 |             # Check for placement_id attribute (RoomItem)\\n    1006 |             elif hasattr(item, \\\"placement_id\\\"):\\n    1007 |                 item_id = item.placement_id\\n    1008 |             # Check for belt_id attribute (BeltItem)\\n    1009 |             elif hasattr(item, \\\"belt_id\\\"):\\n    1010 |                 belt_id: str = item.belt_id\\n    1011 |                 # Belt belongs to tile if source is in tile\\n    1012 |                 belt = self._document.belts.get(belt_id)\\n    1013 |                 if belt:\\n    1014 |                     source_node = _get_containing_node(self._document, belt.source_building_id)\\n    1015 |                     if source_node and source_node in tile.building_ids:\\n    1016 |                         continue  # Keep visible\\n    1017 |                     # Hide if source not in tile\\n    1018 |                     if item.isVisible():\\n    1019 |                         items_to_hide.append(item)\\n    1020 |                         item.setVisible(False)\\n    1021 |                 continue\\n    1022 | \\n    1023 |             if item_id is not None and item_id not in tile.building_ids and item.isVisible():\\n    1024 |                 # Hide this item\\n    1025 |                 items_to_hide.append(item)\", \"filepath\": \"src/satisfactory_planner/ui/print_dialog.py\", \"range\": \"965-1025\", \"side_effects\": [\"ephemeral_result\"], \"success\": true, \"target_line\": 995, \"total_lines\": 1217}",
+      "_skip_display": true
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at the code, I see the issue. The filtering logic checks `tile.building_ids` which contains the IDs we assigned during partitioning. But let me trace through what's happening:\n\n1. `tile.building_ids` contains top-level building IDs or room placement IDs\n2. We're checking if `item.building_id` is in `tile.building_ids`\n\nThe problem might be that we're not handling all cases correctly. Let me add some debug logging and also check if the issue is that items without `building_id`, `placement_id`, or `belt_id` attributes (like port items, path items, etc.) are being shown.\n\n<edit file=\"src/satisfactory_planner/ui/print_dialog.py\">\n<search>\n    def _render_tile_filtered(self, painter: QPainter, tile: Tile, target_rect: QRectF) -> None:\n        \"\"\"Render only the items belonging to this tile.\n\n        We temporarily hide scene items not in this tile, render, then restore.\n        This handles the case where tiles overlap in scene coordinates.\n        \"\"\"\n        from PySide6.QtWidgets import QGraphicsItem\n\n        # Collect items to hide (those not in this tile)\n        items_to_hide: list[QGraphicsItem] = []\n\n        for item in self._scene.items():\n            # Determine if this item belongs to the tile\n            item_id: str | None = None\n\n            # Check for building_id attribute (BuildingItem)\n            if hasattr(item, \"building_id\"):\n                item_id = item.building_id\n            # Check for placement_id attribute (RoomItem)\n            elif hasattr(item, \"placement_id\"):\n                item_id = item.placement_id\n            # Check for belt_id attribute (BeltItem)\n            elif hasattr(item, \"belt_id\"):\n                belt_id: str = item.belt_id\n                # Belt belongs to tile if source is in tile\n                belt = self._document.belts.get(belt_id)\n                if belt:\n                    source_node = _get_containing_node(self._document, belt.source_building_id)\n                    if source_node and source_node in tile.building_ids:\n                        continue  # Keep visible\n                    # Hide if source not in tile\n                    if item.isVisible():\n                        items_to_hide.append(item)\n                        item.setVisible(False)\n                continue\n\n            if item_id is not None and item_id not in tile.building_ids and item.isVisible():\n                # Hide this item\n                items_to_hide.append(item)\n                item.setVisible(False)\n</search>\n<replace>\n    def _render_tile_filtered(self, painter: QPainter, tile: Tile, target_rect: QRectF) -> None:\n        \"\"\"Render only the items belonging to this tile.\n\n        We temporarily hide scene items not in this tile, render, then restore.\n        This handles the case where tiles overlap in scene coordinates.\n        \"\"\"\n        from PySide6.QtWidgets import QGraphicsItem\n\n        # Collect items to hide (those not in this tile)\n        items_to_hide: list[QGraphicsItem] = []\n\n        for item in self._scene.items():\n            # Skip child items - they're controlled by their parent\n            if item.parentItem() is not None:\n                continue\n\n            # Determine if this item belongs to the tile\n            item_id: str | None = None\n            should_hide = False\n\n            # Check for building_id attribute (BuildingItem)\n            if hasattr(item, \"building_id\"):\n                item_id = item.building_id\n                should_hide = item_id not in tile.building_ids\n            # Check for placement_id attribute (RoomItem)\n            elif hasattr(item, \"placement_id\"):\n                item_id = item.placement_id\n                should_hide = item_id not in tile.building_ids\n            # Check for belt_id attribute (BeltItem)\n            elif hasattr(item, \"belt_id\"):\n                belt_id: str = item.belt_id\n                belt = self._document.belts.get(belt_id)\n                if belt:\n                    # Belt belongs to tile if BOTH endpoints are in the tile\n                    source_node = _get_containing_node(self._document, belt.source_building_id)\n                    dest_node = _get_containing_node(self._document, belt.dest_building_id)\n                    source_in = source_node and source_node in tile.building_ids\n                    dest_in = dest_node and dest_node in tile.building_ids\n                    # Hide if neither endpoint is in tile\n                    should_hide = not source_in and not dest_in\n                    # Also hide crossing belts (one end in, one end out) - they get stubs\n                    if source_in != dest_in:\n                        should_hide = True\n\n            if should_hide and item.isVisible():\n                items_to_hide.append(item)\n                item.setVisible(False)\n</replace>\n</edit>\n\n<run_tests/>\n<commit message=\"Fix tile filtering to skip child items and handle crossing belts\n\n- Skip items with parent (they follow parent visibility)\n- Hide belts that cross tile boundaries (they get stubs instead)\n- Clearer logic for determining if item should be hidden\"/>",
+      "_inline_results": [
+        {
+          "message": "Replaced in src/satisfactory_planner/ui/print_dialog.py",
+          "modified_files": [
+            "src/satisfactory_planner/ui/print_dialog.py"
+          ],
+          "side_effects": [
+            "files_modified"
+          ],
+          "success": true
+        },
+        {
+          "display_output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n86 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 54 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_e2u3ba9a\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 74 items\n\ntests/test_core/test_commands.py .........                               [ 12%]\ntests/test_core/test_constraint_optimizer.py ................            [ 33%]\ntests/test_core/test_flow_solver.py .................                    [ 56%]\ntests/test_core/test_models.py .........                                 [ 68%]\ntests/test_core/test_room_commands.py ..............                     [ 87%]\ntests/test_smoke.py ..                                                   [ 90%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 74 passed in 0.22s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_e2u3ba9a\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.08s ==============================\n",
+          "output": "ruff check --fix src/ tests/ spikes/\nAll checks passed!\nruff format src/ tests/ spikes/\n86 files left unchanged\nruff check src/ tests/ spikes/\nAll checks passed!\nmypy src/\nSuccess: no issues found in 54 source files\ncd spikes/flowsim && mypy . --config-file mypy.ini\nSuccess: no issues found in 18 source files\npytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_e2u3ba9a\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 74 items\n\ntests/test_core/test_commands.py .........                               [ 12%]\ntests/test_core/test_constraint_optimizer.py ................            [ 33%]\ntests/test_core/test_flow_solver.py .................                    [ 56%]\ntests/test_core/test_models.py .........                                 [ 68%]\ntests/test_core/test_room_commands.py ..............                     [ 87%]\ntests/test_smoke.py ..                                                   [ 90%]\ntests/test_ui/test_canvas.py .......                                     [100%]\n\n============================== 74 passed in 0.22s ==============================\ncd spikes/flowsim && pytest tests/ -q\n============================= test session starts ==============================\nplatform linux -- Python 3.13.3, pytest-9.0.2, pluggy-1.6.0\nPySide6 6.10.1 -- Qt runtime 6.10.1 -- Qt compiled 6.10.1\nrootdir: /tmp/forge_vfs_e2u3ba9a\nconfigfile: pyproject.toml\nplugins: qt-4.5.0, anyio-4.12.0, asyncio-1.3.0, typeguard-4.4.2\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 49 items\n\ntests/test_builder.py ...................                                [ 38%]\ntests/test_dangling.py .....                                             [ 48%]\ntests/test_info.py ..                                                    [ 53%]\ntests/test_overcapacity.py ....                                          [ 61%]\ntests/test_solver.py ..............                                      [ 89%]\ntests/test_underflow.py .....                                            [100%]\n\n============================== 49 passed in 0.08s ==============================\n",
+          "passed": false,
+          "side_effects": [
+            "has_display_output"
+          ],
+          "success": true,
+          "summary": "\u2713 Tests passed (make test)",
+          "test_command": "make test"
+        },
+        {
+          "commit": "36d72da28c0e",
           "message": "Committed: 1 file(s) modified/created",
           "side_effects": [
             "mid_turn_commit"
