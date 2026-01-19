@@ -751,7 +751,7 @@ class PackedPrintPreviewDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(f"Print Preview - {document_title}")
         self.setModal(True)
-        self.resize(800, 600)
+        self.resize(1200, 900)
 
         self._document = document
         self._scene = scene
@@ -817,6 +817,8 @@ class PackedPrintPreviewDialog(QDialog):
         # Print preview widget (not dialog - we want to embed it)
         self._preview = QPrintPreviewWidget(self._printer, self)
         self._preview.paintRequested.connect(self._render_preview)
+        # Set a reasonable zoom level for the preview
+        self._preview.setZoomMode(QPrintPreviewWidget.ZoomMode.FitInView)
         layout.addWidget(self._preview)
 
         # Buttons
@@ -972,12 +974,9 @@ class PackedPrintPreviewDialog(QDialog):
         painter.drawRect(target_rect)
 
         # Render scene content for this tile
-        # We need to render only the buildings in this tile
-        # For now, render the scene region corresponding to this tile's bounds
-        if self._black_white:
-            self._render_tile_bw(painter, tile.bounds, target_rect)
-        else:
-            self._scene.render(painter, target_rect, tile.bounds)
+        # IMPORTANT: We can't just render tile.bounds region because tiles may overlap
+        # in scene coordinates. We need to hide items not in this tile, render, then restore.
+        self._render_tile_filtered(painter, tile, target_rect)
 
         # Render crossing stubs for this tile
         for crossing in layout.crossings:
@@ -985,24 +984,75 @@ class PackedPrintPreviewDialog(QDialog):
                 painter, crossing, packed_tile, layout, scale, offset_x, offset_y
             )
 
-    def _render_tile_bw(self, painter: QPainter, scene_rect: QRectF, target_rect: QRectF) -> None:
-        """Render a tile region in black and white."""
-        # Render to intermediate image
-        img_width = max(1, int(target_rect.width()))
-        img_height = max(1, int(target_rect.height()))
+    def _render_tile_filtered(self, painter: QPainter, tile: Tile, target_rect: QRectF) -> None:
+        """Render only the items belonging to this tile.
 
-        color_image = QImage(img_width, img_height, QImage.Format.Format_RGB32)
-        color_image.fill(Qt.GlobalColor.white)
+        We temporarily hide scene items not in this tile, render, then restore.
+        This handles the case where tiles overlap in scene coordinates.
+        """
+        from PySide6.QtWidgets import QGraphicsItem
 
-        img_painter = QPainter(color_image)
-        img_painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        img_painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
-        self._scene.render(img_painter, QRectF(0, 0, img_width, img_height), scene_rect)
-        img_painter.end()
+        # Collect items to hide (those not in this tile)
+        items_to_hide: list[QGraphicsItem] = []
 
-        # Convert to grayscale
-        grayscale = color_image.convertToFormat(QImage.Format.Format_Grayscale8)
-        painter.drawImage(target_rect.topLeft().toPoint(), grayscale)
+        for item in self._scene.items():
+            # Determine if this item belongs to the tile
+            item_id: str | None = None
+
+            # Check for building_id attribute (BuildingItem)
+            if hasattr(item, "building_id"):
+                item_id = item.building_id
+            # Check for placement_id attribute (RoomItem)
+            elif hasattr(item, "placement_id"):
+                item_id = item.placement_id
+            # Check for belt_id attribute (BeltItem)
+            elif hasattr(item, "belt_id"):
+                belt_id: str = item.belt_id
+                # Belt belongs to tile if source is in tile
+                belt = self._document.belts.get(belt_id)
+                if belt:
+                    source_node = _get_containing_node(self._document, belt.source_building_id)
+                    if source_node and source_node in tile.building_ids:
+                        continue  # Keep visible
+                    # Hide if source not in tile
+                    if item.isVisible():
+                        items_to_hide.append(item)
+                        item.setVisible(False)
+                continue
+
+            if item_id is not None and item_id not in tile.building_ids and item.isVisible():
+                # Hide this item
+                items_to_hide.append(item)
+                item.setVisible(False)
+
+        try:
+            # Render to intermediate image for quality control
+            # Use higher resolution for better quality
+            scale_factor = 2.0  # Render at 2x for better quality
+            img_width = max(1, int(target_rect.width() * scale_factor))
+            img_height = max(1, int(target_rect.height() * scale_factor))
+
+            color_image = QImage(img_width, img_height, QImage.Format.Format_RGB32)
+            color_image.fill(Qt.GlobalColor.white)
+
+            img_painter = QPainter(color_image)
+            img_painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            img_painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+            img_painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+            self._scene.render(img_painter, QRectF(0, 0, img_width, img_height), tile.bounds)
+            img_painter.end()
+
+            # Convert to grayscale if needed
+            if self._black_white:
+                color_image = color_image.convertToFormat(QImage.Format.Format_Grayscale8)
+
+            # Draw scaled down to target
+            painter.drawImage(target_rect, color_image)
+
+        finally:
+            # Restore visibility
+            for item in items_to_hide:
+                item.setVisible(True)
 
     def _render_crossing_stub(
         self,
