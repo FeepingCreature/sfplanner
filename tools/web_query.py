@@ -4,7 +4,7 @@ import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from forge.vfs.work_in_progress import WorkInProgressVFS
+    from forge.tools.context import ToolContext
 
 
 def get_schema() -> dict[str, Any]:
@@ -81,7 +81,7 @@ def _fetch_page(url: str) -> tuple[bool, str]:
         return False, str(e)
 
 
-def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
+def execute(ctx: "ToolContext", args: dict[str, Any]) -> dict[str, Any]:
     from forge.config.settings import Settings
     from forge.llm.client import LLMClient
 

@@ -1,12 +1,9 @@
 """Fetch a webpage and convert it to markdown."""
 
-import subprocess
-import tempfile
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from forge.vfs.work_in_progress import WorkInProgressVFS
+    from forge.tools.context import ToolContext
 
 
 def get_schema() -> dict[str, Any]:
@@ -29,10 +26,10 @@ def get_schema() -> dict[str, Any]:
     }
 
 
-def execute(vfs: "WorkInProgressVFS", args: dict[str, Any]) -> dict[str, Any]:
-    import urllib.request
-    import urllib.error
+def execute(ctx: "ToolContext", args: dict[str, Any]) -> dict[str, Any]:
     import re
+    import urllib.error
+    import urllib.request
     
     url = args.get("url", "")
     if not url:
