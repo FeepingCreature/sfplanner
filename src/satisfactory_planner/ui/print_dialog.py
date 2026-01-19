@@ -1033,11 +1033,32 @@ class PackedPrintPreviewDialog(QDialog):
                 item.setVisible(False)
 
         try:
-            # Render to intermediate image for quality control
-            # Use higher resolution for better quality
-            scale_factor = 2.0  # Render at 2x for better quality
-            img_width = max(1, int(target_rect.width() * scale_factor))
-            img_height = max(1, int(target_rect.height() * scale_factor))
+            # Render to intermediate image
+            # For quality, we want at least 150 DPI equivalent resolution
+            # Calculate based on tile bounds (scene units) not target_rect (device pixels)
+            # Assume ~1 scene unit = 1 pixel at 100% zoom, aim for higher res
+            min_dimension = 800  # Minimum pixels for smallest tile dimension
+            tile_aspect = (
+                tile.bounds.width() / tile.bounds.height() if tile.bounds.height() > 0 else 1.0
+            )
+
+            if tile_aspect >= 1.0:
+                img_height = min_dimension
+                img_width = int(min_dimension * tile_aspect)
+            else:
+                img_width = min_dimension
+                img_height = int(min_dimension / tile_aspect)
+
+            # But also ensure we're at least as big as target for high-DPI output
+            img_width = max(img_width, int(target_rect.width()))
+            img_height = max(img_height, int(target_rect.height()))
+
+            # Cap to avoid memory issues
+            max_dim = 4000
+            if img_width > max_dim or img_height > max_dim:
+                ratio = min(max_dim / img_width, max_dim / img_height)
+                img_width = int(img_width * ratio)
+                img_height = int(img_height * ratio)
 
             color_image = QImage(img_width, img_height, QImage.Format.Format_RGB32)
             color_image.fill(Qt.GlobalColor.white)
@@ -1053,7 +1074,7 @@ class PackedPrintPreviewDialog(QDialog):
             if self._black_white:
                 color_image = color_image.convertToFormat(QImage.Format.Format_Grayscale8)
 
-            # Draw scaled down to target
+            # Draw to target (Qt handles scaling)
             painter.drawImage(target_rect, color_image)
 
         finally:
