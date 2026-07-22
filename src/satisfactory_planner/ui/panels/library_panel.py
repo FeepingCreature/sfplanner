@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from PySide6.QtCore import QMimeData, QPoint, QRect, QSize, Qt, Signal
+from PySide6.QtCore import (
+    QMimeData,
+    QModelIndex,
+    QPersistentModelIndex,
+    QPoint,
+    QRect,
+    QSize,
+    Qt,
+    Signal,
+)
 from PySide6.QtGui import QBrush, QColor, QDrag, QFont, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -76,31 +85,38 @@ class BuildingItemDelegate(QStyledItemDelegate):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
-    def sizeHint(self, option: QStyleOptionViewItem, index: object) -> QSize:
+    def sizeHint(
+        self, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex
+    ) -> QSize:
         """Return appropriate size for building items."""
         # Check if this is a building item (has UserRole data)
-        building_type = index.data(Qt.ItemDataRole.UserRole)  # type: ignore[attr-defined]
+        building_type = index.data(Qt.ItemDataRole.UserRole)
         if building_type:
-            return QSize(option.rect.width(), ITEM_HEIGHT)  # type: ignore[attr-defined]
+            return QSize(option.rect.width(), ITEM_HEIGHT)
         # Category headers use default size
-        return super().sizeHint(option, index)  # type: ignore[arg-type]
+        return super().sizeHint(option, index)
 
-    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: object) -> None:
+    def paint(
+        self,
+        painter: QPainter,
+        option: QStyleOptionViewItem,
+        index: QModelIndex | QPersistentModelIndex,
+    ) -> None:
         """Paint the building item with icon, name, and info."""
-        building_type = index.data(Qt.ItemDataRole.UserRole)  # type: ignore[attr-defined]
+        building_type = index.data(Qt.ItemDataRole.UserRole)
 
         if not building_type:
             # Category header - use default painting
-            super().paint(painter, option, index)  # type: ignore[arg-type]
+            super().paint(painter, option, index)
             return
 
         painter.save()
 
         # Draw selection/hover background using palette colors
-        palette = option.palette  # type: ignore[attr-defined]
-        if option.state & QStyle.StateFlag.State_Selected:  # type: ignore[attr-defined]
-            painter.fillRect(option.rect, palette.highlight())  # type: ignore[attr-defined]
-        elif option.state & QStyle.StateFlag.State_MouseOver:  # type: ignore[attr-defined]
+        palette = option.palette
+        if option.state & QStyle.StateFlag.State_Selected:
+            painter.fillRect(option.rect, palette.highlight())
+        elif option.state & QStyle.StateFlag.State_MouseOver:
             # Slightly lighter/darker than background for hover
             hover_color = palette.base().color()
             hover_color = (
@@ -108,9 +124,9 @@ class BuildingItemDelegate(QStyledItemDelegate):
                 if hover_color.lightness() < 128
                 else hover_color.darker(110)
             )
-            painter.fillRect(option.rect, hover_color)  # type: ignore[attr-defined]
+            painter.fillRect(option.rect, hover_color)
 
-        rect = option.rect.adjusted(ITEM_PADDING, ITEM_PADDING, -ITEM_PADDING, -ITEM_PADDING)  # type: ignore[attr-defined]
+        rect = option.rect.adjusted(ITEM_PADDING, ITEM_PADDING, -ITEM_PADDING, -ITEM_PADDING)
 
         # Draw building icon (colored square with mini building preview)
         icon_rect = QRect(rect.left(), rect.top(), ICON_SIZE, ICON_SIZE)
@@ -437,7 +453,7 @@ class LibraryPanel(QWidget):
         # Ensure the tree is visually updated
         if self._blueprints_category:
             self._blueprints_category.setExpanded(True)
-        self.tree.update()
+        self.tree.viewport().update()
 
     def _on_context_menu(self, pos: QPoint) -> None:
         """Show context menu for blueprint items."""
@@ -478,7 +494,7 @@ class LibraryPanel(QWidget):
             # Don't emit - user must drag to place
             return
 
-    def _start_drag(self, supported_actions: Qt.DropAction) -> None:
+    def _start_drag(self, supportedActions: Qt.DropAction) -> None:  # noqa: N803 - Qt signature
         """Start drag operation with building type or blueprint."""
         item = self.tree.currentItem()
         if not item:

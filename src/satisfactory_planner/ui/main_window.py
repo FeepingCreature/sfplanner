@@ -391,7 +391,7 @@ class MainWindow(QMainWindow):
         canvas.tool_mode_changed.connect(self._on_tool_mode_changed)
 
         # Set mutation callback (replaces document_changed signal)
-        canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
+        canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)
 
         # Connect stack changed signal (for undo/redo state updates AFTER command is on stack)
         tab.command_stack.stack_changed.connect(self._update_undo_redo_state)
@@ -510,7 +510,7 @@ class MainWindow(QMainWindow):
             canvas.tool_mode_changed.connect(self._on_tool_mode_changed)
 
             # Set mutation callback (replaces document_changed signal)
-            canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)  # type: ignore[misc]
+            canvas._mutation_callback = lambda t=tab: self._on_document_mutated(t)
 
             # Connect stack changed signal (for undo/redo state updates AFTER command is on stack)
             tab.command_stack.stack_changed.connect(self._update_undo_redo_state)
