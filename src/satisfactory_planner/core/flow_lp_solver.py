@@ -92,12 +92,8 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
 
     The LP formulation:
     - Variables: one flow rate per edge
-    - Constraints: flow conservation at each node, splitter fairness
+    - Constraints: flow conservation at each node
     - Objective: maximize total flow (to fill the factory)
-
-    Fairness: Splitter outputs are constrained to be equal. This ensures
-    the LP distributes flow evenly and surfaces downstream bottlenecks
-    instead of silently starving one branch to avoid them.
     """
     if not graph.edges:
         # No edges = no flows to solve
@@ -307,25 +303,31 @@ def _solve_lp(
 
         if node.node_type == NodeType.MINER:
             # Miner/Source: no inputs, output <= production rate
-            for i, out_edge in enumerate(outgoing):
-                if i < len(node.outputs):
+            # Match edges to ports by source_port_index - edge iteration order is
+            # dict-insertion order (belt connection order), NOT port order.
+            for out_edge in outgoing:
+                port_idx = out_edge.source_port_index
+                if port_idx < len(node.outputs):
                     # Use the actual building type name (Miner vs Source)
                     building_name = node.building_type_name or "Source"
                     cs.add_inequality(
                         {edge_to_idx[out_edge.id]: 1.0},
-                        node.outputs[i].rate,
+                        node.outputs[port_idx].rate,
                         source=ConstraintSource(
                             kind="production_rate",
                             edge_id=out_edge.id,
                             node_id=node_id,
-                            description=f"{building_name} output rate {node.outputs[i].rate}/min",
+                            description=f"{building_name} output rate {node.outputs[port_idx].rate}/min",
                         ),
                     )
 
         elif node.node_type == NodeType.PRODUCER:
             # Producer: outputs are LIMITED by downstream demand (inequality)
-            for i, out_edge in enumerate(outgoing):
-                if i < len(node.outputs):
+            # Match edges to ports by source_port_index - edge iteration order is
+            # dict-insertion order (belt connection order), NOT port order.
+            for out_edge in outgoing:
+                port_idx = out_edge.source_port_index
+                if port_idx < len(node.outputs):
                     dest_node = graph.nodes[out_edge.dest_node_id]
                     demand = _get_downstream_demand(dest_node, out_edge.item_name)
                     if demand is not None:
@@ -343,12 +345,12 @@ def _solve_lp(
                     # Output also can't exceed production capacity
                     cs.add_inequality(
                         {edge_to_idx[out_edge.id]: 1.0},
-                        node.outputs[i].rate,
+                        node.outputs[port_idx].rate,
                         source=ConstraintSource(
                             kind="production_rate",
                             edge_id=out_edge.id,
                             node_id=node_id,
-                            description=f"Production rate {node.outputs[i].rate}/min",
+                            description=f"Production rate {node.outputs[port_idx].rate}/min",
                         ),
                     )
 
@@ -380,31 +382,43 @@ def _solve_lp(
                         for out_edge in outgoing:
                             cs.add_inequality({edge_to_idx[out_edge.id]: 1.0}, 0.0)
 
-                # Recipe ratio constraints: tie EACH input to the first output
+                # Recipe ratio constraints: tie EACH input to a reference output.
+                # The reference edge is matched to its port by source_port_index
+                # (edges are in connection order, NOT port order).
                 if outgoing and node.outputs:
-                    ref_out_rate = node.outputs[0].rate
-                    ref_out_edge = outgoing[0]
+                    ref_out_edge: FlowEdge | None = None
+                    ref_out_rate = 0.0
+                    for out_edge in outgoing:
+                        if out_edge.source_port_index < len(node.outputs):
+                            ref_out_edge = out_edge
+                            ref_out_rate = node.outputs[out_edge.source_port_index].rate
+                            break
 
-                    for input_port in node.inputs:
-                        input_edges = incoming_by_item.get(input_port.item_name, [])
-                        if input_edges and ref_out_rate > 0 and input_port.rate > 0:
-                            # sum(input_flows) * out_rate = output_flow * in_rate
-                            ratio_coeffs: dict[int, float] = {}
-                            for edge in input_edges:
-                                ratio_coeffs[edge_to_idx[edge.id]] = ref_out_rate
-                            ratio_coeffs[edge_to_idx[ref_out_edge.id]] = -input_port.rate
-                            cs.add_equality(ratio_coeffs, 0.0)
+                    if ref_out_edge is not None and ref_out_rate > 0:
+                        for input_port in node.inputs:
+                            input_edges = incoming_by_item.get(input_port.item_name, [])
+                            if input_edges and input_port.rate > 0:
+                                # sum(input_flows) * out_rate = output_flow * in_rate
+                                ratio_coeffs: dict[int, float] = {}
+                                for edge in input_edges:
+                                    ratio_coeffs[edge_to_idx[edge.id]] = ref_out_rate
+                                ratio_coeffs[edge_to_idx[ref_out_edge.id]] = -input_port.rate
+                                cs.add_equality(ratio_coeffs, 0.0)
 
-                    # Tie additional outputs to first output (multi-output recipes)
-                    for i, out_edge in enumerate(outgoing[1:], 1):
-                        if i < len(node.outputs) and node.outputs[i].rate > 0:
-                            cs.add_equality(
-                                {
-                                    edge_to_idx[out_edge.id]: ref_out_rate,
-                                    edge_to_idx[ref_out_edge.id]: -node.outputs[i].rate,
-                                },
-                                0.0,
-                            )
+                        # Tie additional outputs to the reference output
+                        # (multi-output recipes), matched by port index
+                        for out_edge in outgoing:
+                            if out_edge is ref_out_edge:
+                                continue
+                            port_idx = out_edge.source_port_index
+                            if port_idx < len(node.outputs) and node.outputs[port_idx].rate > 0:
+                                cs.add_equality(
+                                    {
+                                        edge_to_idx[out_edge.id]: ref_out_rate,
+                                        edge_to_idx[ref_out_edge.id]: -node.outputs[port_idx].rate,
+                                    },
+                                    0.0,
+                                )
 
         elif node.node_type == NodeType.SPLITTER:
             if incoming and outgoing:
@@ -443,17 +457,18 @@ def _solve_lp(
                 cs.add_equality(coeffs, 0.0)
 
         elif node.node_type == NodeType.SINK:
-            # Sink inputs are limited by the port rate
-            for i, in_edge in enumerate(incoming):
-                if i < len(node.inputs) and node.inputs[i].rate < INFINITE_RATE - 1:
+            # Sink inputs are limited by the port rate (matched by dest_port_index)
+            for in_edge in incoming:
+                port_idx = in_edge.dest_port_index
+                if port_idx < len(node.inputs) and node.inputs[port_idx].rate < INFINITE_RATE - 1:
                     cs.add_inequality(
                         {edge_to_idx[in_edge.id]: 1.0},
-                        node.inputs[i].rate,
+                        node.inputs[port_idx].rate,
                         source=ConstraintSource(
                             kind="downstream_demand",
                             edge_id=in_edge.id,
                             node_id=node_id,
-                            description=f"Sink capacity {node.inputs[i].rate}/min",
+                            description=f"Sink capacity {node.inputs[port_idx].rate}/min",
                         ),
                     )
 
@@ -618,10 +633,14 @@ def _compute_efficiencies(
                     actual_input = incoming_by_item[input_port.item_name]
                     update_min(actual_input, input_port.rate)
 
-        # Check outputs (always applicable)
+        # Check outputs (always applicable) - match edges by port index,
+        # NOT positionally (edges are in connection order). Unconnected
+        # output ports are skipped (efficiency only considers connected I/O).
+        outgoing_by_port = {e.source_port_index: e for e in outgoing}
         for i, output_port in enumerate(node.outputs):
-            if i < len(outgoing):
-                actual_output = flows.get(outgoing[i].id, 0.0)
+            out_edge_for_port = outgoing_by_port.get(i)
+            if out_edge_for_port is not None:
+                actual_output = flows.get(out_edge_for_port.id, 0.0)
                 update_min(actual_output, output_port.rate)
 
         # If we found no applicable rates, skip this node

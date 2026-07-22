@@ -77,10 +77,10 @@ Inconsistent with SetItemCommand/SetClockSpeedCommand handling of adjacent field
 
 ## Suggested Task List (priority order)
 
-1. [ ] **B1**: Match edges to ports by `source_port_index`/`dest_port_index` in `_solve_lp` and `_compute_efficiencies`; add out-of-order multi-output test.
-2. [ ] **B2**: Preserve all Building fields in clipboard paste; add round-trip test.
+1. [x] **B1**: Match edges to ports by `source_port_index`/`dest_port_index` in `_solve_lp` and `_compute_efficiencies`; add out-of-order multi-output test. **DONE** (incl. SINK branch + recipe-ratio reference-edge selection; regression test `test_multi_output_out_of_order_belts`)
+2. [x] **B2**: Preserve all Building fields in clipboard paste; add round-trip test. **DONE** (deepcopy + reassign id/x/y; test `test_copy_paste_preserves_building_fields`)
 3. [ ] **B3**: Command-ify miner tier, min/max rate, room rename.
-4. [ ] **B6**: Delete stale fairness docstring in `solve_flows`.
+4. [x] **B6**: Delete stale fairness docstring in `solve_flows`. **DONE**
 5. [ ] **B4**: Untangle room_id vs placement_id in PortItem/BeltConnector ItemKeys (and resolve the belt_item FIXME).
 6. [ ] **B5**: Use `find_building`/`find_belt` in warnings panel naming.
 7. [ ] Remove dead `_build_causal_chain`; prune or annotate vestigial optimizer machinery.

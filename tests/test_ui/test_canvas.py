@@ -191,3 +191,67 @@ class TestFactoryCanvas:
         assert building_item.scene() is not None, "Building item not in scene after redo"
         assert building_item.parentItem() is room_item_after, "Building item parent is wrong"
         assert building_item.isVisible(), "Building item not visible after redo"
+
+    def test_copy_paste_preserves_building_fields(self, qtbot) -> None:  # type: ignore[no-untyped-def]
+        """Copy/paste must preserve ALL building fields (item_id, tier, rates...).
+
+        Regression test for B2: paste() used to reconstruct Buildings from a
+        hand-picked subset of fields, silently dropping item_id, tier,
+        min_rate, max_rate, and port_index.
+        """
+        from satisfactory_planner.core.models import ItemId
+        from satisfactory_planner.ui.canvas import ClipboardManager
+
+        doc = Document()
+        stack = CommandStack(doc)
+        canvas = FactoryCanvas(doc, stack)
+        qtbot.addWidget(canvas)
+
+        # A fully-configured miner exercising the previously-dropped fields
+        miner = Building(
+            id=generate_id(),
+            building_type=BuildingType.MINER,
+            x=100,
+            y=100,
+            item_id=ItemId("Iron Ore"),
+            tier=3,
+            clock_speed=1.5,
+            rotation=90,
+        )
+        stack.execute(PlaceBuildingCommand(scene_room_id=None, building=miner, canvas=canvas))
+
+        # A source with min/max rates
+        source = Building(
+            id=generate_id(),
+            building_type=BuildingType.SOURCE,
+            x=300,
+            y=100,
+            item_id=ItemId("Copper Ore"),
+            min_rate=5.0,
+            max_rate=42.0,
+        )
+        stack.execute(PlaceBuildingCommand(scene_room_id=None, building=source, canvas=canvas))
+
+        canvas._building_items[miner.id].setSelected(True)
+        canvas._building_items[source.id].setSelected(True)
+
+        clipboard = ClipboardManager(canvas)
+        clipboard.copy_selection()
+        clipboard.paste()
+
+        originals = {miner.id, source.id}
+        pasted = [b for b in doc.buildings.values() if b.id not in originals]
+        assert len(pasted) == 2, f"Expected 2 pasted buildings, got {len(pasted)}"
+
+        pasted_miner = next(b for b in pasted if b.building_type == BuildingType.MINER)
+        assert pasted_miner.item_id == "Iron Ore"
+        assert pasted_miner.tier == 3
+        assert pasted_miner.clock_speed == 1.5
+        assert pasted_miner.rotation == 90
+        assert pasted_miner.x == miner.x + 50
+        assert pasted_miner.y == miner.y + 50
+
+        pasted_source = next(b for b in pasted if b.building_type == BuildingType.SOURCE)
+        assert pasted_source.item_id == "Copper Ore"
+        assert pasted_source.min_rate == 5.0
+        assert pasted_source.max_rate == 42.0
