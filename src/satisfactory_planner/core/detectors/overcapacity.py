@@ -53,7 +53,10 @@ def detect_overcapacity(model: SolvedModel) -> list[Warning]:
             )
         return warnings
 
-    # Fallback: old behavior for backward compatibility
+    # Fallback path: only reachable when `model.bottlenecks` is empty, i.e. the
+    # SolvedModel did not come from the two-pass solve (e.g. constructed directly
+    # in tests). The real solver always populates `bottlenecks` when there are
+    # belt bottlenecks, so production documents take the branch above.
     overcap_edges: set[ItemKey] = set()
     for edge_id, flow in model.flows.items():
         edge = model.graph.edges[edge_id]

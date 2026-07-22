@@ -16,8 +16,11 @@ from satisfactory_planner.ui.commands.building_commands import (
     PlaceBuildingCommand,
 )
 from satisfactory_planner.ui.commands.property_commands import (
+    RenameRoomCommand,
     SetClockSpeedCommand,
     SetItemCommand,
+    SetMinerTierCommand,
+    SetRateLimitsCommand,
     SetRecipeCommand,
 )
 from satisfactory_planner.ui.commands.room_commands import (
@@ -41,9 +44,12 @@ __all__ = [
     "MoveBuildingsCommand",
     "PlaceBlueprintCommand",
     "PlaceBuildingCommand",
+    "RenameRoomCommand",
     "SetBeltTierCommand",
     "SetClockSpeedCommand",
     "SetItemCommand",
+    "SetMinerTierCommand",
+    "SetRateLimitsCommand",
     "SetRecipeCommand",
     "get_scene",
 ]

@@ -117,8 +117,11 @@ class BeltItem(QGraphicsPathItem):
         self._flow_rate: float | None = None  # Set by flow solver
         self._optimal_flow_rate: float | None = None  # set by flow solver, flow without belt limits
         self._item_name: str | None = None  # Set by flow solver - what item flows through
-        # FIXME isn't this redundant with source_placement?
-        self._placement_id: str | None = None  # Set when belt is inside a room placement
+        # NOT redundant with _source_placement/_dest_placement: those are the
+        # RoomPlacements this belt CONNECTS TO as endpoints (from outside),
+        # while _placement_id identifies the placement this belt lives INSIDE
+        # (for belts within a room's contents; used to build item_key).
+        self._placement_id: str | None = None
 
         self._setup_flags()
         self._setup_appearance()

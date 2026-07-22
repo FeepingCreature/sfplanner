@@ -7,6 +7,7 @@ Uses pylinprog (pure Python simplex) instead of scipy for smaller package size.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -134,8 +135,9 @@ def solve_flows(graph: FlowGraph) -> SolvedModel:
         if theo > actual + BOTTLENECK_TOLERANCE and actual >= edge.capacity - BOTTLENECK_TOLERANCE:
             bottlenecks[edge_id] = (theo, actual)
 
-    # Write DOT file for visualization (disabled for now)
-    # _write_dot_file(graph, actual_flows, theoretical_flows, bottlenecks)
+    # Debug visualization: set SFPLANNER_DUMP_FLOW_DOT=1 to write ~/flow_graph.dot
+    if os.environ.get("SFPLANNER_DUMP_FLOW_DOT"):
+        _write_dot_file(graph, actual_flows, theoretical_flows, bottlenecks)
 
     # Compute efficiencies using actual flows and binding constraint info
     efficiencies = _compute_efficiencies(graph, actual_flows, binding_sources)

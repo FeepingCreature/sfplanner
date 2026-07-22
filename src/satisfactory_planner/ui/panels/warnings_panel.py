@@ -174,8 +174,8 @@ class WarningsPanel(QWidget):
 
         element_id = item_key.element_id
 
-        # Check if it's a building
-        building = self.document.buildings.get(element_id)
+        # Check if it's a building (searches document and all rooms)
+        building = self.document.find_building(element_id)
         if building:
             name = building.building_type.value
             if building.recipe_id:
@@ -189,12 +189,12 @@ class WarningsPanel(QWidget):
                 return f"{name} ({building.item_id})"
             return name
 
-        # Check if it's a belt
-        belt = self.document.belts.get(element_id)
+        # Check if it's a belt (searches document and all rooms)
+        belt = self.document.find_belt(element_id)
         if belt:
             # Try to get source and dest building names
-            src = self.document.buildings.get(belt.source_building_id)
-            dst = self.document.buildings.get(belt.dest_building_id)
+            src = self.document.find_building(belt.source_building_id)
+            dst = self.document.find_building(belt.dest_building_id)
             if src and dst:
                 src_name = src.building_type.value
                 dst_name = dst.building_type.value

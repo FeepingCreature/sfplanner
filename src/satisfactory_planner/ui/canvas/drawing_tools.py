@@ -191,5 +191,5 @@ class DrawingTools:
 
     def _get_building_rect(self, building: Building) -> QRectF:
         """Get the bounding rectangle of a building."""
-        w, h = building._get_display_size()
+        w, h = building.get_display_size()
         return QRectF(building.x, building.y, w, h)

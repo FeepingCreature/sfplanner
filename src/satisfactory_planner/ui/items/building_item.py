@@ -66,7 +66,7 @@ class BuildingItem(QGraphicsRectItem):
 
     def _get_display_size(self) -> tuple[int, int]:
         """Get display size - delegates to model."""
-        return self.building._get_display_size()
+        return self.building.get_display_size()
 
     def boundingRect(self) -> QRectF:
         """Return bounding rect accounting for rotation."""

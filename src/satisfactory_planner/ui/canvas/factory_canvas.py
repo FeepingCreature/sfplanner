@@ -33,7 +33,6 @@ from satisfactory_planner.core import (
     BuildingType,
     Document,
     FlowSolver,
-    ItemKey,
     Recipe,
     RecipeId,
     Room,
@@ -418,7 +417,11 @@ class FactoryCanvas(QGraphicsView):
                     other_room_item.refresh()
             # Re-apply flow visualization after refresh recreates belt items
             # (only if we're in a MainWindow - tests may not have one)
-            from satisfactory_planner.ui.main_window import MainWindow
+            try:
+                from satisfactory_planner.ui.main_window import MainWindow
+            except ImportError:
+                # PySide6QtAds may be unavailable in test environments
+                return
 
             if isinstance(super(FactoryCanvas, self).window(), MainWindow):
                 self.update_flow_visualization()
@@ -824,20 +827,24 @@ class FactoryCanvas(QGraphicsView):
 
     def start_belt_drag(
         self,
-        item_key: ItemKey,
+        building_id: str,
         port_index: int,
         start_pos: QPointF,
         is_output: bool = True,
+        scene_room_id: str | None = None,
     ) -> None:
         """Start dragging a belt connection from a port.
 
         Args:
-            item_key: ItemKey for the building/placement to connect from
+            building_id: The building/placement to connect from
             port_index: Which port
             start_pos: Scene position
             is_output: True for forward drag (from output), False for backward (from input)
+            scene_room_id: Room id of the scene the port lives in (None = document root)
         """
-        self._belt_connector.start_drag(item_key, port_index, start_pos, is_output)
+        self._belt_connector.start_drag(
+            building_id, port_index, start_pos, is_output, scene_room_id
+        )
 
     def is_dragging_belt(self) -> bool:
         """Return True if currently dragging a belt connection."""
@@ -845,8 +852,7 @@ class FactoryCanvas(QGraphicsView):
 
     def start_belt_connection(self, building_id: str, port_index: int) -> None:
         """Start a belt connection (legacy compatibility)."""
-        item_key = ItemKey(element_id=building_id, placement_id=None)
-        self._belt_connector.start_drag(item_key, port_index, QPointF(0, 0))
+        self._belt_connector.start_drag(building_id, port_index, QPointF(0, 0))
 
     def complete_belt_connection(self, building_id: str, port_index: int) -> None:
         """Complete a belt connection to an input port."""

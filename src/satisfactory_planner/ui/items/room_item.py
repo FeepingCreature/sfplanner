@@ -237,7 +237,7 @@ class RoomItem(QGraphicsRectItem):
 
         The angle is where the curved part faces.
         """
-        base_w, base_h = building._get_display_size()
+        base_w, base_h = building.get_display_size()
         is_output = building.building_type == BuildingType.PORT_OUT
 
         # Use building rotation to determine which edge it's on

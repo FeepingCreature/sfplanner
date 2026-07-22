@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 from satisfactory_planner.core.flow_models import NodeType
 from satisfactory_planner.core.flow_solver import Warning, WarningType
-from satisfactory_planner.core.item_key import ItemKey
 
 if TYPE_CHECKING:
     from satisfactory_planner.core.flow_lp_solver import SolvedModel
@@ -136,69 +135,3 @@ def detect_underflow(model: SolvedModel) -> list[Warning]:
             )
 
     return warnings
-
-
-def _build_causal_chain(
-    model: SolvedModel,
-    edge_id: ItemKey,
-    demanded: float,
-    visited: set[ItemKey] | None = None,
-) -> list[Warning]:
-    """Build causal chain showing why flow is insufficient."""
-    if visited is None:
-        visited = set()
-
-    if edge_id in visited:
-        return []
-    visited.add(edge_id)
-
-    causes: list[Warning] = []
-    edge = model.graph.edges[edge_id]
-    actual_flow = model.flows.get(edge_id, 0.0)
-
-    # Check if this belt is the bottleneck
-    if actual_flow >= edge.capacity - 0.01:
-        item_key = edge.belt_id if edge.belt_id else edge_id
-        causes.append(
-            Warning(
-                type=WarningType.BELT_OVERCAPACITY,
-                message=f"Belt {edge_id} at capacity ({edge.capacity}/min)",
-                item_key=item_key,
-                severity=1.0,
-            )
-        )
-        return causes
-
-    # Otherwise, look upstream
-    source_node = model.graph.nodes[edge.source_node_id]
-
-    if source_node.node_type == NodeType.PRODUCER:
-        for output in source_node.outputs:
-            if output.item_name == edge.item_name and output.rate < demanded:
-                causes.append(
-                    Warning(
-                        type=WarningType.PRODUCTION_UNDERFLOW,
-                        message=f"{source_node.id} produces {output.rate:.1f}/min, need {demanded:.1f}/min",
-                        item_key=source_node.id,
-                        severity=(demanded - output.rate) / demanded,
-                    )
-                )
-
-    elif source_node.node_type == NodeType.MINER:
-        for output in source_node.outputs:
-            if output.rate < demanded:
-                causes.append(
-                    Warning(
-                        type=WarningType.RESOURCE_UNDERFLOW,
-                        message=f"Miner {source_node.id} outputs {output.rate:.1f}/min, need {demanded:.1f}/min",
-                        item_key=source_node.id,
-                        severity=(demanded - output.rate) / demanded,
-                    )
-                )
-
-    elif source_node.node_type in (NodeType.SPLITTER, NodeType.MERGER):
-        incoming = model.graph.get_incoming_edges(source_node.id)
-        for in_edge in incoming:
-            causes.extend(_build_causal_chain(model, in_edge.id, demanded, visited))
-
-    return causes
