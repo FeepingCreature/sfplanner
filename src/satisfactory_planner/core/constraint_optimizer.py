@@ -145,7 +145,6 @@ class ConstraintSystem(Generic[T]):
     _var_mapping: dict[int, int] = field(default_factory=dict)  # old -> canonical
     _var_scale: dict[int, float] = field(default_factory=dict)  # var -> scale relative to canonical
     _upper_bounds: dict[int, float] = field(default_factory=dict)  # var -> tightest bound
-    _eliminated_vars: set[int] = field(default_factory=set)
 
     # Source tracking for binding constraint identification
     _inequality_sources: list[T | None] = field(default_factory=list)  # source per inequality
@@ -201,6 +200,12 @@ class ConstraintSystem(Generic[T]):
     def _merge_vars(self, var1: int, var2: int, scale: float = 1.0) -> None:
         """Merge two variables with optional scale factor.
 
+        NOTE: Intentionally retained but currently unused at runtime - variable
+        merging is disabled in optimize() (see the NOTE there) because it loses
+        track of which variable's bound is binding. Kept, along with
+        substitute()/is_simple_equality()/is_two_var_equality() and their tests,
+        in case merging is ever revisited.
+
         After merge: var1 = scale * var2 (if var2 becomes canonical)
         or equivalently: var2 = (1/scale) * var1 (if var1 becomes canonical)
 
@@ -241,7 +246,6 @@ class ConstraintSystem(Generic[T]):
         iterations = 0
         max_iterations = self.n_vars + 10  # Safety bound
 
-        merges = 0
         bounds_tightened = 0
         trivial_removed = 0
         duplicates_removed = 0
@@ -366,14 +370,14 @@ class ConstraintSystem(Generic[T]):
                 active_canonical.add(self._find_canonical(var))
         final_vars = len(active_canonical)
 
-        if merges > 0 or trivial_removed > 0 or duplicates_removed > 0:
+        if trivial_removed > 0 or duplicates_removed > 0 or bounds_tightened > 0:
             logger.info(
                 f"Constraint optimizer: {self.n_vars} vars → {final_vars} vars, "
                 f"{initial_constraints} constraints → {final_constraints} constraints "
                 f"({iterations} iters)"
             )
             logger.debug(
-                f"  Details: {merges} var merges, {bounds_tightened} bounds tightened, "
+                f"  Details: {bounds_tightened} bounds tightened, "
                 f"{trivial_removed} trivial removed, {duplicates_removed} dup bounds removed"
             )
 

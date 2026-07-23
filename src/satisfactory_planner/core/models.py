@@ -237,7 +237,7 @@ class Building:
     def num_outputs(self) -> int:
         return BUILDING_METADATA[self.building_type].num_outputs
 
-    def _get_display_size(self) -> tuple[int, int]:
+    def get_display_size(self) -> tuple[int, int]:
         """Get display size - smaller for logistics buildings.
 
         Returns the BASE size before rotation. The painter handles visual rotation.
@@ -257,7 +257,7 @@ class Building:
 
         For 90°/270° rotations, width and height are swapped.
         """
-        w, h = self._get_display_size()
+        w, h = self.get_display_size()
         if self.rotation in (90, 270):
             return (h, w)
         return (w, h)
@@ -275,7 +275,7 @@ class Building:
         This is the single source of truth for port layout. BuildingItem
         uses this to create PortItems without needing to know building types.
         """
-        w, h = self._get_display_size()
+        w, h = self.get_display_size()
 
         inputs: list[tuple[float, float, float]] = []
         outputs: list[tuple[float, float, float]] = []
@@ -337,7 +337,7 @@ class Building:
         """Rotate a point around the building center by current rotation."""
         if self.rotation == 0:
             return (px, py)
-        w, h = self._get_display_size()
+        w, h = self.get_display_size()
         # Center of building in scene coordinates
         cx, cy = self.x + w / 2, self.y + h / 2
         # Translate to origin
@@ -356,7 +356,7 @@ class Building:
 
     def input_port_pos(self, index: int) -> tuple[float, float]:
         """Get position of input port by index (in scene coordinates)."""
-        w, h = self._get_display_size()
+        w, h = self.get_display_size()
 
         if self.building_type == BuildingType.SPLITTER:
             # Splitter: 1 input on left
@@ -395,7 +395,7 @@ class Building:
 
     def output_port_pos(self, index: int) -> tuple[float, float]:
         """Get position of output port by index (in scene coordinates)."""
-        w, h = self._get_display_size()
+        w, h = self.get_display_size()
 
         if self.building_type == BuildingType.SPLITTER:
             # Splitter: 3 outputs on top, right, bottom
@@ -565,7 +565,7 @@ class Room:
         """Get position of input port by index (in room-local coordinates)."""
         port = self.get_port_by_index(index, is_output=False)
         if port:
-            base_w, base_h = port._get_display_size()
+            base_w, base_h = port.get_display_size()
 
             if port.rotation == 0:
                 # Left edge
@@ -587,7 +587,7 @@ class Room:
         """Get position of output port by index (in room-local coordinates)."""
         port = self.get_port_by_index(index, is_output=True)
         if port:
-            base_w, base_h = port._get_display_size()
+            base_w, base_h = port.get_display_size()
 
             if port.rotation == 0:
                 # Left edge

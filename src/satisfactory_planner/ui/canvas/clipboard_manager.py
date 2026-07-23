@@ -66,15 +66,12 @@ class ClipboardManager:
             for old_building in self._clipboard_buildings:
                 new_id = generate_id()
                 id_map[old_building.id] = new_id
-                new_building = Building(
-                    id=new_id,
-                    building_type=old_building.building_type,
-                    x=old_building.x + offset,
-                    y=old_building.y + offset,
-                    recipe_id=old_building.recipe_id,
-                    clock_speed=old_building.clock_speed,
-                    rotation=old_building.rotation,
-                )
+                # Deep-copy so ALL fields are preserved (item_id, tier, min_rate,
+                # max_rate, port_index, ...), then reassign identity and position.
+                new_building = copy.deepcopy(old_building)
+                new_building.id = new_id
+                new_building.x = old_building.x + offset
+                new_building.y = old_building.y + offset
                 # Check if pasting into a room - convert to room-local coordinates
                 paste_pos = QPointF(new_building.x, new_building.y)
                 placement = self.canvas.get_room_placement_at_point(paste_pos)

@@ -1505,6 +1505,120 @@ class TestFlowSolver:
                     f"Output ratio should be {expected_ratio}, got {actual_ratio}"
                 )
 
+    def test_multi_output_out_of_order_belts(self) -> None:
+        """Multi-output constraints must match belts by port index, not connection order.
+
+        Regression test for B1: edges are stored in dict-insertion (connection)
+        order. Connecting output port 1 BEFORE port 0 used to pair the port-1
+        belt with the port-0 recipe rate and vice versa, inverting the output
+        ratio and reporting wrong efficiencies.
+        """
+        from satisfactory_planner.core.models import ItemId, ItemRate, Recipe, RecipeId
+
+        doc = Document()
+
+        # Synthetic 2-output recipe: 30 Crude Oil -> 20 Plastic + 10 Heavy Oil Residue
+        recipe = Recipe(
+            id=RecipeId("Test Plastic"),
+            name="Test Plastic",
+            building_type=BuildingType.REFINERY,
+            inputs=[ItemRate(ItemId("Crude Oil"), 30.0)],
+            outputs=[
+                ItemRate(ItemId("Plastic"), 20.0),
+                ItemRate(ItemId("Heavy Oil Residue"), 10.0),
+            ],
+            power_mw=30.0,
+            crafting_time=6.0,
+        )
+        recipes = {recipe.id: recipe}
+
+        source = Building(
+            id="source",
+            building_type=BuildingType.SOURCE,
+            x=0,
+            y=0,
+            item_id=ItemId("Crude Oil"),
+        )
+        refinery = Building(
+            id="refinery",
+            building_type=BuildingType.REFINERY,
+            x=100,
+            y=0,
+            recipe_id=RecipeId("Test Plastic"),
+        )
+        sink_plastic = Building(
+            id="sink_plastic",
+            building_type=BuildingType.SINK,
+            x=200,
+            y=-50,
+            item_id=ItemId("Plastic"),
+        )
+        sink_residue = Building(
+            id="sink_residue",
+            building_type=BuildingType.SINK,
+            x=200,
+            y=50,
+            item_id=ItemId("Heavy Oil Residue"),
+        )
+        for b in (source, refinery, sink_plastic, sink_residue):
+            doc.add_building(b)
+
+        # Input belt
+        doc.add_belt(
+            Belt(
+                id="b_in",
+                tier=2,
+                source_building_id="source",
+                source_port_index=0,
+                dest_building_id="refinery",
+                dest_port_index=0,
+            )
+        )
+
+        # KEY: connect output port 1 FIRST, then port 0 (out of order!)
+        doc.add_belt(
+            Belt(
+                id="b_residue",
+                tier=2,
+                source_building_id="refinery",
+                source_port_index=1,
+                dest_building_id="sink_residue",
+                dest_port_index=0,
+            )
+        )
+        doc.add_belt(
+            Belt(
+                id="b_plastic",
+                tier=2,
+                source_building_id="refinery",
+                source_port_index=0,
+                dest_building_id="sink_plastic",
+                dest_port_index=0,
+            )
+        )
+
+        solver = FlowSolver(doc, recipes)
+        solver.solve()
+
+        plastic_flow = solver.get_flow_rate(ItemKey(element_id="b_plastic"))
+        residue_flow = solver.get_flow_rate(ItemKey(element_id="b_residue"))
+        assert plastic_flow is not None and residue_flow is not None
+
+        # Nothing limits the chain, so both outputs should run at full recipe rate
+        assert abs(plastic_flow - 20.0) < 0.1, (
+            f"Plastic should flow at 20/min regardless of belt connection order, got {plastic_flow}"
+        )
+        assert abs(residue_flow - 10.0) < 0.1, (
+            f"Residue should flow at 10/min regardless of belt connection order, got {residue_flow}"
+        )
+
+        # Refinery should be at 100% duty cycle (efficiency must also match by port)
+        eff = solver.get_efficiency(ItemKey("refinery"))
+        assert eff is not None
+        assert eff.duty_cycle > 0.99, (
+            f"Refinery should run at 100%, got {eff.duty_cycle} ({eff.limiting_details})"
+        )
+
     def test_two_pass_detects_belt_bottleneck(self) -> None:
         """Two-pass solver detects belt bottlenecks by comparing theoretical vs actual.
 

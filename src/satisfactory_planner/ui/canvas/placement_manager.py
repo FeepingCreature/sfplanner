@@ -209,7 +209,7 @@ class PlacementManager:
     def update_drag(self, scene_pos: QPointF) -> None:
         """Update drag ghost position."""
         if self._drag_ghost:
-            w, h = self._drag_ghost.building._get_display_size()
+            w, h = self._drag_ghost.building.get_display_size()
             centered = QPointF(scene_pos.x() - w / 2, scene_pos.y() - h / 2)
             self._drag_ghost.setPos(self.canvas._snap_to_grid(centered))
 

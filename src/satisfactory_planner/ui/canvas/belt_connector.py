@@ -11,13 +11,13 @@ from PySide6.QtGui import QColor, QCursor, QPen
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsPathItem, QMenu
 
 from satisfactory_planner.core import Belt, BuildingType, ItemId, Recipe
-from satisfactory_planner.core.item_key import ItemKey
 from satisfactory_planner.core.models import Building, generate_id
 from satisfactory_planner.core.routing import Point, compute_belt_path
 from satisfactory_planner.ui.commands import ConnectBeltCommand, PlaceBuildingCommand
 from satisfactory_planner.ui.items.path_utils import belt_path_to_painter_path
 
 if TYPE_CHECKING:
+    from satisfactory_planner.core.flow_models import FlowNode
     from satisfactory_planner.ui.canvas.factory_canvas import FactoryCanvas
     from satisfactory_planner.ui.items.port_item import PortItem
     from satisfactory_planner.ui.items.room_port_item import RoomPortItem
@@ -45,7 +45,11 @@ class BeltConnector:
         self.canvas = canvas
         self._is_connecting = False
         self._drag_forward = True  # True = from output, False = from input
-        self._connect_start_item: ItemKey | None = None  # The building/placement being dragged from
+        # The building/placement being dragged from, and the scene it lives in.
+        # NOTE: the scene id is a Room id (scene context), NOT a RoomPlacement id -
+        # don't confuse it with ItemKey.placement_id.
+        self._connect_start_building_id: str | None = None
+        self._connect_start_scene_room_id: str | None = None
         self._connect_start_port: int = 0
         self._drag_preview: QGraphicsPathItem | None = None
         self._drag_start_pos: QPointF | None = None
@@ -59,22 +63,23 @@ class BeltConnector:
 
     def start_drag(
         self,
-        item_key: ItemKey,
+        building_id: str,
         port_index: int,
         start_pos: QPointF,
         is_output: bool = True,
+        scene_room_id: str | None = None,
     ) -> None:
         """Start dragging a belt connection from a port.
 
         Args:
-            item_key: ItemKey for the building or room placement
+            building_id: The building or room placement being dragged from
             port_index: Which port
             start_pos: Scene position to start drag from
             is_output: True if dragging from output (forward), False if from input (backward)
+            scene_room_id: Room id of the scene the port lives in (None = document root)
 
         If the port already has a belt, delete it first (implicit replacement).
         """
-        building_id = item_key.element_id
 
         # Check if port is already connected - if so, delete existing belt
         existing_belt = self.canvas.document.get_belt_at_port(building_id, port_index, is_output)
@@ -91,7 +96,8 @@ class BeltConnector:
 
         self._is_connecting = True
         self._drag_forward = is_output
-        self._connect_start_item = item_key
+        self._connect_start_building_id = building_id
+        self._connect_start_scene_room_id = scene_room_id
         self._connect_start_port = port_index
         self._drag_start_pos = start_pos
         self.canvas.setCursor(Qt.CursorShape.CrossCursor)
@@ -235,9 +241,9 @@ class BeltConnector:
         For forward drag: target is an input port (dest)
         For backward drag: target is an output port (source)
         """
-        if self._is_connecting and self._connect_start_item:
-            start_building_id = self._connect_start_item.element_id
-            scene_room_id = self._connect_start_item.placement_id
+        if self._is_connecting and self._connect_start_building_id:
+            start_building_id = self._connect_start_building_id
+            scene_room_id = self._connect_start_scene_room_id
 
             if self._drag_forward:
                 # Forward: we started at output, connecting to input
@@ -273,7 +279,8 @@ class BeltConnector:
         """Clean up drag state."""
         self._is_connecting = False
         self._drag_forward = True
-        self._connect_start_item = None
+        self._connect_start_building_id = None
+        self._connect_start_scene_room_id = None
         self._drag_start_pos = None
         if self._drag_preview:
             self.canvas._scene.removeItem(self._drag_preview)
@@ -291,7 +298,7 @@ class BeltConnector:
         For forward drag: show buildings that consume the item being produced
         For backward drag: show buildings that produce items needed as input
         """
-        if not self._is_connecting or not self._connect_start_item:
+        if not self._is_connecting or not self._connect_start_building_id:
             self.cancel()
             return
 
@@ -479,14 +486,14 @@ class BeltConnector:
         )
 
         # Get the building we're dragging from
-        if not self._connect_start_item:
+        if not self._connect_start_building_id:
             return options
-        building = self.canvas.document.find_building(self._connect_start_item.element_id)
+        building = self.canvas.document.find_building(self._connect_start_building_id)
         if not building:
             return options
 
         # Get all items needed by the recipe (Satisfactory allows any port ordering)
-        needed_item_ids = self._get_all_recipe_inputs(self._connect_start_item, building)
+        needed_item_ids = self._get_all_recipe_inputs(building)
 
         if needed_item_ids:
             # Find recipes that produce these items
@@ -551,7 +558,7 @@ class BeltConnector:
 
         return options
 
-    def _get_all_recipe_inputs(self, item_key: ItemKey, building: Building) -> list[ItemId]:
+    def _get_all_recipe_inputs(self, building: Building) -> list[ItemId]:
         """Get all unique item IDs needed by a building's recipe that aren't already supplied.
 
         Satisfactory allows any belt ordering on inputs, so we return
@@ -566,7 +573,7 @@ class BeltConnector:
             return []
 
         # Get items already being supplied via flow solver
-        already_supplied = self._get_supplied_items(item_key)
+        already_supplied = self._get_supplied_items(building.id)
 
         # Return unique item IDs from all inputs, excluding already-supplied ones
         seen: set[ItemId] = set()
@@ -577,7 +584,7 @@ class BeltConnector:
                 result.append(inp.item_id)
         return result
 
-    def _get_supplied_items(self, item_key: ItemKey) -> set[ItemId]:
+    def _get_supplied_items(self, building_id: str) -> set[ItemId]:
         """Get item IDs already being supplied to a building's inputs.
 
         Uses the flow solver graph to find incoming edges to this building's node.
@@ -589,7 +596,7 @@ class BeltConnector:
             return supplied
 
         graph = flow_solver._solved_model.graph
-        node = graph.nodes.get(item_key)
+        node = self._find_flow_node(building_id)
         if not node:
             return supplied
 
@@ -602,17 +609,30 @@ class BeltConnector:
 
         return supplied
 
-    def _get_item_from_flow_solver(self) -> str | None:
-        """Get the item ID flowing from the current output port via flow solver."""
+    def _find_flow_node(self, building_id: str) -> FlowNode | None:
+        """Find the flow graph node for a building by element id.
+
+        Flow graph nodes are keyed by ItemKey using real RoomPlacement ids,
+        which the belt connector doesn't have (it only knows the scene's Room
+        id). Linked placements share the same room content, so matching by
+        element id alone yields equivalent flow info for any placement.
+        """
         flow_solver = self.canvas.flow_solver
         if not flow_solver or not flow_solver._solved_model:
             return None
 
-        if not self._connect_start_item:
+        graph = flow_solver._solved_model.graph
+        for node in graph.nodes.values():
+            if node.building_id and node.building_id.element_id == building_id:
+                return node
+        return None
+
+    def _get_item_from_flow_solver(self) -> str | None:
+        """Get the item ID flowing from the current output port via flow solver."""
+        if not self._connect_start_building_id:
             return None
 
-        graph = flow_solver._solved_model.graph
-        node = graph.nodes.get(self._connect_start_item)
+        node = self._find_flow_node(self._connect_start_building_id)
         if not node:
             return None
 
@@ -647,11 +667,11 @@ class BeltConnector:
 
         Positions the building so the target port aligns with scene_pos.
         """
-        if not self._connect_start_item:
+        if not self._connect_start_building_id:
             self.cancel()
             return
 
-        scene_room_id = self._connect_start_item.placement_id
+        scene_room_id = self._connect_start_scene_room_id
 
         # Create the building
         building = Building(

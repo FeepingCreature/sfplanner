@@ -128,3 +128,88 @@ class SetClockSpeedCommand(Command):
         building.clock_speed = self.old_clock_speed
         self.canvas.refresh_building(self.building_id)
         self.canvas.notify_mutation()
+
+
+@dataclass(frozen=True)
+class SetMinerTierCommand(Command):
+    """Command to set a miner's tier (Mk.1/2/3)."""
+
+    scene_room_id: str | None  # None = root document, else room ID
+    building_id: str
+    old_tier: int
+    new_tier: int
+    canvas: FactoryCanvas
+
+    def _set_tier(self, document: Document, tier: int) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        building = scene.buildings.get(self.building_id)
+        if not building:
+            logger.warning(f"SetMinerTierCommand: building {self.building_id} not found")
+            return
+        building.tier = tier
+        self.canvas.refresh_building(self.building_id)
+        self.canvas.notify_mutation()
+
+    def execute(self, document: Document) -> None:
+        self._set_tier(document, self.new_tier)
+
+    def undo(self, document: Document) -> None:
+        self._set_tier(document, self.old_tier)
+
+
+@dataclass(frozen=True)
+class SetRateLimitsCommand(Command):
+    """Command to set a Source/Sink's min/max rate thresholds."""
+
+    scene_room_id: str | None  # None = root document, else room ID
+    building_id: str
+    old_min_rate: float | None
+    old_max_rate: float | None
+    new_min_rate: float | None
+    new_max_rate: float | None
+    canvas: FactoryCanvas
+
+    def _set_rates(
+        self, document: Document, min_rate: float | None, max_rate: float | None
+    ) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        building = scene.buildings.get(self.building_id)
+        if not building:
+            logger.warning(f"SetRateLimitsCommand: building {self.building_id} not found")
+            return
+        building.min_rate = min_rate
+        building.max_rate = max_rate
+        self.canvas.notify_mutation()
+
+    def execute(self, document: Document) -> None:
+        self._set_rates(document, self.new_min_rate, self.new_max_rate)
+
+    def undo(self, document: Document) -> None:
+        self._set_rates(document, self.old_min_rate, self.old_max_rate)
+
+
+@dataclass(frozen=True)
+class RenameRoomCommand(Command):
+    """Command to rename a room (affects all linked placements)."""
+
+    room_id: str
+    old_name: str
+    new_name: str
+    canvas: FactoryCanvas
+
+    def _set_name(self, document: Document, name: str) -> None:
+        room = next((r for r in document.get_all_rooms() if r.id == self.room_id), None)
+        if not room:
+            logger.warning(f"RenameRoomCommand: room {self.room_id} not found")
+            return
+        room.name = name
+        # Repaint every RoomItem showing this room (all linked placements)
+        for room_item in self.canvas._sync.iter_room_items_for_room(self.room_id):
+            room_item.update()
+        self.canvas.notify_mutation()
+
+    def execute(self, document: Document) -> None:
+        self._set_name(document, self.new_name)
+
+    def undo(self, document: Document) -> None:
+        self._set_name(document, self.old_name)

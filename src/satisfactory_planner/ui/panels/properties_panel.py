@@ -36,9 +36,12 @@ from satisfactory_planner.core.persistence import load_items
 from satisfactory_planner.ui.commands import (
     CommandStack,
     DelinkRoomCommand,
+    RenameRoomCommand,
     SetBeltTierCommand,
     SetClockSpeedCommand,
     SetItemCommand,
+    SetMinerTierCommand,
+    SetRateLimitsCommand,
     SetRecipeCommand,
 )
 from satisfactory_planner.ui.dialogs import RecipeEditorDialog
@@ -635,19 +638,14 @@ class PropertiesPanel(QWidget):
         new_name = self.room_name_edit.text().strip()
 
         if new_name and new_name != room.name:
-            # Directly update room name (affects all linked placements)
-            room.name = new_name
+            cmd = RenameRoomCommand(
+                room_id=room.id,
+                old_name=room.name,
+                new_name=new_name,
+                canvas=self.canvas,
+            )
+            self.command_stack.execute(cmd)
             self.selection_label.setText(f"Room: {new_name}")
-
-            # Refresh canvas to update room item display
-            self.canvas.notify_mutation()
-
-            # Refresh all room items showing this room
-            from satisfactory_planner.ui.items import RoomItem
-
-            for _placement_id, room_item in self.canvas._room_items.items():
-                if isinstance(room_item, RoomItem) and room_item.room.id == room.id:
-                    room_item.update()
 
     def _on_save_blueprint(self) -> None:
         """Save the selected room as a blueprint."""
@@ -881,9 +879,14 @@ class PropertiesPanel(QWidget):
 
         new_tier = self.miner_tier_combo.currentData()
         if new_tier is not None and new_tier != building.tier:
-            building.tier = new_tier
-            # Notify mutation to trigger visual refresh
-            self.canvas.notify_mutation()
+            cmd = SetMinerTierCommand(
+                scene_room_id=self._scene_room_id,
+                building_id=building_id,
+                old_tier=building.tier,
+                new_tier=new_tier,
+                canvas=self.canvas,
+            )
+            self.command_stack.execute(cmd)
 
     def _on_item_changed(self, data: object) -> None:
         """Handle item selection change for Source/Sink/Miner."""
@@ -912,15 +915,22 @@ class PropertiesPanel(QWidget):
         if not building:
             return
 
-        # Update building min/max directly
-        new_min = self.min_rate_spin.value()
-        new_max = self.max_rate_spin.value()
+        raw_min = self.min_rate_spin.value()
+        raw_max = self.max_rate_spin.value()
+        new_min = raw_min if raw_min > 0 else None
+        new_max = raw_max if raw_max > 0 else None
 
-        # Only update if changed
         if building.min_rate != new_min or building.max_rate != new_max:
-            building.min_rate = new_min if new_min > 0 else None
-            building.max_rate = new_max if new_max > 0 else None
-            self.canvas.notify_mutation()
+            cmd = SetRateLimitsCommand(
+                scene_room_id=self._scene_room_id,
+                building_id=building_id,
+                old_min_rate=building.min_rate,
+                old_max_rate=building.max_rate,
+                new_min_rate=new_min,
+                new_max_rate=new_max,
+                canvas=self.canvas,
+            )
+            self.command_stack.execute(cmd)
 
     def _save_source_item(self) -> None:
         """Save Source/Sink/Miner item selection to item_id field."""
