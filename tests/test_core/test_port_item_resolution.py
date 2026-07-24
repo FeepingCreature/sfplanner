@@ -27,8 +27,29 @@ def _recipe_matches_ports(
 
 IRON_PLATE = ItemId("iron-plate")
 IRON_ROD = ItemId("iron-rod")
+IRON_INGOT = ItemId("iron-ingot")
 SCREW = ItemId("screw")
 REINFORCED_IRON_PLATE = ItemId("reinforced-iron-plate")
+
+RECIPE_IRON_INGOT = Recipe(
+    id=RecipeId("recipe-iron-ingot"),
+    name="Iron Ingot",
+    building_type=BuildingType.SMELTER,
+    inputs=[ItemRate(ItemId("iron-ore"), 30)],
+    outputs=[ItemRate(IRON_INGOT, 30)],
+    power_mw=4.0,
+    crafting_time=2.0,
+)
+
+RECIPE_IRON_ROD = Recipe(
+    id=RecipeId("recipe-iron-rod"),
+    name="Iron Rod",
+    building_type=BuildingType.CONSTRUCTOR,
+    inputs=[ItemRate(IRON_INGOT, 15)],
+    outputs=[ItemRate(IRON_ROD, 15)],
+    power_mw=4.0,
+    crafting_time=4.0,
+)
 
 RECIPE_IRON_PLATE = Recipe(
     id=RecipeId("recipe-iron-plate"),
@@ -61,6 +82,8 @@ RECIPE_REINFORCED_IRON_PLATE = Recipe(
 )
 
 RECIPES: dict[RecipeId, Recipe] = {
+    RECIPE_IRON_INGOT.id: RECIPE_IRON_INGOT,
+    RECIPE_IRON_ROD.id: RECIPE_IRON_ROD,
     RECIPE_IRON_PLATE.id: RECIPE_IRON_PLATE,
     RECIPE_SCREW.id: RECIPE_SCREW,
     RECIPE_REINFORCED_IRON_PLATE.id: RECIPE_REINFORCED_IRON_PLATE,
@@ -195,6 +218,40 @@ class TestSiblingInputNarrowing:
         # therefore consider both Iron Plate and Screw recipes consistent.
         assert _recipe_matches_ports(RECIPE_IRON_PLATE, [], outputs)
         assert _recipe_matches_ports(RECIPE_SCREW, [], outputs)
+
+
+class TestUnresolvedNeighborImposesNoConstraint:
+    # Reported bug: A (Miner, no item) -> B (Smelter, no recipe) -> C
+    # (Constructor, Iron Rod recipe needs Iron Ingot). B's output side
+    # resolves unambiguously to Iron Ingot via C, but B's input side comes
+    # from A whose item isn't set yet - that must NOT poison the input side
+    # with an empty "accepts nothing" candidate set, or every recipe
+    # (including the correct Iron Ingot one) gets rejected.
+
+    def test_unset_miner_does_not_block_downstream_recipe_match(self) -> None:
+        doc = Document()
+        a = Building(id="a", building_type=BuildingType.MINER, x=0, y=0, item_id=None)
+        b = Building(id="b", building_type=BuildingType.SMELTER, x=100, y=0, recipe_id=None)
+        c = Building(
+            id="c",
+            building_type=BuildingType.CONSTRUCTOR,
+            x=200,
+            y=0,
+            recipe_id=RECIPE_IRON_ROD.id,
+        )
+        doc.add_building(a)
+        doc.add_building(b)
+        doc.add_building(c)
+        doc.add_belt(make_belt("belt-a-b", "a", 0, "b", 0))
+        doc.add_belt(make_belt("belt-b-c", "b", 0, "c", 0))
+
+        inputs, outputs = resolve_neighbor_port_items(doc, RECIPES, b)
+
+        # A's item is unset - unresolvable, so it must impose NO constraint,
+        # not an empty "accepts nothing" set.
+        assert inputs == []
+        assert outputs == [{IRON_INGOT}]
+        assert _recipe_matches_ports(RECIPE_IRON_INGOT, inputs, outputs)
 
 
 class TestFixedIdentityNeighbors:

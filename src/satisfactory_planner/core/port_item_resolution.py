@@ -66,7 +66,12 @@ def resolve_neighbor_port_items(
         items = _resolve_source_items(
             scene, recipes, belt.source_building_id, belt.source_port_index, set()
         )
-        input_candidates.append(items)
+        # An empty result means the neighbor's item couldn't be determined
+        # yet (e.g. an unset Miner, or a recipe-less building further down
+        # the chain) - that's "unknown", not "this port accepts nothing", so
+        # it must impose no constraint, same as an unconnected port.
+        if items:
+            input_candidates.append(items)
 
     for i in range(building.num_outputs):
         belt = scene.get_belt_at_port(building.id, i, is_output=True)
@@ -75,7 +80,8 @@ def resolve_neighbor_port_items(
         items = _resolve_dest_items(
             scene, recipes, belt.dest_building_id, belt.dest_port_index, set()
         )
-        output_candidates.append(items)
+        if items:
+            output_candidates.append(items)
 
     return input_candidates, output_candidates
 
