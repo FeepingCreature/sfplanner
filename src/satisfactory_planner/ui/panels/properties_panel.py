@@ -517,7 +517,7 @@ class PropertiesPanel(QWidget):
 
                 # Source/Sink/Miner use item selector, not recipe
                 if self._is_source_type(building.building_type):
-                    self._populate_item_combo(building.building_type)
+                    self._populate_item_combo(building.building_type, building)
 
                     # Show/hide fields based on type
                     is_miner = building.building_type == BuildingType.MINER
@@ -778,8 +778,18 @@ class PropertiesPanel(QWidget):
             BuildingType.MINER,
         )
 
-    def _populate_item_combo(self, building_type: BuildingType) -> None:
-        """Populate item combo based on building type."""
+    def _populate_item_combo(
+        self, building_type: BuildingType, building: Building | None = None
+    ) -> None:
+        """Populate item combo based on building type.
+
+        If `building` is given, items are additionally split into two
+        groups: those consistent with the item(s) already flowing into/out
+        of the building's currently-connected port (shown first), and the
+        rest (shown after a separator). Source/Miner only have an output
+        port and Sink only has an input port, so only the relevant side is
+        considered.
+        """
         # Load items from game_data.json
         items = load_items()
 
@@ -796,8 +806,26 @@ class PropertiesPanel(QWidget):
             for item_id, name, _is_fluid, _is_mineable in items:
                 item_list.append((name, item_id))
 
-        # Use SearchableComboBox's set_items (handles sorting)
-        self.item_combo.set_items(item_list, include_none=True, none_text="(No item)")
+        if building is not None:
+            connected_inputs, connected_outputs = self._get_connected_port_items(building)
+            candidates = (
+                connected_inputs if building_type == BuildingType.SINK else connected_outputs
+            )
+            if candidates:
+                consistent = []
+                inconsistent = []
+                for name, iid in item_list:
+                    if all(ItemId(iid) in port_candidates for port_candidates in candidates):
+                        consistent.append((name, iid))
+                    else:
+                        inconsistent.append((name, iid))
+                self.item_combo.set_grouped_items(
+                    [consistent, inconsistent], include_none=True, none_text="(No item)"
+                )
+                return
+
+        # No connection context (or nothing connected yet) - single flat group
+        self.item_combo.set_grouped_items([item_list], include_none=True, none_text="(No item)")
 
     def _make_item_key(self, element_id: str) -> ItemKey:
         """Create a ItemKey for an element in the current selection context."""
