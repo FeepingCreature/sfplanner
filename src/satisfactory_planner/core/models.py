@@ -145,6 +145,19 @@ BUILDING_COLORS: dict[BuildingType, RGB] = {
 }
 
 
+# Building types with no recipe of their own - item identity on their ports
+# is purely determined by whatever is connected on the other side (a belt
+# passes straight through, or a splitter/merger fans in/out a single shared
+# item type). Used by flow_builder (to know which buildings need a recipe)
+# and port_item_resolution (to know which neighbors to recurse through).
+LOGISTICS_PASSTHROUGH_TYPES = (
+    BuildingType.SPLITTER,
+    BuildingType.MERGER,
+    BuildingType.PORT_IN,
+    BuildingType.PORT_OUT,
+)
+
+
 def get_building_power(building_type: BuildingType) -> float:
     """Get base power consumption for a building type in MW."""
     return BUILDING_METADATA[building_type].power_mw

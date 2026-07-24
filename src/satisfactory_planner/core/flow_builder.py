@@ -20,6 +20,7 @@ from satisfactory_planner.core.flow_models import (
 from satisfactory_planner.core.item_key import ItemKey
 from satisfactory_planner.core.models import (
     BELT_CAPACITIES,
+    LOGISTICS_PASSTHROUGH_TYPES,
     MINER_RATES,
     PURITY_MULTIPLIERS,
     Building,
@@ -182,12 +183,8 @@ def _build_flow_ports(
 
 def _is_production_building(building_type: BuildingType) -> bool:
     """Check if building type requires a recipe."""
-    return building_type not in (
-        BuildingType.SPLITTER,
-        BuildingType.MERGER,
+    return building_type not in LOGISTICS_PASSTHROUGH_TYPES and building_type not in (
         BuildingType.MINER,
-        BuildingType.PORT_IN,
-        BuildingType.PORT_OUT,
         BuildingType.SOURCE,
         BuildingType.SINK,
     )

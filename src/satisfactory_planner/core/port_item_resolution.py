@@ -23,19 +23,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from satisfactory_planner.core.models import Building, BuildingType, ItemId
+from satisfactory_planner.core.models import (
+    LOGISTICS_PASSTHROUGH_TYPES,
+    Building,
+    BuildingType,
+    ItemId,
+)
 
 if TYPE_CHECKING:
     from satisfactory_planner.core.models import Recipe, RecipeId, Scene
-
-# Building types with no recipe of their own - item identity is purely
-# determined by whatever is connected, so we must look further.
-_PASSTHROUGH_TYPES = (
-    BuildingType.SPLITTER,
-    BuildingType.MERGER,
-    BuildingType.PORT_IN,
-    BuildingType.PORT_OUT,
-)
 
 
 def resolve_neighbor_port_items(
@@ -101,7 +97,7 @@ def _resolve_source_items(
     if neighbor.building_type in (BuildingType.SOURCE, BuildingType.MINER):
         return {neighbor.item_id} if neighbor.item_id else set()
 
-    if neighbor.building_type not in _PASSTHROUGH_TYPES:
+    if neighbor.building_type not in LOGISTICS_PASSTHROUGH_TYPES:
         if neighbor.recipe_id is None:
             return set()
         recipe = recipes.get(neighbor.recipe_id)
@@ -150,7 +146,7 @@ def _resolve_dest_items(
     if neighbor.building_type == BuildingType.SINK:
         return {neighbor.item_id} if neighbor.item_id else set()
 
-    if neighbor.building_type not in _PASSTHROUGH_TYPES:
+    if neighbor.building_type not in LOGISTICS_PASSTHROUGH_TYPES:
         if neighbor.recipe_id is None:
             return set()
         recipe = recipes.get(neighbor.recipe_id)
