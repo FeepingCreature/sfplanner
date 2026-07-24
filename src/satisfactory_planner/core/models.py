@@ -203,6 +203,13 @@ MINER_POWER = {
     3: 30.0,
 }
 
+# Miner output multiplier by resource node purity
+PURITY_MULTIPLIERS = {
+    "impure": 0.5,
+    "normal": 1.0,
+    "pure": 2.0,
+}
+
 
 @dataclass
 class Building:
@@ -217,6 +224,7 @@ class Building:
     clock_speed: float = 1.0  # 0.01 to 2.5
     rotation: int = 0  # 0, 90, 180, 270 degrees
     tier: int = 1  # For MINER: 1, 2, or 3
+    purity: str = "normal"  # For MINER: "impure", "normal", or "pure"
     min_rate: float | None = None  # For SOURCE/SINK: minimum flow rate
     max_rate: float | None = None  # For SOURCE/SINK: maximum flow rate
     port_index: int | None = None  # For PORT_IN/PORT_OUT: which room port this corresponds to

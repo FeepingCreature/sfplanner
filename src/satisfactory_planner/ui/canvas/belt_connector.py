@@ -231,9 +231,79 @@ class BeltConnector:
                 self.complete(item.placement_id, item.port_index)
                 return True
 
+        # No port hit directly - check if we dropped onto a leaf building's body.
+        # (Rooms are excluded: they're not "visual objects" for belt-drop purposes.)
+        from satisfactory_planner.ui.items.building_item import BuildingItem
+
+        for item in self.canvas._scene.items(scene_pos):
+            if isinstance(item, BuildingItem):
+                best_port = self._find_best_port_on_building(item.building.id, target_is_output)
+                if best_port is not None:
+                    self.complete(item.building.id, best_port)
+                    return True
+                break
+
         # No valid port - cancel
         self.cancel()
         return True
+
+    def _find_best_port_on_building(self, building_id: str, target_is_output: bool) -> int | None:
+        """Find the best (shortest-arrow) free port of the given direction on a building.
+
+        Returns the port index, or None if no free port of that direction exists.
+        """
+        if not self._drag_start_pos:
+            return None
+
+        scene = self.canvas.document.find_building(building_id)
+        building = scene
+        if building is None:
+            return None
+
+        num_ports = building.num_outputs if target_is_output else building.num_inputs
+
+        best_index: int | None = None
+        best_length = float("inf")
+
+        for idx in range(num_ports):
+            if self.canvas.document.is_port_connected(building_id, idx, target_is_output):
+                continue
+
+            if target_is_output:
+                port_pos = building.output_port_pos(idx)
+                port_dir = building.output_port_direction(idx)
+            else:
+                port_pos = building.input_port_pos(idx)
+                port_dir = building.input_port_direction(idx)
+
+            length = self._compute_candidate_length(QPointF(*port_pos), port_dir)
+            if length is not None and length < best_length:
+                best_length = length
+                best_index = idx
+
+        return best_index
+
+    def _compute_candidate_length(self, target_pos: QPointF, target_dir: float) -> float | None:
+        """Compute the Dubins path length from the drag start to a candidate port.
+
+        target_dir is the direction the belt travels when entering/leaving the
+        candidate port (same convention as Building.input/output_port_direction).
+        """
+        if not self._drag_start_pos:
+            return None
+
+        if self._drag_forward:
+            # Forward: belt goes from start (output) to target (input)
+            start = Point(self._drag_start_pos.x(), self._drag_start_pos.y())
+            end = Point(target_pos.x(), target_pos.y())
+            belt_path = compute_belt_path(start, self._drag_start_dir, end, target_dir)
+        else:
+            # Backward: belt goes from target (output) to start (input)
+            start = Point(target_pos.x(), target_pos.y())
+            end = Point(self._drag_start_pos.x(), self._drag_start_pos.y())
+            belt_path = compute_belt_path(start, target_dir, end, self._drag_start_dir)
+
+        return belt_path.total_length if belt_path else None
 
     def complete(self, target_building_id: str, target_port_index: int) -> None:
         """Complete a belt connection to a target port.
@@ -665,7 +735,11 @@ class BeltConnector:
     def _spawn_and_connect(self, option: BuildingOption, scene_pos: QPointF) -> None:
         """Spawn a building and connect it with a belt.
 
-        Positions the building so the target port aligns with scene_pos.
+        Positions the building so the chosen port aligns with scene_pos. When
+        multiple ports could semantically hold this connection (any free
+        input on a recipe building - Satisfactory allows free port
+        assignment - or any output on an item-agnostic Splitter), picks the
+        port giving the shortest belt (Dubins path length).
         """
         if not self._connect_start_building_id:
             self.cancel()
@@ -683,15 +757,42 @@ class BeltConnector:
             item_id=option.item_id,  # Set for Source/Sink from the option
         )
 
-        # Calculate building position so target port aligns with scene_pos
-        # For forward drag, we're connecting to the new building's INPUT
-        # For backward drag, we're connecting to the new building's OUTPUT
+        # Determine candidate port indices for this connection.
+        # Forward drag connects to the new building's INPUT - any input port
+        # qualifies (free port assignment).
+        # Backward drag connects to the new building's OUTPUT - only
+        # item-agnostic Splitter outputs are interchangeable; recipe outputs
+        # (and single-output Merger/Source) are positionally fixed.
         if self._drag_forward:
-            # New building's input port should be at scene_pos
-            port_pos = building.input_port_pos(option.port_index)
+            candidates = list(range(building.num_inputs)) or [option.port_index]
+        elif option.building_type == BuildingType.SPLITTER:
+            candidates = list(range(building.num_outputs)) or [option.port_index]
         else:
-            # New building's output port should be at scene_pos
-            port_pos = building.output_port_pos(option.port_index)
+            candidates = [option.port_index]
+
+        best_port_index = option.port_index
+        best_length = float("inf")
+
+        for candidate in candidates:
+            if self._drag_forward:
+                port_pos = building.input_port_pos(candidate)
+                port_dir = building.input_port_direction(candidate)
+            else:
+                port_pos = building.output_port_pos(candidate)
+                port_dir = building.output_port_direction(candidate)
+
+            # The chosen port always lands exactly at scene_pos (building is
+            # offset to place it there), so only the direction varies here.
+            length = self._compute_candidate_length(scene_pos, port_dir)
+            if length is not None and length < best_length:
+                best_length = length
+                best_port_index = candidate
+
+        # Calculate building position so the chosen port aligns with scene_pos
+        if self._drag_forward:
+            port_pos = building.input_port_pos(best_port_index)
+        else:
+            port_pos = building.output_port_pos(best_port_index)
 
         # port_pos is relative to building at (0,0), so offset is negative
         building.x = scene_pos.x() - port_pos[0]
@@ -712,4 +813,4 @@ class BeltConnector:
         self.canvas.command_stack.execute(place_cmd)
 
         # Now complete the belt connection
-        self.complete(building.id, option.port_index)
+        self.complete(building.id, best_port_index)

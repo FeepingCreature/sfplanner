@@ -158,6 +158,33 @@ class SetMinerTierCommand(Command):
 
 
 @dataclass(frozen=True)
+class SetMinerPurityCommand(Command):
+    """Command to set a miner's resource node purity."""
+
+    scene_room_id: str | None  # None = root document, else room ID
+    building_id: str
+    old_purity: str
+    new_purity: str
+    canvas: FactoryCanvas
+
+    def _set_purity(self, document: Document, purity: str) -> None:
+        scene = get_scene(document, self.scene_room_id)
+        building = scene.buildings.get(self.building_id)
+        if not building:
+            logger.warning(f"SetMinerPurityCommand: building {self.building_id} not found")
+            return
+        building.purity = purity
+        self.canvas.refresh_building(self.building_id)
+        self.canvas.notify_mutation()
+
+    def execute(self, document: Document) -> None:
+        self._set_purity(document, self.new_purity)
+
+    def undo(self, document: Document) -> None:
+        self._set_purity(document, self.old_purity)
+
+
+@dataclass(frozen=True)
 class SetRateLimitsCommand(Command):
     """Command to set a Source/Sink's min/max rate thresholds."""
 

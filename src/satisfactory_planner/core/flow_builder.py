@@ -21,6 +21,7 @@ from satisfactory_planner.core.item_key import ItemKey
 from satisfactory_planner.core.models import (
     BELT_CAPACITIES,
     MINER_RATES,
+    PURITY_MULTIPLIERS,
     Building,
     BuildingType,
     RecipeId,
@@ -147,7 +148,8 @@ def _build_flow_ports(
     # Miner: single output with tier-based rate using item_id field
     if building.building_type == BuildingType.MINER:
         base_rate = MINER_RATES.get(building.tier, 60)
-        rate = base_rate * building.clock_speed
+        purity_mult = PURITY_MULTIPLIERS.get(building.purity, 1.0)
+        rate = base_rate * purity_mult * building.clock_speed
         outputs.append(FlowPort(item_name=building.item_id, rate=rate))
         return inputs, outputs
 

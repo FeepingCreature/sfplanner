@@ -132,6 +132,7 @@ def building_to_dict(building: Building) -> dict[str, Any]:
         "clock_speed": building.clock_speed,
         "rotation": building.rotation,
         "tier": building.tier,
+        "purity": building.purity,
     }
     # Only save item_id for Miner/Source/Sink
     if building.item_id is not None:
@@ -177,6 +178,7 @@ def dict_to_building(data: dict[str, Any]) -> Building:
         clock_speed=data.get("clock_speed", 1.0),
         rotation=data.get("rotation", 0),
         tier=data.get("tier", 1),
+        purity=data.get("purity", "normal"),
         min_rate=data.get("min_rate"),
         max_rate=data.get("max_rate"),
         port_index=data.get("port_index"),

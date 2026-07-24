@@ -40,6 +40,7 @@ from satisfactory_planner.ui.commands import (
     SetBeltTierCommand,
     SetClockSpeedCommand,
     SetItemCommand,
+    SetMinerPurityCommand,
     SetMinerTierCommand,
     SetRateLimitsCommand,
     SetRecipeCommand,
@@ -141,6 +142,15 @@ class PropertiesPanel(QWidget):
         self.miner_tier_combo.currentIndexChanged.connect(self._on_miner_tier_changed)
         self.miner_tier_label = QLabel("Tier:")
         source_layout.addRow(self.miner_tier_label, self.miner_tier_combo)
+
+        # Purity dropdown for Miner
+        self.miner_purity_combo = QComboBox()
+        self.miner_purity_combo.addItem("Impure (0.5x)", "impure")
+        self.miner_purity_combo.addItem("Normal (1x)", "normal")
+        self.miner_purity_combo.addItem("Pure (2x)", "pure")
+        self.miner_purity_combo.currentIndexChanged.connect(self._on_miner_purity_changed)
+        self.miner_purity_label = QLabel("Purity:")
+        source_layout.addRow(self.miner_purity_label, self.miner_purity_combo)
 
         # Rate for Source (how much it produces) - editable
         self.source_rate_spin = QDoubleSpinBox()
@@ -432,6 +442,13 @@ class PropertiesPanel(QWidget):
                     self.miner_tier_combo.setVisible(is_miner)
                     if is_miner:
                         self.miner_tier_combo.setCurrentIndex(building.tier - 1)
+
+                    # Miner purity dropdown
+                    self.miner_purity_label.setVisible(is_miner)
+                    self.miner_purity_combo.setVisible(is_miner)
+                    if is_miner:
+                        purity_index = self.miner_purity_combo.findData(building.purity)
+                        self.miner_purity_combo.setCurrentIndex(max(0, purity_index))
 
                     # Source rate (editable) - only for SOURCE
                     self.source_rate_label.setVisible(is_source)
@@ -884,6 +901,30 @@ class PropertiesPanel(QWidget):
                 building_id=building_id,
                 old_tier=building.tier,
                 new_tier=new_tier,
+                canvas=self.canvas,
+            )
+            self.command_stack.execute(cmd)
+
+    def _on_miner_purity_changed(self, index: int) -> None:
+        """Handle miner purity change."""
+        if self._updating or not self.canvas:
+            return
+
+        if len(self._selected_ids) != 1:
+            return
+
+        building_id = self._selected_ids[0]
+        building = self._get_building(building_id)
+        if not building or building.building_type != BuildingType.MINER:
+            return
+
+        new_purity = self.miner_purity_combo.currentData()
+        if new_purity is not None and new_purity != building.purity:
+            cmd = SetMinerPurityCommand(
+                scene_room_id=self._scene_room_id,
+                building_id=building_id,
+                old_purity=building.purity,
+                new_purity=new_purity,
                 canvas=self.canvas,
             )
             self.command_stack.execute(cmd)
