@@ -143,6 +143,7 @@ class BeltConnector:
         if not self._drag_preview or not self._drag_start_pos:
             return
 
+        snapped = self._hover_target_port is not None
         if self._hover_target_port is not None:
             end_pos = self._hover_target_port.scenePos()
             end_dir = self._get_target_port_direction(self._hover_target_port)
@@ -166,8 +167,12 @@ class BeltConnector:
             # So we swap start/end for the path calculation
             start = Point(end_pos.x(), end_pos.y())
             end = Point(self._drag_start_pos.x(), self._drag_start_pos.y())
-            # Reverse the end direction (cursor pointing back)
-            start_dir = end_dir + math.pi
+            # If snapped, end_dir already holds the real port's own
+            # belt-facing direction (same convention as _drag_start_dir) -
+            # use it directly. Otherwise the cursor has no real orientation,
+            # so approximate the output's facing direction as pointing back
+            # along the cursor ray.
+            start_dir = end_dir if snapped else end_dir + math.pi
             end_dir = self._drag_start_dir
             belt_path = compute_belt_path(start, start_dir, end, end_dir)
             path = belt_path_to_painter_path(start, end, belt_path)

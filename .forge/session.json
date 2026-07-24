@@ -1,5 +1,6 @@
 {
   "active_files": [
+    "src/satisfactory_planner/ui/canvas/belt_connector.py",
     "CLAUDE.md"
   ],
   "request_log_entries": [
@@ -1217,6 +1218,51 @@
       "streaming": true,
       "actual_cost": 0.0425624,
       "generation_id": "gen-1784902137-faRmMI9tFMnTAyVBIJDc"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784902673453.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784902673453.json",
+      "timestamp": 1784902673.4545443,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.171031,
+      "generation_id": "gen-1784902674-B07GltzZNTJskoFka0sj"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784902677506.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784902677506.json",
+      "timestamp": 1784902677.52372,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.0621827,
+      "generation_id": "gen-1784902677-vHGHQ3Kbb3Nq5MuJ2nVA"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784902696926.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784902696926.json",
+      "timestamp": 1784902696.9275022,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.0651375,
+      "generation_id": "gen-1784902697-0VI4hdM0B9dzX6CqIGms"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784902710366.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784902710366.json",
+      "timestamp": 1784902710.3782008,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.0704785,
+      "generation_id": "gen-1784902710-QlwYryVI2myQl5sd91gx"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784902718925.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784902718925.json",
+      "timestamp": 1784902718.9270797,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.0279458,
+      "generation_id": "gen-1784902719-Q8lFKuci0aTf38vHgNTU"
     }
   ],
   "messages": [
@@ -1869,6 +1915,138 @@
     {
       "role": "assistant",
       "content": "Both fixes are complete and committed (`9fe72da1b562`):\n\n3. **Turn radius** lowered from 20.0 \u2192 15.0.\n4. **Live port snapping/highlighting** \u2014 while dragging a belt, hovering over a leaf building's body (not Rooms) now auto-resolves to its best free compatible port using the same shortest-Dubins-path logic as completion, highlights that port's actual `PortItem`/`RoomPortItem`, and snaps the dashed preview arrow to that port's exact position/direction \u2014 so you can see exactly which port will be chosen before releasing.\n\nAll tests, ruff, and mypy pass. Context is cleaned up. Let me know how the live-snap feel plays out, or if there's anything else to tweak!"
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: c648dcd7",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "That's great! Just as I wanted it. Slight bug: when you connect *backwards*, ie. to an output port, the snap logic uses the wrong direction to the port."
+    },
+    {
+      "role": "assistant",
+      "content": "Let me look at the current direction logic in `belt_connector.py` to find the bug.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_01EqVXXm4Y9u5hvv74Mqj6fY",
+          "type": "function",
+          "function": {
+            "name": "update_context",
+            "arguments": "{\"1_add\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\"]}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01EqVXXm4Y9u5hvv74Mqj6fY",
+      "content": "{\"success\": true, \"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\"], \"remove\": [], \"message\": \"Added 1 files, removed 0 files from context\"}",
+      "_skip_display": true,
+      "_ephemeral": false
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at `update_preview`, I can see the bug now.\n\nIn the backward-drag branch:\n```python\nstart = Point(end_pos.x(), end_pos.y())     # the output (either raw cursor or snapped port)\nend = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\nstart_dir = end_dir + math.pi   # BUG: uses cursor-direction-based end_dir + pi, not the port's own direction\nend_dir = self._drag_start_dir\n```\n\nWhen there's no hover target, `end_dir` is computed as the direction from drag-start toward the cursor (`atan2(dy,dx)`), and then for backward drag it's flipped by `+ math.pi` to get the direction the belt *enters* the output port from - that's a reasonable heuristic since there's no real port there yet (just cursor position).\n\nBut when `self._hover_target_port` is set, `end_dir = self._get_target_port_direction(...)` is already the **actual belt-facing direction of that real port** (i.e., already the correct \"exit direction\" convention used elsewhere, matching `_drag_start_dir`'s convention). Adding `math.pi` to it in the backward branch is wrong \u2014 it flips a real, correctly-oriented port direction as if it were still a raw cursor angle.\n\nThe fix: only apply the `+ math.pi` flip when we're using the fallback cursor-angle heuristic, not when snapped to a real port.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_01D5PmRykN1a9VJaa1buN86o",
+          "type": "function",
+          "function": {
+            "name": "edit",
+            "arguments": "{\"1_edits\": [{\"1_filepath\": \"src/satisfactory_planner/ui/canvas/belt_connector.py\", \"2_search\": \"        if self._hover_target_port is not None:\\n            end_pos = self._hover_target_port.scenePos()\\n            end_dir = self._get_target_port_direction(self._hover_target_port)\\n        else:\\n            # Default end direction: toward end point\\n            dx = end_pos.x() - self._drag_start_pos.x()\\n            dy = end_pos.y() - self._drag_start_pos.y()\\n            end_dir = math.atan2(dy, dx)\\n\\n        if self._drag_forward:\\n            # Forward: dragging from output to input\\n            # Belt goes from start (output) to end (cursor/input)\\n            start = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\\n            end = Point(end_pos.x(), end_pos.y())\\n            start_dir = self._drag_start_dir\\n            belt_path = compute_belt_path(start, start_dir, end, end_dir)\\n            path = belt_path_to_painter_path(start, end, belt_path)\\n        else:\\n            # Backward: dragging from input to output\\n            # Belt goes from end (cursor/output) to start (input)\\n            # So we swap start/end for the path calculation\\n            start = Point(end_pos.x(), end_pos.y())\\n            end = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\\n            # Reverse the end direction (cursor pointing back)\\n            start_dir = end_dir + math.pi\\n            end_dir = self._drag_start_dir\\n            belt_path = compute_belt_path(start, start_dir, end, end_dir)\\n            path = belt_path_to_painter_path(start, end, belt_path)\", \"3_replace\": \"        snapped = self._hover_target_port is not None\\n        if self._hover_target_port is not None:\\n            end_pos = self._hover_target_port.scenePos()\\n            end_dir = self._get_target_port_direction(self._hover_target_port)\\n        else:\\n            # Default end direction: toward end point\\n            dx = end_pos.x() - self._drag_start_pos.x()\\n            dy = end_pos.y() - self._drag_start_pos.y()\\n            end_dir = math.atan2(dy, dx)\\n\\n        if self._drag_forward:\\n            # Forward: dragging from output to input\\n            # Belt goes from start (output) to end (cursor/input)\\n            start = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\\n            end = Point(end_pos.x(), end_pos.y())\\n            start_dir = self._drag_start_dir\\n            belt_path = compute_belt_path(start, start_dir, end, end_dir)\\n            path = belt_path_to_painter_path(start, end, belt_path)\\n        else:\\n            # Backward: dragging from input to output\\n            # Belt goes from end (cursor/output) to start (input)\\n            # So we swap start/end for the path calculation\\n            start = Point(end_pos.x(), end_pos.y())\\n            end = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\\n            if snapped:\\n                # end_dir already holds the real port's own belt-facing\\n                # direction (same convention as _drag_start_dir) - use it\\n                # directly rather than treating it as a cursor angle to flip.\\n                start_dir = end_dir\\n            else:\\n                # Cursor has no real orientation - approximate the output's\\n                # facing direction as pointing back along the cursor ray.\\n                start_dir = end_dir + math.pi\\n            end_dir = self._drag_start_dir\\n            belt_path = compute_belt_path(start, start_dir, end, end_dir)\\n            path = belt_path_to_painter_path(start, end, belt_path)\"}]}"
+          }
+        },
+        {
+          "id": "toolu_vrtx_018inMX71o5sUVMitsDrPGJF",
+          "type": "function",
+          "function": {
+            "name": "run_tests",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01D5PmRykN1a9VJaa1buN86o",
+      "content": "{\"success\": true, \"edits_applied\": 1, \"modified_files\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\"], \"side_effects\": [\"files_modified\"]}",
+      "_skip_display": true,
+      "_ephemeral": false
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_018inMX71o5sUVMitsDrPGJF",
+      "content": "{\"success\": false, \"passed\": false, \"test_command\": \"make test\", \"output\": \"ruff check --fix src/ tests/ spikes/\\nSIM108 Use ternary operator `start_dir = end_dir if snapped else end_dir + math.pi` instead of `if`-`else`-block\\n   --> src/satisfactory_planner/ui/canvas/belt_connector.py:170:13\\n    |\\n168 |               start = Point(end_pos.x(), end_pos.y())\\n169 |               end = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\\n170 | /             if snapped:\\n171 | |                 # end_dir already holds the real port's own belt-facing\\n172 | |                 # direction (same convention as _drag_start_dir) - use it\\n173 | |                 # directly rather than treating it as a cursor angle to flip.\\n174 | |                 start_dir = end_dir\\n175 | |             else:\\n176 | |                 # Cursor has no real orientation - approximate the output's\\n177 | |                 # facing direction as pointing back along the cursor ray.\\n178 | |                 start_dir = end_dir + math.pi\\n    | |_____________________________________________^\\n179 |               end_dir = self._drag_start_dir\\n180 |               belt_path = compute_belt_path(start, start_dir, end, end_dir)\\n    |\\nhelp: Replace `if`-`else`-block with `start_dir = end_dir if snapped else end_dir + math.pi`\\n\\nFound 1 error.\\n\\n--- stderr ---\\nmake: *** [Makefile:20: fix] Fehler 1\\n\", \"summary\": \"\\u2717 Tests failed (make test)\", \"error\": \"ruff check --fix src/ tests/ spikes/\\nSIM108 Use ternary operator `start_dir = end_dir if snapped else end_dir + math.pi` instead of `if`-`else`-block\\n   --> src/satisfactory_planner/ui/canvas/belt_connector.py:170:13\\n    |\\n168 |               start = Point(end_pos.x(), end_pos.y())\\n169 |               end = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\\n170 | /             if snapped:\\n171 | |                 # end_dir already holds the real port's own belt-facing\\n172 | |                 # direction (same convention as _drag_start_dir) - use it\\n173 | |                 # directly rather than treating it as a cursor angle to flip.\\n174 | |                 start_dir = end_dir\\n175 | |             else:\\n176 | |                 # Cursor has no real orientation - approximate the output's\\n177 | |                 # facing direction as pointing back along the cursor ray.\\n178 | |                 start_dir = end_dir + math.pi\\n    | |_____________________________________________^\\n179 |               end_dir = self._drag_start_dir\\n180 |               belt_path = compute_belt_path(start, start_dir, end, end_dir)\\n    |\\nhelp: Replace `if`-`else`-block with `start_dir = end_dir if snapped else end_dir + math.pi`\\n\\nFound 1 error.\\n\\n--- stderr ---\\nmake: *** [Makefile:20: fix] Fehler 1\\n\", \"display_output\": \"ruff check --fix src/ tests/ spikes/\\nSIM108 Use ternary operator `start_dir = end_dir if snapped else end_dir + math.pi` instead of `if`-`else`-block\\n   --> src/satisfactory_planner/ui/canvas/belt_connector.py:170:13\\n    |\\n168 |               start = Point(end_pos.x(), end_pos.y())\\n169 |               end = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\\n170 | /             if snapped:\\n171 | |                 # end_dir already holds the real port's own belt-facing\\n172 | |                 # direction (same convention as _drag_start_dir) - use it\\n173 | |                 # directly rather than treating it as a cursor angle to flip.\\n174 | |                 start_dir = end_dir\\n175 | |             else:\\n176 | |                 # Cursor has no real orientation - approximate the output's\\n177 | |                 # facing direction as pointing back along the cursor ray.\\n178 | |                 start_dir = end_dir + math.pi\\n    | |_____________________________________________^\\n179 |               end_dir = self._drag_start_dir\\n180 |               belt_path = compute_belt_path(start, start_dir, end, end_dir)\\n    |\\nhelp: Replace `if`-`else`-block with `start_dir = end_dir if snapped else end_dir + math.pi`\\n\\nFound 1 error.\\n\\n--- stderr ---\\nmake: *** [Makefile:20: fix] Fehler 1\\n\", \"side_effects\": [\"has_display_output\"]}",
+      "_skip_display": true,
+      "_ephemeral": false
+    },
+    {
+      "role": "assistant",
+      "content": "Ruff wants a ternary instead of the if/else. Let me fix that lint issue.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_01S7teTkGmT7fVtEPw7jHmSk",
+          "type": "function",
+          "function": {
+            "name": "edit",
+            "arguments": "{\"1_edits\": [{\"1_filepath\": \"src/satisfactory_planner/ui/canvas/belt_connector.py\", \"2_search\": \"            if snapped:\\n                # end_dir already holds the real port's own belt-facing\\n                # direction (same convention as _drag_start_dir) - use it\\n                # directly rather than treating it as a cursor angle to flip.\\n                start_dir = end_dir\\n            else:\\n                # Cursor has no real orientation - approximate the output's\\n                # facing direction as pointing back along the cursor ray.\\n                start_dir = end_dir + math.pi\", \"3_replace\": \"            # If snapped, end_dir already holds the real port's own\\n            # belt-facing direction (same convention as _drag_start_dir) -\\n            # use it directly. Otherwise the cursor has no real orientation,\\n            # so approximate the output's facing direction as pointing back\\n            # along the cursor ray.\\n            start_dir = end_dir if snapped else end_dir + math.pi\"}]}"
+          }
+        },
+        {
+          "id": "toolu_vrtx_01LPRnyLLMZeAEZuYSxteY1X",
+          "type": "function",
+          "function": {
+            "name": "run_tests",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\u274c **run_tests** failed: ruff check --fix src/ tests/ spikes/\nSIM108 Use ternary operator `start_dir = end_dir if snapped else end_dir + math.pi` instead of `if`-`else`-block\n   --> src/satisfactory_planner/ui/canvas/belt_connector.py:170:13\n    |\n168 |               start = Point(end_pos.x(), end_pos.y())\n169 |               end = Point(self._drag_start_pos.x(), self._drag_start_pos.y())\n170 | /             if snapped:\n171 | |                 # end_dir already holds the real port's own belt-facing\n172 | |                 # direction (same convention as _drag_start_dir) - use it\n173 | |                 # directly rather than treating it as a cursor angle to flip.\n174 | |                 start_dir = end_dir\n175 | |             else:\n176 | |                 # Cursor has no real orientation - approximate the output's\n177 | |                 # facing direction as pointing back along the cursor ray.\n178 | |                 start_dir = end_dir + math.pi\n    | |_____________________________________________^\n179 |               end_dir = self._drag_start_dir\n180 |               belt_path = compute_belt_path(start, start_dir, end, end_dir)\n    |\nhelp: Replace `if`-`else`-block with `start_dir = end_dir if snapped else end_dir + math.pi`\n\nFound 1 error.\n\n--- stderr ---\nmake: *** [Makefile:20: fix] Fehler 1\n",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01S7teTkGmT7fVtEPw7jHmSk",
+      "content": "{\"success\": true, \"edits_applied\": 1, \"modified_files\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\"], \"side_effects\": [\"files_modified\"]}",
+      "_skip_display": true,
+      "_ephemeral": false
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01LPRnyLLMZeAEZuYSxteY1X",
+      "content": "{\"success\": true, \"passed\": false, \"test_command\": \"make test\", \"output\": \"ruff check --fix src/ tests/ spikes/\\nAll checks passed!\\nruff format src/ tests/ spikes/\\n87 files left unchanged\\nruff check src/ tests/ spikes/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 54 source files\\ncd spikes/flowsim && mypy . --config-file mypy.ini\\nSuccess: no issues found in 18 source files\\npytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.11.1 -- Qt runtime 6.11.1 -- Qt compiled 6.11.1\\nrootdir: /tmp/forge_vfs_qnv5vcx9\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, typeguard-4.4.4, anyio-4.11.0\\ncollected 84 items\\n\\ntests/test_core/test_bin_packing.py ........                             [  9%]\\ntests/test_core/test_commands.py .........                               [ 20%]\\ntests/test_core/test_constraint_optimizer.py ................            [ 39%]\\ntests/test_core/test_flow_solver.py ..................                   [ 60%]\\ntests/test_core/test_models.py .........                                 [ 71%]\\ntests/test_core/test_room_commands.py ..............                     [ 88%]\\ntests/test_smoke.py ..                                                   [ 90%]\\ntests/test_ui/test_canvas.py ........                                    [100%]\\n\\n============================== 84 passed in 0.56s ==============================\\ncd spikes/flowsim && pytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.11.1 -- Qt runtime 6.11.1 -- Qt compiled 6.11.1\\nrootdir: /tmp/forge_vfs_qnv5vcx9\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, typeguard-4.4.4, anyio-4.11.0\\ncollected 49 items\\n\\ntests/test_builder.py ...................                                [ 38%]\\ntests/test_dangling.py .....                                             [ 48%]\\ntests/test_info.py ..                                                    [ 53%]\\ntests/test_overcapacity.py ....                                          [ 61%]\\ntests/test_solver.py ..............                                      [ 89%]\\ntests/test_underflow.py .....                                            [100%]\\n\\n============================== 49 passed in 0.17s ==============================\\n\", \"summary\": \"\\u2713 Tests passed (make test)\", \"display_output\": \"ruff check --fix src/ tests/ spikes/\\nAll checks passed!\\nruff format src/ tests/ spikes/\\n87 files left unchanged\\nruff check src/ tests/ spikes/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 54 source files\\ncd spikes/flowsim && mypy . --config-file mypy.ini\\nSuccess: no issues found in 18 source files\\npytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.11.1 -- Qt runtime 6.11.1 -- Qt compiled 6.11.1\\nrootdir: /tmp/forge_vfs_qnv5vcx9\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, typeguard-4.4.4, anyio-4.11.0\\ncollected 84 items\\n\\ntests/test_core/test_bin_packing.py ........                             [  9%]\\ntests/test_core/test_commands.py .........                               [ 20%]\\ntests/test_core/test_constraint_optimizer.py ................            [ 39%]\\ntests/test_core/test_flow_solver.py ..................                   [ 60%]\\ntests/test_core/test_models.py .........                                 [ 71%]\\ntests/test_core/test_room_commands.py ..............                     [ 88%]\\ntests/test_smoke.py ..                                                   [ 90%]\\ntests/test_ui/test_canvas.py ........                                    [100%]\\n\\n============================== 84 passed in 0.56s ==============================\\ncd spikes/flowsim && pytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.11.1 -- Qt runtime 6.11.1 -- Qt compiled 6.11.1\\nrootdir: /tmp/forge_vfs_qnv5vcx9\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, typeguard-4.4.4, anyio-4.11.0\\ncollected 49 items\\n\\ntests/test_builder.py ...................                                [ 38%]\\ntests/test_dangling.py .....                                             [ 48%]\\ntests/test_info.py ..                                                    [ 53%]\\ntests/test_overcapacity.py ....                                          [ 61%]\\ntests/test_solver.py ..............                                      [ 89%]\\ntests/test_underflow.py .....                                            [100%]\\n\\n============================== 49 passed in 0.17s ==============================\\n\", \"side_effects\": [\"has_display_output\"]}",
+      "_skip_display": true,
+      "_ephemeral": false
+    },
+    {
+      "role": "assistant",
+      "content": "Tests pass now with the ternary fix. Let me trace through the logic once more to confirm correctness before committing.\n\n**Verification of the fix:** In the backward-drag branch, `_get_target_port_direction` returns the target output port's own belt-facing direction using the exact same convention as `_drag_start_dir` (which is set from `building.output_port_direction()`/`input_port_direction()` in `start_drag`, and also used identically in `_compute_candidate_length`'s backward branch: `compute_belt_path(start, target_dir, end, self._drag_start_dir)` \u2014 there, `target_dir` is passed as the *start_dir* argument directly, unflipped). So my fix makes `update_preview` consistent with `_compute_candidate_length`: both now pass the real output port's direction straight through as `start_dir` without adding `math.pi`. The `+ math.pi` heuristic is now correctly reserved only for the raw-cursor fallback case (no real port geometry available yet, so the direction is invented to be the point that has a chance of a smooth curve). This matches the reported bug and its fix.\n\nEverything passes (ruff, mypy, pytest). Let me commit.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_013hvzAEwwkWUczWmJMBcZ6p",
+          "type": "function",
+          "function": {
+            "name": "commit",
+            "arguments": "{\"1_message\": \"Fix backward-drag port snap using wrong direction convention\\n\\nupdate_preview's backward-drag branch always applied a `+ math.pi` flip to\\nend_dir, treating it as a cursor-ray angle. That's only correct when there's\\nno real snapped port (i.e. end_dir was derived via atan2 from the cursor).\\nWhen a port is actually snapped/highlighted, end_dir already holds the real\\nport's belt-facing direction in the same convention used everywhere else\\n(_drag_start_dir, _compute_candidate_length) - flipping it produced the\\nwrong curve direction for the preview arrow. Now the flip is only applied\\nin the unsnapped cursor-following fallback case.\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_013hvzAEwwkWUczWmJMBcZ6p",
+      "content": "{\"success\": true, \"message\": \"Committed: 1 file(s) modified/created\", \"commit\": \"306646db8d38\", \"side_effects\": [\"mid_turn_commit\"]}",
+      "_skip_display": true,
+      "_ephemeral": false
+    },
+    {
+      "role": "assistant",
+      "content": "The backward-drag direction bug is fixed and committed (`306646db8d38`). Summary of the fix:\n\n`update_preview`'s backward-drag branch was unconditionally flipping the target direction by `+ math.pi`, which only made sense when approximating direction from the raw cursor position. Once a real port is snapped/highlighted, its direction is already in the correct \"belt-facing\" convention (matching `_drag_start_dir` and `_compute_candidate_length`), so flipping it produced the wrong curve. Now the flip only applies in the unsnapped fallback case.\n\nAll tests, ruff, and mypy pass. Let me know if the backward-drag snap looks right now, or if there's anything else to adjust."
     }
   ],
   "parent_session": null,
