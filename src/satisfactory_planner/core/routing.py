@@ -44,7 +44,7 @@ class BeltPath:
 
 
 # Minimum turning radius for belts (in scene units)
-MIN_TURN_RADIUS = 20.0
+MIN_TURN_RADIUS = 15.0
 
 
 def _get_angle(center: Point, p: Point) -> float:

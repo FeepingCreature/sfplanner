@@ -133,14 +133,24 @@ class BeltConnector:
         self.canvas._scene.addItem(self._drag_preview)
 
     def update_preview(self, end_pos: QPointF) -> None:
-        """Update the drag preview path to the given end position."""
+        """Update the drag preview path to the given end position.
+
+        If a port is currently auto-targeted (hovering over a compatible port
+        or a building body that resolved to one via update_hover_target), the
+        preview snaps to that port's exact position/direction instead of the
+        raw cursor position, so the user can see which port will be used.
+        """
         if not self._drag_preview or not self._drag_start_pos:
             return
 
-        # Default end direction: toward end point
-        dx = end_pos.x() - self._drag_start_pos.x()
-        dy = end_pos.y() - self._drag_start_pos.y()
-        end_dir = math.atan2(dy, dx)
+        if self._hover_target_port is not None:
+            end_pos = self._hover_target_port.scenePos()
+            end_dir = self._get_target_port_direction(self._hover_target_port)
+        else:
+            # Default end direction: toward end point
+            dx = end_pos.x() - self._drag_start_pos.x()
+            dy = end_pos.y() - self._drag_start_pos.y()
+            end_dir = math.atan2(dy, dx)
 
         if self._drag_forward:
             # Forward: dragging from output to input
@@ -164,12 +174,29 @@ class BeltConnector:
 
         self._drag_preview.setPath(path)
 
+    def _get_target_port_direction(self, port: PortItem | RoomPortItem) -> float:
+        """Get the belt-facing direction (radians) for a PortItem or RoomPortItem."""
+        from satisfactory_planner.ui.items.port_item import PortItem as _PortItem
+
+        if isinstance(port, _PortItem):
+            return math.radians(port.angle)
+        # RoomPortItem: derive direction from its building's port layout/rotation
+        if port.is_output:
+            return port.building.output_port_direction(port.port_index)
+        return port.building.input_port_direction(port.port_index)
+
     def update_hover_target(self, scene_pos: QPointF) -> None:
         """Check if hovering over a valid target port and update highlight.
 
         When dragging forward (from output), look for input ports.
         When dragging backward (from input), look for output ports.
+
+        If the cursor is over a leaf building's body (not a specific port,
+        and not a Room), auto-resolve to that building's best free port of
+        the correct direction and highlight/snap to it, matching what
+        try_complete would pick.
         """
+        from satisfactory_planner.ui.items.building_item import BuildingItem
         from satisfactory_planner.ui.items.port_item import PortItem
         from satisfactory_planner.ui.items.room_port_item import RoomPortItem
 
@@ -177,6 +204,7 @@ class BeltConnector:
         target_is_output = not self._drag_forward
 
         new_target: PortItem | RoomPortItem | None = None
+        hit_building: BuildingItem | None = None
         for item in self.canvas._scene.items(scene_pos):
             # Check for building port
             if isinstance(item, PortItem) and item.is_output == target_is_output:
@@ -186,6 +214,19 @@ class BeltConnector:
             if isinstance(item, RoomPortItem) and item.is_output == target_is_output:
                 new_target = item
                 break
+            if hit_building is None and isinstance(item, BuildingItem):
+                hit_building = item
+
+        if new_target is None and hit_building is not None:
+            best_index = self._find_best_port_on_building(
+                hit_building.building.id, target_is_output
+            )
+            if best_index is not None:
+                ports = (
+                    hit_building._output_ports if target_is_output else hit_building._input_ports
+                )
+                if best_index < len(ports):
+                    new_target = ports[best_index]
 
         if new_target != self._hover_target_port:
             if self._hover_target_port:
