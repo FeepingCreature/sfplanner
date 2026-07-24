@@ -634,6 +634,10 @@ class MainWindow(QMainWindow):
         self._mark_dirty(tab)
         self._update_warnings()
         self._refresh_flow_visualization(tab)
+        # Recipe dropdown grouping depends on connected port items, which may
+        # have just changed - refresh it if this tab's properties are shown.
+        if tab is self.current_tab:
+            self.properties_panel.refresh()
 
     def _refresh_flow_visualization(self, tab: DocumentTab) -> None:
         """Refresh flow visualization after document changes."""

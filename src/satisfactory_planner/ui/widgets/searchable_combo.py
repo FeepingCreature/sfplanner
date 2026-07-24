@@ -31,18 +31,22 @@ class SearchableDropdown(QWidget):
     Features:
     - Click to open dropdown popup
     - Type to filter items incrementally
-    - Items sorted alphabetically
+    - Items sorted alphabetically (within each group, see set_grouped_items)
     - Click item or press Enter to select
     """
 
     # Emitted when selection changes (includes None for cleared)
     selection_changed = Signal(object)  # Emits the item data
 
+    # Sentinel used to mark non-selectable separator rows between groups
+    _SEPARATOR = object()
+
     def __init__(self, parent: QWidget | None = None, placeholder: str = "Search..."):
         super().__init__(parent)
 
-        # Store items for filtering
-        self._all_items: list[tuple[str, Any]] = []  # (display_text, data)
+        # Groups of items for filtering; each group is alpha-sorted internally
+        # and a separator is drawn between any two non-empty groups.
+        self._groups: list[list[tuple[str, Any]]] = []  # (display_text, data)
         self._include_none = True
         self._none_text = "(None)"
         self._current_data: Any = None
@@ -108,11 +112,27 @@ class SearchableDropdown(QWidget):
             include_none: Whether to include a "None" option at the top
             none_text: Text to display for the None option
         """
-        # Sort items alphabetically by display text
-        sorted_items = sorted(items, key=lambda x: x[0].lower())
+        self.set_grouped_items([items], include_none=include_none, none_text=none_text)
 
-        # Store for filtering
-        self._all_items = sorted_items
+    def set_grouped_items(
+        self,
+        groups: list[list[tuple[str, Any]]],
+        include_none: bool = True,
+        none_text: str = "(None)",
+    ) -> None:
+        """Set items organized into ordered groups.
+
+        Each group is sorted alphabetically internally. A separator row is
+        shown between any two groups that both have at least one item (after
+        filtering too), so e.g. "valid" items can be shown before a
+        separator followed by "other" items.
+
+        Args:
+            groups: Ordered list of groups, each a list of (display_text, data)
+            include_none: Whether to include a "None" option at the very top
+            none_text: Text to display for the None option
+        """
+        self._groups = [sorted(group, key=lambda x: x[0].lower()) for group in groups]
         self._include_none = include_none
         self._none_text = none_text
 
@@ -129,8 +149,24 @@ class SearchableDropdown(QWidget):
             item.setData(Qt.ItemDataRole.UserRole, None)
             self._list_widget.addItem(item)
 
-        for display_text, data in self._all_items:
-            if not filter_text or filter_lower in display_text.lower():
+        first_group = True
+        for group in self._groups:
+            matches = [
+                (display_text, data)
+                for display_text, data in group
+                if not filter_text or filter_lower in display_text.lower()
+            ]
+            if not matches:
+                continue
+
+            if not first_group:
+                sep = QListWidgetItem("──────────")
+                sep.setFlags(Qt.ItemFlag.NoItemFlags)
+                sep.setData(Qt.ItemDataRole.UserRole, self._SEPARATOR)
+                self._list_widget.addItem(sep)
+            first_group = False
+
+            for display_text, data in matches:
                 item = QListWidgetItem(display_text)
                 item.setData(Qt.ItemDataRole.UserRole, data)
                 self._list_widget.addItem(item)
@@ -141,14 +177,17 @@ class SearchableDropdown(QWidget):
 
     def _select_first_item(self) -> None:
         """Select the first item in the filtered list (on Enter)."""
-        if self._list_widget.count() > 0:
-            item = self._list_widget.item(0)
-            if item:
+        for i in range(self._list_widget.count()):
+            item = self._list_widget.item(i)
+            if item and item.data(Qt.ItemDataRole.UserRole) is not self._SEPARATOR:
                 self._on_item_clicked(item)
+                return
 
     def _on_item_clicked(self, item: QListWidgetItem) -> None:
         """Handle item click - select and close popup."""
         data = item.data(Qt.ItemDataRole.UserRole)
+        if data is self._SEPARATOR:
+            return
         display_text = item.text()
 
         self._current_data = data
@@ -169,16 +208,16 @@ class SearchableDropdown(QWidget):
             self._display.setText("")
             return
 
-        # Find display text for this data
-        for display_text, item_data in self._all_items:
-            if item_data == data:
-                self._display.setText(display_text)
-                return
+        # Find display text for this data (search across all groups)
+        for group in self._groups:
+            for display_text, item_data in group:
+                if item_data == data:
+                    self._display.setText(display_text)
+                    return
 
         # Data not found in items - log warning
-        logger.warning(
-            f"SearchableDropdown: data '{data}' not found in {len(self._all_items)} items"
-        )
+        total_items = sum(len(group) for group in self._groups)
+        logger.warning(f"SearchableDropdown: data '{data}' not found in {total_items} items")
         self._display.setText(str(data))
 
     def get_current_data(self) -> Any:

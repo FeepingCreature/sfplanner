@@ -27,6 +27,7 @@ from satisfactory_planner.core import (
     BuildingEfficiency,
     BuildingType,
     Document,
+    ItemId,
     RecipeId,
     Room,
     RoomPlacement,
@@ -306,8 +307,18 @@ class PropertiesPanel(QWidget):
         # Refresh recipe combo
         self._update_recipe_combo()
 
-    def _update_recipe_combo(self, building_type: BuildingType | None = None) -> None:
-        """Update recipe combo with available recipes filtered by building type."""
+    def _update_recipe_combo(
+        self, building_type: BuildingType | None = None, building: Building | None = None
+    ) -> None:
+        """Update recipe combo with available recipes filtered by building type.
+
+        If `building` is given, recipes are additionally split into two
+        groups: those consistent with the items already flowing into/out of
+        the building's currently-connected ports (shown first), and the rest
+        (shown after a separator). Consistency is direction-matched: an
+        input port's item must appear among the recipe's inputs, an output
+        port's item must appear among the recipe's outputs.
+        """
         # Get merged recipes via canvas (canonical source)
         if not self.canvas:
             return
@@ -323,8 +334,89 @@ class PropertiesPanel(QWidget):
                 recipe_items.append((recipe.name, recipe_id))
                 added_ids.add(recipe_id)
 
-        # Use SearchableComboBox's set_items (handles sorting)
-        self.recipe_combo.set_items(recipe_items, include_none=True, none_text="(No recipe)")
+        if building is not None:
+            connected_inputs, connected_outputs = self._get_connected_port_items(building)
+            if connected_inputs or connected_outputs:
+                consistent: list[tuple[str, str]] = []
+                inconsistent: list[tuple[str, str]] = []
+                for name, rid in recipe_items:
+                    candidate_recipe = merged_recipes[RecipeId(rid)]
+                    if self._recipe_matches_ports(
+                        candidate_recipe, connected_inputs, connected_outputs
+                    ):
+                        consistent.append((name, rid))
+                    else:
+                        inconsistent.append((name, rid))
+                self.recipe_combo.set_grouped_items(
+                    [consistent, inconsistent], include_none=True, none_text="(No recipe)"
+                )
+                return
+
+        # No connection context (or nothing connected yet) - single flat group
+        self.recipe_combo.set_grouped_items(
+            [recipe_items], include_none=True, none_text="(No recipe)"
+        )
+
+    def _get_connected_port_items(self, building: Building) -> tuple[set[ItemId], set[ItemId]]:
+        """Get item IDs currently flowing into/out of a building's connected ports.
+
+        Returns (connected_input_items, connected_output_items). Only ports
+        that actually have a belt connected are considered; unconnected
+        ports impose no constraint (partial factory design is expected).
+        """
+        connected_inputs: set[ItemId] = set()
+        connected_outputs: set[ItemId] = set()
+
+        scene = self._get_scene()
+
+        for i in range(building.num_inputs):
+            belt = scene.get_belt_at_port(building.id, i, is_output=False)
+            if belt:
+                item_name = self._get_belt_item_id(belt.id)
+                if item_name:
+                    item_id = self._item_name_to_id(item_name)
+                    if item_id:
+                        connected_inputs.add(ItemId(item_id))
+
+        for i in range(building.num_outputs):
+            belt = scene.get_belt_at_port(building.id, i, is_output=True)
+            if belt:
+                item_name = self._get_belt_item_id(belt.id)
+                if item_name:
+                    item_id = self._item_name_to_id(item_name)
+                    if item_id:
+                        connected_outputs.add(ItemId(item_id))
+
+        return connected_inputs, connected_outputs
+
+    def _recipe_matches_ports(
+        self, recipe: object, connected_inputs: set[ItemId], connected_outputs: set[ItemId]
+    ) -> bool:
+        """Check whether a recipe is consistent with the connected port items.
+
+        Direction-matched: every connected input item must be one of the
+        recipe's inputs, and every connected output item must be one of the
+        recipe's outputs (free port assignment means position doesn't matter).
+        """
+        from satisfactory_planner.core.models import Recipe
+
+        if not isinstance(recipe, Recipe):
+            return True
+
+        recipe_inputs = {inp.item_id for inp in recipe.inputs}
+        recipe_outputs = {out.item_id for out in recipe.outputs}
+        return connected_inputs <= recipe_inputs and connected_outputs <= recipe_outputs
+
+    def _item_name_to_id(self, item_name: str) -> str | None:
+        """Convert item display name to item ID."""
+        for item_id, name, _is_fluid, _is_mineable in load_items():
+            if name == item_name:
+                return str(item_id)
+        return None
+
+    def refresh(self) -> None:
+        """Re-display the current selection (e.g. after flows/connections change)."""
+        self._update_display()
 
     def set_document(
         self, document: Document, command_stack: CommandStack, canvas: FactoryCanvas
@@ -482,8 +574,9 @@ class PropertiesPanel(QWidget):
                     self.stats_group.hide()
                     self.logistics_group.hide()
                 else:
-                    # Update recipe combo filtered by building type
-                    self._update_recipe_combo(building.building_type)
+                    # Update recipe combo filtered by building type, grouped by
+                    # consistency with currently-connected port items
+                    self._update_recipe_combo(building.building_type, building)
 
                     # Select current recipe in combo
                     self.recipe_combo.set_current_data(building.recipe_id)
