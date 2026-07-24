@@ -219,7 +219,11 @@ class BeltConnector:
             if isinstance(item, RoomPortItem) and item.is_output == target_is_output:
                 new_target = item
                 break
-            if hit_building is None and isinstance(item, BuildingItem):
+            if (
+                hit_building is None
+                and isinstance(item, BuildingItem)
+                and item.building.id != self._connect_start_building_id
+            ):
                 hit_building = item
 
         if new_target is None and hit_building is not None:
@@ -283,6 +287,10 @@ class BeltConnector:
 
         for item in self.canvas._scene.items(scene_pos):
             if isinstance(item, BuildingItem):
+                if item.building.id == self._connect_start_building_id:
+                    # Dragging a belt onto the same building it started from
+                    # would feed an output back into its own input - never valid.
+                    continue
                 best_port = self._find_best_port_on_building(item.building.id, target_is_output)
                 if best_port is not None:
                     self.complete(item.building.id, best_port)
@@ -435,7 +443,9 @@ class BeltConnector:
             o for o in options if o.building_type in (BuildingType.SPLITTER, BuildingType.MERGER)
         ]
         source_sink_options = [
-            o for o in options if o.building_type in (BuildingType.SOURCE, BuildingType.SINK)
+            o
+            for o in options
+            if o.building_type in (BuildingType.SOURCE, BuildingType.SINK, BuildingType.MINER)
         ]
         recipe_options = [o for o in options if o.recipe is not None]
         no_recipe_options = [
@@ -639,6 +649,17 @@ class BeltConnector:
                         item_id=needed_id,
                     )
                 )
+                # Also offer a Miner if the needed item is a mineable raw resource
+                if self._item_id_is_mineable(needed_id):
+                    options.append(
+                        BuildingOption(
+                            building_type=BuildingType.MINER,
+                            recipe=None,
+                            port_index=0,
+                            display_name=f"Miner: {item_name or needed_id}",
+                            item_id=needed_id,
+                        )
+                    )
         else:
             # No recipe set - offer all production buildings without recipes
             for bt in BuildingType:
@@ -777,6 +798,15 @@ class BeltConnector:
             if iid == item_id:
                 return str(name)
         return None
+
+    def _item_id_is_mineable(self, item_id: ItemId) -> bool:
+        """Return True if the item is a mineable raw resource (extractable by a Miner)."""
+        from satisfactory_planner.core import load_items
+
+        for iid, _name, _is_fluid, is_mineable in load_items():
+            if iid == item_id:
+                return bool(is_mineable)
+        return False
 
     def _spawn_and_connect(self, option: BuildingOption, scene_pos: QPointF) -> None:
         """Spawn a building and connect it with a belt.
