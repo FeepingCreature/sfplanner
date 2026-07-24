@@ -363,29 +363,44 @@ class PropertiesPanel(QWidget):
         Returns (connected_input_items, connected_output_items). Only ports
         that actually have a belt connected are considered; unconnected
         ports impose no constraint (partial factory design is expected).
+
+        This resolves item identity via a best-effort flow graph build
+        (recipe port assignments, Source/Sink/Miner item_id, propagated
+        through Splitters/Mergers), independent of whether the LP solver
+        can find a feasible solution - so it works even with no recipe set
+        yet or an inconsistent-but-connected factory.
         """
         connected_inputs: set[ItemId] = set()
         connected_outputs: set[ItemId] = set()
+
+        if not self.canvas:
+            return connected_inputs, connected_outputs
+
+        from satisfactory_planner.core.flow_builder import build_flow_graph
+
+        build_result = build_flow_graph(self.document, self.canvas.get_all_recipes())
+        if build_result.graph is None:
+            return connected_inputs, connected_outputs
+
+        node = build_result.graph.nodes.get(self._make_item_key(building.id))
+        if node is None:
+            return connected_inputs, connected_outputs
 
         scene = self._get_scene()
 
         for i in range(building.num_inputs):
             belt = scene.get_belt_at_port(building.id, i, is_output=False)
-            if belt:
-                item_name = self._get_belt_item_id(belt.id)
-                if item_name:
-                    item_id = self._item_name_to_id(item_name)
-                    if item_id:
-                        connected_inputs.add(ItemId(item_id))
+            if belt and i < len(node.inputs):
+                input_item_name = node.inputs[i].item_name
+                if input_item_name:
+                    connected_inputs.add(ItemId(input_item_name))
 
         for i in range(building.num_outputs):
             belt = scene.get_belt_at_port(building.id, i, is_output=True)
-            if belt:
-                item_name = self._get_belt_item_id(belt.id)
-                if item_name:
-                    item_id = self._item_name_to_id(item_name)
-                    if item_id:
-                        connected_outputs.add(ItemId(item_id))
+            if belt and i < len(node.outputs):
+                output_item_name = node.outputs[i].item_name
+                if output_item_name:
+                    connected_outputs.add(ItemId(output_item_name))
 
         return connected_inputs, connected_outputs
 
@@ -406,13 +421,6 @@ class PropertiesPanel(QWidget):
         recipe_inputs = {inp.item_id for inp in recipe.inputs}
         recipe_outputs = {out.item_id for out in recipe.outputs}
         return connected_inputs <= recipe_inputs and connected_outputs <= recipe_outputs
-
-    def _item_name_to_id(self, item_name: str) -> str | None:
-        """Convert item display name to item ID."""
-        for item_id, name, _is_fluid, _is_mineable in load_items():
-            if name == item_name:
-                return str(item_id)
-        return None
 
     def refresh(self) -> None:
         """Re-display the current selection (e.g. after flows/connections change)."""
