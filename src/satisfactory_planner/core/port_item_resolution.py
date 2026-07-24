@@ -103,6 +103,8 @@ def _resolve_source_items(
         recipe = recipes.get(neighbor.recipe_id)
         if recipe is None or port_index >= len(recipe.outputs):
             return set()
+        # Output port position is fixed by the recipe - unlike inputs, there's
+        # no free-assignment ambiguity to narrow via siblings.
         return {recipe.outputs[port_index].item_id}
 
     result: set[ItemId] = set()
@@ -152,7 +154,30 @@ def _resolve_dest_items(
         recipe = recipes.get(neighbor.recipe_id)
         if recipe is None:
             return set()
-        return {inp.item_id for inp in recipe.inputs}
+        candidates = {inp.item_id for inp in recipe.inputs}
+        # A recipe's distinct inputs must be satisfied by distinct belts. If a
+        # sibling input port is unambiguously (single-candidate) resolved to
+        # a specific item, that item can't also be *this* port's item - drop
+        # it from the candidate set. E.g. Assembler(Reinforced Iron Plate)
+        # needs {Iron Plate, Screw}; if one input already unambiguously
+        # carries Iron Plate, the other input's only remaining candidate is
+        # Screw.
+        for i in range(neighbor.num_inputs):
+            if i == port_index:
+                continue
+            sibling_belt = scene.get_belt_at_port(neighbor.id, i, is_output=False)
+            if sibling_belt is None:
+                continue
+            sibling_items = _resolve_source_items(
+                scene,
+                recipes,
+                sibling_belt.source_building_id,
+                sibling_belt.source_port_index,
+                visited,
+            )
+            if len(sibling_items) == 1:
+                candidates -= sibling_items
+        return candidates
 
     result: set[ItemId] = set()
     for i in range(neighbor.num_outputs):
