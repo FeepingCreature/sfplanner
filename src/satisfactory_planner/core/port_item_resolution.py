@@ -38,23 +38,26 @@ def resolve_neighbor_port_items(
     scene: Scene,
     recipes: dict[RecipeId, Recipe],
     building: Building,
-) -> tuple[set[ItemId], set[ItemId]]:
+) -> tuple[list[set[ItemId]], list[set[ItemId]]]:
     """Resolve item IDs flowing into/out of a building's connected ports.
 
-    Returns (input_items, output_items): the set of item IDs that could be
-    flowing into each connected input port, and out of each connected output
-    port, based purely on what's on the other end of each belt (recursing
-    through Splitters/Mergers/Ports as needed). The building itself is
-    always treated as if it had no recipe or item assigned - only neighbors
-    are resolved, so this works even before a recipe is chosen for it, and
-    even if the rest of the document has fatal errors elsewhere.
+    Returns (input_candidates, output_candidates): one entry per *connected*
+    input/output port (unconnected ports are omitted), each entry being the
+    set of item IDs that could be flowing through that specific port, based
+    purely on what's on the other end of its belt (recursing through
+    Splitters/Mergers/Ports as needed). The building itself is always
+    treated as if it had no recipe or item assigned - only neighbors are
+    resolved, so this works even before a recipe is chosen for it, and even
+    if the rest of the document has fatal errors elsewhere.
 
-    A port with multiple possible items (e.g. connected through a chain to a
-    recipe's input side, where port ordering is free) contributes all of
-    those candidates to the result set.
+    Each port's candidates are disjunctive (the port will carry exactly one
+    of them, we just don't know which yet) - callers must NOT merge these
+    sets across ports and check subset/superset, since that conflates "one
+    of these" with "all of these". Instead, check each port's set against a
+    candidate recipe independently (e.g. non-empty intersection).
     """
-    input_items: set[ItemId] = set()
-    output_items: set[ItemId] = set()
+    input_candidates: list[set[ItemId]] = []
+    output_candidates: list[set[ItemId]] = []
 
     for i in range(building.num_inputs):
         belt = scene.get_belt_at_port(building.id, i, is_output=False)
@@ -63,7 +66,7 @@ def resolve_neighbor_port_items(
         items = _resolve_source_items(
             scene, recipes, belt.source_building_id, belt.source_port_index, set()
         )
-        input_items |= items
+        input_candidates.append(items)
 
     for i in range(building.num_outputs):
         belt = scene.get_belt_at_port(building.id, i, is_output=True)
@@ -72,9 +75,9 @@ def resolve_neighbor_port_items(
         items = _resolve_dest_items(
             scene, recipes, belt.dest_building_id, belt.dest_port_index, set()
         )
-        output_items |= items
+        output_candidates.append(items)
 
-    return input_items, output_items
+    return input_candidates, output_candidates
 
 
 def _resolve_source_items(

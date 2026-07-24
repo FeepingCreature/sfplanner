@@ -13,6 +13,17 @@ from satisfactory_planner.core.models import (
     RecipeId,
 )
 from satisfactory_planner.core.port_item_resolution import resolve_neighbor_port_items
+from satisfactory_planner.ui.panels.properties_panel import PropertiesPanel
+
+
+def _recipe_matches_ports(
+    recipe: Recipe, connected_inputs: list[set[ItemId]], connected_outputs: list[set[ItemId]]
+) -> bool:
+    """Call PropertiesPanel's recipe-consistency check without a Qt instance."""
+    return PropertiesPanel._recipe_matches_ports(  # type: ignore[no-any-return]
+        None, recipe, connected_inputs, connected_outputs
+    )
+
 
 IRON_PLATE = ItemId("iron-plate")
 IRON_ROD = ItemId("iron-rod")
@@ -98,7 +109,7 @@ class TestSiblingInputNarrowing:
 
         _inputs, outputs = resolve_neighbor_port_items(doc, RECIPES, b)
 
-        assert outputs == {SCREW}
+        assert outputs == [{SCREW}]
 
     def test_order_independent_a_on_port_1(self) -> None:
         # Same scenario, but A is wired to C's port 1 and B to port 0 - the
@@ -127,7 +138,7 @@ class TestSiblingInputNarrowing:
 
         _inputs, outputs = resolve_neighbor_port_items(doc, RECIPES, b)
 
-        assert outputs == {SCREW}
+        assert outputs == [{SCREW}]
 
     def test_neither_input_connected_yields_both_candidates(self) -> None:
         # If B is the only one connected (A's input is not wired), both Iron
@@ -147,7 +158,43 @@ class TestSiblingInputNarrowing:
 
         _inputs, outputs = resolve_neighbor_port_items(doc, RECIPES, b)
 
-        assert outputs == {IRON_PLATE, SCREW}
+        assert outputs == [{IRON_PLATE, SCREW}]
+
+    def test_both_recipeless_neighbors_get_full_disjunctive_candidates(self) -> None:
+        # Reported bug: A->C, B->C, both A and B have NO recipe yet, C makes
+        # Reinforced Iron Plate (needs Iron Plate + Screw). Neither sibling
+        # resolves unambiguously (both are themselves ambiguous), so there is
+        # nothing to narrow with - A's dropdown must still show BOTH Iron
+        # Plate and Screw as candidates for its single output port (as one
+        # disjunctive set), not an empty result. The old implementation
+        # merged per-port candidates with a union-then-subset check, which
+        # incorrectly required a single output port to match *both* items at
+        # once - impossible for any single-output recipe - so it showed
+        # nothing.
+        doc = Document()
+        a = Building(id="a", building_type=BuildingType.CONSTRUCTOR, x=0, y=0, recipe_id=None)
+        b = Building(id="b", building_type=BuildingType.CONSTRUCTOR, x=0, y=100, recipe_id=None)
+        c = Building(
+            id="c",
+            building_type=BuildingType.ASSEMBLER,
+            x=200,
+            y=50,
+            recipe_id=RECIPE_REINFORCED_IRON_PLATE.id,
+        )
+        doc.add_building(a)
+        doc.add_building(b)
+        doc.add_building(c)
+        doc.add_belt(make_belt("belt-a-c", "a", 0, "c", 0))
+        doc.add_belt(make_belt("belt-b-c", "b", 0, "c", 1))
+
+        _inputs, outputs = resolve_neighbor_port_items(doc, RECIPES, a)
+
+        assert outputs == [{IRON_PLATE, SCREW}]
+
+        # A's recipe-consistency check (as used by the properties panel) must
+        # therefore consider both Iron Plate and Screw recipes consistent.
+        assert _recipe_matches_ports(RECIPE_IRON_PLATE, [], outputs)
+        assert _recipe_matches_ports(RECIPE_SCREW, [], outputs)
 
 
 class TestFixedIdentityNeighbors:
@@ -163,7 +210,7 @@ class TestFixedIdentityNeighbors:
 
         inputs, _outputs = resolve_neighbor_port_items(doc, RECIPES, constructor)
 
-        assert inputs == {IRON_ROD}
+        assert inputs == [{IRON_ROD}]
 
     def test_sink_input_side(self) -> None:
         doc = Document()
@@ -177,7 +224,7 @@ class TestFixedIdentityNeighbors:
 
         _inputs, outputs = resolve_neighbor_port_items(doc, RECIPES, constructor)
 
-        assert outputs == {SCREW}
+        assert outputs == [{SCREW}]
 
 
 class TestPassthroughRecursion:
@@ -205,7 +252,7 @@ class TestPassthroughRecursion:
 
         inputs, _outputs = resolve_neighbor_port_items(doc, RECIPES, consumer)
 
-        assert inputs == {IRON_PLATE}
+        assert inputs == [{IRON_PLATE}]
 
 
 class TestNoConnections:
@@ -216,5 +263,5 @@ class TestNoConnections:
 
         inputs, outputs = resolve_neighbor_port_items(doc, RECIPES, lone)
 
-        assert inputs == set()
-        assert outputs == set()
+        assert inputs == []
+        assert outputs == []

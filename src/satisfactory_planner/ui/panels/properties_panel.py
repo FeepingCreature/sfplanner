@@ -337,8 +337,8 @@ class PropertiesPanel(QWidget):
         if building is not None:
             connected_inputs, connected_outputs = self._get_connected_port_items(building)
             if connected_inputs or connected_outputs:
-                consistent: list[tuple[str, str]] = []
-                inconsistent: list[tuple[str, str]] = []
+                consistent = []
+                inconsistent = []
                 for name, rid in recipe_items:
                     candidate_recipe = merged_recipes[RecipeId(rid)]
                     if self._recipe_matches_ports(
@@ -357,12 +357,16 @@ class PropertiesPanel(QWidget):
             [recipe_items], include_none=True, none_text="(No recipe)"
         )
 
-    def _get_connected_port_items(self, building: Building) -> tuple[set[ItemId], set[ItemId]]:
+    def _get_connected_port_items(
+        self, building: Building
+    ) -> tuple[list[set[ItemId]], list[set[ItemId]]]:
         """Get item IDs currently flowing into/out of a building's connected ports.
 
-        Returns (connected_input_items, connected_output_items). Only ports
-        that actually have a belt connected are considered; unconnected
-        ports impose no constraint (partial factory design is expected).
+        Returns (input_candidates, output_candidates): one entry per
+        connected port, each a set of items that port could be carrying
+        (disjunctive - the port carries exactly one, we just don't know
+        which). Unconnected ports impose no constraint (partial factory
+        design is expected) and are simply omitted.
 
         This resolves item identity via a pure Building/Belt graph walk
         (recipe port assignments, Source/Sink/Miner item_id, propagated
@@ -373,7 +377,7 @@ class PropertiesPanel(QWidget):
         fatal errors elsewhere.
         """
         if not self.canvas:
-            return set(), set()
+            return [], []
 
         from satisfactory_planner.core.port_item_resolution import resolve_neighbor_port_items
 
@@ -381,13 +385,18 @@ class PropertiesPanel(QWidget):
         return resolve_neighbor_port_items(scene, self.canvas.get_all_recipes(), building)
 
     def _recipe_matches_ports(
-        self, recipe: object, connected_inputs: set[ItemId], connected_outputs: set[ItemId]
+        self,
+        recipe: object,
+        connected_inputs: list[set[ItemId]],
+        connected_outputs: list[set[ItemId]],
     ) -> bool:
         """Check whether a recipe is consistent with the connected port items.
 
-        Direction-matched: every connected input item must be one of the
-        recipe's inputs, and every connected output item must be one of the
-        recipe's outputs (free port assignment means position doesn't matter).
+        Direction-matched: for every connected port, the recipe must have at
+        least one item in common with that port's candidate set (the port
+        will carry exactly one of its candidates - we just don't know which
+        - so a non-empty intersection means the recipe *could* satisfy it).
+        Free port assignment means position doesn't matter, only item sets.
         """
         from satisfactory_planner.core.models import Recipe
 
@@ -396,7 +405,9 @@ class PropertiesPanel(QWidget):
 
         recipe_inputs = {inp.item_id for inp in recipe.inputs}
         recipe_outputs = {out.item_id for out in recipe.outputs}
-        return connected_inputs <= recipe_inputs and connected_outputs <= recipe_outputs
+        return all(candidates & recipe_inputs for candidates in connected_inputs) and all(
+            candidates & recipe_outputs for candidates in connected_outputs
+        )
 
     def refresh(self) -> None:
         """Re-display the current selection (e.g. after flows/connections change)."""
