@@ -2351,6 +2351,96 @@
       "streaming": true,
       "actual_cost": 0.0286794,
       "generation_id": "gen-1784907841-ktw1srJfLJfRNfEIhFgq"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784908465886.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784908465886.json",
+      "timestamp": 1784908465.888492,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.208474,
+      "generation_id": "gen-1784908466-xi6EVATTEJk6hQGRYs4K"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784908474142.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784908474142.json",
+      "timestamp": 1784908474.165848,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.0264446,
+      "generation_id": "gen-1784908474-35rdzEHtHKhiOca1Y2Mw"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784908478301.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784908478301.json",
+      "timestamp": 1784908478.313572,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.026914,
+      "generation_id": "gen-1784908478-KRwTBzHOeXv931KsYczA"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784908483176.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784908483176.json",
+      "timestamp": 1784908483.1889515,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.0409774,
+      "generation_id": "gen-1784908483-JbDrxEGKH1CkwcBV3kpb"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784908489059.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784908489059.json",
+      "timestamp": 1784908489.10643,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.0305876,
+      "generation_id": "gen-1784908489-PiIFTk3oSyz4EIm9EXS2"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784908495431.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784908495431.json",
+      "timestamp": 1784908495.4488935,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.0272027,
+      "generation_id": "gen-1784908495-YB1bSDc0TxiZ7y3u5HgP"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784908498946.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784908498946.json",
+      "timestamp": 1784908498.9636478,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.0286386,
+      "generation_id": "gen-1784908499-vLRdTupAd2tgU87B2Bfo"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784908507080.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784908507080.json",
+      "timestamp": 1784908507.0932786,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.0358816,
+      "generation_id": "gen-1784908507-TnTttvUkGSG0D0cHUHZH"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784908527966.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784908527966.json",
+      "timestamp": 1784908527.9735339,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.2477265,
+      "generation_id": "gen-1784908528-mBaqIh7BNyFLj34vXbZS"
+    },
+    {
+      "request_file": "/tmp/forge_debug/request_stream_1784908536669.json",
+      "response_file": "/tmp/forge_debug/response_stream_1784908536669.json",
+      "timestamp": 1784908536.6970081,
+      "model": "~anthropic/claude-sonnet-latest",
+      "streaming": true,
+      "actual_cost": 0.0286055,
+      "generation_id": "gen-1784908536-7wAkfsXVTokZBLAwgrHz"
     }
   ],
   "messages": [
@@ -5664,6 +5754,288 @@
     {
       "role": "assistant",
       "content": "Both bugs are fixed and committed:\n\n1. **`086d5f523827`** \u2014 Miner is now suggested on backward drag (from Smelter's Iron Ore input, for example), and self-loop belt drops (dragging a building's output back onto its own body) are now rejected.\n2. **`61b7751033eb`** \u2014 Fixed the duplicate \"Miner: Iron Ore\" entry caused by the generic recipe-matching loop also matching a Miner-typed recipe entry independently of the explicit mineable-item check.\n\nFull test suite passes (93 main + 49 spike tests), mypy and ruff are clean. Let me know if the picker still shows anything unexpected, or if there's another bug to chase down."
+    },
+    {
+      "role": "system",
+      "content": "\u2705 Changes committed: 030c33ab",
+      "_ui_only": true
+    },
+    {
+      "role": "user",
+      "content": "I still have two miners. did we double-fix the bug? if we get miner via recipe, we don't need it via manually."
+    },
+    {
+      "role": "assistant",
+      "content": "You're right \u2014 that's a genuine double-fix. Actually, so `RECIPES` apparently has *two* Miner entries for Iron Ore (or the recipe loop match is somehow not fully excluded), giving one from a leftover path plus the explicit manual one. Since recipe-based matching already covers Miner if a Miner \"recipe\" exists, the manual mineable-item check I added is redundant duplication \u2014 I should remove the manual block entirely and rely solely on the recipe loop for Miner too (removing my `if recipe.building_type == BuildingType.MINER: continue` exclusion), OR keep only the manual approach and make sure Miner recipes aren't in `get_all_recipes()` at all. Let me check what's actually in the recipes dict for Miner to decide which one is the \"real\" source of truth.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_0138hzDLTqLBSqefjVGdywxb",
+          "type": "function",
+          "function": {
+            "name": "grep_context",
+            "arguments": "{\"pattern\": \"MINER\", \"file\": \"src/satisfactory_planner/core/persistence.py\", \"context_before\": 3, \"context_after\": 3}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_0138hzDLTqLBSqefjVGdywxb",
+      "content": "{\"success\": true, \"message\": \"Found 1 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/core/persistence.py:163 \\u2500\\u2500\\n     160 |     item_id = data.get(\\\"item_id\\\")\\n     161 |     recipe_id = data.get(\\\"recipe_id\\\")\\n     162 |     if item_id is None and building_type in (\\n>>>  163 |         BuildingType.MINER,\\n     164 |         BuildingType.SOURCE,\\n     165 |         BuildingType.SINK,\\n     166 |     ):\", \"total_matches\": 1, \"side_effects\": [\"ephemeral_result\"]}",
+      "_skip_display": true,
+      "_ephemeral": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me check the actual recipes.py / game_data to see if there's a duplicate Miner recipe, and also check `get_all_recipes()`.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_01KbnFYnPsRXniXD3otYtmdR",
+          "type": "function",
+          "function": {
+            "name": "grep_context",
+            "arguments": "{\"pattern\": \"\\\"building_type\\\":\\\\s*\\\"Miner\\\"|building_type.*MINER|Miner\", \"include_extensions\": [\".json\"], \"max_matches\": 20}"
+          }
+        },
+        {
+          "id": "toolu_vrtx_015VcwdNKCyNywbJwQTryaMB",
+          "type": "function",
+          "function": {
+            "name": "grep_context",
+            "arguments": "{\"pattern\": \"def get_all_recipes\", \"include_extensions\": [\".py\"]}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"context_after\": 3,\n  \"context_before\": 3,\n  \"file\": \"src/satisfactory_planner/core/persistence.py\",\n  \"pattern\": \"MINER\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 1 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/core/persistence.py:163 \\u2500\\u2500\\n     160 |     item_id = data.get(\\\"item_id\\\")\\n     161 |     recipe_id = data.get(\\\"recipe_id\\\")\\n     162 |     if item_id is None and building_type in (\\n>>>  163 |         BuildingType.MINER,\\n     164 |         BuildingType.SOURCE,\\n     165 |         BuildingType.SINK,\\n     166 |     ):\",\n  \"side_effects\": [\n    \"ephemeral_result\"\n  ],\n  \"success\": true,\n  \"total_matches\": 1\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01KbnFYnPsRXniXD3otYtmdR",
+      "content": "{\"success\": true, \"message\": \"No matches found for pattern: \\\"building_type\\\":\\\\s*\\\"Miner\\\"|building_type.*MINER|Miner\", \"snippets\": [], \"total_matches\": 0, \"side_effects\": [\"ephemeral_result\"]}",
+      "_skip_display": true,
+      "_ephemeral": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_015VcwdNKCyNywbJwQTryaMB",
+      "content": "{\"success\": true, \"message\": \"Found 1 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:1059 \\u2500\\u2500\\n    1056 | \\n    1057 |     # === Recipe and Item Lookups ===\\n    1058 | \\n>>> 1059 |     def get_all_recipes(self) -> dict[RecipeId, Recipe]:\\n    1060 |         \\\"\\\"\\\"Get all recipes: base recipes merged with document overrides.\\n    1061 | \\n    1062 |         This is the canonical way to get recipes - document recipes override base.\", \"total_matches\": 1, \"side_effects\": [\"ephemeral_result\"]}",
+      "_skip_display": true,
+      "_ephemeral": true
+    },
+    {
+      "role": "assistant",
+      "content": "No matches for \"Miner\" in JSON game data means there's no actual Miner recipe entry - so the recipe-matching loop shouldn't be duplicating it. Let me reconsider: maybe the duplicate isn't from the recipe loop, but from `needed_item_ids` itself containing a duplicate, or the mineable check firing twice.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_01JNDomKfTxPvYo7Qg5eZHBW",
+          "type": "function",
+          "function": {
+            "name": "grep_context",
+            "arguments": "{\"pattern\": \"is_mineable\", \"include_extensions\": [\".json\", \".py\"], \"max_matches\": 15}"
+          }
+        },
+        {
+          "id": "toolu_vrtx_01FgQCzC3SPUpAUQzb1VYw5t",
+          "type": "function",
+          "function": {
+            "name": "update_context",
+            "arguments": "{\"add\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\"]}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".json\"\n  ],\n  \"max_matches\": 20,\n  \"pattern\": \"\\\"building_type\\\":\\\\s*\\\"Miner\\\"|building_type.*MINER|Miner\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"No matches found for pattern: \\\"building_type\\\":\\\\s*\\\"Miner\\\"|building_type.*MINER|Miner\",\n  \"side_effects\": [\n    \"ephemeral_result\"\n  ],\n  \"snippets\": [],\n  \"success\": true,\n  \"total_matches\": 0\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".py\"\n  ],\n  \"pattern\": \"def get_all_recipes\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 1 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/factory_canvas.py:1059 \\u2500\\u2500\\n    1056 | \\n    1057 |     # === Recipe and Item Lookups ===\\n    1058 | \\n>>> 1059 |     def get_all_recipes(self) -> dict[RecipeId, Recipe]:\\n    1060 |         \\\"\\\"\\\"Get all recipes: base recipes merged with document overrides.\\n    1061 | \\n    1062 |         This is the canonical way to get recipes - document recipes override base.\",\n  \"side_effects\": [\n    \"ephemeral_result\"\n  ],\n  \"success\": true,\n  \"total_matches\": 1\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01JNDomKfTxPvYo7Qg5eZHBW",
+      "content": "{\"success\": true, \"message\": \"Found 15 matches (showing 15 of 16 total matches)\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/core/persistence.py:105 \\u2500\\u2500\\n     102 |     \\\"\\\"\\\"Load items from game_data.json.\\n     103 | \\n     104 |     Returns:\\n>>>  105 |         List of (item_id, display_name, is_fluid, is_mineable) tuples.\\n     106 |     \\\"\\\"\\\"\\n     107 |     try:\\n     108 |         data = _load_game_data()\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/persistence.py:114 \\u2500\\u2500\\n     111 |             item_id = ItemId(item_data[\\\"id\\\"])\\n     112 |             name = item_data.get(\\\"name\\\", item_data[\\\"id\\\"])\\n     113 |             is_fluid = item_data.get(\\\"is_fluid\\\", False)\\n>>>  114 |             is_mineable = item_data.get(\\\"is_mineable\\\", False)\\n     115 |             items.append((item_id, name, is_fluid, is_mineable))\\n     116 |         return items\\n     117 |     except (KeyError, TypeError):\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/persistence.py:115 \\u2500\\u2500\\n     112 |             name = item_data.get(\\\"name\\\", item_data[\\\"id\\\"])\\n     113 |             is_fluid = item_data.get(\\\"is_fluid\\\", False)\\n     114 |             is_mineable = item_data.get(\\\"is_mineable\\\", False)\\n>>>  115 |             items.append((item_id, name, is_fluid, is_mineable))\\n     116 |         return items\\n     117 |     except (KeyError, TypeError):\\n     118 |         return []\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:728 \\u2500\\u2500\\n     725 |     }\\n     726 |   ],\\n     727 |   \\\"items\\\": [\\n>>>  728 |     {\\\"id\\\": \\\"Iron Ore\\\", \\\"name\\\": \\\"Iron Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     729 |     {\\\"id\\\": \\\"Copper Ore\\\", \\\"name\\\": \\\"Copper Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:729 \\u2500\\u2500\\n     726 |   ],\\n     727 |   \\\"items\\\": [\\n     728 |     {\\\"id\\\": \\\"Iron Ore\\\", \\\"name\\\": \\\"Iron Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  729 |     {\\\"id\\\": \\\"Copper Ore\\\", \\\"name\\\": \\\"Copper Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:730 \\u2500\\u2500\\n     727 |   \\\"items\\\": [\\n     728 |     {\\\"id\\\": \\\"Iron Ore\\\", \\\"name\\\": \\\"Iron Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     729 |     {\\\"id\\\": \\\"Copper Ore\\\", \\\"name\\\": \\\"Copper Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:731 \\u2500\\u2500\\n     728 |     {\\\"id\\\": \\\"Iron Ore\\\", \\\"name\\\": \\\"Iron Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     729 |     {\\\"id\\\": \\\"Copper Ore\\\", \\\"name\\\": \\\"Copper Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:732 \\u2500\\u2500\\n     729 |     {\\\"id\\\": \\\"Copper Ore\\\", \\\"name\\\": \\\"Copper Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:733 \\u2500\\u2500\\n     730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     736 |     {\\\"id\\\": \\\"Uranium\\\", \\\"name\\\": \\\"Uranium\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:734 \\u2500\\u2500\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     736 |     {\\\"id\\\": \\\"Uranium\\\", \\\"name\\\": \\\"Uranium\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     737 |     {\\\"id\\\": \\\"SAM Ore\\\", \\\"name\\\": \\\"SAM Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:735 \\u2500\\u2500\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     736 |     {\\\"id\\\": \\\"Uranium\\\", \\\"name\\\": \\\"Uranium\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     737 |     {\\\"id\\\": \\\"SAM Ore\\\", \\\"name\\\": \\\"SAM Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     738 |     {\\\"id\\\": \\\"Reanimated SAM\\\", \\\"name\\\": \\\"Reanimated SAM\\\", \\\"is_fluid\\\": false},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:736 \\u2500\\u2500\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  736 |     {\\\"id\\\": \\\"Uranium\\\", \\\"name\\\": \\\"Uranium\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     737 |     {\\\"id\\\": \\\"SAM Ore\\\", \\\"name\\\": \\\"SAM Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     738 |     {\\\"id\\\": \\\"Reanimated SAM\\\", \\\"name\\\": \\\"Reanimated SAM\\\", \\\"is_fluid\\\": false},\\n     739 |     {\\\"id\\\": \\\"Iron Ingot\\\", \\\"name\\\": \\\"Iron Ingot\\\", \\\"is_fluid\\\": false},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:737 \\u2500\\u2500\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     736 |     {\\\"id\\\": \\\"Uranium\\\", \\\"name\\\": \\\"Uranium\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  737 |     {\\\"id\\\": \\\"SAM Ore\\\", \\\"name\\\": \\\"SAM Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     738 |     {\\\"id\\\": \\\"Reanimated SAM\\\", \\\"name\\\": \\\"Reanimated SAM\\\", \\\"is_fluid\\\": false},\\n     739 |     {\\\"id\\\": \\\"Iron Ingot\\\", \\\"name\\\": \\\"Iron Ingot\\\", \\\"is_fluid\\\": false},\\n     740 |     {\\\"id\\\": \\\"Copper Ingot\\\", \\\"name\\\": \\\"Copper Ingot\\\", \\\"is_fluid\\\": false},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:801 \\u2500\\u2500\\n     798 |     {\\\"id\\\": \\\"Polymer Resin\\\", \\\"name\\\": \\\"Polymer Resin\\\", \\\"is_fluid\\\": false},\\n     799 |     {\\\"id\\\": \\\"Petroleum Coke\\\", \\\"name\\\": \\\"Petroleum Coke\\\", \\\"is_fluid\\\": false},\\n     800 |     {\\\"id\\\": \\\"Aluminum Scrap\\\", \\\"name\\\": \\\"Aluminum Scrap\\\", \\\"is_fluid\\\": false},\\n>>>  801 |     {\\\"id\\\": \\\"Water\\\", \\\"name\\\": \\\"Water\\\", \\\"is_fluid\\\": true, \\\"is_mineable\\\": true},\\n     802 |     {\\\"id\\\": \\\"Crude Oil\\\", \\\"name\\\": \\\"Crude Oil\\\", \\\"is_fluid\\\": true, \\\"is_mineable\\\": true},\\n     803 |     {\\\"id\\\": \\\"Heavy Oil Residue\\\", \\\"name\\\": \\\"Heavy Oil Residue\\\", \\\"is_fluid\\\": true},\\n     804 |     {\\\"id\\\": \\\"Fuel\\\", \\\"name\\\": \\\"Fuel\\\", \\\"is_fluid\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:802 \\u2500\\u2500\\n     799 |     {\\\"id\\\": \\\"Petroleum Coke\\\", \\\"name\\\": \\\"Petroleum Coke\\\", \\\"is_fluid\\\": false},\\n     800 |     {\\\"id\\\": \\\"Aluminum Scrap\\\", \\\"name\\\": \\\"Aluminum Scrap\\\", \\\"is_fluid\\\": false},\\n     801 |     {\\\"id\\\": \\\"Water\\\", \\\"name\\\": \\\"Water\\\", \\\"is_fluid\\\": true, \\\"is_mineable\\\": true},\\n>>>  802 |     {\\\"id\\\": \\\"Crude Oil\\\", \\\"name\\\": \\\"Crude Oil\\\", \\\"is_fluid\\\": true, \\\"is_mineable\\\": true},\\n     803 |     {\\\"id\\\": \\\"Heavy Oil Residue\\\", \\\"name\\\": \\\"Heavy Oil Residue\\\", \\\"is_fluid\\\": true},\\n     804 |     {\\\"id\\\": \\\"Fuel\\\", \\\"name\\\": \\\"Fuel\\\", \\\"is_fluid\\\": true},\\n     805 |     {\\\"id\\\": \\\"Turbofuel\\\", \\\"name\\\": \\\"Turbofuel\\\", \\\"is_fluid\\\": true},\", \"total_matches\": 16, \"side_effects\": [\"ephemeral_result\"]}",
+      "_skip_display": true,
+      "_ephemeral": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01FgQCzC3SPUpAUQzb1VYw5t",
+      "content": "{\"success\": true, \"action\": \"update_context\", \"add\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\"], \"remove\": [], \"message\": \"Added 1 files, removed 0 files from context\"}",
+      "_skip_display": true,
+      "_ephemeral": false
+    },
+    {
+      "role": "assistant",
+      "content": "No actual Miner recipe exists in game data, so the recipe-matching loop can't be producing the duplicate. That means the two \"Miner: Iron Ore\" entries both come from my explicit block itself \u2014 most likely `needed_item_ids` contains \"Iron Ore\" twice, so the `for needed_id in needed_item_ids:` loop runs twice, each iteration appending both a Source and a Miner entry (giving 2x Source and 2x Miner \u2014 but you reported one Source, two Miners, meaning something else is off, possibly `_get_all_recipe_inputs` dedup isn't complete, or an earlier corrupted-edit remnant duplicated the whole mineable-check block).\n\nLet me look at the current exact file content to find the real duplication.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_01JxqviDHQEnpouD41WasFHh",
+          "type": "function",
+          "function": {
+            "name": "grep_context",
+            "arguments": "{\"pattern\": \"_item_id_is_mineable|Miner:|needed_item_ids\", \"file\": \"src/satisfactory_planner/ui/canvas/belt_connector.py\", \"context_before\": 2, \"context_after\": 2, \"max_matches\": 20}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"include_extensions\": [\n    \".json\",\n    \".py\"\n  ],\n  \"max_matches\": 15,\n  \"pattern\": \"is_mineable\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 15 matches (showing 15 of 16 total matches)\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/core/persistence.py:105 \\u2500\\u2500\\n     102 |     \\\"\\\"\\\"Load items from game_data.json.\\n     103 | \\n     104 |     Returns:\\n>>>  105 |         List of (item_id, display_name, is_fluid, is_mineable) tuples.\\n     106 |     \\\"\\\"\\\"\\n     107 |     try:\\n     108 |         data = _load_game_data()\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/persistence.py:114 \\u2500\\u2500\\n     111 |             item_id = ItemId(item_data[\\\"id\\\"])\\n     112 |             name = item_data.get(\\\"name\\\", item_data[\\\"id\\\"])\\n     113 |             is_fluid = item_data.get(\\\"is_fluid\\\", False)\\n>>>  114 |             is_mineable = item_data.get(\\\"is_mineable\\\", False)\\n     115 |             items.append((item_id, name, is_fluid, is_mineable))\\n     116 |         return items\\n     117 |     except (KeyError, TypeError):\\n\\n\\u2500\\u2500 src/satisfactory_planner/core/persistence.py:115 \\u2500\\u2500\\n     112 |             name = item_data.get(\\\"name\\\", item_data[\\\"id\\\"])\\n     113 |             is_fluid = item_data.get(\\\"is_fluid\\\", False)\\n     114 |             is_mineable = item_data.get(\\\"is_mineable\\\", False)\\n>>>  115 |             items.append((item_id, name, is_fluid, is_mineable))\\n     116 |         return items\\n     117 |     except (KeyError, TypeError):\\n     118 |         return []\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:728 \\u2500\\u2500\\n     725 |     }\\n     726 |   ],\\n     727 |   \\\"items\\\": [\\n>>>  728 |     {\\\"id\\\": \\\"Iron Ore\\\", \\\"name\\\": \\\"Iron Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     729 |     {\\\"id\\\": \\\"Copper Ore\\\", \\\"name\\\": \\\"Copper Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:729 \\u2500\\u2500\\n     726 |   ],\\n     727 |   \\\"items\\\": [\\n     728 |     {\\\"id\\\": \\\"Iron Ore\\\", \\\"name\\\": \\\"Iron Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  729 |     {\\\"id\\\": \\\"Copper Ore\\\", \\\"name\\\": \\\"Copper Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:730 \\u2500\\u2500\\n     727 |   \\\"items\\\": [\\n     728 |     {\\\"id\\\": \\\"Iron Ore\\\", \\\"name\\\": \\\"Iron Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     729 |     {\\\"id\\\": \\\"Copper Ore\\\", \\\"name\\\": \\\"Copper Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:731 \\u2500\\u2500\\n     728 |     {\\\"id\\\": \\\"Iron Ore\\\", \\\"name\\\": \\\"Iron Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     729 |     {\\\"id\\\": \\\"Copper Ore\\\", \\\"name\\\": \\\"Copper Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:732 \\u2500\\u2500\\n     729 |     {\\\"id\\\": \\\"Copper Ore\\\", \\\"name\\\": \\\"Copper Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:733 \\u2500\\u2500\\n     730 |     {\\\"id\\\": \\\"Limestone\\\", \\\"name\\\": \\\"Limestone\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     736 |     {\\\"id\\\": \\\"Uranium\\\", \\\"name\\\": \\\"Uranium\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:734 \\u2500\\u2500\\n     731 |     {\\\"id\\\": \\\"Coal\\\", \\\"name\\\": \\\"Coal\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     736 |     {\\\"id\\\": \\\"Uranium\\\", \\\"name\\\": \\\"Uranium\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     737 |     {\\\"id\\\": \\\"SAM Ore\\\", \\\"name\\\": \\\"SAM Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:735 \\u2500\\u2500\\n     732 |     {\\\"id\\\": \\\"Caterium Ore\\\", \\\"name\\\": \\\"Caterium Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     736 |     {\\\"id\\\": \\\"Uranium\\\", \\\"name\\\": \\\"Uranium\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     737 |     {\\\"id\\\": \\\"SAM Ore\\\", \\\"name\\\": \\\"SAM Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     738 |     {\\\"id\\\": \\\"Reanimated SAM\\\", \\\"name\\\": \\\"Reanimated SAM\\\", \\\"is_fluid\\\": false},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:736 \\u2500\\u2500\\n     733 |     {\\\"id\\\": \\\"Raw Quartz\\\", \\\"name\\\": \\\"Raw Quartz\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  736 |     {\\\"id\\\": \\\"Uranium\\\", \\\"name\\\": \\\"Uranium\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     737 |     {\\\"id\\\": \\\"SAM Ore\\\", \\\"name\\\": \\\"SAM Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     738 |     {\\\"id\\\": \\\"Reanimated SAM\\\", \\\"name\\\": \\\"Reanimated SAM\\\", \\\"is_fluid\\\": false},\\n     739 |     {\\\"id\\\": \\\"Iron Ingot\\\", \\\"name\\\": \\\"Iron Ingot\\\", \\\"is_fluid\\\": false},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:737 \\u2500\\u2500\\n     734 |     {\\\"id\\\": \\\"Sulfur\\\", \\\"name\\\": \\\"Sulfur\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     735 |     {\\\"id\\\": \\\"Bauxite\\\", \\\"name\\\": \\\"Bauxite\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     736 |     {\\\"id\\\": \\\"Uranium\\\", \\\"name\\\": \\\"Uranium\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n>>>  737 |     {\\\"id\\\": \\\"SAM Ore\\\", \\\"name\\\": \\\"SAM Ore\\\", \\\"is_fluid\\\": false, \\\"is_mineable\\\": true},\\n     738 |     {\\\"id\\\": \\\"Reanimated SAM\\\", \\\"name\\\": \\\"Reanimated SAM\\\", \\\"is_fluid\\\": false},\\n     739 |     {\\\"id\\\": \\\"Iron Ingot\\\", \\\"name\\\": \\\"Iron Ingot\\\", \\\"is_fluid\\\": false},\\n     740 |     {\\\"id\\\": \\\"Copper Ingot\\\", \\\"name\\\": \\\"Copper Ingot\\\", \\\"is_fluid\\\": false},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:801 \\u2500\\u2500\\n     798 |     {\\\"id\\\": \\\"Polymer Resin\\\", \\\"name\\\": \\\"Polymer Resin\\\", \\\"is_fluid\\\": false},\\n     799 |     {\\\"id\\\": \\\"Petroleum Coke\\\", \\\"name\\\": \\\"Petroleum Coke\\\", \\\"is_fluid\\\": false},\\n     800 |     {\\\"id\\\": \\\"Aluminum Scrap\\\", \\\"name\\\": \\\"Aluminum Scrap\\\", \\\"is_fluid\\\": false},\\n>>>  801 |     {\\\"id\\\": \\\"Water\\\", \\\"name\\\": \\\"Water\\\", \\\"is_fluid\\\": true, \\\"is_mineable\\\": true},\\n     802 |     {\\\"id\\\": \\\"Crude Oil\\\", \\\"name\\\": \\\"Crude Oil\\\", \\\"is_fluid\\\": true, \\\"is_mineable\\\": true},\\n     803 |     {\\\"id\\\": \\\"Heavy Oil Residue\\\", \\\"name\\\": \\\"Heavy Oil Residue\\\", \\\"is_fluid\\\": true},\\n     804 |     {\\\"id\\\": \\\"Fuel\\\", \\\"name\\\": \\\"Fuel\\\", \\\"is_fluid\\\": true},\\n\\n\\u2500\\u2500 src/satisfactory_planner/data/game_data.json:802 \\u2500\\u2500\\n     799 |     {\\\"id\\\": \\\"Petroleum Coke\\\", \\\"name\\\": \\\"Petroleum Coke\\\", \\\"is_fluid\\\": false},\\n     800 |     {\\\"id\\\": \\\"Aluminum Scrap\\\", \\\"name\\\": \\\"Aluminum Scrap\\\", \\\"is_fluid\\\": false},\\n     801 |     {\\\"id\\\": \\\"Water\\\", \\\"name\\\": \\\"Water\\\", \\\"is_fluid\\\": true, \\\"is_mineable\\\": true},\\n>>>  802 |     {\\\"id\\\": \\\"Crude Oil\\\", \\\"name\\\": \\\"Crude Oil\\\", \\\"is_fluid\\\": true, \\\"is_mineable\\\": true},\\n     803 |     {\\\"id\\\": \\\"Heavy Oil Residue\\\", \\\"name\\\": \\\"Heavy Oil Residue\\\", \\\"is_fluid\\\": true},\\n     804 |     {\\\"id\\\": \\\"Fuel\\\", \\\"name\\\": \\\"Fuel\\\", \\\"is_fluid\\\": true},\\n     805 |     {\\\"id\\\": \\\"Turbofuel\\\", \\\"name\\\": \\\"Turbofuel\\\", \\\"is_fluid\\\": true},\",\n  \"side_effects\": [\n    \"ephemeral_result\"\n  ],\n  \"success\": true,\n  \"total_matches\": 16\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01JxqviDHQEnpouD41WasFHh",
+      "content": "{\"success\": true, \"message\": \"Found 7 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:622 \\u2500\\u2500\\n     620 | \\n     621 |         # Get all items needed by the recipe (Satisfactory allows any port ordering)\\n>>>  622 |         needed_item_ids = self._get_all_recipe_inputs(building)\\n     623 | \\n     624 |         if needed_item_ids:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:624 \\u2500\\u2500\\n     622 |         needed_item_ids = self._get_all_recipe_inputs(building)\\n     623 | \\n>>>  624 |         if needed_item_ids:\\n     625 |             # Find recipes that produce these items. Miner is excluded here even\\n     626 |             # though it may have a synthetic \\\"recipe\\\" entry, because Miner has no\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:634 \\u2500\\u2500\\n     632 |                     continue\\n     633 |                 for i, out in enumerate(recipe.outputs):\\n>>>  634 |                     if out.item_id in needed_item_ids:\\n     635 |                         options.append(\\n     636 |                             BuildingOption(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:646 \\u2500\\u2500\\n     644 | \\n     645 |             # Offer Source for each needed item (we can't know which port the belt is for)\\n>>>  646 |             for needed_id in needed_item_ids:\\n     647 |                 item_name = self._item_id_to_name(needed_id)\\n     648 |                 options.append(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:658 \\u2500\\u2500\\n     656 |                 )\\n     657 |                 # Also offer a Miner if the needed item is a mineable raw resource\\n>>>  658 |                 if self._item_id_is_mineable(needed_id):\\n     659 |                     options.append(\\n     660 |                         BuildingOption(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:664 \\u2500\\u2500\\n     662 |                             recipe=None,\\n     663 |                             port_index=0,\\n>>>  664 |                             display_name=f\\\"Miner: {item_name or needed_id}\\\",\\n     665 |                             item_id=needed_id,\\n     666 |                         )\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:807 \\u2500\\u2500\\n     805 |         return None\\n     806 | \\n>>>  807 |     def _item_id_is_mineable(self, item_id: ItemId) -> bool:\\n     808 |         \\\"\\\"\\\"Return True if the item is a mineable raw resource (extractable by a Miner).\\\"\\\"\\\"\\n     809 |         from satisfactory_planner.core import load_items\", \"total_matches\": 7, \"side_effects\": [\"ephemeral_result\"]}",
+      "_skip_display": true,
+      "_ephemeral": true
+    },
+    {
+      "role": "assistant",
+      "content": "The file itself only has ONE Miner block (lines 646-666, inside `if needed_item_ids:`), not two. So the duplication isn't in this file's static structure \u2014 it must be that `needed_item_ids` contains \"Iron Ore\" **twice**, causing the `for needed_id in needed_item_ids:` loop to iterate twice, each time appending one Source + one Miner. That matches \"two Source, two Miner\" \u2014 but you said one Source, two Miner. Let me check `_get_all_recipe_inputs` for the dedup logic, and also reconsider: maybe you're right that this is architecturally redundant anyway. Let's simplify: since Miner never has a real recipe entry, the cleanest fix is to drop the redundant `BuildingType.MINER` exclusion in the recipe loop (since it can never match) and instead directly investigate why the manual block fires twice.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_01RP8gtCPRMm3k6UMceqAENj",
+          "type": "function",
+          "function": {
+            "name": "grep_context",
+            "arguments": "{\"pattern\": \"def _get_all_recipe_inputs\", \"file\": \"src/satisfactory_planner/ui/canvas/belt_connector.py\", \"context_after\": 20}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"context_after\": 2,\n  \"context_before\": 2,\n  \"file\": \"src/satisfactory_planner/ui/canvas/belt_connector.py\",\n  \"max_matches\": 20,\n  \"pattern\": \"_item_id_is_mineable|Miner:|needed_item_ids\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 7 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:622 \\u2500\\u2500\\n     620 | \\n     621 |         # Get all items needed by the recipe (Satisfactory allows any port ordering)\\n>>>  622 |         needed_item_ids = self._get_all_recipe_inputs(building)\\n     623 | \\n     624 |         if needed_item_ids:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:624 \\u2500\\u2500\\n     622 |         needed_item_ids = self._get_all_recipe_inputs(building)\\n     623 | \\n>>>  624 |         if needed_item_ids:\\n     625 |             # Find recipes that produce these items. Miner is excluded here even\\n     626 |             # though it may have a synthetic \\\"recipe\\\" entry, because Miner has no\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:634 \\u2500\\u2500\\n     632 |                     continue\\n     633 |                 for i, out in enumerate(recipe.outputs):\\n>>>  634 |                     if out.item_id in needed_item_ids:\\n     635 |                         options.append(\\n     636 |                             BuildingOption(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:646 \\u2500\\u2500\\n     644 | \\n     645 |             # Offer Source for each needed item (we can't know which port the belt is for)\\n>>>  646 |             for needed_id in needed_item_ids:\\n     647 |                 item_name = self._item_id_to_name(needed_id)\\n     648 |                 options.append(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:658 \\u2500\\u2500\\n     656 |                 )\\n     657 |                 # Also offer a Miner if the needed item is a mineable raw resource\\n>>>  658 |                 if self._item_id_is_mineable(needed_id):\\n     659 |                     options.append(\\n     660 |                         BuildingOption(\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:664 \\u2500\\u2500\\n     662 |                             recipe=None,\\n     663 |                             port_index=0,\\n>>>  664 |                             display_name=f\\\"Miner: {item_name or needed_id}\\\",\\n     665 |                             item_id=needed_id,\\n     666 |                         )\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:807 \\u2500\\u2500\\n     805 |         return None\\n     806 | \\n>>>  807 |     def _item_id_is_mineable(self, item_id: ItemId) -> bool:\\n     808 |         \\\"\\\"\\\"Return True if the item is a mineable raw resource (extractable by a Miner).\\\"\\\"\\\"\\n     809 |         from satisfactory_planner.core import load_items\",\n  \"side_effects\": [\n    \"ephemeral_result\"\n  ],\n  \"success\": true,\n  \"total_matches\": 7\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01RP8gtCPRMm3k6UMceqAENj",
+      "content": "{\"success\": true, \"message\": \"Found 1 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:703 \\u2500\\u2500\\n     700 | \\n     701 |         return options\\n     702 | \\n>>>  703 |     def _get_all_recipe_inputs(self, building: Building) -> list[ItemId]:\\n     704 |         \\\"\\\"\\\"Get all unique item IDs needed by a building's recipe that aren't already supplied.\\n     705 | \\n     706 |         Satisfactory allows any belt ordering on inputs, so we return\\n     707 |         all items the recipe needs, not per-port items. We filter out\\n     708 |         items that already have incoming flow according to the flow solver.\\n     709 |         \\\"\\\"\\\"\\n     710 |         if not building.recipe_id:\\n     711 |             return []\\n     712 | \\n     713 |         recipe = self.canvas.get_recipe(building.recipe_id)\\n     714 |         if not recipe:\\n     715 |             return []\\n     716 | \\n     717 |         # Get items already being supplied via flow solver\\n     718 |         already_supplied = self._get_supplied_items(building.id)\\n     719 | \\n     720 |         # Return unique item IDs from all inputs, excluding already-supplied ones\\n     721 |         seen: set[ItemId] = set()\\n     722 |         result: list[ItemId] = []\\n     723 |         for inp in recipe.inputs:\", \"total_matches\": 1, \"side_effects\": [\"ephemeral_result\"]}",
+      "_skip_display": true,
+      "_ephemeral": true
+    },
+    {
+      "role": "assistant",
+      "content": "Let me trace `_get_all_recipe_inputs` more thoroughly to find the actual duplicate source, since the dedup `seen` set should prevent duplicate item_ids in `needed_item_ids` itself.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_01CvdXRtGTuG5oejwPerZJ72",
+          "type": "function",
+          "function": {
+            "name": "get_lines",
+            "arguments": "{\"filepath\": \"src/satisfactory_planner/ui/canvas/belt_connector.py\", \"line\": 720, \"context\": 15}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"context_after\": 20,\n  \"file\": \"src/satisfactory_planner/ui/canvas/belt_connector.py\",\n  \"pattern\": \"def _get_all_recipe_inputs\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 1 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:703 \\u2500\\u2500\\n     700 | \\n     701 |         return options\\n     702 | \\n>>>  703 |     def _get_all_recipe_inputs(self, building: Building) -> list[ItemId]:\\n     704 |         \\\"\\\"\\\"Get all unique item IDs needed by a building's recipe that aren't already supplied.\\n     705 | \\n     706 |         Satisfactory allows any belt ordering on inputs, so we return\\n     707 |         all items the recipe needs, not per-port items. We filter out\\n     708 |         items that already have incoming flow according to the flow solver.\\n     709 |         \\\"\\\"\\\"\\n     710 |         if not building.recipe_id:\\n     711 |             return []\\n     712 | \\n     713 |         recipe = self.canvas.get_recipe(building.recipe_id)\\n     714 |         if not recipe:\\n     715 |             return []\\n     716 | \\n     717 |         # Get items already being supplied via flow solver\\n     718 |         already_supplied = self._get_supplied_items(building.id)\\n     719 | \\n     720 |         # Return unique item IDs from all inputs, excluding already-supplied ones\\n     721 |         seen: set[ItemId] = set()\\n     722 |         result: list[ItemId] = []\\n     723 |         for inp in recipe.inputs:\",\n  \"side_effects\": [\n    \"ephemeral_result\"\n  ],\n  \"success\": true,\n  \"total_matches\": 1\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01CvdXRtGTuG5oejwPerZJ72",
+      "content": "{\"success\": true, \"filepath\": \"src/satisfactory_planner/ui/canvas/belt_connector.py\", \"target_line\": 720, \"range\": \"705-735\", \"total_lines\": 898, \"content\": \"     705 | \\n     706 |         Satisfactory allows any belt ordering on inputs, so we return\\n     707 |         all items the recipe needs, not per-port items. We filter out\\n     708 |         items that already have incoming flow according to the flow solver.\\n     709 |         \\\"\\\"\\\"\\n     710 |         if not building.recipe_id:\\n     711 |             return []\\n     712 | \\n     713 |         recipe = self.canvas.get_recipe(building.recipe_id)\\n     714 |         if not recipe:\\n     715 |             return []\\n     716 | \\n     717 |         # Get items already being supplied via flow solver\\n     718 |         already_supplied = self._get_supplied_items(building.id)\\n     719 | \\n>>>  720 |         # Return unique item IDs from all inputs, excluding already-supplied ones\\n     721 |         seen: set[ItemId] = set()\\n     722 |         result: list[ItemId] = []\\n     723 |         for inp in recipe.inputs:\\n     724 |             if inp.item_id not in seen and inp.item_id not in already_supplied:\\n     725 |                 seen.add(inp.item_id)\\n     726 |                 result.append(inp.item_id)\\n     727 |         return result\\n     728 | \\n     729 |     def _get_supplied_items(self, building_id: str) -> set[ItemId]:\\n     730 |         \\\"\\\"\\\"Get item IDs already being supplied to a building's inputs.\\n     731 | \\n     732 |         Uses the flow solver graph to find incoming edges to this building's node.\\n     733 |         \\\"\\\"\\\"\\n     734 |         supplied: set[ItemId] = set()\\n     735 | \", \"side_effects\": [\"ephemeral_result\"]}",
+      "_skip_display": true,
+      "_ephemeral": true
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at `_get_all_recipe_inputs`, the `seen` dedup should prevent `needed_item_ids` from containing duplicate items. Since that logic looks correct, the true issue must be architectural, not a leftover duplicate bug: my manual \"mineable\" block is redundant *by design* per your point, and it's simpler/more robust to just remove it and trust a single unambiguous code path.\n\nLet me reconsider from scratch: the cleanest fix per your suggestion is to **not** special-case Miner via `_item_id_is_mineable` at all, and instead always offer Miner for backward-drag needed items directly (same as Source), removing the separate mineable check that might be firing in a duplicated way. Let me view the actual current option-building block once more, precisely, to find where a second \"Miner: Iron Ore\" could come from \u2014 possibly `already_supplied`/flow-solver returning stale results causing `_get_backward_options` to be called twice and appended to a shared `options` list, or the menu rendering the same action twice via both `recipe_options` bucket and `source_sink_options` bucket (since a `BuildingOption` with `recipe=None` but `building_type=MINER` \u2014 check the bucket filters).",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_01BV3fkMYBUcAhuG8JqA3JVT",
+          "type": "function",
+          "function": {
+            "name": "grep_context",
+            "arguments": "{\"pattern\": \"recipe_options = |no_recipe_options = |source_sink_options = |logistics_options = \\\">\\n<parameter name=\\\"file\\\">src/satisfactory_planner/ui/canvas/belt_connector.py\", \"context_before\": 2, \"context_after\": 15}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01BV3fkMYBUcAhuG8JqA3JVT",
+      "content": "{\"success\": true, \"message\": \"Found 3 matches\", \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:445 \\u2500\\u2500\\n     443 |             o for o in options if o.building_type in (BuildingType.SPLITTER, BuildingType.MERGER)\\n     444 |         ]\\n>>>  445 |         source_sink_options = [\\n     446 |             o\\n     447 |             for o in options\\n     448 |             if o.building_type in (BuildingType.SOURCE, BuildingType.SINK, BuildingType.MINER)\\n     449 |         ]\\n     450 |         recipe_options = [o for o in options if o.recipe is not None]\\n     451 |         no_recipe_options = [\\n     452 |             o\\n     453 |             for o in options\\n     454 |             if o.recipe is None\\n     455 |             and o.building_type\\n     456 |             not in (\\n     457 |                 BuildingType.SPLITTER,\\n     458 |                 BuildingType.MERGER,\\n     459 |                 BuildingType.SOURCE,\\n     460 |                 BuildingType.SINK,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:450 \\u2500\\u2500\\n     448 |             if o.building_type in (BuildingType.SOURCE, BuildingType.SINK, BuildingType.MINER)\\n     449 |         ]\\n>>>  450 |         recipe_options = [o for o in options if o.recipe is not None]\\n     451 |         no_recipe_options = [\\n     452 |             o\\n     453 |             for o in options\\n     454 |             if o.recipe is None\\n     455 |             and o.building_type\\n     456 |             not in (\\n     457 |                 BuildingType.SPLITTER,\\n     458 |                 BuildingType.MERGER,\\n     459 |                 BuildingType.SOURCE,\\n     460 |                 BuildingType.SINK,\\n     461 |             )\\n     462 |         ]\\n     463 | \\n     464 |         # Order: Splitter/Merger, separator, recipes, separator, no-recipe buildings, Source/Sink\\n     465 |         for option in logistics_options:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:451 \\u2500\\u2500\\n     449 |         ]\\n     450 |         recipe_options = [o for o in options if o.recipe is not None]\\n>>>  451 |         no_recipe_options = [\\n     452 |             o\\n     453 |             for o in options\\n     454 |             if o.recipe is None\\n     455 |             and o.building_type\\n     456 |             not in (\\n     457 |                 BuildingType.SPLITTER,\\n     458 |                 BuildingType.MERGER,\\n     459 |                 BuildingType.SOURCE,\\n     460 |                 BuildingType.SINK,\\n     461 |             )\\n     462 |         ]\\n     463 | \\n     464 |         # Order: Splitter/Merger, separator, recipes, separator, no-recipe buildings, Source/Sink\\n     465 |         for option in logistics_options:\\n     466 |             action = menu.addAction(option.display_name)\", \"total_matches\": 3, \"side_effects\": [\"ephemeral_result\"]}",
+      "_skip_display": true,
+      "_ephemeral": true
+    },
+    {
+      "role": "assistant",
+      "content": "Found it. Looking at the bucket filters: `source_sink_options` includes `BuildingType.MINER` entries, and `no_recipe_options` explicitly excludes SPLITTER/MERGER/SOURCE/SINK \u2014 but **not MINER**. Since my manual Miner option has `recipe=None` and `building_type=BuildingType.MINER`, it matches `no_recipe_options`'s filter (recipe is None, and MINER isn't in the exclusion list) **and** `source_sink_options`'s filter. It gets added to the menu twice - once in each bucket's loop.\n\nSimplifying per your suggestion: drop the redundant recipe-loop Miner exclusion (it can never match anyway since there's no Miner recipe) and fix the actual bug \u2014 add `BuildingType.MINER` to the `no_recipe_options` exclusion list so it isn't double-bucketed.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_01SSYMKwAzqhHvEk56HWgFEv",
+          "type": "function",
+          "function": {
+            "name": "edit",
+            "arguments": "{\"edits\": [{\"filepath\": \"src/satisfactory_planner/ui/canvas/belt_connector.py\", \"search\": \"        no_recipe_options = [\\n            o\\n            for o in options\\n            if o.recipe is None\\n            and o.building_type\\n            not in (\\n                BuildingType.SPLITTER,\\n                BuildingType.MERGER,\\n                BuildingType.SOURCE,\\n                BuildingType.SINK,\\n            )\\n        ]\", \"replace\": \"        no_recipe_options = [\\n            o\\n            for o in options\\n            if o.recipe is None\\n            and o.building_type\\n            not in (\\n                BuildingType.SPLITTER,\\n                BuildingType.MERGER,\\n                BuildingType.SOURCE,\\n                BuildingType.SINK,\\n                BuildingType.MINER,\\n            )\\n        ]\"}, {\"filepath\": \"src/satisfactory_planner/ui/canvas/belt_connector.py\", \"search\": \"        if needed_item_ids:\\n            # Find recipes that produce these items. Miner is excluded here even\\n            # though it may have a synthetic \\\"recipe\\\" entry, because Miner has no\\n            # real recipe/item selection UI - it's offered explicitly below via\\n            # the mineable-item check, keyed off the raw item id.\\n            recipes = self.canvas.get_all_recipes()\\n            for recipe in recipes.values():\\n                if recipe.building_type == BuildingType.MINER:\\n                    continue\\n                for i, out in enumerate(recipe.outputs):\", \"replace\": \"        if needed_item_ids:\\n            # Find recipes that produce these items. Miner has no actual recipe\\n            # entries (it's an item-identity-only building like Source), so it's\\n            # offered separately below via the mineable-item check, keyed off\\n            # the raw item id rather than a recipe.\\n            recipes = self.canvas.get_all_recipes()\\n            for recipe in recipes.values():\\n                for i, out in enumerate(recipe.outputs):\"}]}"
+          }
+        },
+        {
+          "id": "toolu_vrtx_01GdtCP7bztXL5jsh5XzrAgk",
+          "type": "function",
+          "function": {
+            "name": "run_tests",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "system",
+      "content": "\ud83d\udd27 **Tool call:** `grep_context`\n```json\n{\n  \"context_after\": 15,\n  \"context_before\": 2,\n  \"pattern\": \"recipe_options = |no_recipe_options = |source_sink_options = |logistics_options = \\\">\\n<parameter name=\\\"file\\\">src/satisfactory_planner/ui/canvas/belt_connector.py\"\n}\n```\n**Result:**\n```json\n{\n  \"message\": \"Found 3 matches\",\n  \"output\": \"\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:445 \\u2500\\u2500\\n     443 |             o for o in options if o.building_type in (BuildingType.SPLITTER, BuildingType.MERGER)\\n     444 |         ]\\n>>>  445 |         source_sink_options = [\\n     446 |             o\\n     447 |             for o in options\\n     448 |             if o.building_type in (BuildingType.SOURCE, BuildingType.SINK, BuildingType.MINER)\\n     449 |         ]\\n     450 |         recipe_options = [o for o in options if o.recipe is not None]\\n     451 |         no_recipe_options = [\\n     452 |             o\\n     453 |             for o in options\\n     454 |             if o.recipe is None\\n     455 |             and o.building_type\\n     456 |             not in (\\n     457 |                 BuildingType.SPLITTER,\\n     458 |                 BuildingType.MERGER,\\n     459 |                 BuildingType.SOURCE,\\n     460 |                 BuildingType.SINK,\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:450 \\u2500\\u2500\\n     448 |             if o.building_type in (BuildingType.SOURCE, BuildingType.SINK, BuildingType.MINER)\\n     449 |         ]\\n>>>  450 |         recipe_options = [o for o in options if o.recipe is not None]\\n     451 |         no_recipe_options = [\\n     452 |             o\\n     453 |             for o in options\\n     454 |             if o.recipe is None\\n     455 |             and o.building_type\\n     456 |             not in (\\n     457 |                 BuildingType.SPLITTER,\\n     458 |                 BuildingType.MERGER,\\n     459 |                 BuildingType.SOURCE,\\n     460 |                 BuildingType.SINK,\\n     461 |             )\\n     462 |         ]\\n     463 | \\n     464 |         # Order: Splitter/Merger, separator, recipes, separator, no-recipe buildings, Source/Sink\\n     465 |         for option in logistics_options:\\n\\n\\u2500\\u2500 src/satisfactory_planner/ui/canvas/belt_connector.py:451 \\u2500\\u2500\\n     449 |         ]\\n     450 |         recipe_options = [o for o in options if o.recipe is not None]\\n>>>  451 |         no_recipe_options = [\\n     452 |             o\\n     453 |             for o in options\\n     454 |             if o.recipe is None\\n     455 |             and o.building_type\\n     456 |             not in (\\n     457 |                 BuildingType.SPLITTER,\\n     458 |                 BuildingType.MERGER,\\n     459 |                 BuildingType.SOURCE,\\n     460 |                 BuildingType.SINK,\\n     461 |             )\\n     462 |         ]\\n     463 | \\n     464 |         # Order: Splitter/Merger, separator, recipes, separator, no-recipe buildings, Source/Sink\\n     465 |         for option in logistics_options:\\n     466 |             action = menu.addAction(option.display_name)\",\n  \"side_effects\": [\n    \"ephemeral_result\"\n  ],\n  \"success\": true,\n  \"total_matches\": 3\n}\n```",
+      "_ui_only": true
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01SSYMKwAzqhHvEk56HWgFEv",
+      "content": "{\"success\": true, \"edits_applied\": 2, \"modified_files\": [\"src/satisfactory_planner/ui/canvas/belt_connector.py\"], \"side_effects\": [\"files_modified\"]}",
+      "_skip_display": true,
+      "_ephemeral": false
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_01GdtCP7bztXL5jsh5XzrAgk",
+      "content": "{\"success\": true, \"passed\": false, \"test_command\": \"make test\", \"output\": \"ruff check --fix src/ tests/ spikes/\\nAll checks passed!\\nruff format src/ tests/ spikes/\\n89 files left unchanged\\nruff check src/ tests/ spikes/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 55 source files\\ncd spikes/flowsim && mypy . --config-file mypy.ini\\nSuccess: no issues found in 18 source files\\npytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.11.1 -- Qt runtime 6.11.1 -- Qt compiled 6.11.1\\nrootdir: /tmp/forge_vfs_0wl1ppp4\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, typeguard-4.4.4, anyio-4.11.0\\ncollected 93 items\\n\\ntests/test_core/test_bin_packing.py ........                             [  8%]\\ntests/test_core/test_commands.py .........                               [ 18%]\\ntests/test_core/test_constraint_optimizer.py ................            [ 35%]\\ntests/test_core/test_flow_solver.py ..................                   [ 54%]\\ntests/test_core/test_models.py .........                                 [ 64%]\\ntests/test_core/test_port_item_resolution.py .........                   [ 74%]\\ntests/test_core/test_room_commands.py ..............                     [ 89%]\\ntests/test_smoke.py ..                                                   [ 91%]\\ntests/test_ui/test_canvas.py ........                                    [100%]\\n\\n============================== 93 passed in 0.59s ==============================\\ncd spikes/flowsim && pytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.11.1 -- Qt runtime 6.11.1 -- Qt compiled 6.11.1\\nrootdir: /tmp/forge_vfs_0wl1ppp4\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, typeguard-4.4.4, anyio-4.11.0\\ncollected 49 items\\n\\ntests/test_builder.py ...................                                [ 38%]\\ntests/test_dangling.py .....                                             [ 48%]\\ntests/test_info.py ..                                                    [ 53%]\\ntests/test_overcapacity.py ....                                          [ 61%]\\ntests/test_solver.py ..............                                      [ 89%]\\ntests/test_underflow.py .....                                            [100%]\\n\\n============================== 49 passed in 0.17s ==============================\\n\", \"summary\": \"\\u2713 Tests passed (make test)\", \"display_output\": \"ruff check --fix src/ tests/ spikes/\\nAll checks passed!\\nruff format src/ tests/ spikes/\\n89 files left unchanged\\nruff check src/ tests/ spikes/\\nAll checks passed!\\nmypy src/\\nSuccess: no issues found in 55 source files\\ncd spikes/flowsim && mypy . --config-file mypy.ini\\nSuccess: no issues found in 18 source files\\npytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.11.1 -- Qt runtime 6.11.1 -- Qt compiled 6.11.1\\nrootdir: /tmp/forge_vfs_0wl1ppp4\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, typeguard-4.4.4, anyio-4.11.0\\ncollected 93 items\\n\\ntests/test_core/test_bin_packing.py ........                             [  8%]\\ntests/test_core/test_commands.py .........                               [ 18%]\\ntests/test_core/test_constraint_optimizer.py ................            [ 35%]\\ntests/test_core/test_flow_solver.py ..................                   [ 54%]\\ntests/test_core/test_models.py .........                                 [ 64%]\\ntests/test_core/test_port_item_resolution.py .........                   [ 74%]\\ntests/test_core/test_room_commands.py ..............                     [ 89%]\\ntests/test_smoke.py ..                                                   [ 91%]\\ntests/test_ui/test_canvas.py ........                                    [100%]\\n\\n============================== 93 passed in 0.59s ==============================\\ncd spikes/flowsim && pytest tests/ -q\\n============================= test session starts ==============================\\nplatform linux -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\\nPySide6 6.11.1 -- Qt runtime 6.11.1 -- Qt compiled 6.11.1\\nrootdir: /tmp/forge_vfs_0wl1ppp4\\nconfigfile: pyproject.toml\\nplugins: qt-4.5.0, typeguard-4.4.4, anyio-4.11.0\\ncollected 49 items\\n\\ntests/test_builder.py ...................                                [ 38%]\\ntests/test_dangling.py .....                                             [ 48%]\\ntests/test_info.py ..                                                    [ 53%]\\ntests/test_overcapacity.py ....                                          [ 61%]\\ntests/test_solver.py ..............                                      [ 89%]\\ntests/test_underflow.py .....                                            [100%]\\n\\n============================== 49 passed in 0.17s ==============================\\n\", \"side_effects\": [\"has_display_output\"]}",
+      "_skip_display": true,
+      "_ephemeral": false
+    },
+    {
+      "role": "assistant",
+      "content": "Both fixes are confirmed applied correctly, and tests/mypy/ruff all pass. The root cause was that the manual Miner option (`recipe=None`, `building_type=MINER`) matched both the `source_sink_options` bucket and the `no_recipe_options` bucket (which excluded SOURCE/SINK/SPLITTER/MERGER but not MINER), so it was rendered twice in the menu. Fixed by adding `BuildingType.MINER` to the `no_recipe_options` exclusion list, and cleaned up the now-pointless `if recipe.building_type == BuildingType.MINER: continue` guard in the recipe loop (since no Miner recipe entries actually exist in game data).\n\nLet me commit this fix.",
+      "tool_calls": [
+        {
+          "id": "toolu_vrtx_0161oAh5PN23sj924C5zSkbd",
+          "type": "function",
+          "function": {
+            "name": "commit",
+            "arguments": "{\"message\": \"Fix duplicate Miner menu entry in backward-drag building picker\\n\\nRoot cause: the manual \\\"Miner: X\\\" option (recipe=None, building_type=\\nMINER) matched two menu-bucket filters at once - source_sink_options\\n(which includes MINER) and no_recipe_options (which excluded SPLITTER/\\nMERGER/SOURCE/SINK but not MINER) - so show_building_picker rendered it\\ntwice: \\\"Miner: Iron Ore\\\", \\\"Source: Iron Ore\\\", \\\"Miner: Iron Ore\\\".\\n\\nFixed by adding BuildingType.MINER to the no_recipe_options exclusion\\nlist, so the option only appears once via source_sink_options. Also\\nremoved the now-pointless `if recipe.building_type == BuildingType.MINER:\\ncontinue` guard in the recipe-matching loop added in the prior commit -\\nit was defensive but unnecessary since no Miner recipe entries actually\\nexist in game_data.json (Miner is an item-identity-only building, same\\nas Source/Sink).\\n\\nVerified: full suite passes (93 main + 49 spike tests), mypy clean, ruff\\nclean.\\n\\nCo-authored-by: Forge AI (github.com/FeepingCreature/forge) <noreply@forge-ai.invalid>\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "toolu_vrtx_0161oAh5PN23sj924C5zSkbd",
+      "content": "{\"success\": true, \"message\": \"Committed: 1 file(s) modified/created\", \"commit\": \"5ac58059b98b\", \"side_effects\": [\"mid_turn_commit\"]}",
+      "_skip_display": true,
+      "_ephemeral": false
+    },
+    {
+      "role": "assistant",
+      "content": "Fixed and committed (`5ac58059b98b`). The duplicate \"Miner: Iron Ore\" entry is resolved \u2014 `BuildingType.MINER` is now correctly excluded from the `no_recipe_options` bucket, so the manual Miner option only appears once (via `source_sink_options`), alongside the redundant recipe-loop guard cleanup since no actual Miner recipes exist in the game data.\n\nAll three belt-drag fixes are now in place and verified:\n1. Miner is suggested on backward drag for mineable inputs (`086d5f523827`)\n2. Self-loop belt drops are blocked (`086d5f523827`)\n3. Duplicate Miner menu entries fixed (`61b7751033eb`, `5ac58059b98b`)\n\nFull test suite passes (93 main + 49 spike tests), mypy and ruff are clean throughout. Let me know if you spot anything else in the picker or elsewhere."
     }
   ],
   "parent_session": null,

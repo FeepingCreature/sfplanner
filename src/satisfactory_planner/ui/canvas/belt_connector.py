@@ -458,6 +458,7 @@ class BeltConnector:
                 BuildingType.MERGER,
                 BuildingType.SOURCE,
                 BuildingType.SINK,
+                BuildingType.MINER,
             )
         ]
 
@@ -622,14 +623,12 @@ class BeltConnector:
         needed_item_ids = self._get_all_recipe_inputs(building)
 
         if needed_item_ids:
-            # Find recipes that produce these items. Miner is excluded here even
-            # though it may have a synthetic "recipe" entry, because Miner has no
-            # real recipe/item selection UI - it's offered explicitly below via
-            # the mineable-item check, keyed off the raw item id.
+            # Find recipes that produce these items. Miner has no actual recipe
+            # entries (it's an item-identity-only building like Source), so it's
+            # offered separately below via the mineable-item check, keyed off
+            # the raw item id rather than a recipe.
             recipes = self.canvas.get_all_recipes()
             for recipe in recipes.values():
-                if recipe.building_type == BuildingType.MINER:
-                    continue
                 for i, out in enumerate(recipe.outputs):
                     if out.item_id in needed_item_ids:
                         options.append(
