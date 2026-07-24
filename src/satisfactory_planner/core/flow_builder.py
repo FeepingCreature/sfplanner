@@ -671,19 +671,8 @@ def _build_scene(
                 )
             )
 
-    # NOTE: we deliberately do NOT bail out here even if errors were found.
-    # Callers that only care about item identity (e.g. the properties panel's
-    # recipe-consistency check) need a best-effort graph with as much item
-    # propagation as possible, even when the document has fatal errors
-    # (missing recipes, disconnected belts, etc). build_flow_graph() still
-    # reports these errors and callers that need a *valid* simulation graph
-    # must check BuildResult.success before using the graph for solving.
-    disconnected_belt_ids = {
-        e.item_key.element_id
-        for e in errors
-        if e.error_type == FatalErrorType.DISCONNECTED_BELT
-        and e.item_key.placement_id == placement_id
-    }
+    if errors:
+        return
 
     # Phase 3: Build nodes
     for building_id, building in scene.buildings.items():
@@ -703,10 +692,6 @@ def _build_scene(
 
     # Phase 4: Build edges and check item type compatibility
     for belt_id, belt in scene.belts.items():
-        if belt_id in disconnected_belt_ids:
-            # Already reported as a disconnected belt error; can't build an
-            # edge without both endpoints.
-            continue
         assert belt.source_building_id is not None
         assert belt.dest_building_id is not None
 

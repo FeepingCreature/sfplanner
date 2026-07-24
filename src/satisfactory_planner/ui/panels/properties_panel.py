@@ -364,45 +364,21 @@ class PropertiesPanel(QWidget):
         that actually have a belt connected are considered; unconnected
         ports impose no constraint (partial factory design is expected).
 
-        This resolves item identity via a best-effort flow graph build
+        This resolves item identity via a pure Building/Belt graph walk
         (recipe port assignments, Source/Sink/Miner item_id, propagated
-        through Splitters/Mergers), independent of whether the LP solver
-        can find a feasible solution - so it works even with no recipe set
-        yet or an inconsistent-but-connected factory.
+        through Splitters/Mergers/Ports) - no FlowGraph, no LP solve. The
+        building itself is always treated as if it had no recipe assigned,
+        so this gives a useful (if possibly locally-contradictory) answer
+        even before a recipe is picked, or when the wider document has
+        fatal errors elsewhere.
         """
-        connected_inputs: set[ItemId] = set()
-        connected_outputs: set[ItemId] = set()
-
         if not self.canvas:
-            return connected_inputs, connected_outputs
+            return set(), set()
 
-        from satisfactory_planner.core.flow_builder import build_flow_graph
-
-        build_result = build_flow_graph(self.document, self.canvas.get_all_recipes())
-        if build_result.graph is None:
-            return connected_inputs, connected_outputs
-
-        node = build_result.graph.nodes.get(self._make_item_key(building.id))
-        if node is None:
-            return connected_inputs, connected_outputs
+        from satisfactory_planner.core.port_item_resolution import resolve_neighbor_port_items
 
         scene = self._get_scene()
-
-        for i in range(building.num_inputs):
-            belt = scene.get_belt_at_port(building.id, i, is_output=False)
-            if belt and i < len(node.inputs):
-                input_item_name = node.inputs[i].item_name
-                if input_item_name:
-                    connected_inputs.add(ItemId(input_item_name))
-
-        for i in range(building.num_outputs):
-            belt = scene.get_belt_at_port(building.id, i, is_output=True)
-            if belt and i < len(node.outputs):
-                output_item_name = node.outputs[i].item_name
-                if output_item_name:
-                    connected_outputs.add(ItemId(output_item_name))
-
-        return connected_inputs, connected_outputs
+        return resolve_neighbor_port_items(scene, self.canvas.get_all_recipes(), building)
 
     def _recipe_matches_ports(
         self, recipe: object, connected_inputs: set[ItemId], connected_outputs: set[ItemId]

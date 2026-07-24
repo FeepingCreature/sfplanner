@@ -1,0 +1,179 @@
+"""Pure model-graph traversal for resolving item identity at a building's ports.
+
+This is deliberately independent of FlowGraph/flow_builder and the LP solver:
+it only walks Building/Belt/Scene data, so it can answer what item is
+probably flowing through a port even when the document has fatal errors,
+an inconsistent recipe assignment, or no recipe set at all on the building
+being inspected. This makes it cheap enough to call on every properties-panel
+refresh, and correct even in contradictory setups.
+
+Example of why a single shared graph doesn't work here: if a Smelter is set
+to Copper Ore and feeds a Constructor set to Iron Plate, there is no valid
+global resolution (recipe mismatch) - but the Constructor's dropdown should
+still show Copper-Ore-consuming recipes first, and the Smelter's dropdown
+should still show Copper-Ingot-consuming recipes first. Each focused
+building gets its own local resolution, computed as if that building itself
+had no recipe or item assigned - neighbors are resolved from their own fixed
+identity (Source/Sink/Miner item_id, or a recipe's port assignment) or, if
+they are a plain pass-through (Splitter/Merger/Port), by recursing further
+outward.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from satisfactory_planner.core.models import Building, BuildingType, ItemId
+
+if TYPE_CHECKING:
+    from satisfactory_planner.core.models import Recipe, RecipeId, Scene
+
+# Building types with no recipe of their own - item identity is purely
+# determined by whatever is connected, so we must look further.
+_PASSTHROUGH_TYPES = (
+    BuildingType.SPLITTER,
+    BuildingType.MERGER,
+    BuildingType.PORT_IN,
+    BuildingType.PORT_OUT,
+)
+
+
+def resolve_neighbor_port_items(
+    scene: Scene,
+    recipes: dict[RecipeId, Recipe],
+    building: Building,
+) -> tuple[set[ItemId], set[ItemId]]:
+    """Resolve item IDs flowing into/out of a building's connected ports.
+
+    Returns (input_items, output_items): the set of item IDs that could be
+    flowing into each connected input port, and out of each connected output
+    port, based purely on what's on the other end of each belt (recursing
+    through Splitters/Mergers/Ports as needed). The building itself is
+    always treated as if it had no recipe or item assigned - only neighbors
+    are resolved, so this works even before a recipe is chosen for it, and
+    even if the rest of the document has fatal errors elsewhere.
+
+    A port with multiple possible items (e.g. connected through a chain to a
+    recipe's input side, where port ordering is free) contributes all of
+    those candidates to the result set.
+    """
+    input_items: set[ItemId] = set()
+    output_items: set[ItemId] = set()
+
+    for i in range(building.num_inputs):
+        belt = scene.get_belt_at_port(building.id, i, is_output=False)
+        if belt is None:
+            continue
+        items = _resolve_source_items(
+            scene, recipes, belt.source_building_id, belt.source_port_index, set()
+        )
+        input_items |= items
+
+    for i in range(building.num_outputs):
+        belt = scene.get_belt_at_port(building.id, i, is_output=True)
+        if belt is None:
+            continue
+        items = _resolve_dest_items(
+            scene, recipes, belt.dest_building_id, belt.dest_port_index, set()
+        )
+        output_items |= items
+
+    return input_items, output_items
+
+
+def _resolve_source_items(
+    scene: Scene,
+    recipes: dict[RecipeId, Recipe],
+    building_id: str,
+    port_index: int,
+    visited: set[tuple[str, int, bool]],
+) -> set[ItemId]:
+    """Resolve the item(s) available at an output port (the source of a belt)."""
+    key = (building_id, port_index, True)
+    if key in visited:
+        return set()
+    visited.add(key)
+
+    neighbor = scene.buildings.get(building_id)
+    if neighbor is None:
+        return set()
+
+    if neighbor.building_type in (BuildingType.SOURCE, BuildingType.MINER):
+        return {neighbor.item_id} if neighbor.item_id else set()
+
+    if neighbor.building_type not in _PASSTHROUGH_TYPES:
+        if neighbor.recipe_id is None:
+            return set()
+        recipe = recipes.get(neighbor.recipe_id)
+        if recipe is None or port_index >= len(recipe.outputs):
+            return set()
+        return {recipe.outputs[port_index].item_id}
+
+    result: set[ItemId] = set()
+    for i in range(neighbor.num_inputs):
+        belt = scene.get_belt_at_port(neighbor.id, i, is_output=False)
+        if belt is None:
+            continue
+        result |= _resolve_source_items(
+            scene, recipes, belt.source_building_id, belt.source_port_index, visited
+        )
+    for i in range(neighbor.num_outputs):
+        if i == port_index:
+            continue
+        belt = scene.get_belt_at_port(neighbor.id, i, is_output=True)
+        if belt is None:
+            continue
+        result |= _resolve_dest_items(
+            scene, recipes, belt.dest_building_id, belt.dest_port_index, visited
+        )
+
+    return result
+
+
+def _resolve_dest_items(
+    scene: Scene,
+    recipes: dict[RecipeId, Recipe],
+    building_id: str,
+    port_index: int,
+    visited: set[tuple[str, int, bool]],
+) -> set[ItemId]:
+    """Resolve the item(s) expected at an input port (the dest of a belt)."""
+    key = (building_id, port_index, False)
+    if key in visited:
+        return set()
+    visited.add(key)
+
+    neighbor = scene.buildings.get(building_id)
+    if neighbor is None:
+        return set()
+
+    if neighbor.building_type == BuildingType.SINK:
+        return {neighbor.item_id} if neighbor.item_id else set()
+
+    if neighbor.building_type not in _PASSTHROUGH_TYPES:
+        if neighbor.recipe_id is None:
+            return set()
+        recipe = recipes.get(neighbor.recipe_id)
+        if recipe is None:
+            return set()
+        return {inp.item_id for inp in recipe.inputs}
+
+    result: set[ItemId] = set()
+    for i in range(neighbor.num_outputs):
+        belt = scene.get_belt_at_port(neighbor.id, i, is_output=True)
+        if belt is None:
+            continue
+        result |= _resolve_dest_items(
+            scene, recipes, belt.dest_building_id, belt.dest_port_index, visited
+        )
+    for i in range(neighbor.num_inputs):
+        if i == port_index:
+            continue
+        belt = scene.get_belt_at_port(neighbor.id, i, is_output=False)
+        if belt is None:
+            continue
+        result |= _resolve_source_items(
+            scene, recipes, belt.source_building_id, belt.source_port_index, visited
+        )
+
+    return result
